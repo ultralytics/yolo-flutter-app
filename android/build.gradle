@@ -1,0 +1,80 @@
+group 'com.ultralytics.ultralytics_yolo'
+version '1.0'
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.1.2'
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenLocal()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 33
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        minSdkVersion 26
+        externalNativeBuild {
+            cmake {
+                cppFlags ''
+            }
+        }
+    }
+
+    aaptOptions {
+        noCompress 'tflite'
+        noCompress 'lite'
+    }
+
+    buildFeatures{
+        mlModelBinding true
+    }
+
+    dependencies {
+        // Ultralytics
+//        implementation ('com.ultralytics:ultralytics:0.1.2')
+
+        // CameraX
+        def camerax_version = "1.2.0-beta02"
+        implementation "androidx.camera:camera-core:${camerax_version}"
+        implementation "androidx.camera:camera-camera2:${camerax_version}"
+        implementation "androidx.camera:camera-lifecycle:${camerax_version}"
+        implementation "androidx.camera:camera-view:${camerax_version}"
+        implementation "androidx.camera:camera-extensions:${camerax_version}"
+
+        // Tensorflow Lite
+//        implementation 'org.tensorflow:tensorflow-lite:2.10.0'
+        implementation 'org.tensorflow:tensorflow-lite:2.14.0'
+//        implementation 'org.tensorflow:tensorflow-lite-api:2.10.0'
+        implementation 'org.tensorflow:tensorflow-lite-gpu:2.14.0'
+        implementation 'org.tensorflow:tensorflow-lite-gpu-api:2.14.0'
+//        implementation 'org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.3'
+        implementation 'org.tensorflow:tensorflow-lite-select-tf-ops:2.11.0'
+
+        // SnakeYAML
+        implementation 'org.yaml:snakeyaml:1.29'
+    }
+    externalNativeBuild {
+        cmake {
+            path file('src/main/cpp/CMakeLists.txt')
+        }
+    }
+}
