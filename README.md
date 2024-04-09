@@ -1,24 +1,29 @@
+<a href="https://ultralytics.com" target="_blank"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
+
 # Ultralytics YOLO for Flutter
 
-A Flutter plugin for integrating Ultralytics YOLO computer vision models into your mobile apps. The plugin supports both Android and iOS platforms, and provides APIs for object detection and image classification. 
+A Flutter plugin for integrating Ultralytics YOLO computer vision models into your mobile apps. The plugin supports both Android and iOS platforms, and provides APIs for object detection and image classification.
 
 ## Features
 
-| Feature | Android | iOS | 
-| --- | --- | --- |
-| Detection | ✅ | ✅ |
-| Classification | ✅ | ✅ |
-| Pose Estimation | ❌ | ❌ |
-| Segmentation | ❌ | ❌ |
-| OBB Detection | ❌ | ❌ |
+| Feature         | Android | iOS | 
+|-----------------|---------|-----|
+| Detection       | ✅       | ✅   |
+| Classification  | ✅       | ✅   |
+| Pose Estimation | ❌       | ❌   |
+| Segmentation    | ❌       | ❌   |
+| OBB Detection   | ❌       | ❌   |
 
 Before proceeding further or reporting new issues, please ensure you read this documentation thoroughly.
 
 ## Usage
+
 Ultralytics YOLO is designed specifically for mobile platforms, targeting iOS and Android apps. The plugin leverages Flutter Platform Channels for communication between the client (_app_/_plugin_) and host (_platform_), ensuring seamless integration and responsiveness. All processing related to Ultralytics YOLO APIs is handled natively using Flutter's native APIs, with the plugin serving as a bridge between your app and Ultralytics YOLO.
 
 ### Prerequisites
+
 #### Export Ultralytics YOLO Models
+
 Before you can use Ultralytics YOLO in your app, you must export the required models. The exported models are in the form of `.tflite` and `.mlmodel` files, which you can then include in your app. Use the Ultralytics YOLO CLI to export the models.
 
 > IMPORTANT: The parameters in the commands above are mandatory. Ultralytics YOLO plugin for Flutter only supports the models exported using the commands above. If you use different parameters, the plugin will not work as expected. We're working on adding support for more models and parameters in the future.
@@ -27,13 +32,15 @@ The following commands are used to export the models:
 
 <details>
 <summary><b>Android</b></summary>
-  
+
 #### Detection
+
 ```bash
 yolo export format=tflite model=yolov8n imgsz=320 int8
 ```
 
 #### Classification
+
 ```bash
 yolo export format=tflite model=yolov8n-cls imgsz=320 int8
 ```
@@ -48,23 +55,27 @@ To export the YOLOv8n Detection model for iOS, use the following command:
 ```bash
 yolo export format=mlmodel model=yolov8n imgsz=[320, 192] half nms
 ```
+
 </details>
 
-
 ### Installation
+
 After exporting the models, you will get the `.tflite` and `.mlmodel` files. Include these files in your app's `assets` folder.
 
 #### Permissions
-Ensure that you have the necessary permissions to access the camera and storage. 
+
+Ensure that you have the necessary permissions to access the camera and storage.
 
 <details>
 <summary><b>Android</b></summary>
 
-  Add the following permissions to your `AndroidManifest.xml` file:
+Add the following permissions to your `AndroidManifest.xml` file:
+
 ```xml
-<uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+<uses-permission android:name="android.permission.CAMERA"/>
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 ```
 
 </details>
@@ -74,12 +85,15 @@ Ensure that you have the necessary permissions to access the camera and storage.
 Add the following permissions to your `Info.plist` file:
 
 ```xml
+
 <key>NSCameraUsageDescription</key>
 <string>Camera permission is required for object detection.</string>
 <key>NSPhotoLibraryUsageDescription</key>
 <string>Storage permission is required for object detection.</string>
 ```
+
 Add the following permissions to your `Podfile`:
+
 ```ruby
 post_install do |installer|
   installer.pods_project.targets.each do |target|
@@ -101,10 +115,13 @@ post_install do |installer|
   end
 end
 ```
+
 </details>
 
 ### Usage
+
 #### Predictor
+
 Create a predictor object using the `LocalYoloModel` class. This class requires the following parameters:
 
 ```dart
@@ -118,19 +135,23 @@ final model = LocalYoloModel(
 ```
 
 ##### Object Detector
+
 ```dart
 final objectDetector = ObjectDetector(model: model);
 await objectDetector.loadModel();
 ```
 
 ##### Image Classifier
+
 ```dart
 final imageClassifier = ImageClassifier(model: model);
 await imageClassifier.loadModel();
 ```
 
 #### Camera Preview
+
 The `UltralyticsYoloCameraPreview` widget is used to display the camera preview and the results of the prediction.
+
 ```dart
 final _controller = UltralyticsYoloCameraController();
 UltralyticsYoloCameraPreview(
@@ -155,26 +176,51 @@ UltralyticsYoloCameraPreview(
            ),
 ```
 
-#### Image 
+#### Image
+
 Use the `detect` or `classify` methods to get the results of the prediction on an image.
 
 ```dart
 objectDetector.detect(imagePath: imagePath)
 ```
+
 or
+
 ```dart
 imageClassifier.classify(imagePath: imagePath)
 ```
 
-## Issues
-Please report any issues you find with the plugin on the [GitHub repository](https://github.com/ultralytics/ultralytics_yolo_mobile/issues). We'll do our best to address them as soon as possible.
+## 💡 Contribute
 
-## Contributing
-We love your input! YOLOv5 and YOLOv8 would not be possible without help from our community. Please see our [Contributing Guide](https://docs.ultralytics.com/help/contributing) to get started, and fill out our [Survey](https://ultralytics.com/survey?utm_source=github&utm_medium=social&utm_campaign=Survey) to send us feedback on your experience. Thank you 🙏 to all our contributors!
+Ultralytics thrives on community collaboration; we immensely value your involvement! We urge you to peruse our [Contributing Guide](https://docs.ultralytics.com/help/contributing) for detailed insights on how you can participate. Don't forget to share your feedback with us by contributing to our [Survey](https://ultralytics.com/survey?utm_source=github&utm_medium=social&utm_campaign=Survey). A heartfelt thank you 🙏 goes out to everyone who has already contributed!
 
+<a href="https://github.com/ultralytics/yolov5/graphs/contributors">
+<img width="100%" src="https://github.com/ultralytics/assets/raw/main/im/image-contributors.png" alt="Ultralytics open-source contributors"></a>
 
-## License
-Ultralytics YOLO for Flutter is licensed under the [AGPL 3.0 License](https://github.com/ultralytics/ultralytics_yolo_mobile/blob/master/LICENSE). Ultralytics offers two licensing options to accommodate diverse use cases:
+## 📄 License
 
-- **AGPL-3.0 License**: This [OSI-approved](https://opensource.org/licenses/) open-source license is ideal for students and enthusiasts, promoting open collaboration and knowledge sharing. See the [LICENSE](https://github.com/ultralytics/ultralytics/blob/main/LICENSE) file for more details.
-- **Enterprise License**: Designed for commercial use, this license permits seamless integration of Ultralytics software and AI models into commercial goods and services, bypassing the open-source requirements of AGPL-3.0. If your scenario involves embedding our solutions into a commercial offering, reach out through [Ultralytics Licensing](https://ultralytics.com/license).
+Ultralytics presents two distinct licensing paths to accommodate a variety of scenarios:
+
+- **AGPL-3.0 License**: This official [OSI-approved](https://opensource.org/licenses/) open-source license is perfectly aligned with the goals of students, enthusiasts, and researchers who believe in the virtues of open collaboration and shared wisdom. Details are available in the [LICENSE](https://github.com/ultralytics/ultralytics/blob/main/LICENSE) document.
+- **Enterprise License**: Tailored for commercial deployment, this license authorizes the unfettered integration of Ultralytics software and AI models within commercial goods and services, without the copyleft stipulations of AGPL-3.0. Should your use case demand an enterprise solution, direct your inquiries to [Ultralytics Licensing](https://ultralytics.com/license).
+
+## 📮 Contact
+
+For bugs or feature suggestions pertaining to Ultralytics, please lodge an issue via [GitHub Issues](https://github.com/ultralytics/yolo-flutter-app/issues). You're also invited to participate in our [Discord](https://ultralytics.com/discord) community to engage in discussions and seek advice!
+
+<br>
+<div align="center">
+  <a href="https://github.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-github.png" width="3%" alt="Ultralytics GitHub"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.linkedin.com/company/ultralytics/"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-linkedin.png" width="3%" alt="Ultralytics LinkedIn"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://twitter.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-twitter.png" width="3%" alt="Ultralytics Twitter"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://youtube.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-youtube.png" width="3%" alt="Ultralytics YouTube"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.tiktok.com/@ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-tiktok.png" width="3%" alt="Ultralytics TikTok"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.instagram.com/ultralytics/"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-instagram.png" width="3%" alt="Ultralytics Instagram"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://ultralytics.com/discord"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-discord.png" width="3%" alt="Ultralytics Discord"></a>
+</div>
