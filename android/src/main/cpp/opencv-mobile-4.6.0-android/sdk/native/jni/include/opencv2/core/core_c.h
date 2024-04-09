@@ -1320,7 +1320,7 @@ CVAPI(void)  cvTranspose( const CvArr* src, CvArr* dst );
 CVAPI(void)  cvCompleteSymm( CvMat* matrix, int LtoR CV_DEFAULT(0) );
 
 /** Mirror array data around horizontal (flip=0),
-   vertical (flip=1) or both(flip=-1) axises:
+   vertical (flip=1) or both(flip=-1) axes:
    cvFlip(src) flips images vertically and sequences horizontally (inplace) */
 CVAPI(void)  cvFlip( const CvArr* src, CvArr* dst CV_DEFAULT(NULL),
                      int flip_mode CV_DEFAULT(0));

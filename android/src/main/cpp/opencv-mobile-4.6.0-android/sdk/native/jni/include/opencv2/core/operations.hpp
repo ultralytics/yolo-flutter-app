@@ -596,7 +596,7 @@ partition( const std::vector<_Tp>& _vec, std::vector<int>& labels,
         int root = i;
         while( nodes[root][PARENT] >= 0 )
             root = nodes[root][PARENT];
-        // re-use the rank as the class label
+        // reuse the rank as the class label
         if( nodes[root][RANK] >= 0 )
             nodes[root][RANK] = ~nclasses++;
         labels[i] = ~nodes[root][RANK];
