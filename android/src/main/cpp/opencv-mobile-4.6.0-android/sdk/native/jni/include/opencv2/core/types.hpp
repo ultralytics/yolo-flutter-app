@@ -187,7 +187,7 @@ public:
 
     //! dot product
     _Tp dot(const Point_& pt) const;
-    //! dot product computed in double-precision arithmetics
+    //! dot product computed in double-precision arithmetic
     double ddot(const Point_& pt) const;
     //! cross-product
     double cross(const Point_& pt) const;
@@ -272,7 +272,7 @@ public:
 
     //! dot product
     _Tp dot(const Point3_& pt) const;
-    //! dot product computed in double-precision arithmetics
+    //! dot product computed in double-precision arithmetic
     double ddot(const Point3_& pt) const;
     //! cross product of the 2 3D points
     Point3_ cross(const Point3_& pt) const;

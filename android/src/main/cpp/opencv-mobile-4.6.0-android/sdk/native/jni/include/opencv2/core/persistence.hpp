@@ -280,7 +280,7 @@ Format specification    {#format_spec}
 
 `count` is the optional counter of values of a given type. For example, `2if` means that each array
 element is a structure of 2 integers, followed by a single-precision floating-point number. The
-equivalent notations of the above specification are `iif`, `2i1f` and so forth. Other examples: `u`
+equivalent notations of the above specification are `if`, `2i1f` and so forth. Other examples: `u`
 means that the array consists of bytes, and `2d` means the array consists of pairs of doubles.
 
 @see @ref samples/cpp/filestorage.cpp

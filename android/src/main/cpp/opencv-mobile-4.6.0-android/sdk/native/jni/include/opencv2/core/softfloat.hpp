@@ -123,7 +123,7 @@ public:
     operator softdouble() const;
     operator float() const { Cv32suf s; s.u = v; return s.f; }
 
-    /** @brief Basic arithmetics */
+    /** @brief Basic arithmetic */
     softfloat operator + (const softfloat&) const;
     softfloat operator - (const softfloat&) const;
     softfloat operator * (const softfloat&) const;
@@ -260,7 +260,7 @@ public:
     operator softfloat() const;
     operator double() const { Cv64suf s; s.u = v; return s.f; }
 
-    /** @brief Basic arithmetics */
+    /** @brief Basic arithmetic */
     softdouble operator + (const softdouble&) const;
     softdouble operator - (const softdouble&) const;
     softdouble operator * (const softdouble&) const;

@@ -1307,7 +1307,7 @@ public:
     a part of more complex matrix expressions or can be assigned to a matrix:
     @code
         Mat A1 = A + Mat::eye(A.size(), A.type())*lambda;
-        Mat C = A1.t()*A1; // compute (A + lambda*I)^t * (A + lamda*I)
+        Mat C = A1.t()*A1; // compute (A + lambda*I)^t * (A + lambda*I)
     @endcode
      */
     MatExpr t() const;

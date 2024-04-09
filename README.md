@@ -6,8 +6,8 @@ A Flutter plugin for integrating Ultralytics YOLO computer vision models into yo
 
 ## Features
 
-| Feature         | Android | iOS | 
-|-----------------|---------|-----|
+| Feature         | Android | iOS |
+| --------------- | ------- | --- |
 | Detection       | ✅       | ✅   |
 | Classification  | ✅       | ✅   |
 | Pose Estimation | ❌       | ❌   |
@@ -46,6 +46,7 @@ yolo export format=tflite model=yolov8n-cls imgsz=320 int8
 ```
 
 Then use file `yolov8n_int8.tflite` or `yolov8n-cls_int8.tflite`
+
 </details>
 
 <details>

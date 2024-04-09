@@ -633,7 +633,7 @@ OPENCV_HAL_IMPL_AVX512_COMBINE(v_float64x8,  pd)
 
 /* Element-wise binary and unary operations */
 
-/** Non-saturating arithmetics **/
+/** Non-saturating arithmetic **/
 #define OPENCV_HAL_IMPL_AVX512_BIN_FUNC(func, _Tpvec, intrin) \
     inline _Tpvec func(const _Tpvec& a, const _Tpvec& b)      \
     { return _Tpvec(intrin(a.val, b.val)); }
@@ -682,7 +682,7 @@ OPENCV_HAL_IMPL_AVX512_BIN_OP(*, v_int32x16, _mm512_mullo_epi32)
 OPENCV_HAL_IMPL_AVX512_BIN_OP(*, v_uint64x8, _mm512_mullo_epi64)
 OPENCV_HAL_IMPL_AVX512_BIN_OP(*, v_int64x8, _mm512_mullo_epi64)
 
-/** Saturating arithmetics **/
+/** Saturating arithmetic **/
 OPENCV_HAL_IMPL_AVX512_BIN_OP(+, v_uint8x64,  _mm512_adds_epu8)
 OPENCV_HAL_IMPL_AVX512_BIN_OP(-, v_uint8x64,  _mm512_subs_epu8)
 OPENCV_HAL_IMPL_AVX512_BIN_OP(+, v_int8x64,   _mm512_adds_epi8)

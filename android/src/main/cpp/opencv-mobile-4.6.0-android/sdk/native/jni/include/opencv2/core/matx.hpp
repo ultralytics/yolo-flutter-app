@@ -162,7 +162,7 @@ public:
     //! dot product computed with the default precision
     _Tp dot(const Matx<_Tp, m, n>& v) const;
 
-    //! dot product computed in double-precision arithmetics
+    //! dot product computed in double-precision arithmetic
     double ddot(const Matx<_Tp, m, n>& v) const;
 
     //! conversion to another data type

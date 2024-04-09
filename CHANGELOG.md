@@ -1,8 +1,11 @@
 ## 0.0.3
-* Fix live prediction
+
+- Fix live prediction
 
 ## 0.0.2
-* Fix type annotations in UltralyticsYoloCameraPreview
+
+- Fix type annotations in UltralyticsYoloCameraPreview
 
 ## 0.0.1
-* Add support for object detection and image classification Ultralytics YOLO models using TFLite and CoreML models.
+
+- Add support for object detection and image classification Ultralytics YOLO models using TFLite and CoreML models.
