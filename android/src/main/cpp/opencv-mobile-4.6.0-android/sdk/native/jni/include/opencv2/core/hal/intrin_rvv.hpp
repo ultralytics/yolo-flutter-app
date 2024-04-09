@@ -2751,9 +2751,9 @@ inline int v_signmask(const v_float64x2& a)
 #define OPENCV_HAL_IMPL_RVV_SIGNMASK_OP(_Tpvec, width, vl) \
 inline int v_signmask(const _Tpvec& a) \
 { \
-    uint8_t and[16] = {0};\
-    vsm(and, vmslt(a, 0, vl), vl);\
-    return reinterpret_cast<int*>(and)[0];\
+    uint8_t _ans[16] = {0};\
+    vsm(_ans, vmslt(a, 0, vl), vl);\
+    return reinterpret_cast<int*>(_ans)[0];\
 }
 
 OPENCV_HAL_IMPL_RVV_SIGNMASK_OP(v_int8x16, 8, 16)
