@@ -2,25 +2,28 @@
 
 # Ultralytics YOLO for Flutter
 
-A Flutter plugin for integrating Ultralytics YOLO computer vision models into your mobile apps. The plugin supports both Android and iOS platforms, and provides APIs for object detection and image classification. 
+A Flutter plugin for integrating Ultralytics YOLO computer vision models into your mobile apps. The plugin supports both Android and iOS platforms, and provides APIs for object detection and image classification.
 
 ## Features
 
-| Feature | Android | iOS | 
-| --- | --- | --- |
-| Detection | ✅ | ✅ |
-| Classification | ✅ | ✅ |
-| Pose Estimation | ❌ | ❌ |
-| Segmentation | ❌ | ❌ |
-| OBB Detection | ❌ | ❌ |
+| Feature         | Android | iOS | 
+|-----------------|---------|-----|
+| Detection       | ✅       | ✅   |
+| Classification  | ✅       | ✅   |
+| Pose Estimation | ❌       | ❌   |
+| Segmentation    | ❌       | ❌   |
+| OBB Detection   | ❌       | ❌   |
 
 Before proceeding further or reporting new issues, please ensure you read this documentation thoroughly.
 
 ## Usage
+
 Ultralytics YOLO is designed specifically for mobile platforms, targeting iOS and Android apps. The plugin leverages Flutter Platform Channels for communication between the client (_app_/_plugin_) and host (_platform_), ensuring seamless integration and responsiveness. All processing related to Ultralytics YOLO APIs is handled natively using Flutter's native APIs, with the plugin serving as a bridge between your app and Ultralytics YOLO.
 
 ### Prerequisites
+
 #### Export Ultralytics YOLO Models
+
 Before you can use Ultralytics YOLO in your app, you must export the required models. The exported models are in the form of `.tflite` and `.mlmodel` files, which you can then include in your app. Use the Ultralytics YOLO CLI to export the models.
 
 > IMPORTANT: The parameters in the commands above are mandatory. Ultralytics YOLO plugin for Flutter only supports the models exported using the commands above. If you use different parameters, the plugin will not work as expected. We're working on adding support for more models and parameters in the future.
@@ -29,13 +32,15 @@ The following commands are used to export the models:
 
 <details>
 <summary><b>Android</b></summary>
-  
+
 #### Detection
+
 ```bash
 yolo export format=tflite model=yolov8n imgsz=320 int8
 ```
 
 #### Classification
+
 ```bash
 yolo export format=tflite model=yolov8n-cls imgsz=320 int8
 ```
@@ -50,23 +55,27 @@ To export the YOLOv8n Detection model for iOS, use the following command:
 ```bash
 yolo export format=mlmodel model=yolov8n imgsz=[320, 192] half nms
 ```
+
 </details>
 
-
 ### Installation
+
 After exporting the models, you will get the `.tflite` and `.mlmodel` files. Include these files in your app's `assets` folder.
 
 #### Permissions
-Ensure that you have the necessary permissions to access the camera and storage. 
+
+Ensure that you have the necessary permissions to access the camera and storage.
 
 <details>
 <summary><b>Android</b></summary>
 
-  Add the following permissions to your `AndroidManifest.xml` file:
+Add the following permissions to your `AndroidManifest.xml` file:
+
 ```xml
-<uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+<uses-permission android:name="android.permission.CAMERA"/>
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 ```
 
 </details>
@@ -76,12 +85,15 @@ Ensure that you have the necessary permissions to access the camera and storage.
 Add the following permissions to your `Info.plist` file:
 
 ```xml
+
 <key>NSCameraUsageDescription</key>
 <string>Camera permission is required for object detection.</string>
 <key>NSPhotoLibraryUsageDescription</key>
 <string>Storage permission is required for object detection.</string>
 ```
+
 Add the following permissions to your `Podfile`:
+
 ```ruby
 post_install do |installer|
   installer.pods_project.targets.each do |target|
@@ -103,10 +115,13 @@ post_install do |installer|
   end
 end
 ```
+
 </details>
 
 ### Usage
+
 #### Predictor
+
 Create a predictor object using the `LocalYoloModel` class. This class requires the following parameters:
 
 ```dart
@@ -120,19 +135,23 @@ final model = LocalYoloModel(
 ```
 
 ##### Object Detector
+
 ```dart
 final objectDetector = ObjectDetector(model: model);
 await objectDetector.loadModel();
 ```
 
 ##### Image Classifier
+
 ```dart
 final imageClassifier = ImageClassifier(model: model);
 await imageClassifier.loadModel();
 ```
 
 #### Camera Preview
+
 The `UltralyticsYoloCameraPreview` widget is used to display the camera preview and the results of the prediction.
+
 ```dart
 final _controller = UltralyticsYoloCameraController();
 UltralyticsYoloCameraPreview(
@@ -157,13 +176,16 @@ UltralyticsYoloCameraPreview(
            ),
 ```
 
-#### Image 
+#### Image
+
 Use the `detect` or `classify` methods to get the results of the prediction on an image.
 
 ```dart
 objectDetector.detect(imagePath: imagePath)
 ```
+
 or
+
 ```dart
 imageClassifier.classify(imagePath: imagePath)
 ```
