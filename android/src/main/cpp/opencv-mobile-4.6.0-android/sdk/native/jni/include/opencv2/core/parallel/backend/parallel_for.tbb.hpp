@@ -8,12 +8,12 @@
 #include "opencv2/core/parallel/parallel_backend.hpp"
 #include <opencv2/core/utils/logger.hpp>
 
-#ifndef TBB_SUPPRESS_DEPRECATED_MESSAGES  // supress warning
+#ifndef TBB_SUPPRESS_DEPRECATED_MESSAGES  // suppress warning
 #define TBB_SUPPRESS_DEPRECATED_MESSAGES 1
 #endif
 #include "tbb/tbb.h"
 #if !defined(TBB_INTERFACE_VERSION)
-#error "Unknows/unsupported TBB version"
+#error "Unknowns/unsupported TBB version"
 #endif
 
 #if TBB_INTERFACE_VERSION >= 8000

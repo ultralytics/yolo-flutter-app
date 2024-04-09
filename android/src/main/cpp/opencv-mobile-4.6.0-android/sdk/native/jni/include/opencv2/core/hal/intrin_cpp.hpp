@@ -223,14 +223,14 @@ These operations allow to reorder or recombine elements in one or multiple vecto
 
 Element-wise binary and unary operations.
 
-- Arithmetics:
+- Arithmetic:
 @ref operator +(const v_reg &a, const v_reg &b) "+",
 @ref operator -(const v_reg &a, const v_reg &b) "-",
 @ref operator *(const v_reg &a, const v_reg &b) "*",
 @ref operator /(const v_reg &a, const v_reg &b) "/",
 @ref v_mul_expand
 
-- Non-saturating arithmetics: @ref v_add_wrap, @ref v_sub_wrap
+- Non-saturating arithmetic: @ref v_add_wrap, @ref v_sub_wrap
 
 - Bitwise shifts:
 @ref operator <<(const v_reg &a, int s) "<<",

@@ -1488,7 +1488,7 @@ inline v_uint8x16 v_pack_b(const v_uint64x2& a, const v_uint64x2& b, const v_uin
     return v_uint8x16(vnsrl_wx_u8m1(vnsrl_wx_u16m2(vnsrl_wx_u32m4(vle64_v_u64m8(ptr, 16), 0, 16), 0, 16), 0, 16));
 }
 
-////////////// Arithmetics //////////////
+////////////// Arithmetic //////////////
 #define OPENCV_HAL_IMPL_RVV_BIN_OP(bin_op, _Tpvec, intrin, vl) \
 inline _Tpvec operator bin_op (const _Tpvec& a, const _Tpvec& b) \
 { \
@@ -1743,7 +1743,7 @@ OPENCV_HAL_IMPL_RVV_BIN_FUNC(v_float64x2, v_min, vfmin_vv_f64m1, 2)
 OPENCV_HAL_IMPL_RVV_BIN_FUNC(v_float64x2, v_max, vfmax_vv_f64m1, 2)
 #endif
 
-////////////// Arithmetics wrap //////////////
+////////////// Arithmetic wrap //////////////
 
 OPENCV_HAL_IMPL_RVV_BIN_FUNC(v_uint8x16, v_add_wrap, vadd_vv_u8m1, 16)
 OPENCV_HAL_IMPL_RVV_BIN_FUNC(v_int8x16, v_add_wrap, vadd_vv_i8m1, 16)
@@ -2751,9 +2751,9 @@ inline int v_signmask(const v_float64x2& a)
 #define OPENCV_HAL_IMPL_RVV_SIGNMASK_OP(_Tpvec, width, vl) \
 inline int v_signmask(const _Tpvec& a) \
 { \
-    uint8_t ans[16] = {0};\
-    vsm(ans, vmslt(a, 0, vl), vl);\
-    return reinterpret_cast<int*>(ans)[0];\
+    uint8_t and[16] = {0};\
+    vsm(and, vmslt(a, 0, vl), vl);\
+    return reinterpret_cast<int*>(and)[0];\
 }
 
 OPENCV_HAL_IMPL_RVV_SIGNMASK_OP(v_int8x16, 8, 16)

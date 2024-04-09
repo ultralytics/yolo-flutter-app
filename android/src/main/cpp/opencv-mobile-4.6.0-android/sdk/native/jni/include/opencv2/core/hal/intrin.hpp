@@ -578,7 +578,7 @@ namespace CV__SIMD_NAMESPACE {
 #endif
     //! @}
 
-    //! @name Wide load halfs from memory
+    //! @name Wide load halves from memory
     //! @{
     //! @brief Load maximum available capacity register contents from two memory blocks
     inline v_uint8 vx_load_halves(const uchar * ptr0, const uchar * ptr1) { return VXPREFIX(_load_halves)(ptr0, ptr1); }

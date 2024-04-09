@@ -671,7 +671,7 @@ OPENCV_HAL_IMPL_AVX_ZIP(v_float64x4)
 
 /* Element-wise binary and unary operations */
 
-/** Arithmetics **/
+/** Arithmetic **/
 #define OPENCV_HAL_IMPL_AVX_BIN_OP(bin_op, _Tpvec, intrin)            \
     inline _Tpvec operator bin_op (const _Tpvec& a, const _Tpvec& b)  \
     { return _Tpvec(intrin(a.val, b.val)); }                          \
@@ -744,7 +744,7 @@ inline v_uint16x16& operator *= (v_uint16x16& a, const v_uint16x16& b)
 inline v_int16x16& operator *= (v_int16x16& a, const v_int16x16& b)
 { a = a * b; return a; }
 
-/** Non-saturating arithmetics **/
+/** Non-saturating arithmetic **/
 #define OPENCV_HAL_IMPL_AVX_BIN_FUNC(func, _Tpvec, intrin) \
     inline _Tpvec func(const _Tpvec& a, const _Tpvec& b)   \
     { return _Tpvec(intrin(a.val, b.val)); }

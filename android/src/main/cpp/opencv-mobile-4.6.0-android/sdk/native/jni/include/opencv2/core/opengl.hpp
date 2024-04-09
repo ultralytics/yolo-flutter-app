@@ -266,7 +266,7 @@ public:
     int elemSize() const;
     int elemSize1() const;
 
-    //! get OpenGL opject id
+    //! get OpenGL object id
     unsigned int bufId() const;
 
     class Impl;
@@ -387,7 +387,7 @@ public:
 
     Format format() const;
 
-    //! get OpenGL opject id
+    //! get OpenGL object id
     unsigned int texId() const;
 
     class Impl;

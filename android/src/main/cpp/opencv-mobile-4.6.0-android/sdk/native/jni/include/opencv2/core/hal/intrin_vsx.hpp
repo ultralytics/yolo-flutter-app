@@ -511,7 +511,7 @@ inline void v_recombine(const _Tpvec& a, const _Tpvec& b, _Tpvec& c, _Tpvec& d)
 ////////// Arithmetic, bitwise and comparison operations /////////
 
 /* Element-wise binary and unary operations */
-/** Arithmetics **/
+/** Arithmetic **/
 #define OPENCV_HAL_IMPL_VSX_BIN_OP(bin_op, _Tpvec, intrin)       \
 inline _Tpvec operator bin_op (const _Tpvec& a, const _Tpvec& b) \
 { return _Tpvec(intrin(a.val, b.val)); }                         \
@@ -584,7 +584,7 @@ inline v_uint16x8 v_mul_hi(const v_uint16x8& a, const v_uint16x8& b)
     return v_uint16x8(vec_perm(vec_ushort8_c(p0), vec_ushort8_c(p1), perm));
 }
 
-/** Non-saturating arithmetics **/
+/** Non-saturating arithmetic **/
 #define OPENCV_HAL_IMPL_VSX_BIN_FUNC(func, intrin)    \
 template<typename _Tpvec>                             \
 inline _Tpvec func(const _Tpvec& a, const _Tpvec& b)  \
