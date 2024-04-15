@@ -132,6 +132,7 @@ final model = LocalYoloModel(
         format: Format.tflite /* or Format.coreml*/,
         modelPath: modelPath,
         metadataPath: metadataPath,
+        isLive: false /* If True automatic scaling of results is done */, 
       );
 ```
 
