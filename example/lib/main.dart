@@ -132,12 +132,12 @@ class _MyAppState extends State<MyApp> {
     final modelPath = await _copy('assets/yolov8n_int8.tflite');
     final metadataPath = await _copy('assets/metadata.yaml');
     final model = LocalYoloModel(
-      id: '',
-      task: Task.detect,
-      format: Format.tflite,
-      modelPath: modelPath,
-      metadataPath: metadataPath,
-    );
+        id: '',
+        task: Task.detect,
+        format: Format.tflite,
+        modelPath: modelPath,
+        metadataPath: metadataPath,
+        isLive: true);
 
     return ObjectDetector(model: model);
   }
@@ -149,6 +149,7 @@ class _MyAppState extends State<MyApp> {
       task: Task.classify,
       format: Format.coreml,
       modelPath: modelPath,
+      isLive: true,
     );
 
     // final modelPath = await _copy('assets/yolov8n-cls.bin');
