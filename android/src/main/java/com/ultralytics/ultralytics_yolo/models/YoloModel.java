@@ -6,4 +6,5 @@ public abstract class YoloModel {
     public final ArrayList<String> labels = new ArrayList<>();
     public String task;
     public String format;
+    public boolean isLive;
 }

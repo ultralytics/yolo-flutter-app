@@ -251,7 +251,7 @@ public class ObjectDetector: Predictor {
                             let offset = (1 - screenRatio) * (0.5 - rect.minX)
                             let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: offset, y: -1)
                             rect = rect.applying(transform)
-    //                        rect.size.width *= screenRatio
+                            //rect.size.width *= screenRatio
                         } else { // iPad ratio = 0.75
                             let offset = (screenRatio - 1) * (0.5 - rect.maxY)
                             let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: offset - 1)

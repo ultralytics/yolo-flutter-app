@@ -46,7 +46,8 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
 
         this.cameraPreview = cameraPreview;
 
-        EventChannel predictionResultEventChannel = new EventChannel(binaryMessenger, "ultralytics_yolo_prediction_results");
+        EventChannel predictionResultEventChannel = new EventChannel(binaryMessenger,
+                "ultralytics_yolo_prediction_results");
         resultStreamHandler = new ResultStreamHandler();
         predictionResultEventChannel.setStreamHandler(resultStreamHandler);
 
@@ -57,7 +58,6 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
         EventChannel fpsRateEventChannel = new EventChannel(binaryMessenger, "ultralytics_yolo_fps_rate");
         fpsRateStreamHandler = new FpsRateStreamHandler();
         fpsRateEventChannel.setStreamHandler(fpsRateStreamHandler);
-
 
         DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
         int widthPixels = displayMetrics.widthPixels;
@@ -126,6 +126,7 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
         String type = (String) model.get("type");
         String task = (String) model.get("task");
         String format = (String) model.get("format");
+        boolean isLive = (boolean) model.get("isLive");
         if (Objects.equals(task, "detect")) {
             if (Objects.equals(format, "tflite")) {
                 predictor = new TfliteDetector(context);
@@ -143,12 +144,12 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
                 String modelPath = (String) model.get("modelPath");
                 String metadataPath = (String) model.get("metadataPath");
 
-                yoloModel = new LocalYoloModel(task, format, modelPath, metadataPath);
+                yoloModel = new LocalYoloModel(task, format, modelPath, metadataPath, isLive);
                 break;
             case "remote":
                 String modelUrl = (String) model.get("modelUrl");
 
-                yoloModel = new RemoteYoloModel(modelUrl, task);
+                yoloModel = new RemoteYoloModel(modelUrl, task, isLive);
                 break;
         }
 
@@ -262,7 +263,7 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
     }
 
     private void closeCamera(MethodCall call, MethodChannel.Result result) {
-//        ncnnCameraPreview.closeCamera();
+        // ncnnCameraPreview.closeCamera();
     }
 
     private void startCamera(MethodCall call, MethodChannel.Result result) {
@@ -271,11 +272,11 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
     }
 
     private void pauseLivePrediction(MethodCall call, MethodChannel.Result result) {
-//        ncnnCameraPreview.pauseLivePrediction();
+        // ncnnCameraPreview.pauseLivePrediction();
     }
 
     private void resumeLivePrediction(MethodCall call, MethodChannel.Result result) {
-//        ncnnCameraPreview.resumeLivePrediction();
+        // ncnnCameraPreview.resumeLivePrediction();
     }
 
     private void detectImage(MethodCall call, MethodChannel.Result result) {
@@ -283,18 +284,27 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
             Object imagePathObject = call.argument("imagePath");
             if (imagePathObject != null) {
                 final String imagePath = (String) imagePathObject;
+                final boolean isLivePrediction = predictor.ISLIVE;
                 Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
                 final float[][] res = (float[][]) predictor.predict(bitmap);
 
                 float scaleFactor = widthDp / bitmap.getWidth();
+
                 float newHeight = bitmap.getHeight() * scaleFactor;
+                float newWidth = widthDp;
+
+                if (!isLivePrediction) {
+                    newHeight = bitmap.getHeight();
+                    newWidth = bitmap.getWidth();
+                }
+
                 List<Map<String, Object>> objects = new ArrayList<>();
                 for (float[] obj : res) {
                     Map<String, Object> objectMap = new HashMap<>();
 
-                    float x = obj[0] * widthDp;
+                    float x = obj[0] * newWidth;
                     float y = obj[1] * newHeight;
-                    float width = obj[2] * widthDp;
+                    float width = obj[2] * newWidth;
                     float height = obj[3] * newHeight;
                     float confidence = obj[4];
                     int index = (int) obj[5];
@@ -338,7 +348,6 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
             }
         }
     }
-
 
     private void setScaleFactor(MethodCall call, MethodChannel.Result result) {
         Object factorObject = call.argument("ratio");

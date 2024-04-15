@@ -52,6 +52,7 @@ abstract class YoloModel {
     required this.type,
     required this.task,
     required this.format,
+    required this.isLive,
   });
 
   /// Unique identifier for the model.
@@ -66,12 +67,16 @@ abstract class YoloModel {
   /// Format of the model.
   final Format format;
 
+  /// Whether the model is live or not.
+  final isLive;
+
   /// Returns a json representation of an instance of [YoloModel].
   Map<String, dynamic> toJson() => {
         'id': id,
         'type': type.name,
         'task': task.name,
         'format': format.name,
+        'isLive': isLive,
       };
 }
 
@@ -79,13 +84,14 @@ abstract class YoloModel {
 /// Ultralytics YOLO model.
 class LocalYoloModel extends YoloModel {
   /// Constructor to create an instance of [LocalYoloModel].
-  LocalYoloModel({
-    required super.id,
-    required this.modelPath,
-    required super.task,
-    required super.format,
-    this.metadataPath,
-  }) : super(type: Type.local);
+  LocalYoloModel(
+      {required super.id,
+      required this.modelPath,
+      required super.task,
+      required super.format,
+      required this.metadataPath,
+      required super.isLive})
+      : super(type: Type.local);
 
   /// Path where the local custom model is stored.
   final String modelPath;
@@ -106,12 +112,13 @@ class LocalYoloModel extends YoloModel {
 /// Ultralytics YOLO model.
 class RemoteYoloModel extends YoloModel {
   /// Constructor to create an instance of [RemoteYoloModel].
-  RemoteYoloModel({
-    required super.id,
-    required this.modelUrl,
-    required super.task,
-    required super.format,
-  }) : super(type: Type.remote);
+  RemoteYoloModel(
+      {required super.id,
+      required this.modelUrl,
+      required super.task,
+      required super.format,
+      required super.isLive})
+      : super(type: Type.remote);
 
   /// Path where the local custom model is stored.
   final String modelUrl;

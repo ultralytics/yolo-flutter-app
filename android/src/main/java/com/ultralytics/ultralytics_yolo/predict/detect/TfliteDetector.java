@@ -32,7 +32,6 @@ import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
 
-
 public class TfliteDetector extends Detector {
 
     static {
@@ -64,7 +63,8 @@ public class TfliteDetector extends Detector {
         super(context);
 
         pendingBitmapFrame = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888);
-        transformationMatrix = ImageUtils.getTransformationMatrix(CAMERA_PREVIEW_SIZE.getWidth(), CAMERA_PREVIEW_SIZE.getHeight(),
+        transformationMatrix = ImageUtils.getTransformationMatrix(CAMERA_PREVIEW_SIZE.getWidth(),
+                CAMERA_PREVIEW_SIZE.getHeight(),
                 INPUT_SIZE, INPUT_SIZE,
                 90, false);
     }
@@ -82,6 +82,7 @@ public class TfliteDetector extends Detector {
             final AssetManager assetManager = context.getAssets();
             loadLabels(assetManager, localYoloModel.metadataPath);
             numClasses = labels.size();
+            ISLIVE = localYoloModel.isLive;
             try {
                 MappedByteBuffer modelFile = loadModelFile(assetManager, localYoloModel.modelPath);
                 initDelegate(modelFile, useGpu);
@@ -161,7 +162,7 @@ public class TfliteDetector extends Detector {
                 GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions.setQuantizedModelsAllowed(true));
                 interpreterOptions.addDelegate(gpuDelegate);
             } else {
-            interpreterOptions.setNumThreads(4);
+                interpreterOptions.setNumThreads(4);
             }
             // Create the interpreter
             this.interpreter = new Interpreter(buffer, interpreterOptions);
@@ -222,7 +223,8 @@ public class TfliteDetector extends Detector {
         ByteBuffer imgData = ByteBuffer.allocateDirect(1 * INPUT_SIZE * INPUT_SIZE * 3 * NUM_BYTES_PER_CHANNEL);
         int[] intValues = new int[INPUT_SIZE * INPUT_SIZE];
 
-        resizedbitmap.getPixels(intValues, 0, resizedbitmap.getWidth(), 0, 0, resizedbitmap.getWidth(), resizedbitmap.getHeight());
+        resizedbitmap.getPixels(intValues, 0, resizedbitmap.getWidth(), 0, 0, resizedbitmap.getWidth(),
+                resizedbitmap.getHeight());
 
         imgData.order(ByteOrder.nativeOrder());
         imgData.rewind();
@@ -237,7 +239,7 @@ public class TfliteDetector extends Detector {
                 imgData.putFloat(b);
             }
         }
-        this.inputArray = new Object[]{imgData};
+        this.inputArray = new Object[] { imgData };
         this.outputMap = new HashMap<>();
         ByteBuffer outData = ByteBuffer.allocateDirect(outputShape2 * outputShape3 * NUM_BYTES_PER_CHANNEL);
         outData.order(ByteOrder.nativeOrder());
@@ -267,6 +269,6 @@ public class TfliteDetector extends Detector {
     }
 
     private native float[][] postprocess(float[][] recognitions, int w, int h,
-                                         float confidenceThreshold, float iouThreshold,
-                                         int numItemsThreshold, int numClasses);
+            float confidenceThreshold, float iouThreshold,
+            int numItemsThreshold, int numClasses);
 }
