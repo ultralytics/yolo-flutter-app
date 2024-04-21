@@ -102,8 +102,7 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
           result = result as List;
 
           for (dynamic json in result) {
-            json = json as Map<String, dynamic>;
-            objects.add(ClassificationResult.fromJson(json));
+            objects.add(ClassificationResult.fromJson(Map<String, dynamic>.from (json as Map)));
           }
 
           return objects;
@@ -132,9 +131,7 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
     final objects = <ClassificationResult>[];
 
     result?.forEach((json) {
-      json = json as Map<String, dynamic>?;
-      if (json == null) return;
-      objects.add(ClassificationResult.fromJson(json));
+      objects.add(ClassificationResult.fromJson(Map<String, dynamic>.from (json as Map)));
     });
 
     return objects;
