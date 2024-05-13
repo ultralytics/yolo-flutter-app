@@ -2,6 +2,8 @@
 
 # Ultralytics YOLO for Flutter
 
+[![Ultralytics Actions](https://github.com/ultralytics/yolo-flutter-app/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/wave/actions/workflows/format.yml) <a href="https://ultralytics.com/discord"><img alt="Discord" src="https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue"></a>
+
 A Flutter plugin for integrating Ultralytics YOLO computer vision models into your mobile apps. The plugin supports both Android and iOS platforms, and provides APIs for object detection and image classification.
 
 ## Features
