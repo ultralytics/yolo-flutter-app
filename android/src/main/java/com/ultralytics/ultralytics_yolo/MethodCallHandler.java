@@ -62,6 +62,9 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
         DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
         int widthPixels = displayMetrics.widthPixels;
         int heightPixels = displayMetrics.heightPixels;
+        System.out.println("displayMetrics.widthPixels:" + displayMetrics.widthPixels);
+        System.out.println("displayMetrics.heightPixels:" + displayMetrics.heightPixels);
+        System.out.println(" displayMetrics.density:" + displayMetrics.density);
         density = displayMetrics.density;
         widthDp = widthPixels / density;
         // Add 40dp to resolve the discrepancy between Flutter screen and AndroidView
@@ -126,7 +129,6 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
         String type = (String) model.get("type");
         String task = (String) model.get("task");
         String format = (String) model.get("format");
-        boolean isLive = (boolean) model.get("isLive");
         if (Objects.equals(task, "detect")) {
             if (Objects.equals(format, "tflite")) {
                 predictor = new TfliteDetector(context);
@@ -144,12 +146,12 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
                 String modelPath = (String) model.get("modelPath");
                 String metadataPath = (String) model.get("metadataPath");
 
-                yoloModel = new LocalYoloModel(task, format, modelPath, metadataPath, isLive);
+                yoloModel = new LocalYoloModel(task, format, modelPath, metadataPath);
                 break;
             case "remote":
                 String modelUrl = (String) model.get("modelUrl");
 
-                yoloModel = new RemoteYoloModel(modelUrl, task, isLive);
+                yoloModel = new RemoteYoloModel(modelUrl, task);
                 break;
         }
 
@@ -177,7 +179,8 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
 
     private void setPredictorCallbacks() {
         if (predictor instanceof Detector) {
-            // Multiply by 3/4 instead of 4/3 because the camera preview frame is rotated -90°
+            // Multiply by 3/4 instead of 4/3 because the camera preview frame is rotated
+            // -90°
             // float newWidth = heightDp * 3 / 4;
             float newWidth = heightDp * CAMERA_PREVIEW_SIZE.getHeight() / CAMERA_PREVIEW_SIZE.getWidth();
             final float offsetX = (widthDp - newWidth) / 2;
@@ -284,20 +287,18 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
             Object imagePathObject = call.argument("imagePath");
             if (imagePathObject != null) {
                 final String imagePath = (String) imagePathObject;
-                final boolean isLivePrediction = predictor.ISLIVE;
+
                 Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
                 final float[][] res = (float[][]) predictor.predict(bitmap);
 
-                float scaleFactor = widthDp / bitmap.getWidth();
+                float newHeight = bitmap.getHeight();
+                float newWidth = bitmap.getWidth();
 
-                float newHeight = bitmap.getHeight() * scaleFactor;
-                float newWidth = widthDp;
-
-                if (!isLivePrediction) {
-                    newHeight = bitmap.getHeight();
-                    newWidth = bitmap.getWidth();
-                }
-
+                System.out.println("newHeight:" + newHeight);
+                System.out.println("newWidth:" + newWidth);
+                System.out.println("widthDp:" + widthDp);
+                System.out.println("Width:" + bitmap.getWidth());
+                System.out.println("Height:" + bitmap.getHeight());
                 List<Map<String, Object>> objects = new ArrayList<>();
                 for (float[] obj : res) {
                     Map<String, Object> objectMap = new HashMap<>();

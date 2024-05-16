@@ -56,7 +56,8 @@ public class TfliteClassifier extends Classifier {
         super(context);
 
         pendingBitmapFrame = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888);
-        transformationMatrix = ImageUtils.getTransformationMatrix(CAMERA_PREVIEW_SIZE.getWidth(), CAMERA_PREVIEW_SIZE.getHeight(),
+        transformationMatrix = ImageUtils.getTransformationMatrix(CAMERA_PREVIEW_SIZE.getWidth(),
+                CAMERA_PREVIEW_SIZE.getHeight(),
                 INPUT_SIZE, INPUT_SIZE,
                 90, false);
     }
@@ -127,7 +128,7 @@ public class TfliteClassifier extends Classifier {
                 GpuDelegate gpuDelegate = new GpuDelegate(delegateOptions.setQuantizedModelsAllowed(true));
                 interpreterOptions.addDelegate(gpuDelegate);
             } else {
-            interpreterOptions.setNumThreads(4);
+                interpreterOptions.setNumThreads(4);
             }
             // Create the interpreter
             this.interpreter = new Interpreter(buffer, interpreterOptions);
@@ -205,7 +206,8 @@ public class TfliteClassifier extends Classifier {
         ByteBuffer imgData = ByteBuffer.allocateDirect(1 * INPUT_SIZE * INPUT_SIZE * 3 * NUM_BYTES_PER_CHANNEL);
         int[] intValues = new int[INPUT_SIZE * INPUT_SIZE];
 
-        resizedbitmap.getPixels(intValues, 0, resizedbitmap.getWidth(), 0, 0, resizedbitmap.getWidth(), resizedbitmap.getHeight());
+        resizedbitmap.getPixels(intValues, 0, resizedbitmap.getWidth(), 0, 0, resizedbitmap.getWidth(),
+                resizedbitmap.getHeight());
 
         imgData.order(ByteOrder.nativeOrder());
         imgData.rewind();
@@ -220,7 +222,7 @@ public class TfliteClassifier extends Classifier {
                 imgData.putFloat(b);
             }
         }
-        this.inputArray = new Object[]{imgData};
+        this.inputArray = new Object[] { imgData };
         this.outputMap = new HashMap<>();
         ByteBuffer outData = ByteBuffer.allocateDirect(outputShape2 * NUM_BYTES_PER_CHANNEL);
         outData.order(ByteOrder.nativeOrder());
@@ -256,7 +258,8 @@ public class TfliteClassifier extends Classifier {
                             float confidence2 = (float) map2.get("confidence");
                             return Float.compare(confidence2, confidence1);
                         })
-                        .map(map -> new ClassificationResult((String) map.get("label"), (int) map.get("index"), (float) map.get("confidence")))
+                        .map(map -> new ClassificationResult((String) map.get("label"), (int) map.get("index"),
+                                (float) map.get("confidence")))
                         .collect(Collectors.toList());
 
             }

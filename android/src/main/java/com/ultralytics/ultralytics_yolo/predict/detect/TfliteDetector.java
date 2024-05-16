@@ -82,7 +82,6 @@ public class TfliteDetector extends Detector {
             final AssetManager assetManager = context.getAssets();
             loadLabels(assetManager, localYoloModel.metadataPath);
             numClasses = labels.size();
-            ISLIVE = localYoloModel.isLive;
             try {
                 MappedByteBuffer modelFile = loadModelFile(assetManager, localYoloModel.modelPath);
                 initDelegate(modelFile, useGpu);

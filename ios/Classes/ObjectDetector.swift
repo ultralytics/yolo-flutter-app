@@ -229,14 +229,17 @@ public class ObjectDetector: Predictor {
         let request = VNCoreMLRequest(model: detector)
         var recognitions: [[String:Any]] = []
         
-        let screenWidth = self.screenSize?.width ?? 393
-        let screenHeight = self.screenSize?.height ?? 852
+        //let screenWidth = self.screenSize?.width ?? 393
+        //let screenHeight = self.screenSize?.height ?? 852
         let imageWidth = image.extent.width
         let imageHeight = image.extent.height
-        let scaleFactor = screenWidth / imageWidth
-        let newHeight = imageHeight * scaleFactor
-        let screenRatio: CGFloat = (screenHeight / screenWidth) / (4.0 / 3.0)  // .photo
-        
+
+        let newHeight =imageWidth;
+        let newWidth = imageHeight;
+        let screenRatio=1;
+        //let scaleFactor = screenWidth / imageWidth
+        //let newHeight = imageHeight * scaleFactor
+        //let screenRatio: CGFloat = (screenHeight / screenWidth) / (4.0 / 3.0)  // .photo    
         do {
             try requestHandler.perform([request])
             if let results = request.results as? [VNRecognizedObjectObservation] {

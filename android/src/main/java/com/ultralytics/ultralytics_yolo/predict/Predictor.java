@@ -20,9 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class Predictor {
-    public static int INPUT_SIZE = 320;
-    public static boolean ISLIVE = true;
-    protected final Context context;
+public static  int INPUT_SIZE = 640;
+        protected final Context context;
     public final ArrayList<String> labels = new ArrayList<>();
 
     static {
@@ -52,10 +51,9 @@ public abstract class Predictor {
         Map<Integer, String> names = ((Map<Integer, String>) data.get("names"));
 
         List<Integer> imgszArray = (List<Integer>) data.get("imgsz");
-        if (imgszArray != null && imgszArray.size() == 2) {
-
-            INPUT_SIZE = imgszArray.get(0) >= imgszArray.get(1) ? imgszArray.get(0) : imgszArray.get(1);
-            System.out.println("INPUT_SIZE:" + INPUT_SIZE);
+        if(imgszArray!=null&&imgszArray.size()==2){
+            INPUT_SIZE = imgszArray.get(0)>=imgszArray.get(1)?imgszArray.get(0):imgszArray.get(1);
+            System.out.println("INPUT_SIZE:"+ INPUT_SIZE);
         }
 
         labels.clear();
