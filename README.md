@@ -133,8 +133,7 @@ final model = LocalYoloModel(
         task: Task.detect /* or Task.classify */,
         format: Format.tflite /* or Format.coreml*/,
         modelPath: modelPath,
-        metadataPath: metadataPath,
-        isLive: false /* If True automatic scaling of results is done */, 
+        metadataPath: metadataPath        
       );
 ```
 
