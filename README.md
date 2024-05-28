@@ -158,7 +158,7 @@ The `UltralyticsYoloCameraPreview` widget is used to display the camera preview 
 ```dart
 final _controller = UltralyticsYoloCameraController();
 UltralyticsYoloCameraPreview(
- predictor: predictor, // Your prediciton model data
+ predictor: predictor, // Your prediction model data
  controller: _controller, // Ultralytics camera controller
  // For showing any widget on screen at the time of model loading 
  loadingPlaceholder: Center( 
@@ -210,7 +210,6 @@ Ultralytics presents two distinct licensing paths to accommodate a variety of sc
 ## 📮 Contact
 
 For bugs or feature suggestions pertaining to Ultralytics, please lodge an issue via [GitHub Issues](https://github.com/ultralytics/yolo-flutter-app/issues). You're also invited to participate in our [Discord](https://ultralytics.com/discord) community to engage in discussions and seek advice!
-
 
 <br>
 <div align="center">
