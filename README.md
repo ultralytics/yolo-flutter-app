@@ -158,7 +158,7 @@ The `UltralyticsYoloCameraPreview` widget is used to display the camera preview 
 ```dart
 final _controller = UltralyticsYoloCameraController();
 UltralyticsYoloCameraPreview(
- predictor: predictor, // Your prediciton model data
+ predictor: predictor, // Your prediction model data
  controller: _controller, // Ultralytics camera controller
  // For showing any widget on screen at the time of model loading 
  loadingPlaceholder: Center( 
@@ -219,7 +219,7 @@ For bugs or feature suggestions pertaining to Ultralytics, please lodge an issue
   <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
   <a href="https://twitter.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-twitter.png" width="3%" alt="Ultralytics Twitter"></a>
   <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
-  <a href="https://youtube.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-youtube.png" width="3%" alt="Ultralytics YouTube"></a>
+  <a href="https://youtube.com/ultralytics?sub_confirmation=1"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-youtube.png" width="3%" alt="Ultralytics YouTube"></a>
   <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
   <a href="https://www.tiktok.com/@ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-tiktok.png" width="3%" alt="Ultralytics TikTok"></a>
   <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
