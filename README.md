@@ -106,14 +106,14 @@ post_install do |installer|
     target.build_configurations.each do |config|
       config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
         '$(inherited)',
-        
+
         ## dart: PermissionGroup.camera
         'PERMISSION_CAMERA=1',
 
         ## dart: PermissionGroup.photos
         'PERMISSION_PHOTOS=1',
       ]
-    end 
+    end
     # End of the permission_handler configuration
   end
 end
@@ -160,8 +160,8 @@ final _controller = UltralyticsYoloCameraController();
 UltralyticsYoloCameraPreview(
  predictor: predictor, // Your prediction model data
  controller: _controller, // Ultralytics camera controller
- // For showing any widget on screen at the time of model loading 
- loadingPlaceholder: Center( 
+ // For showing any widget on screen at the time of model loading
+ loadingPlaceholder: Center(
        child: Wrap(
        direction: Axis.vertical,
        crossAxisAlignment: WrapCrossAlignment.center,

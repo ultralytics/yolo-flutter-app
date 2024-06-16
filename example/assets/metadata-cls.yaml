@@ -1,14 +1,14 @@
 description: Ultralytics YOLOv8n-cls model trained on ../datasets/imagenet
 author: Ultralytics
 license: AGPL-3.0 https://ultralytics.com/license
-date: '2023-10-20T12:49:47.656006'
+date: "2023-10-20T12:49:47.656006"
 version: 8.0.199
 stride: 1
 task: classify
 batch: 1
 imgsz:
-- 320
-- 160
+  - 320
+  - 160
 names:
   0: tench
   1: goldfish
