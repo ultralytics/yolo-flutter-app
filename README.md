@@ -10,11 +10,11 @@ A Flutter plugin for integrating Ultralytics YOLO computer vision models into yo
 
 | Feature         | Android | iOS |
 | --------------- | ------- | --- |
-| Detection       | ✅      | ✅  |
-| Classification  | ✅      | ✅  |
-| Pose Estimation | ❌      | ❌  |
-| Segmentation    | ❌      | ❌  |
-| OBB Detection   | ❌      | ❌  |
+| Detection       | ✅       | ✅   |
+| Classification  | ✅       | ✅   |
+| Pose Estimation | ❌       | ❌   |
+| Segmentation    | ❌       | ❌   |
+| OBB Detection   | ❌       | ❌   |
 
 Before proceeding further or reporting new issues, please ensure you read this documentation thoroughly.
 
