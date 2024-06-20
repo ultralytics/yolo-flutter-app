@@ -10,11 +10,11 @@ A Flutter plugin for integrating Ultralytics YOLO computer vision models into yo
 
 | Feature         | Android | iOS |
 | --------------- | ------- | --- |
-| Detection       | ✅       | ✅   |
-| Classification  | ✅       | ✅   |
-| Pose Estimation | ❌       | ❌   |
-| Segmentation    | ❌       | ❌   |
-| OBB Detection   | ❌       | ❌   |
+| Detection       | ✅      | ✅  |
+| Classification  | ✅      | ✅  |
+| Pose Estimation | ❌      | ❌  |
+| Segmentation    | ❌      | ❌  |
+| OBB Detection   | ❌      | ❌  |
 
 Before proceeding further or reporting new issues, please ensure you read this documentation thoroughly.
 
@@ -223,7 +223,7 @@ For bugs or feature suggestions pertaining to Ultralytics, please lodge an issue
   <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
   <a href="https://www.tiktok.com/@ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-tiktok.png" width="3%" alt="Ultralytics TikTok"></a>
   <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
-  <a href="https://www.instagram.com/ultralytics/"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-instagram.png" width="3%" alt="Ultralytics Instagram"></a>
+  <a href="https://ultralytics.com/bilibili"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-bilibili.png" width="3%" alt="Ultralytics Instagram"></a>
   <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
   <a href="https://ultralytics.com/discord"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-discord.png" width="3%" alt="Ultralytics Discord"></a>
 </div>
