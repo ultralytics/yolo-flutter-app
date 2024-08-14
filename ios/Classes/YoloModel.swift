@@ -1,9 +1,9 @@
 import CoreML
 
-public protocol YoloModel{
-    associatedtype MLModel
-    
-    var task: String { get set }
+public protocol YoloModel {
+  associatedtype MLModel
 
-    func loadModel() async throws -> MLModel?
+  var task: String { get set }
+
+  func loadModel() async throws -> MLModel?
 }
