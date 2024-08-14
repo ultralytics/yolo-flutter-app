@@ -13,7 +13,7 @@ on:
 
 jobs:
   format:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Run Ultralytics Formatting
         uses: ultralytics/actions@main
@@ -22,6 +22,7 @@ jobs:
           labels: true # autolabel issues and PRs
           python: true # format Python code and docstrings
           prettier: true # format YAML, JSON, Markdown and CSS
+          swift: true # format Swift code
           spelling: true # check spelling
           links: false # check broken links
           summary: true # print PR summary with GPT4o (requires 'openai_api_key')
