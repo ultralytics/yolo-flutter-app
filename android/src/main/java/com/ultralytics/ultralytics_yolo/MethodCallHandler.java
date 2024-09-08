@@ -46,7 +46,8 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
 
         this.cameraPreview = cameraPreview;
 
-        EventChannel predictionResultEventChannel = new EventChannel(binaryMessenger, "ultralytics_yolo_prediction_results");
+        EventChannel predictionResultEventChannel = new EventChannel(binaryMessenger,
+                "ultralytics_yolo_prediction_results");
         resultStreamHandler = new ResultStreamHandler();
         predictionResultEventChannel.setStreamHandler(resultStreamHandler);
 
@@ -57,7 +58,6 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
         EventChannel fpsRateEventChannel = new EventChannel(binaryMessenger, "ultralytics_yolo_fps_rate");
         fpsRateStreamHandler = new FpsRateStreamHandler();
         fpsRateEventChannel.setStreamHandler(fpsRateStreamHandler);
-
 
         DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
         int widthPixels = displayMetrics.widthPixels;
@@ -176,7 +176,8 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
 
     private void setPredictorCallbacks() {
         if (predictor instanceof Detector) {
-            // Multiply by 3/4 instead of 4/3 because the camera preview frame is rotated -90°
+            // Multiply by 3/4 instead of 4/3 because the camera preview frame is rotated
+            // -90°
             // float newWidth = heightDp * 3 / 4;
             float newWidth = heightDp * CAMERA_PREVIEW_SIZE.getHeight() / CAMERA_PREVIEW_SIZE.getWidth();
             final float offsetX = (widthDp - newWidth) / 2;
@@ -262,7 +263,7 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
     }
 
     private void closeCamera(MethodCall call, MethodChannel.Result result) {
-//        ncnnCameraPreview.closeCamera();
+        // ncnnCameraPreview.closeCamera();
     }
 
     private void startCamera(MethodCall call, MethodChannel.Result result) {
@@ -271,11 +272,11 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
     }
 
     private void pauseLivePrediction(MethodCall call, MethodChannel.Result result) {
-//        ncnnCameraPreview.pauseLivePrediction();
+        // ncnnCameraPreview.pauseLivePrediction();
     }
 
     private void resumeLivePrediction(MethodCall call, MethodChannel.Result result) {
-//        ncnnCameraPreview.resumeLivePrediction();
+        // ncnnCameraPreview.resumeLivePrediction();
     }
 
     private void detectImage(MethodCall call, MethodChannel.Result result) {
@@ -286,16 +287,17 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
                 Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
                 final float[][] res = (float[][]) predictor.predict(bitmap);
 
-                float scaleFactor = widthDp / bitmap.getWidth();
-                float newHeight = bitmap.getHeight() * scaleFactor;
+                float imageHeight = bitmap.getHeight();
+                float imageWidth = bitmap.getWidth();
+
                 List<Map<String, Object>> objects = new ArrayList<>();
                 for (float[] obj : res) {
                     Map<String, Object> objectMap = new HashMap<>();
 
-                    float x = obj[0] * widthDp;
-                    float y = obj[1] * newHeight;
-                    float width = obj[2] * widthDp;
-                    float height = obj[3] * newHeight;
+                    float x = obj[0] * imageWidth;
+                    float y = obj[1] * imageHeight;
+                    float width = obj[2] * imageWidth;
+                    float height = obj[3] * imageHeight;
                     float confidence = obj[4];
                     int index = (int) obj[5];
                     String label = index < predictor.labels.size() ? predictor.labels.get(index) : "";
@@ -338,7 +340,6 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
             }
         }
     }
-
 
     private void setScaleFactor(MethodCall call, MethodChannel.Result result) {
         Object factorObject = call.argument("ratio");

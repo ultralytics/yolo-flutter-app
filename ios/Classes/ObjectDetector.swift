@@ -240,13 +240,9 @@ public class ObjectDetector: Predictor {
     let request = VNCoreMLRequest(model: detector)
     var recognitions: [[String: Any]] = []
 
-    let screenWidth = self.screenSize?.width ?? 393
-    let screenHeight = self.screenSize?.height ?? 852
     let imageWidth = image.extent.width
     let imageHeight = image.extent.height
-    let scaleFactor = screenWidth / imageWidth
-    let newHeight = imageHeight * scaleFactor
-    let screenRatio: CGFloat = (screenHeight / screenWidth) / (4.0 / 3.0)  // .photo
+    let screenRatio=1;
 
     do {
       try requestHandler.perform([request])
@@ -270,7 +266,7 @@ public class ObjectDetector: Predictor {
               rect.size.height /= screenRatio
             }
 
-            rect = VNImageRectForNormalizedRect(rect, Int(screenWidth), Int(newHeight))
+            rect = VNImageRectForNormalizedRect(rect, Int(imageWidth), Int(imageHeight))
             print("rect: \(rect)")
 
             // The labels array is a list of VNClassificationObservation objects,
