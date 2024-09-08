@@ -242,7 +242,7 @@ public class ObjectDetector: Predictor {
 
     let imageWidth = image.extent.width
     let imageHeight = image.extent.height
-    let screenRatio=1;
+    let screenRatio: CGFloat=1.0;
 
     do {
       try requestHandler.perform([request])
