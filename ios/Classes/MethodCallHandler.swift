@@ -149,10 +149,16 @@ class MethodCallHandler: VideoCaptureDelegate, InferenceTimeListener, ResultsLis
   }
 
   private func createCIImage(fromPath path: String) throws -> CIImage? {
-    let url = URL(fileURLWithPath: path)
-    let data = try Data(contentsOf: url)
-    return CIImage(data: data)
-  }
+      let uiimage = UIImage(contentsOfFile: path)  
+      let beginImage : CIImage
+      if let ciImage = uiimage!.ciImage {
+           beginImage = ciImage
+      }
+      else {
+           beginImage = CIImage(cgImage: uiimage!.cgImage!).oriented(CGImagePropertyOrientation(uiimage!.imageOrientation))
+      }
+      return beginImage
+  }  
 
   private func predictOnImage(args: [String: Any], result: @escaping FlutterResult) {
     let imagePath = args["imagePath"] as! String
