@@ -185,7 +185,7 @@ class MethodCallHandler: VideoCaptureDelegate, InferenceTimeListener, ResultsLis
   }
 }
 extension CGImagePropertyOrientation {
-  init(_ uiOrientation: UIImageOrientation) {
+  init(_ uiOrientation: UIImage.Orientation) {
     switch uiOrientation {
     case .up: self = .up
     case .upMirrored: self = .upMirrored
