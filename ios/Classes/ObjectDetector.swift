@@ -260,9 +260,6 @@ public class ObjectDetector: Predictor {
             rect = VNImageRectForNormalizedRect(rect, Int(imageWidth), Int(imageHeight))
             print("rect: \(rect)")
 
-            rect = VNImageRectForNormalizedRect(rect, Int(imageWidth), Int(imageHeight))
-            print("rect: \(rect)")
-
             // The labels array is a list of VNClassificationObservation objects,
             // with the highest scoring class first in the list.
             let label = prediction.labels[0].identifier
