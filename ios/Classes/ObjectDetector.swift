@@ -247,24 +247,18 @@ public class ObjectDetector: Predictor {
     do {
       try requestHandler.perform([request])
       if let results = request.results as? [VNRecognizedObjectObservation] {
-        for i in 0..<100 {
+        for i in 0..<self.numItemsThreshold {
           if i < results.count && i < self.numItemsThreshold {
             let prediction = results[i]
 
             var rect = prediction.boundingBox  // normalized xywh, origin lower left
             print("rect: \(rect)")
 
-            if screenRatio >= 1 {  // iPhone ratio = 1.218
-              let offset = (1 - screenRatio) * (0.5 - rect.minX)
-              let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: offset, y: -1)
-              rect = rect.applying(transform)
-              //                        rect.size.width *= screenRatio
-            } else {  // iPad ratio = 0.75
-              let offset = (screenRatio - 1) * (0.5 - rect.maxY)
-              let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: offset - 1)
-              rect = rect.applying(transform)
-              rect.size.height /= screenRatio
-            }
+            let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: -1)
+                        rect = rect.applying(transform)        
+
+                        rect = VNImageRectForNormalizedRect(rect, Int(imageWidth), Int(imageHeight))
+                        print("rect: \(rect)")
 
             rect = VNImageRectForNormalizedRect(rect, Int(imageWidth), Int(imageHeight))
             print("rect: \(rect)")
