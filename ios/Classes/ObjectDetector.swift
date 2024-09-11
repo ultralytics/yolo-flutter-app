@@ -255,10 +255,10 @@ public class ObjectDetector: Predictor {
             print("rect: \(rect)")
 
             let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: -1)
-                        rect = rect.applying(transform)        
+            rect = rect.applying(transform)
 
-                        rect = VNImageRectForNormalizedRect(rect, Int(imageWidth), Int(imageHeight))
-                        print("rect: \(rect)")
+            rect = VNImageRectForNormalizedRect(rect, Int(imageWidth), Int(imageHeight))
+            print("rect: \(rect)")
 
             rect = VNImageRectForNormalizedRect(rect, Int(imageWidth), Int(imageHeight))
             print("rect: \(rect)")
