@@ -183,8 +183,8 @@ class _MyAppState extends State<MyApp> {
     var cameraStatus = await Permission.camera.status;
     if (!cameraStatus.isGranted) permissions.add(Permission.camera);
 
-    var storageStatus = await Permission.storage.status;
-    if (!storageStatus.isGranted) permissions.add(Permission.storage);
+//    var storageStatus = await Permission.storage.status;
+//    if (!storageStatus.isGranted) permissions.add(Permission.storage);
 
     if (permissions.isEmpty) {
       return true;
@@ -192,8 +192,9 @@ class _MyAppState extends State<MyApp> {
       try {
         Map<Permission, PermissionStatus> statuses =
             await permissions.request();
-        return statuses[Permission.camera] == PermissionStatus.granted &&
-            statuses[Permission.storage] == PermissionStatus.granted;
+        return statuses[Permission.camera] == PermissionStatus.granted;
+//        return statuses[Permission.camera] == PermissionStatus.granted &&
+//            statuses[Permission.storage] == PermissionStatus.granted;
       } on Exception catch (_) {
         return false;
       }
