@@ -112,7 +112,7 @@ class _MyAppState extends State<MyApp> {
           },
         ),
         floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.abc),
+          child: const Icon(Icons.cameraswitch),
           onPressed: () {
             controller.toggleLensDirection();
           },
