@@ -240,37 +240,24 @@ public class ObjectDetector: Predictor {
     let request = VNCoreMLRequest(model: detector)
     var recognitions: [[String: Any]] = []
 
-    let screenWidth = self.screenSize?.width ?? 393
-    let screenHeight = self.screenSize?.height ?? 852
     let imageWidth = image.extent.width
     let imageHeight = image.extent.height
-    let scaleFactor = screenWidth / imageWidth
-    let newHeight = imageHeight * scaleFactor
-    let screenRatio: CGFloat = (screenHeight / screenWidth) / (4.0 / 3.0)  // .photo
+    let screenRatio: CGFloat = 1.0
 
     do {
       try requestHandler.perform([request])
       if let results = request.results as? [VNRecognizedObjectObservation] {
-        for i in 0..<100 {
+        for i in 0..<self.numItemsThreshold {
           if i < results.count && i < self.numItemsThreshold {
             let prediction = results[i]
 
             var rect = prediction.boundingBox  // normalized xywh, origin lower left
             print("rect: \(rect)")
 
-            if screenRatio >= 1 {  // iPhone ratio = 1.218
-              let offset = (1 - screenRatio) * (0.5 - rect.minX)
-              let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: offset, y: -1)
-              rect = rect.applying(transform)
-              //                        rect.size.width *= screenRatio
-            } else {  // iPad ratio = 0.75
-              let offset = (screenRatio - 1) * (0.5 - rect.maxY)
-              let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: offset - 1)
-              rect = rect.applying(transform)
-              rect.size.height /= screenRatio
-            }
+            let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: -1)
+            rect = rect.applying(transform)
 
-            rect = VNImageRectForNormalizedRect(rect, Int(screenWidth), Int(newHeight))
+            rect = VNImageRectForNormalizedRect(rect, Int(imageWidth), Int(imageHeight))
             print("rect: \(rect)")
 
             // The labels array is a list of VNClassificationObservation objects,
