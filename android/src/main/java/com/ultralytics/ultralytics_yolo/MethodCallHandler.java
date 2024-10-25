@@ -441,6 +441,9 @@ public class MethodCallHandler implements MethodChannel.MethodCallHandler {
             case "setZoomRatio":
                 setScaleFactor(call, result);
                 break;
+            case "captureCamera":
+                requestCameraCapture(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
@@ -794,5 +797,16 @@ if (prediction instanceof Object[]) {
             final double factor = (double) factorObject;
             cameraPreview.setScaleFactor(factor);
         }
+    }
+
+    private void requestCameraCapture(MethodCall call, MethodChannel.Result result) {
+        final int timeoutSec = call.argument("timeoutSec") instanceof Integer ? (int) call.argument("timeoutSec") : 3;
+
+        cameraPreview.requestCaptureVideo(timeoutSec)
+                .thenAccept(result::success)
+                .exceptionally(error -> {
+            result.error("CameraCaptureError", error.getMessage(), null);
+            return null;
+        });
     }
 }

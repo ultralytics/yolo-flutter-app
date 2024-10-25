@@ -88,6 +88,11 @@ class UltralyticsYoloCameraController
     await _ultralyticsYoloPlatform.startCamera();
   }
 
+  /// Captures the camera
+  Future<Uint8List?> captureCamera({int timeoutSec = 3}) async {
+    return _ultralyticsYoloPlatform.captureCamera(timeoutSec);
+  }
+
   /// Stops the camera
   Future<void> pauseLivePrediction() async {
     await _ultralyticsYoloPlatform.pauseLivePrediction();
