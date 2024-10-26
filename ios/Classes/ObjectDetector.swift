@@ -256,13 +256,10 @@ public class ObjectDetector: Predictor {
             let prediction = results[i]
 
             var rect = prediction.boundingBox  // normalized xywh, origin lower left
-            print("rect: \(rect)")
 
             if screenRatio >= 1 {  // iPhone ratio = 1.218
-              let offset = (1 - screenRatio) * (0.5 - rect.minX)
-              let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: offset, y: -1)
+              let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: -1)
               rect = rect.applying(transform)
-              //                        rect.size.width *= screenRatio
             } else {  // iPad ratio = 0.75
               let offset = (screenRatio - 1) * (0.5 - rect.maxY)
               let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: offset - 1)
@@ -271,7 +268,6 @@ public class ObjectDetector: Predictor {
             }
 
             rect = VNImageRectForNormalizedRect(rect, Int(screenWidth), Int(newHeight))
-            print("rect: \(rect)")
 
             // The labels array is a list of VNClassificationObservation objects,
             // with the highest scoring class first in the list.
