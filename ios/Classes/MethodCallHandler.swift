@@ -39,9 +39,8 @@ class MethodCallHandler: VideoCaptureDelegate, InferenceTimeListener, ResultsLis
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    guard let args = call.arguments as? [String: Any] else {
-      return
-    }
+    let args: [String: Any] = (call.arguments as? [String: Any]) ?? [:]
+
     if call.method == "loadModel" {
       Task {
         await loadModel(args: args, result: result)
