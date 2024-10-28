@@ -25,11 +25,12 @@ class NativeView implements PlatformView {
 
         final int lensDirection = (int) creationParams.get("lensDirection");
 //        final String format = (String) creationParams.get("format");
+        final boolean deferredProcessing = (boolean) creationParams.getOrDefault("deferredProcessing", false);
 
 //        if (Objects.requireNonNull(format).equals("tflite")) {
         view = LayoutInflater.from(context).inflate(R.layout.activity_tflite_camera, null);
         mPreviewView = view.findViewById(R.id.previewView);
-        startTfliteCamera(lensDirection);
+        startTfliteCamera(lensDirection, deferredProcessing);
 //        }
 
     }
@@ -44,7 +45,7 @@ class NativeView implements PlatformView {
     public void dispose() {
     }
 
-    private void startTfliteCamera(int facing) {
-        cameraPreview.openCamera(facing, activity, mPreviewView);
+    private void startTfliteCamera(int facing, boolean deferredProcessing) {
+        cameraPreview.openCamera(facing, activity, mPreviewView, deferredProcessing);
     }
 }
