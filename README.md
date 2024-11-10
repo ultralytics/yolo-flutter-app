@@ -157,7 +157,7 @@ The `UltralyticsYoloCameraPreview` widget is used to display the camera preview 
 
 ```dart
 final _controller = UltralyticsYoloCameraController(
-  deferredProcessing: true, // deferred processing for better performance of android (default: false)
+  deferredProcessing: true, // deferred processing for better performance of android (Android only, default: false)
 );
 UltralyticsYoloCameraPreview(
  predictor: predictor, // Your prediction model data
