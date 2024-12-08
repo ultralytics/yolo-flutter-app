@@ -6,6 +6,8 @@
 //
 
 import Foundation
+import ImageIO
+import UIKit
 
 class MethodCallHandler: VideoCaptureDelegate, InferenceTimeListener, ResultsListener,
   FpsRateListener
@@ -148,9 +150,15 @@ class MethodCallHandler: VideoCaptureDelegate, InferenceTimeListener, ResultsLis
   }
 
   private func createCIImage(fromPath path: String) throws -> CIImage? {
-    let url = URL(fileURLWithPath: path)
-    let data = try Data(contentsOf: url)
-    return CIImage(data: data)
+    let uiimage = UIImage(contentsOfFile: path)
+    let beginImage: CIImage
+    if let ciImage = uiimage!.ciImage {
+      beginImage = ciImage
+    } else {
+      beginImage = CIImage(cgImage: uiimage!.cgImage!).oriented(
+        CGImagePropertyOrientation(uiimage!.imageOrientation))
+    }
+    return beginImage
   }
 
   private func predictOnImage(args: [String: Any], result: @escaping FlutterResult) {
@@ -173,5 +181,19 @@ class MethodCallHandler: VideoCaptureDelegate, InferenceTimeListener, ResultsLis
 
   func on(fpsRate: Double) {
     fpsRateStreamHandler.sink(time: fpsRate)
+  }
+}
+extension CGImagePropertyOrientation {
+  init(_ uiOrientation: UIImage.Orientation) {
+    switch uiOrientation {
+    case .up: self = .up
+    case .upMirrored: self = .upMirrored
+    case .down: self = .down
+    case .downMirrored: self = .downMirrored
+    case .left: self = .left
+    case .leftMirrored: self = .leftMirrored
+    case .right: self = .right
+    case .rightMirrored: self = .rightMirrored
+    }
   }
 }
