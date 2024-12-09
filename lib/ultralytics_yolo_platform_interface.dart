@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:ultralytics_yolo/predict/classify/classification_result.dart';
 import 'package:ultralytics_yolo/predict/detect/detected_object.dart';
@@ -65,6 +67,11 @@ abstract class UltralyticsYoloPlatform extends PlatformInterface {
   /// Start the camera.
   Future<String?> startCamera() {
     throw UnimplementedError('startCamera has not been implemented.');
+  }
+
+  /// Captures the camera.
+  Future<Uint8List?> captureCamera(int timeoutSec) {
+    throw UnimplementedError('captureCamera has not been implemented.');
   }
 
   /// Start the live prediction.
