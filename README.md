@@ -156,7 +156,9 @@ await imageClassifier.loadModel();
 The `UltralyticsYoloCameraPreview` widget is used to display the camera preview and the results of the prediction.
 
 ```dart
-final _controller = UltralyticsYoloCameraController();
+final _controller = UltralyticsYoloCameraController(
+  deferredProcessing: true, // deferred processing for better performance of android (Android only, default: false)
+);
 UltralyticsYoloCameraPreview(
  predictor: predictor, // Your prediction model data
  controller: _controller, // Ultralytics camera controller
