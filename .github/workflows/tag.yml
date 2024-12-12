@@ -67,7 +67,6 @@ jobs:
           CURRENT_TAG: ${{ github.event.inputs.tag_name }}
         run: ultralytics-actions-summarize-release
         shell: bash
-        
       - name: Notify Success
         if: success() && github.event.inputs.publish_tag == 'true'
         uses: slackapi/slack-github-action@v2.0.0
