@@ -69,6 +69,10 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
       .catchError((dynamic e) => e.toString());
 
   @override
+  Future<Uint8List?> captureCamera(int timeoutSec) => methodChannel
+      .invokeMethod<Uint8List>('captureCamera', {'timeoutSec': timeoutSec});
+
+  @override
   Future<String?> pauseLivePrediction() => methodChannel
       .invokeMethod<String>('pauseLivePrediction')
       .catchError((dynamic e) => e.toString());

@@ -16,6 +16,10 @@ class MethodCallHandler: VideoCaptureDelegate, InferenceTimeListener, ResultsLis
   private var predictor: Predictor?
   private let videoCapture: VideoCapture
 
+  private var shouldCaptureFrame: Bool = false
+  private var capturedFrameData: Data?
+  private let capturedFrameSemaphore = DispatchSemaphore(value: 0)
+
   init(binaryMessenger: FlutterBinaryMessenger, videoCapture: VideoCapture) {
     resultStreamHandler = ResultStreamHandler()
     let resultsEventChannel = FlutterEventChannel(
@@ -55,6 +59,8 @@ class MethodCallHandler: VideoCaptureDelegate, InferenceTimeListener, ResultsLis
       closeCamera(args: args, result: result)
     } else if call.method == "detectImage" || call.method == "classifyImage" {
       predictOnImage(args: args, result: result)
+    } else if call.method == "captureCamera" {
+      requestCameraCapture(args: args, result: result)
     }
   }
 
@@ -63,6 +69,28 @@ class MethodCallHandler: VideoCaptureDelegate, InferenceTimeListener, ResultsLis
   ) {
     predictor?.predict(
       sampleBuffer: sampleBuffer, onResultsListener: self, onInferenceTime: self, onFpsRate: self)
+
+    if shouldCaptureFrame {
+      shouldCaptureFrame = false
+
+      captureFrameData(sampleBuffer: sampleBuffer)
+    }
+  }
+
+  private func captureFrameData(sampleBuffer: CMSampleBuffer) {
+    guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
+    else { return }
+
+    let ciImage = CIImage(cvImageBuffer: imageBuffer)
+
+    let context = CIContext()
+    guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent)
+    else { return }
+
+    let uiImage = UIImage(cgImage: cgImage)
+    self.capturedFrameData = uiImage.pngData()
+
+    self.capturedFrameSemaphore.signal()
   }
 
   private func loadModel(args: [String: Any], result: @escaping FlutterResult) async {
@@ -161,6 +189,32 @@ class MethodCallHandler: VideoCaptureDelegate, InferenceTimeListener, ResultsLis
       completion: { recognitions in
         result(recognitions)
       })
+  }
+
+  private func requestCameraCapture(args: [String: Any], result: @escaping FlutterResult) {
+    let timeoutSec = args["timeoutSec"] as? Int ?? 3
+
+    shouldCaptureFrame = true
+
+    DispatchQueue.global(qos: .background).async {
+      let timeoutResult = self.capturedFrameSemaphore.wait(
+        timeout: .now() + DispatchTimeInterval.seconds(timeoutSec))
+      if timeoutResult == .timedOut {
+        result(
+          FlutterError(
+            code: "TIMEOUT", message: "Timeout to capture the camera image", details: nil))
+        return
+      }
+
+      let capturedCameraImage = self.capturedFrameData
+      self.capturedFrameData = nil
+
+      if capturedCameraImage == nil {
+        result(FlutterError(code: "NO_IMAGE", message: "No image captured", details: nil))
+      } else {
+        result(capturedCameraImage)
+      }
+    }
   }
 
   func on(predictions: [[String: Any]]) {
