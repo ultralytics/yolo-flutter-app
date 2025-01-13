@@ -61,7 +61,7 @@ public class FLNativeView: NSObject, FlutterPlatformView, VideoCaptureDelegate {
       busy = true
       let newPosition: AVCaptureDevice.Position = currentPosition == .back ? .front : .back
       print("DEBUG: Switching from \(currentPosition) to \(newPosition)")
-      
+
       DispatchQueue.main.async {
         self.videoCapture.previewLayer?.removeFromSuperlayer()
         self.videoCapture.stop()
@@ -74,7 +74,9 @@ public class FLNativeView: NSObject, FlutterPlatformView, VideoCaptureDelegate {
   }
 
   // MARK: - VideoCaptureDelegate
-  public func videoCapture(_ capture: VideoCapture, didCaptureVideoFrame sampleBuffer: CMSampleBuffer) {
+  public func videoCapture(
+    _ capture: VideoCapture, didCaptureVideoFrame sampleBuffer: CMSampleBuffer
+  ) {
     // Forward frames to the method handler
     methodHandler?.videoCapture(capture, didCaptureVideoFrame: sampleBuffer)
   }
