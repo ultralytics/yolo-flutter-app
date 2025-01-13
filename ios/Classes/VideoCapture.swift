@@ -30,114 +30,105 @@ func bestCaptureDevice(position: AVCaptureDevice.Position) -> AVCaptureDevice {
 public class VideoCapture: NSObject {
   public var previewLayer: AVCaptureVideoPreviewLayer?
   public weak var delegate: VideoCaptureDelegate?
-  var captureDevice: AVCaptureDevice?
-  let captureSession = AVCaptureSession()
-  var videoInput: AVCaptureDeviceInput? = nil
+  public let captureSession = AVCaptureSession()
   let videoOutput = AVCaptureVideoDataOutput()
-  var photoOutput = AVCapturePhotoOutput()
+  let photoOutput = AVCapturePhotoOutput()
   let cameraQueue = DispatchQueue(label: "camera-queue")
-  var lastCapturedPhoto: UIImage? = nil
-
-  public func setUp(
-    sessionPreset: AVCaptureSession.Preset = .hd1280x720,
-    position: AVCaptureDevice.Position,
-    completion: @escaping (Bool) -> Void
-  ) {
+  public var lastCapturedPhoto: UIImage?
+  public weak var nativeView: FLNativeView?
+  
+  public override init() {
+    super.init()
+    print("DEBUG: VideoCapture initialized")
+  }
+  
+  public func setUp(sessionPreset: AVCaptureSession.Preset, position: AVCaptureDevice.Position, completion: @escaping (Bool) -> Void) {
+    print("DEBUG: Setting up video capture with position:", position)
+    
     cameraQueue.async {
-      let success = self.setUpCamera(sessionPreset: sessionPreset, position: position)
-      DispatchQueue.main.async {
-        completion(success)
+      self.captureSession.beginConfiguration()
+      self.captureSession.sessionPreset = sessionPreset
+      
+      // Remove existing inputs/outputs
+      for input in self.captureSession.inputs {
+        self.captureSession.removeInput(input)
+      }
+      for output in self.captureSession.outputs {
+        self.captureSession.removeOutput(output)
+      }
+      
+      guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position) else {
+        print("DEBUG: Failed to get camera device")
+        DispatchQueue.main.async { completion(false) }
+        return
+      }
+      
+      do {
+        let input = try AVCaptureDeviceInput(device: device)
+        if self.captureSession.canAddInput(input) {
+          self.captureSession.addInput(input)
+          print("DEBUG: Added camera input")
+        }
+        
+        // Set up video output
+        self.videoOutput.videoSettings = [
+          kCVPixelBufferPixelFormatTypeKey as String: NSNumber(value: kCVPixelFormatType_32BGRA)
+        ]
+        self.videoOutput.alwaysDiscardsLateVideoFrames = true
+        self.videoOutput.setSampleBufferDelegate(self, queue: self.cameraQueue)
+        
+        if self.captureSession.canAddOutput(self.videoOutput) {
+          self.captureSession.addOutput(self.videoOutput)
+          print("DEBUG: Added video output")
+        }
+        
+        // Set up photo output
+        if self.captureSession.canAddOutput(self.photoOutput) {
+          self.captureSession.addOutput(self.photoOutput)
+          print("DEBUG: Added photo output")
+        }
+        
+        // Set up preview layer
+        DispatchQueue.main.async {
+          self.previewLayer = AVCaptureVideoPreviewLayer(session: self.captureSession)
+          self.previewLayer?.videoGravity = .resizeAspectFill
+          
+          // Configure mirroring
+          if let connection = self.previewLayer?.connection, connection.isVideoMirroringSupported {
+            connection.automaticallyAdjustsVideoMirroring = false
+            connection.isVideoMirrored = position == .front
+          }
+        }
+        
+        self.captureSession.commitConfiguration()
+        print("DEBUG: Camera setup completed successfully")
+        
+        DispatchQueue.main.async {
+          completion(true)
+        }
+      } catch {
+        print("DEBUG: Camera setup error:", error)
+        DispatchQueue.main.async {
+          completion(false)
+        }
       }
     }
   }
-
-  func setUpCamera(sessionPreset: AVCaptureSession.Preset, position: AVCaptureDevice.Position)
-    -> Bool
-  {
-    captureSession.beginConfiguration()
-    captureSession.sessionPreset = sessionPreset
-
-    captureDevice = bestCaptureDevice(position: position)
-    videoInput = try! AVCaptureDeviceInput(device: captureDevice!)
-
-    if captureSession.canAddInput(videoInput!) {
-      captureSession.addInput(videoInput!)
-    }
-
-    let previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
-    previewLayer.videoGravity = AVLayerVideoGravity.resizeAspectFill
-    previewLayer.connection?.videoOrientation = .portrait
-    self.previewLayer = previewLayer
-
-    let settings: [String: Any] = [
-      kCVPixelBufferPixelFormatTypeKey as String: NSNumber(value: kCVPixelFormatType_32BGRA)
-    ]
-
-    videoOutput.videoSettings = settings
-    videoOutput.alwaysDiscardsLateVideoFrames = true
-    videoOutput.setSampleBufferDelegate(self, queue: cameraQueue)
-    if captureSession.canAddOutput(videoOutput) {
-      captureSession.addOutput(videoOutput)
-    }
-    if captureSession.canAddOutput(photoOutput) {
-      captureSession.addOutput(photoOutput)
-      photoOutput.isHighResolutionCaptureEnabled = true
-      photoOutput.isLivePhotoCaptureEnabled = photoOutput.isLivePhotoCaptureSupported
-    }
-
-    // We want the buffers to be in portrait orientation otherwise they are
-    // rotated by 90 degrees. Need to set this _after_ addOutput()!
-    // let curDeviceOrientation = UIDevice.current.orientation
-    let connection = videoOutput.connection(with: AVMediaType.video)
-    connection?.videoOrientation = .portrait
-    if position == .front {
-      connection?.isVideoMirrored = true
-    }
-
-    // Configure captureDevice
-    do {
-      try captureDevice!.lockForConfiguration()
-    } catch {
-      print("device configuration not working")
-    }
-    // captureDevice.setFocusModeLocked(lensPosition: 1.0, completionHandler: { (time) -> Void in })
-    if captureDevice!.isFocusModeSupported(AVCaptureDevice.FocusMode.continuousAutoFocus),
-      captureDevice!.isFocusPointOfInterestSupported
-    {
-      captureDevice!.focusMode = AVCaptureDevice.FocusMode.continuousAutoFocus
-      captureDevice!.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
-    }
-    captureDevice!.exposureMode = AVCaptureDevice.ExposureMode.continuousAutoExposure
-    captureDevice!.unlockForConfiguration()
-
-    captureSession.commitConfiguration()
-    return true
-  }
-
+  
   public func start() {
     if !captureSession.isRunning {
-      DispatchQueue.global().async {
+      cameraQueue.async {
         self.captureSession.startRunning()
+        print("DEBUG: Camera started running")
       }
     }
   }
-
+  
   public func stop() {
     if captureSession.isRunning {
-      DispatchQueue.global().async {
-        self.captureSession.stopRunning()
-      }
+      captureSession.stopRunning()
+      print("DEBUG: Camera stopped running")
     }
-  }
-
-  public func setZoomRatio(ratio: CGFloat) {
-    do {
-      try captureDevice!.lockForConfiguration()
-      defer {
-        captureDevice!.unlockForConfiguration()
-      }
-      captureDevice!.videoZoomFactor = ratio
-    } catch {}
   }
 }
 
@@ -151,16 +142,14 @@ extension VideoCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
 }
 
 extension VideoCapture: AVCapturePhotoCaptureDelegate {
-  @available(iOS 11.0, *)
-  public func photoOutput(
-    _ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?
-  ) {
-    guard let data = photo.fileDataRepresentation(),
-      let image = UIImage(data: data)
-    else {
+  public func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+    guard let imageData = photo.fileDataRepresentation(),
+          let image = UIImage(data: imageData) else {
+      print("DEBUG: Error converting photo to image")
       return
     }
-
+    
     self.lastCapturedPhoto = image
+    print("DEBUG: Photo captured successfully")
   }
 }

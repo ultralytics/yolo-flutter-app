@@ -94,7 +94,10 @@ public class CameraPreview {
     }
 
     public void setCameraFacing(int facing) {
-        bindPreview(facing);
+        if (cameraProvider != null) {
+            cameraProvider.unbindAll();
+            bindPreview(facing);
+        }
     }
 
     public void setScaleFactor(double factor) {
