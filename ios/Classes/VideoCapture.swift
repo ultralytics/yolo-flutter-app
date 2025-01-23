@@ -93,7 +93,11 @@ public class VideoCapture: NSObject {
           self.captureSession.addOutput(self.photoOutput)
           print("DEBUG: Added photo output")
         }
-
+        let connection = self.videoOutput.connection(with: AVMediaType.video)
+        connection?.videoOrientation = .portrait
+        if position == .front{
+            connection?.isVideoMirrored = true
+        }
         // Set up preview layer
         DispatchQueue.main.async {
           self.previewLayer = AVCaptureVideoPreviewLayer(session: self.captureSession)

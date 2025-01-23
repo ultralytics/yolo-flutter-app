@@ -21,100 +21,106 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final controller = UltralyticsYoloCameraController();
-  bool isSwitchingCamera = false;
 
   @override
   Widget build(BuildContext context) {
-    print("DEBUG: Building MyApp with isSwitchingCamera: $isSwitchingCamera");
     return MaterialApp(
       home: Scaffold(
         body: FutureBuilder<bool>(
           future: _checkPermissions(),
           builder: (context, snapshot) {
-            print("DEBUG: Permission check snapshot: ${snapshot.data}");
             final allPermissionsGranted = snapshot.data ?? false;
 
             return !allPermissionsGranted
                 ? const Center(
-                    child: Text("Error requesting permissions"),
-                  )
+              child: Text("Error requesting permissions"),
+            )
                 : FutureBuilder<ObjectDetector>(
-                    future: _initObjectDetectorWithLocalModel(),
-                    builder: (context, snapshot) {
-                      print("DEBUG: Object detector initialization snapshot: ${snapshot.data != null}");
-                      final predictor = snapshot.data;
+              future: _initObjectDetectorWithLocalModel(),
+              builder: (context, snapshot) {
+                final predictor = snapshot.data;
 
-                      return predictor == null
-                          ? Container()
-                          : Stack(
-                              children: [
-                                UltralyticsYoloCameraPreview(
-                                  controller: controller,
-                                  predictor: predictor,
-                                  onCameraCreated: () {
-                                    print("DEBUG: Camera created, loading model");
-                                    predictor.loadModel(useGpu: true);
-                                  },
-                                ),
-                                StreamBuilder<double?>(
-                                  stream: predictor.inferenceTime,
-                                  builder: (context, snapshot) {
-                                    final inferenceTime = snapshot.data;
+                return predictor == null
+                    ? Container()
+                    : Stack(
+                  children: [
+                    UltralyticsYoloCameraPreview(
+                      controller: controller,
+                      predictor: predictor,
+                      onCameraCreated: () {
+                        predictor.loadModel(useGpu: true);
+                      },
+                    ),
+                    StreamBuilder<double?>(
+                      stream: predictor.inferenceTime,
+                      builder: (context, snapshot) {
+                        final inferenceTime = snapshot.data;
 
-                                    return StreamBuilder<double?>(
-                                      stream: predictor.fpsRate,
-                                      builder: (context, snapshot) {
-                                        final fpsRate = snapshot.data;
+                        return StreamBuilder<double?>(
+                          stream: predictor.fpsRate,
+                          builder: (context, snapshot) {
+                            final fpsRate = snapshot.data;
 
-                                        return Times(
-                                          inferenceTime: inferenceTime,
-                                          fpsRate: fpsRate,
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                              ],
+                            return Times(
+                              inferenceTime: inferenceTime,
+                              fpsRate: fpsRate,
                             );
-                    },
-                  );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                );
+              },
+            );
+            // : FutureBuilder<ObjectClassifier>(
+            //     future: _initObjectClassifierWithLocalModel(),
+            //     builder: (context, snapshot) {
+            //       final predictor = snapshot.data;
+
+            //       return predictor == null
+            //           ? Container()
+            //           : Stack(
+            //               children: [
+            //                 UltralyticsYoloCameraPreview(
+            //                   controller: controller,
+            //                   predictor: predictor,
+            //                   onCameraCreated: () {
+            //                     predictor.loadModel();
+            //                   },
+            //                 ),
+            //                 StreamBuilder<double?>(
+            //                   stream: predictor.inferenceTime,
+            //                   builder: (context, snapshot) {
+            //                     final inferenceTime = snapshot.data;
+
+            //                     return StreamBuilder<double?>(
+            //                       stream: predictor.fpsRate,
+            //                       builder: (context, snapshot) {
+            //                         final fpsRate = snapshot.data;
+
+            //                         return Times(
+            //                           inferenceTime: inferenceTime,
+            //                           fpsRate: fpsRate,
+            //                         );
+            //                       },
+            //                     );
+            //                   },
+            //                 ),
+            //               ],
+            //             );
+            //     },
+            //   );
           },
         ),
         floatingActionButton: FloatingActionButton(
           child: const Icon(Icons.cameraswitch),
-          onPressed: () async {
-            print("DEBUG: Camera switch button pressed");
-            if (!isSwitchingCamera) {
-              print("DEBUG: Starting camera switch");
-              setState(() => isSwitchingCamera = true);
-              try {
-                await controller.toggleLensDirection();
-                print("DEBUG: Camera switch completed successfully");
-              } catch (e) {
-                print("DEBUG: Error switching camera: $e");
-              } finally {
-                setState(() => isSwitchingCamera = false);
-              }
-            } else {
-              print("DEBUG: Camera switch already in progress");
-            }
+          onPressed: () {
+            controller.toggleLensDirection();
           },
         ),
       ),
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    print("DEBUG: MyApp initState called");
-  }
-
-  @override
-  void dispose() {
-    print("DEBUG: MyApp dispose called");
-    controller.closeCamera();
-    super.dispose();
   }
 
   Future<ObjectDetector> _initObjectDetectorWithLocalModel() async {
@@ -138,28 +144,28 @@ class _MyAppState extends State<MyApp> {
     return ObjectDetector(model: model);
   }
 
-  // Future<ImageClassifier> _initImageClassifierWithLocalModel() async {
-  //   final modelPath = await _copy('assets/yolov8n-cls.mlmodel');
-  //   final model = LocalYoloModel(
-  //     id: '',
-  //     task: Task.classify,
-  //     format: Format.coreml,
-  //     modelPath: modelPath,
-  //   );
+  Future<ImageClassifier> _initImageClassifierWithLocalModel() async {
+    final modelPath = await _copy('assets/yolov8n-cls.mlmodel');
+    final model = LocalYoloModel(
+      id: '',
+      task: Task.classify,
+      format: Format.coreml,
+      modelPath: modelPath,
+    );
 
-  //   // final modelPath = await _copy('assets/yolov8n-cls.bin');
-  //   // final paramPath = await _copy('assets/yolov8n-cls.param');
-  //   // final metadataPath = await _copy('assets/metadata-cls.yaml');
-  //   // final model = LocalYoloModel(
-  //   //   id: '',
-  //   //   task: Task.classify,
-  //   //   modelPath: modelPath,
-  //   //   paramPath: paramPath,
-  //   //   metadataPath: metadataPath,
-  //   // );
+    // final modelPath = await _copy('assets/yolov8n-cls.bin');
+    // final paramPath = await _copy('assets/yolov8n-cls.param');
+    // final metadataPath = await _copy('assets/metadata-cls.yaml');
+    // final model = LocalYoloModel(
+    //   id: '',
+    //   task: Task.classify,
+    //   modelPath: modelPath,
+    //   paramPath: paramPath,
+    //   metadataPath: metadataPath,
+    // );
 
-  //   return ImageClassifier(model: model);
-  // }
+    return ImageClassifier(model: model);
+  }
 
   Future<String> _copy(String assetPath) async {
     final path = '${(await getApplicationSupportDirectory()).path}/$assetPath';
@@ -173,25 +179,21 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<bool> _checkPermissions() async {
-    print("DEBUG: Checking permissions");
     List<Permission> permissions = [];
 
     var cameraStatus = await Permission.camera.status;
-    print("DEBUG: Camera permission status: $cameraStatus");
     if (!cameraStatus.isGranted) permissions.add(Permission.camera);
 
+    // var storageStatus = await Permission.photos.status;
+    // if (!storageStatus.isGranted) permissions.add(Permission.photos);
+
     if (permissions.isEmpty) {
-      print("DEBUG: All permissions already granted");
       return true;
     } else {
       try {
-        print("DEBUG: Requesting permissions: $permissions");
         Map<Permission, PermissionStatus> statuses = await permissions.request();
-        final allGranted = statuses.values.every((status) => status == PermissionStatus.granted);
-        print("DEBUG: Permission request result: $allGranted");
-        return allGranted;
-      } on Exception catch (e) {
-        print("DEBUG: Error requesting permissions: $e");
+        return statuses.values.every((status) => status == PermissionStatus.granted);
+      } on Exception catch (_) {
         return false;
       }
     }
