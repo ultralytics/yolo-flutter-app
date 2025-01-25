@@ -95,8 +95,8 @@ public class VideoCapture: NSObject {
         }
         let connection = self.videoOutput.connection(with: AVMediaType.video)
         connection?.videoOrientation = .portrait
-        if position == .front{
-            connection?.isVideoMirrored = true
+        if position == .front {
+          connection?.isVideoMirrored = true
         }
         // Set up preview layer
         DispatchQueue.main.async {
