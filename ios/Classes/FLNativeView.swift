@@ -39,7 +39,9 @@ public class FLNativeView: NSObject, FlutterPlatformView, VideoCaptureDelegate {
     return previewView
   }
 
-  private func startCameraPreview(position: AVCaptureDevice.Position, completion: @escaping (Bool) -> Void) {
+  private func startCameraPreview(
+    position: AVCaptureDevice.Position, completion: @escaping (Bool) -> Void
+  ) {
     print("DEBUG: Starting camera preview with position:", position)
     videoCapture.setUp(sessionPreset: .high, position: position) { success in
       if success {
@@ -49,7 +51,7 @@ public class FLNativeView: NSObject, FlutterPlatformView, VideoCaptureDelegate {
             previewLayer.frame = self.previewView.bounds
             self.previewView.layer.addSublayer(previewLayer)
             print("DEBUG: Added preview layer to view")
-            
+
             self.videoCapture.start()
             print("DEBUG: Started video capture")
             self.currentPosition = position
@@ -68,31 +70,31 @@ public class FLNativeView: NSObject, FlutterPlatformView, VideoCaptureDelegate {
 
   func switchCamera(completion: @escaping (Bool) -> Void) {
     print("DEBUG: switchCamera called in FLNativeView")
-    
+
     switchCameraQueue.async { [weak self] in
       guard let self = self else {
         DispatchQueue.main.async { completion(false) }
         return
       }
-      
+
       guard self.switchCameraSemaphore.wait(timeout: .now() + 5.0) == .success else {
         print("DEBUG: Camera switch timed out")
         DispatchQueue.main.async { completion(false) }
         return
       }
-      
+
       defer { self.switchCameraSemaphore.signal() }
-      
+
       if !self.busy {
         self.busy = true
         let newPosition: AVCaptureDevice.Position = self.currentPosition == .back ? .front : .back
         print("DEBUG: Switching from \(self.currentPosition) to \(newPosition)")
-        
+
         DispatchQueue.main.async {
           // Stop current session
           self.videoCapture.stop()
           self.videoCapture.previewLayer?.removeFromSuperlayer()
-          
+
           // Small delay to ensure cleanup
           DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.startCameraPreview(position: newPosition) { success in

@@ -157,27 +157,30 @@ public class MethodCallHandler: NSObject, VideoCaptureDelegate, InferenceTimeLis
   private func setLensDirection(args: [String: Any], result: @escaping FlutterResult) {
     print("DEBUG: setLensDirection called with args:", args)
     guard let direction = args["direction"] as? Int else {
-        print("DEBUG: Error - Invalid direction argument")
-        result(FlutterError(code: "INVALID_ARGS", message: "Invalid direction argument", details: nil))
-        return
+      print("DEBUG: Error - Invalid direction argument")
+      result(
+        FlutterError(code: "INVALID_ARGS", message: "Invalid direction argument", details: nil))
+      return
     }
-    
+
     guard let nativeView = self.videoCapture.nativeView else {
-        print("DEBUG: Error - No nativeView found")
-        result(FlutterError(code: "SWITCH_ERROR", message: "Failed to switch camera - no view", details: nil))
-        return
+      print("DEBUG: Error - No nativeView found")
+      result(
+        FlutterError(
+          code: "SWITCH_ERROR", message: "Failed to switch camera - no view", details: nil))
+      return
     }
-    
+
     // Execute camera switch on main thread
     DispatchQueue.main.async {
-        print("DEBUG: Switching camera to direction:", direction)
-        nativeView.switchCamera { success in
-            if success {
-                result("Success")
-            } else {
-                result(FlutterError(code: "SWITCH_ERROR", message: "Camera switch failed", details: nil))
-            }
+      print("DEBUG: Switching camera to direction:", direction)
+      nativeView.switchCamera { success in
+        if success {
+          result("Success")
+        } else {
+          result(FlutterError(code: "SWITCH_ERROR", message: "Camera switch failed", details: nil))
         }
+      }
     }
   }
 

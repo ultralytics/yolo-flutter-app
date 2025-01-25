@@ -54,14 +54,14 @@ public class VideoCapture: NSObject {
         DispatchQueue.main.async { completion(false) }
         return
       }
-      
+
       // Ensure session is not running
       if self.captureSession.isRunning {
         self.captureSession.stopRunning()
       }
-      
+
       self.captureSession.beginConfiguration()
-      
+
       // Remove existing inputs/outputs
       for input in self.captureSession.inputs {
         self.captureSession.removeInput(input)
@@ -73,7 +73,10 @@ public class VideoCapture: NSObject {
       self.captureSession.sessionPreset = sessionPreset
 
       do {
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position) else {
+        guard
+          let device = AVCaptureDevice.default(
+            .builtInWideAngleCamera, for: .video, position: position)
+        else {
           print("DEBUG: Failed to get camera device")
           self.captureSession.commitConfiguration()
           DispatchQueue.main.async { completion(false) }
@@ -108,17 +111,17 @@ public class VideoCapture: NSObject {
         connection?.isVideoMirrored = position == .front
 
         self.captureSession.commitConfiguration()
-        
+
         // Set up preview layer on main thread
         DispatchQueue.main.async {
           self.previewLayer = AVCaptureVideoPreviewLayer(session: self.captureSession)
           self.previewLayer?.videoGravity = .resizeAspectFill
-          
+
           if let connection = self.previewLayer?.connection, connection.isVideoMirroringSupported {
             connection.automaticallyAdjustsVideoMirroring = false
             connection.isVideoMirrored = position == .front
           }
-          
+
           completion(true)
         }
       } catch {
