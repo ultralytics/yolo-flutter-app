@@ -7,15 +7,17 @@
 
 import Flutter
 
-class FLNativeViewFactory: NSObject, FlutterPlatformViewFactory {
+public class FLNativeViewFactory: NSObject, FlutterPlatformViewFactory {
   private let videoCapture: VideoCapture
+  private let methodHandler: MethodCallHandler
 
-  init(videoCapture: VideoCapture) {
+  public init(videoCapture: VideoCapture, methodHandler: MethodCallHandler) {
     self.videoCapture = videoCapture
+    self.methodHandler = methodHandler
     super.init()
   }
 
-  func create(
+  public func create(
     withFrame frame: CGRect,
     viewIdentifier viewId: Int64,
     arguments args: Any?
@@ -24,7 +26,8 @@ class FLNativeViewFactory: NSObject, FlutterPlatformViewFactory {
       frame: frame,
       viewIdentifier: viewId,
       arguments: args,
-      videoCapture: videoCapture
+      videoCapture: videoCapture,
+      methodHandler: methodHandler
     )
   }
 }

@@ -1283,11 +1283,11 @@ OPENCV_HAL_IMPL_AVX512_REDUCE_64_SUM(int,  v_int8x64,  epi8)
 inline v_float32x16 v_reduce_sum4(const v_float32x16& a, const v_float32x16& b,
                                   const v_float32x16& c, const v_float32x16& d)
 {
-    __m256 abl = _mm256_hadd_ps(_v512_extract_low(a.val), _v512_extract_low(b.val));
+    __m256 able = _mm256_hadd_ps(_v512_extract_low(a.val), _v512_extract_low(b.val));
     __m256 abh = _mm256_hadd_ps(_v512_extract_high(a.val), _v512_extract_high(b.val));
     __m256 cdl = _mm256_hadd_ps(_v512_extract_low(c.val), _v512_extract_low(d.val));
     __m256 cdh = _mm256_hadd_ps(_v512_extract_high(c.val), _v512_extract_high(d.val));
-    return v_float32x16(_v512_combine(_mm256_hadd_ps(abl, cdl), _mm256_hadd_ps(abh, cdh)));
+    return v_float32x16(_v512_combine(_mm256_hadd_ps(able, cdl), _mm256_hadd_ps(abh, cdh)));
 }
 
 inline unsigned v_reduce_sad(const v_uint8x64& a, const v_uint8x64& b)
