@@ -43,15 +43,25 @@ public class VideoCapture: NSObject {
   }
 
   public func setUp(
-    sessionPreset: AVCaptureSession.Preset, position: AVCaptureDevice.Position,
+    sessionPreset: AVCaptureSession.Preset,
+    position: AVCaptureDevice.Position,
     completion: @escaping (Bool) -> Void
   ) {
     print("DEBUG: Setting up video capture with position:", position)
 
-    cameraQueue.async {
+    cameraQueue.async { [weak self] in
+      guard let self = self else {
+        DispatchQueue.main.async { completion(false) }
+        return
+      }
+      
+      // Ensure session is not running
+      if self.captureSession.isRunning {
+        self.captureSession.stopRunning()
+      }
+      
       self.captureSession.beginConfiguration()
-      self.captureSession.sessionPreset = sessionPreset
-
+      
       // Remove existing inputs/outputs
       for input in self.captureSession.inputs {
         self.captureSession.removeInput(input)
@@ -60,16 +70,16 @@ public class VideoCapture: NSObject {
         self.captureSession.removeOutput(output)
       }
 
-      guard
-        let device = AVCaptureDevice.default(
-          .builtInWideAngleCamera, for: .video, position: position)
-      else {
-        print("DEBUG: Failed to get camera device")
-        DispatchQueue.main.async { completion(false) }
-        return
-      }
+      self.captureSession.sessionPreset = sessionPreset
 
       do {
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position) else {
+          print("DEBUG: Failed to get camera device")
+          self.captureSession.commitConfiguration()
+          DispatchQueue.main.async { completion(false) }
+          return
+        }
+
         let input = try AVCaptureDeviceInput(device: device)
         if self.captureSession.canAddInput(input) {
           self.captureSession.addInput(input)
@@ -88,39 +98,33 @@ public class VideoCapture: NSObject {
           print("DEBUG: Added video output")
         }
 
-        // Set up photo output
         if self.captureSession.canAddOutput(self.photoOutput) {
           self.captureSession.addOutput(self.photoOutput)
           print("DEBUG: Added photo output")
         }
-        let connection = self.videoOutput.connection(with: AVMediaType.video)
+
+        let connection = self.videoOutput.connection(with: .video)
         connection?.videoOrientation = .portrait
-        if position == .front {
-          connection?.isVideoMirrored = true
-        }
-        // Set up preview layer
+        connection?.isVideoMirrored = position == .front
+
+        self.captureSession.commitConfiguration()
+        
+        // Set up preview layer on main thread
         DispatchQueue.main.async {
           self.previewLayer = AVCaptureVideoPreviewLayer(session: self.captureSession)
           self.previewLayer?.videoGravity = .resizeAspectFill
-
-          // Configure mirroring
+          
           if let connection = self.previewLayer?.connection, connection.isVideoMirroringSupported {
             connection.automaticallyAdjustsVideoMirroring = false
             connection.isVideoMirrored = position == .front
           }
-        }
-
-        self.captureSession.commitConfiguration()
-        print("DEBUG: Camera setup completed successfully")
-
-        DispatchQueue.main.async {
+          
           completion(true)
         }
       } catch {
         print("DEBUG: Camera setup error:", error)
-        DispatchQueue.main.async {
-          completion(false)
-        }
+        self.captureSession.commitConfiguration()
+        DispatchQueue.main.async { completion(false) }
       }
     }
   }
@@ -137,7 +141,10 @@ public class VideoCapture: NSObject {
   public func stop() {
     if captureSession.isRunning {
       captureSession.stopRunning()
-      print("DEBUG: Camera stopped running")
+      // Wait for the session to stop
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        print("DEBUG: Camera stopped running")
+      }
     }
   }
 }

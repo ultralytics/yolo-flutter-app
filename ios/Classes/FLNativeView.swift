@@ -8,6 +8,8 @@ public class FLNativeView: NSObject, FlutterPlatformView, VideoCaptureDelegate {
   private var busy = false
   private var currentPosition: AVCaptureDevice.Position = .back
   private weak var methodHandler: MethodCallHandler?
+  private let switchCameraQueue = DispatchQueue(label: "camera.switch.queue")
+  private let switchCameraSemaphore = DispatchSemaphore(value: 1)
 
   public init(
     frame: CGRect,
@@ -27,14 +29,17 @@ public class FLNativeView: NSObject, FlutterPlatformView, VideoCaptureDelegate {
 
     videoCapture.nativeView = self
     videoCapture.delegate = methodHandler
-    startCameraPreview(position: .back)
+    startCameraPreview(position: .back) { _ in
+      // Initial camera setup complete
+      print("DEBUG: Initial camera setup complete")
+    }
   }
 
   public func view() -> UIView {
     return previewView
   }
 
-  private func startCameraPreview(position: AVCaptureDevice.Position) {
+  private func startCameraPreview(position: AVCaptureDevice.Position, completion: @escaping (Bool) -> Void) {
     print("DEBUG: Starting camera preview with position:", position)
     videoCapture.setUp(sessionPreset: .high, position: position) { success in
       if success {
@@ -44,32 +49,62 @@ public class FLNativeView: NSObject, FlutterPlatformView, VideoCaptureDelegate {
             previewLayer.frame = self.previewView.bounds
             self.previewView.layer.addSublayer(previewLayer)
             print("DEBUG: Added preview layer to view")
+            
+            self.videoCapture.start()
+            print("DEBUG: Started video capture")
+            self.currentPosition = position
+            completion(true)
           }
+        } else {
+          print("DEBUG: Failed to create preview layer")
+          completion(false)
         }
-        self.videoCapture.start()
-        print("DEBUG: Started video capture")
-        self.currentPosition = position
       } else {
         print("DEBUG: Failed to set up video capture")
+        completion(false)
       }
     }
   }
 
-  func switchCamera() {
+  func switchCamera(completion: @escaping (Bool) -> Void) {
     print("DEBUG: switchCamera called in FLNativeView")
-    if !busy {
-      busy = true
-      let newPosition: AVCaptureDevice.Position = currentPosition == .back ? .front : .back
-      print("DEBUG: Switching from \(currentPosition) to \(newPosition)")
-
-      DispatchQueue.main.async {
-        self.videoCapture.previewLayer?.removeFromSuperlayer()
-        self.videoCapture.stop()
-        self.startCameraPreview(position: newPosition)
-        self.busy = false
+    
+    switchCameraQueue.async { [weak self] in
+      guard let self = self else {
+        DispatchQueue.main.async { completion(false) }
+        return
       }
-    } else {
-      print("DEBUG: Camera switch ignored - busy")
+      
+      guard self.switchCameraSemaphore.wait(timeout: .now() + 5.0) == .success else {
+        print("DEBUG: Camera switch timed out")
+        DispatchQueue.main.async { completion(false) }
+        return
+      }
+      
+      defer { self.switchCameraSemaphore.signal() }
+      
+      if !self.busy {
+        self.busy = true
+        let newPosition: AVCaptureDevice.Position = self.currentPosition == .back ? .front : .back
+        print("DEBUG: Switching from \(self.currentPosition) to \(newPosition)")
+        
+        DispatchQueue.main.async {
+          // Stop current session
+          self.videoCapture.stop()
+          self.videoCapture.previewLayer?.removeFromSuperlayer()
+          
+          // Small delay to ensure cleanup
+          DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.startCameraPreview(position: newPosition) { success in
+              self.busy = false
+              completion(success)
+            }
+          }
+        }
+      } else {
+        print("DEBUG: Camera switch ignored - busy")
+        DispatchQueue.main.async { completion(false) }
+      }
     }
   }
 
