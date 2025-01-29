@@ -1,6 +1,7 @@
 #include <jni.h>
 #include "ultralytics.h"
 
+
 static void qsort_descent_inplace(std::vector<DetectedObject> &objects, int left, int right) {
     int i = left;
     int j = right;
@@ -42,8 +43,12 @@ static void qsort_descent_inplace(std::vector<DetectedObject> &objects) {
     qsort_descent_inplace(objects, 0, objects.size() - 1);
 }
 
+//static float intersection_area(const DetectedObject &a, const DetectedObject &b) {
+//    cv::Rect_<float> inter = a.rect & b.rect;
+//    return inter.area();
+//}
 static float intersection_area(const DetectedObject &a, const DetectedObject &b) {
-    cv::Rect_<float> inter = a.rect & b.rect;
+    Rect_<float> inter = a.rect.intersect(b.rect); // Using custom Rect class
     return inter.area();
 }
 
