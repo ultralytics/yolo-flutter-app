@@ -43,12 +43,8 @@ static void qsort_descent_inplace(std::vector<DetectedObject> &objects) {
     qsort_descent_inplace(objects, 0, objects.size() - 1);
 }
 
-//static float intersection_area(const DetectedObject &a, const DetectedObject &b) {
-//    cv::Rect_<float> inter = a.rect & b.rect;
-//    return inter.area();
-//}
 static float intersection_area(const DetectedObject &a, const DetectedObject &b) {
-    Rect_<float> inter = a.rect.intersect(b.rect); // Using custom Rect class
+    Rect_<float> inter = a.rect & b.rect;
     return inter.area();
 }
 

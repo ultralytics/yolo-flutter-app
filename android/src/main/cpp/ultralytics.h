@@ -6,8 +6,10 @@
 #define ANDROID_ULTRALYTICS_H
 
 #include <algorithm>
+#include <vector>
 
-#include "rect.h"
+
+#include "types.hpp"
 
 struct DetectedObject {
     Rect_<float> rect;
