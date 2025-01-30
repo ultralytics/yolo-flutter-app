@@ -42,6 +42,13 @@ android {
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+
+        // use this filter when generating a specific platform binary
+        // it will considerably reduce the final binary size 
+        // ndk {
+            // abiFilters "arm64-v8a"
+        //}
+
     }
 
     buildTypes {
@@ -49,6 +56,7 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig signingConfigs.debug
+            shrinkResources true  // Enable resource shrinking
         }
     }
 }
