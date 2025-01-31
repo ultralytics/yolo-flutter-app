@@ -43,9 +43,24 @@ class UltralyticsYoloCameraController
 
   /// Toggles the direction of the camera lens
   Future<void> toggleLensDirection() async {
-    final newLensDirection = value.lensDirection == 0 ? 1 : 0;
-    value = value.copyWith(lensDirection: newLensDirection);
-    await _ultralyticsYoloPlatform.setLensDirection(newLensDirection);
+    try {
+      // Update state first to show loading state if needed
+      final newLensDirection = value.lensDirection == 0 ? 1 : 0;
+      value = value.copyWith(lensDirection: newLensDirection);
+      
+      // Request camera switch
+      final result = await _ultralyticsYoloPlatform.setLensDirection(newLensDirection);
+      
+      if (result != "Success") {
+        // Revert state if failed
+        value = value.copyWith(lensDirection: value.lensDirection == 0 ? 1 : 0);
+        throw Exception("Failed to switch camera: $result");
+      }
+    } catch (e) {
+      // Handle errors and revert state
+      value = value.copyWith(lensDirection: value.lensDirection == 0 ? 1 : 0);
+      rethrow;
+    }
   }
 
   /// Sets the width of the stroke used to draw the bounding boxes

@@ -124,22 +124,24 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<ObjectDetector> _initObjectDetectorWithLocalModel() async {
-    // final modelPath = await _copy('assets/yolov8n.mlmodel');
-    // final model = LocalYoloModel(
-    //   id: '',
-    //   task: Task.detect,
-    //   format: Format.coreml,
-    //   modelPath: modelPath,
-    // );
-    final modelPath = await _copy('assets/yolov8n_int8.tflite');
-    final metadataPath = await _copy('assets/metadata.yaml');
+    // FOR IOS
+    final modelPath = await _copy('assets/yolov8n.mlmodel');
     final model = LocalYoloModel(
       id: '',
       task: Task.detect,
-      format: Format.tflite,
+      format: Format.coreml,
       modelPath: modelPath,
-      metadataPath: metadataPath,
     );
+    // FOR ANDROID
+    // final modelPath = await _copy('assets/yolov8n_int8.tflite');
+    // final metadataPath = await _copy('assets/metadata.yaml');
+    // final model = LocalYoloModel(
+    //   id: '',
+    //   task: Task.detect,
+    //   format: Format.tflite,
+    //   modelPath: modelPath,
+    //   metadataPath: metadataPath,
+    // );
 
     return ObjectDetector(model: model);
   }
@@ -184,8 +186,8 @@ class _MyAppState extends State<MyApp> {
     var cameraStatus = await Permission.camera.status;
     if (!cameraStatus.isGranted) permissions.add(Permission.camera);
 
-    var storageStatus = await Permission.photos.status;
-    if (!storageStatus.isGranted) permissions.add(Permission.photos);
+    // var storageStatus = await Permission.photos.status;
+    // if (!storageStatus.isGranted) permissions.add(Permission.photos);
 
     if (permissions.isEmpty) {
       return true;
