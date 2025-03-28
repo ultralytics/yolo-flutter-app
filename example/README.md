@@ -10,15 +10,15 @@ Explore the capabilities of running efficient [deep learning models](https://www
 
 This project provides a basic implementation showcasing the core functionalities of the `ultralytics_yolo` plugin. If you're new to Flutter, these resources can help you get started:
 
--   **[Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab):** A guided tutorial for beginners.
--   **[Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook):** Practical examples for common Flutter tasks.
--   **[Flutter online documentation](https://docs.flutter.dev/):** Offers tutorials, samples, guidance on mobile development, and a full API reference.
+- **[Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab):** A guided tutorial for beginners.
+- **[Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook):** Practical examples for common Flutter tasks.
+- **[Flutter online documentation](https://docs.flutter.dev/):** Offers tutorials, samples, guidance on mobile development, and a full API reference.
 
 ### Prerequisites
 
--   [Flutter SDK](https://docs.flutter.dev/get-started/install) installed on your machine.
--   An editor like [VS Code](https://code.visualstudio.com/) with the Flutter plugin or [Android Studio](https://developer.android.com/studio).
--   A physical device or emulator to run the app.
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) installed on your machine.
+- An editor like [VS Code](https://code.visualstudio.com/) with the Flutter plugin or [Android Studio](https://developer.android.com/studio).
+- A physical device or emulator to run the app.
 
 ### Running the Example
 
@@ -42,11 +42,11 @@ This will launch the example application on your connected device or emulator. T
 
 This example aims to illustrate:
 
--   Initializing the `ultralytics_yolo` plugin.
--   Loading a YOLO model (potentially exported to an edge-compatible format like [TFLite](https://docs.ultralytics.com/integrations/tflite/)).
--   Running inference using the `predict` function. See the [Predict mode](https://docs.ultralytics.com/modes/predict/) documentation for more details.
--   Processing and displaying the detection, segmentation, or pose estimation results. Learn about different [Ultralytics Tasks](https://docs.ultralytics.com/tasks/).
--   Integrating with Flutter widgets for user interaction and display.
+- Initializing the `ultralytics_yolo` plugin.
+- Loading a YOLO model (potentially exported to an edge-compatible format like [TFLite](https://docs.ultralytics.com/integrations/tflite/)).
+- Running inference using the `predict` function. See the [Predict mode](https://docs.ultralytics.com/modes/predict/) documentation for more details.
+- Processing and displaying the detection, segmentation, or pose estimation results. Learn about different [Ultralytics Tasks](https://docs.ultralytics.com/tasks/).
+- Integrating with Flutter widgets for user interaction and display.
 
 For more advanced use cases and deployment strategies, refer to the [Model Deployment Options guide](https://docs.ultralytics.com/guides/model-deployment-options/).
 
