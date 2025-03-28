@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 package com.ultralytics.ultralytics_yolo.predict.classify;
 
 import android.content.Context;

@@ -1,3 +1,5 @@
+<!-- Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license -->
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.ultralytics.ultralytics_yolo_example">
     <!-- The INTERNET permission is required for development. Specifically,
