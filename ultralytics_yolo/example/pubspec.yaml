@@ -2,7 +2,7 @@ name: ultralytics_yolo_example
 description: "Demonstrates how to use the ultralytics_yolo plugin."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 environment:
   sdk: ^3.5.3
@@ -16,9 +16,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
+
   image_picker: ^0.8.7
-  
+
   ultralytics_yolo:
     # When depending on this package from a real application you should use:
     #   ultralytics_yolo: ^x.y.z
@@ -49,7 +49,6 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

@@ -75,7 +75,7 @@ import 'package:ultralytics_yolo/yolo_task.dart';
 class YoloDemo extends StatelessWidget {
   // Create a controller to interact with the YoloView
   final controller = YoloViewController();
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -100,7 +100,7 @@ class YoloDemo extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // YoloView with controller
           Expanded(
             child: YoloView(
@@ -118,11 +118,11 @@ class YoloDemo extends StatelessWidget {
       ),
     );
   }
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Set initial detection parameters
     controller.setThresholds(
       confidenceThreshold: 0.5,
@@ -301,7 +301,7 @@ YoloView({
 
 // YoloView methods (when accessed via GlobalKey<YoloViewState>)
 Future<void> setConfidenceThreshold(double threshold);
-Future<void> setIoUThreshold(double threshold); 
+Future<void> setIoUThreshold(double threshold);
 Future<void> setThresholds({
   double? confidenceThreshold,
   double? iouThreshold,
@@ -309,6 +309,7 @@ Future<void> setThresholds({
 ```
 
 > **Note**: You can control YoloView in three ways:
+>
 > 1. Provide a controller to the constructor
 > 2. Access the view directly via a GlobalKey
 > 3. Don't provide anything and let the view create an internal controller
@@ -349,8 +350,8 @@ enum YOLOTask {
 ## Platform Support
 
 | Android | iOS | Web | macOS | Windows | Linux |
-|:-------:|:---:|:---:|:-----:|:-------:|:-----:|
-|    ✅    |  ✅  |  ❌  |   ❌   |    ❌    |   ❌   |
+| :-----: | :-: | :-: | :---: | :-----: | :---: |
+|   ✅    | ✅  | ❌  |  ❌   |   ❌    |  ❌   |
 
 ## Model Loading
 
@@ -370,11 +371,13 @@ This approach avoids path resolution issues across platforms and lets each platf
 This package supports loading models from multiple locations:
 
 1. **Platform-Specific Native Assets (Recommended)**
+
    - Android: Place `.tflite` files in `android/app/src/main/assets/`
    - iOS: Add `.mlmodel` or `.mlpackage` files to your Xcode project
    - Reference in code: `modelPath: 'yolo11n'` (no extension, no path)
 
 2. **Flutter Assets Directory (More Complex)**
+
    - Requires platform-specific handling in your Dart code
    - Android: Place `.tflite` files in your Flutter `assets` directory
    - iOS: Place `.mlmodel` files in your Flutter `assets` directory
@@ -385,9 +388,10 @@ This package supports loading models from multiple locations:
          - assets/models/
      ```
    - Reference with platform detection:
+
      ```dart
      import 'dart:io';
-     
+
      String modelPath = Platform.isAndroid
          ? 'assets/models/yolo11n.tflite'
          : 'assets/models/yolo11n.mlmodel';
@@ -405,18 +409,18 @@ This package supports loading models from multiple locations:
 #### Android Path Resolution
 
 - **Model Name Only**: `modelPath: 'yolo11n'` (RECOMMENDED)
+
   - Automatically appends `.tflite` extension → searches for `yolo11n.tflite`
   - First checks `android/app/src/main/assets/yolo11n.tflite`
   - Then checks Flutter assets for `yolo11n.tflite`
 
 - **Asset Paths**: `modelPath: 'assets/models/yolo11n.tflite'`
   - CAUTION: The extension `.tflite` is expected for Android
-  - If you use `.mlmodel` extension, Android will append `.tflite` to it 
+  - If you use `.mlmodel` extension, Android will append `.tflite` to it
     (e.g., `assets/models/yolo11n.mlmodel.tflite`) which will fail
-  
 - **App Internal Storage**: `modelPath: 'internal://models/yolo11n.tflite'`
   - Resolves to `/data/user/0/<package_name>/app_flutter/models/yolo11n.tflite`
-  
+
 #### iOS Path Resolution
 
 - **Model Name Only**: `modelPath: 'yolo11n'` (RECOMMENDED)
@@ -424,13 +428,13 @@ This package supports loading models from multiple locations:
     1. `yolo11n.mlmodelc` in main bundle
     2. `yolo11n.mlpackage` in main bundle
     3. Various other locations including Flutter assets
-  
 - **Absolute Paths**: `modelPath: '/path/to/model.mlmodel'`
   - Used directly if file exists and has valid extension
 
 ### Platform-Specific Model Format Notes
 
 - **Android**: Uses TensorFlow Lite (`.tflite`) models
+
   - Extension is automatically appended if missing
   - The YoloUtils class will always try to append `.tflite` to files without extension
 
@@ -440,6 +444,7 @@ This package supports loading models from multiple locations:
   - Flutter asset path resolution can be unpredictable with Core ML models
 
 You can get the available storage paths at runtime:
+
 ```dart
 final paths = await YOLO.getStoragePaths();
 print("Internal storage path: ${paths['internal']}");
@@ -450,6 +455,7 @@ print("Internal storage path: ${paths['internal']}");
 ### Common Issues
 
 1. **Model loading fails**
+
    - Make sure your model file is correctly placed as described above
    - Verify that the model path is correctly specified
    - For iOS, ensure `.mlpackage` files are added directly to the Xcode project
@@ -457,21 +463,25 @@ print("Internal storage path: ${paths['internal']}");
    - Use `YOLO.checkModelExists(modelPath)` to verify if your model can be found
 
 2. **Low performance on older devices**
+
    - Try using smaller models (e.g., YOLOv8n instead of YOLOv8l)
    - Reduce input image resolution
    - Increase confidence threshold to reduce the number of detections:
+
      ```dart
      // Using controller
      yoloController.setConfidenceThreshold(0.7); // Higher value = fewer detections
-     
+
      // Or using GlobalKey
      yoloViewKey.currentState?.setConfidenceThreshold(0.7);
      ```
+
    - Adjust IoU threshold to control overlapping detections:
+
      ```dart
      // Using controller
      yoloController.setIoUThreshold(0.5); // Higher value = fewer merged boxes
-     
+
      // Or using GlobalKey
      yoloViewKey.currentState?.setIoUThreshold(0.5);
      ```

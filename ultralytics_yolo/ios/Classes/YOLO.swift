@@ -35,115 +35,129 @@ public class YOLO {
       }
     } else {
       // バンドル内のコンパイル済みモデルをチェック - これは既に実装済み
-      if let compiledURL = Bundle.main.url(forResource: modelPathOrName, withExtension: "mlmodelc") {
+      if let compiledURL = Bundle.main.url(forResource: modelPathOrName, withExtension: "mlmodelc")
+      {
         modelURL = compiledURL
-      } else if let packageURL = Bundle.main.url(forResource: modelPathOrName, withExtension: "mlpackage") {
+      } else if let packageURL = Bundle.main.url(
+        forResource: modelPathOrName, withExtension: "mlpackage")
+      {
         modelURL = packageURL
       }
     }
-    
+
     // モデルURLがまだ見つからなかった場合は、Flutterアセットをチェック
     if modelURL == nil {
       print("YOLO Debug: Searching for model at path: \(modelPathOrName)")
-      
+
       // 絶対パスの場合はそのまま使用
       if fileManager.fileExists(atPath: modelPathOrName) {
         print("YOLO Debug: Found model at absolute path: \(modelPathOrName)")
         modelURL = URL(fileURLWithPath: modelPathOrName)
       }
-      
+
       // フォルダ構造を持つパスの場合
       if modelPathOrName.contains("/") && modelURL == nil {
         let components = modelPathOrName.components(separatedBy: "/")
         let fileName = components.last ?? ""
         let directory = components.dropLast().joined(separator: "/")
         let assetDirectory = "flutter_assets/\(directory)"
-        
+
         print("YOLO Debug: Checking in asset directory: \(assetDirectory) for file: \(fileName)")
-        
+
         // ファイル名をそのまま使用
-        if let assetPath = Bundle.main.path(forResource: fileName, ofType: nil, inDirectory: assetDirectory) {
+        if let assetPath = Bundle.main.path(
+          forResource: fileName, ofType: nil, inDirectory: assetDirectory)
+        {
           print("YOLO Debug: Found model in assets directory: \(assetPath)")
           modelURL = URL(fileURLWithPath: assetPath)
         }
-        
+
         // 拡張子を分割して検索
         if modelURL == nil && fileName.contains(".") {
           let fileComponents = fileName.components(separatedBy: ".")
           let name = fileComponents.dropLast().joined(separator: ".")
           let ext = fileComponents.last ?? ""
-          
-          print("YOLO Debug: Trying with separated name: \(name) and extension: \(ext) in directory: \(assetDirectory)")
-          
-          if let assetPath = Bundle.main.path(forResource: name, ofType: ext, inDirectory: assetDirectory) {
+
+          print(
+            "YOLO Debug: Trying with separated name: \(name) and extension: \(ext) in directory: \(assetDirectory)"
+          )
+
+          if let assetPath = Bundle.main.path(
+            forResource: name, ofType: ext, inDirectory: assetDirectory)
+          {
             print("YOLO Debug: Found model with separated extension: \(assetPath)")
             modelURL = URL(fileURLWithPath: assetPath)
           }
         }
       }
-      
+
       // アセットディレクトリを直接確認
       if modelURL == nil && modelPathOrName.contains("/") {
         let assetPath = "flutter_assets/\(modelPathOrName)"
         print("YOLO Debug: Checking direct asset path: \(assetPath)")
-        
+
         if let directPath = Bundle.main.path(forResource: assetPath, ofType: nil) {
           print("YOLO Debug: Found model at direct asset path: \(directPath)")
           modelURL = URL(fileURLWithPath: directPath)
         }
       }
-      
+
       // フォルダ構造がない場合は、ファイル名だけで検索
       if modelURL == nil {
         let fileName = modelPathOrName.components(separatedBy: "/").last ?? modelPathOrName
         print("YOLO Debug: Checking filename only: \(fileName) in flutter_assets root")
-        
+
         // Flutterアセットルートをチェック
-        if let assetPath = Bundle.main.path(forResource: fileName, ofType: nil, inDirectory: "flutter_assets") {
+        if let assetPath = Bundle.main.path(
+          forResource: fileName, ofType: nil, inDirectory: "flutter_assets")
+        {
           print("YOLO Debug: Found model in flutter_assets root: \(assetPath)")
           modelURL = URL(fileURLWithPath: assetPath)
         }
-        
+
         // 拡張子を分割して検索
         if modelURL == nil && fileName.contains(".") {
           let fileComponents = fileName.components(separatedBy: ".")
           let name = fileComponents.dropLast().joined(separator: ".")
           let ext = fileComponents.last ?? ""
-          
+
           print("YOLO Debug: Trying with separated filename: \(name) and extension: \(ext)")
-          
-          if let assetPath = Bundle.main.path(forResource: name, ofType: ext, inDirectory: "flutter_assets") {
-            print("YOLO Debug: Found model with separated extension in flutter_assets: \(assetPath)")
+
+          if let assetPath = Bundle.main.path(
+            forResource: name, ofType: ext, inDirectory: "flutter_assets")
+          {
+            print(
+              "YOLO Debug: Found model with separated extension in flutter_assets: \(assetPath)")
             modelURL = URL(fileURLWithPath: assetPath)
           }
         }
       }
     }
-    
+
     // リソースバンドル内での確認 (例：Example/Flutter/App.frameworks/App.framework)
     if modelURL == nil {
       for bundle in Bundle.allBundles {
         let bundleID = bundle.bundleIdentifier ?? "unknown"
         print("YOLO Debug: Checking bundle: \(bundleID)")
-        
+
         // フォルダ構造がある場合
         if modelPathOrName.contains("/") {
           let components = modelPathOrName.components(separatedBy: "/")
           let fileName = components.last ?? ""
-          
+
           // ファイル名のみを検索
           if let path = bundle.path(forResource: fileName, ofType: nil) {
             print("YOLO Debug: Found model in bundle \(bundleID): \(path)")
             modelURL = URL(fileURLWithPath: path)
             break
           }
-          
+
           // 拡張子を分割して検索
           if fileName.contains(".") {
             let fileComponents = fileName.components(separatedBy: ".")
             let name = fileComponents.dropLast().joined(separator: ".")
             let ext = fileComponents.last ?? ""
-            
+
             if let path = bundle.path(forResource: name, ofType: ext) {
               print("YOLO Debug: Found model with ext in bundle \(bundleID): \(path)")
               modelURL = URL(fileURLWithPath: path)
@@ -178,7 +192,7 @@ public class YOLO {
       } else {
         print(" - flutter_assets NOT found")
       }
-      
+
       completion?(.failure(PredictorError.modelFileNotFound))
       return
     }

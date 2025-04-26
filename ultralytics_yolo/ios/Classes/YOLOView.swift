@@ -206,7 +206,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     // Common failure handling for all tasks
     func handleFailure(_ error: Error) {
       print("Failed to load model with error: \(error)")
-      self.activityIndicator.stopAnimating()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+      self.activityIndicator.stopAnimating()
       completion?(.failure(error))
     }
 

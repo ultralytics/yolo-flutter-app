@@ -48,24 +48,22 @@ public enum YOLOTask {
   /// Classification models predict what an image contains without localizing objects,
   /// returning class labels and confidence scores for the entire image.
   case classify
-    
-    /// A static function to parse from a string
-    public static func fromString(_ s: String) -> YOLOTask {
-        switch s.lowercased() {
-        case "segment":
-            return .segment
-        case "classify":
-            return .classify
-        case "pose":
-            return .pose
-        case "obb":
-            return .obb
-        case "detect":
-            fallthrough
-        default:
-            return .detect
-        }
+
+  /// A static function to parse from a string
+  public static func fromString(_ s: String) -> YOLOTask {
+    switch s.lowercased() {
+    case "segment":
+      return .segment
+    case "classify":
+      return .classify
+    case "pose":
+      return .pose
+    case "obb":
+      return .obb
+    case "detect":
+      fallthrough
+    default:
+      return .detect
     }
+  }
 }
-
-

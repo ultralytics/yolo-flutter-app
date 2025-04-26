@@ -13,12 +13,14 @@ This example app demonstrates how to use the Ultralytics YOLO Flutter plugin (`u
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/ultralytics/yolo-flutter-app
    cd yolo-flutter-app/example
    ```
 
 2. Install dependencies:
+
    ```bash
    flutter pub get
    ```
@@ -35,11 +37,13 @@ This document outlines the step-by-step strategy for enhancing the example app t
 ### Phase 1: Basic Structure and Object Detection
 
 1. **Create a task selection home screen**
+
    - Card-based UI for selecting different YOLO tasks
    - Add descriptive text and icons for each task
    - Add navigation to task-specific screens
 
 2. **Improve existing object detection**
+
    - Enhance visualization of bounding boxes
    - Add confidence score display
    - Format detection results in a structured list view
@@ -54,17 +58,20 @@ This document outlines the step-by-step strategy for enhancing the example app t
 ### Phase 2: Additional YOLO Tasks
 
 4. **Implement segmentation screen**
+
    - Create a dedicated screen for segmentation
    - Visualize segmentation masks with adjustable opacity
    - Display class and confidence information
    - Support both camera feed and image picking
 
 5. **Implement classification screen**
+
    - Create a dedicated screen for classification
    - Show top-N classification results with confidence bars
    - Support both camera feed and image picking
 
 6. **Implement pose estimation screen**
+
    - Create a dedicated screen for pose estimation
    - Visualize keypoints and skeleton connections
    - Add different color schemes for multiple people detection
@@ -79,12 +86,14 @@ This document outlines the step-by-step strategy for enhancing the example app t
 ### Phase 3: Settings and Optimizations
 
 8. **Add model settings screen**
+
    - Create a model selection interface
    - Bundle multiple pre-trained models
    - Display model information (size, classes, speed)
    - Allow confidence threshold adjustments globally
 
 9. **Implement error handling**
+
    - Add user-friendly error messages for model loading failures
    - Handle invalid inputs gracefully
    - Add loading indicators during processing
@@ -99,11 +108,13 @@ This document outlines the step-by-step strategy for enhancing the example app t
 ### Phase 4: Documentation and Polish
 
 11. **Enhance in-app documentation**
+
     - Add explanation screens for each YOLO task
     - Include sample use cases for each feature
     - Provide tooltips and help buttons
 
 12. **Visual polish**
+
     - Consistent color scheme and typography
     - Smooth transitions between screens
     - Professional icons and graphics
