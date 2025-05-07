@@ -230,8 +230,8 @@ CMAKE_SYSTEM_NAME:UNINITIALIZED=Android
 //No help, variable specified on the command line.
 CMAKE_SYSTEM_VERSION:UNINITIALIZED=26
 
-//The CMake toolchain file
-CMAKE_TOOLCHAIN_FILE:FILEPATH=C:/Android/ndk/26.3.11579264/build/cmake/android.toolchain.cmake
+//No help, variable specified on the command line.
+CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=C:\Android\ndk\26.3.11579264\build\cmake\android.toolchain.cmake
 
 //If this value is on, makefiles will be generated without the
 // .SILENT directive, and all commands will be echoed to the console

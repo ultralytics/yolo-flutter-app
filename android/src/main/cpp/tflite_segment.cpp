@@ -91,7 +91,8 @@ std::vector<std::vector<cv::Point>> get_polygons(const std::vector<std::vector<f
     cv::Mat cv_mask(rows, cols, CV_8U);
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
-            cv_mask.at<uchar>(i, j) = static_cast<uchar>(mask[i][j] > 0.5f ? 255 : 0); // Thresholding
+            cv_mask.at<uchar>(i, j) = static_cast<uchar>(mask[i][j] > 0.5f ? 255 : 0); 
+           // Thresholding
         }
     }
 
@@ -106,6 +107,57 @@ std::vector<std::vector<cv::Point>> get_polygons(const std::vector<std::vector<f
     }
     return polygons;
 }
+
+std::vector<cv::Point> get_outer_contour_convex(const std::vector<std::vector<cv::Point>>& polygons) {
+    std::vector<cv::Point> all_points;
+    for (const auto& poly : polygons) {
+        all_points.insert(all_points.end(), poly.begin(), poly.end());
+    }
+
+    std::vector<cv::Point> hull;
+    if (!all_points.empty()) {
+        cv::convexHull(all_points, hull);
+    }
+    return hull;
+}
+
+std::vector<cv::Point> get_outer_contour_findcontours(const std::vector<std::vector<cv::Point>>& polygons, int image_width, int image_height) {
+    if (polygons.empty()) {
+        return {};
+    }
+
+    // 1. Create a blank black image
+    cv::Mat mask(image_height, image_width, CV_8U, cv::Scalar(0));
+
+    // 2. Draw all the input polygons onto the mask with white color
+    for (const auto& poly : polygons) {
+        std::vector<std::vector<cv::Point>> contour = {poly}; // findContours expects a vector of vectors
+        cv::drawContours(mask, contour, 0, cv::Scalar(255), cv::FILLED);
+    }
+
+    // 3. Find the contours in the resulting binary image
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    // 4. Find the contour with the largest area (assuming it's the outer one)
+    double max_area = 0;
+    int max_area_contour_index = -1;
+    for (size_t i = 0; i < contours.size(); ++i) {
+        double area = cv::contourArea(contours[i]);
+        if (area > max_area) {
+            max_area = area;
+            max_area_contour_index = i;
+        }
+    }
+
+    // 5. Return the largest contour, or an empty vector if no contours were found
+    if (max_area_contour_index >= 0) {
+        return contours[max_area_contour_index];
+    } else {
+        return {};
+    }
+}
+
 
 
 
@@ -295,7 +347,7 @@ for (int c = 0; c < mask_channels; ++c) {
     for (const auto& mask_2d : final_masks) {
         all_polygons.push_back(get_polygons(mask_2d));
     }
-
+   
     // NMS and object filtering
     qsort_descent_inplace(proposals);
     std::vector<int> picked;
@@ -306,7 +358,9 @@ for (int c = 0; c < mask_channels; ++c) {
 
     for (int i = 0; i < count; i++) {
         objects[i] = proposals[picked[i]];
-        picked_polygons[i] = all_polygons[picked[i]]; // Get corresponding polygons
+       // picked_polygons[i] = all_polygons[picked[i]]; // Get corresponding polygons
+
+      
 
         float x0 = std::max(0.f, objects[i].rect.x - objects[i].rect.width / 2);
         float y0 = std::max(0.f, objects[i].rect.y - objects[i].rect.height / 2);
@@ -317,6 +371,32 @@ for (int c = 0; c < mask_channels; ++c) {
         objects[i].rect.y = y0;
         objects[i].rect.width = (x1 - x0);
         objects[i].rect.height = (y1 - y0);
+
+        cv::Rect pixel_rect(
+            objects[i].rect.x * mask_shape1,
+            objects[i].rect.y * mask_shape2,
+            objects[i].rect.width * mask_shape1,
+            objects[i].rect.height * mask_shape2
+        );
+        
+        std::vector<std::vector<cv::Point>> filtered_polygons;
+        for (const auto& polygon_group : all_polygons) {
+            for (const auto& polygon : polygon_group) {
+                std::vector<cv::Point> filtered_points;
+                for (const auto& point : polygon) {
+                    if (pixel_rect.contains(point)) {
+                        filtered_points.push_back(point);
+                    }
+                }
+                if (!filtered_points.empty()) {
+                    filtered_polygons.push_back(filtered_points);
+                }
+            }
+        }
+       
+        
+        //picked_polygons[i] =  get_outer_contour_convex(filtered_polygons);
+        picked_polygons[i].push_back(get_outer_contour_findcontours(filtered_polygons,w,h));
     }
 
     // Create the array of result objects
@@ -372,6 +452,5 @@ for (int c = 0; c < mask_channels; ++c) {
         env->DeleteLocalRef(resultMap);
     }
     jsize length = env->GetArrayLength(resultObjArray);
-LOGD("Length of resultObjArray = %d", length);
     return resultObjArray;
 }

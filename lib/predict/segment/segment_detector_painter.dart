@@ -1,84 +1,122 @@
 import 'dart:math';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:ultralytics_yolo/predict/detect/detected_object.dart';
+import 'package:ultralytics_yolo/predict/segment/detected_segment.dart';
 
-/// A painter used to draw the detected objects on the screen.
+/// A painter used to draw the detected segements on the screen.
 
 class SegmentDetectorPainter extends CustomPainter {
   /// Creates a [SegmentDetectorPainter].
-  SegmentDetectorPainter(
-    this._detectionResults, [
-    this._colors,
-    this._strokeWidth = 2.5,
-  ]);
+  SegmentDetectorPainter({
+    required this.results,
+    required this.imageSize,
+    this.maskColor, // Make maskColor optional
+    this.displayWidth,
+    this.showBoundingBoxes = true,
+    this.showSegments = true,
+  });
 
-  final List<DetectedObject> _detectionResults;
-  final List<Color>? _colors;
-  final double _strokeWidth;
+  final List<DetectedSegment> results;
+  final Size imageSize; // Actual image size
+  final Color? maskColor; // Nullable maskColor
+  final double? displayWidth;
+  final bool showBoundingBoxes;
+  final bool showSegments;
+
+  // Helper function to generate a random color
+  Color _generateRandomColor() {
+    final Random random = Random();
+    return Color.fromRGBO(
+      random.nextInt(256),
+      random.nextInt(256),
+      random.nextInt(256),
+      0.5, // Keep opacity consistent
+    );
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final borderPaint = Paint()
+    if (displayWidth == null) {
+      return; // Cannot paint without displayWidth
+    }
+
+    final Paint boundingBoxPaint = Paint()
+      ..color = Colors.blue.withOpacity(0.5)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = _strokeWidth;
-    final colors = _colors ?? Colors.primaries;
+      ..strokeWidth = 1.0;
 
-    for (final detectedObject in _detectionResults) {
-      final left = detectedObject.boundingBox.left;
-      final top = detectedObject.boundingBox.top;
-      final right = detectedObject.boundingBox.right;
-      final bottom = detectedObject.boundingBox.bottom;
-      final width = detectedObject.boundingBox.width;
-      final height = detectedObject.boundingBox.height;
+    final scaleX =
+        displayWidth! / 80.0; // Assuming segment polygons are based on 80x80
+    final displayHeight = (imageSize.height / imageSize.width) * displayWidth!;
+    final scaleY = displayHeight / 80.0;
 
-      if (left.isNaN ||
-          top.isNaN ||
-          right.isNaN ||
-          bottom.isNaN ||
-          width.isNaN ||
-          height.isNaN) return;
+    for (final result in results) {
+      // Draw segmentation masks
+      if (showSegments && result.polygons.isNotEmpty) {
+        final segmentPaint = Paint()
+          ..color = maskColor?.withOpacity(0.5) ?? _generateRandomColor()
+          ..style = PaintingStyle.fill;
 
-      final opacity = (detectedObject.confidence - 0.2) / (1.0 - 0.2) * 0.9;
+        for (final polygon in result.polygons) {
+          if (polygon.isNotEmpty) {
+            final path = Path();
 
-      //
-      // DRAW
-      // Rect
-      final index = detectedObject.index % colors.length;
-      final color = colors[index];
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(left, top, width, height),
-          const Radius.circular(8),
-        ),
-        borderPaint..color = color.withOpacity(opacity),
-      );
+            final scaledPoints = polygon.map((point) {
+              return Offset(point.dx * scaleX, point.dy * scaleY);
+            }).toList();
 
-      // Label
-      final builder = ui.ParagraphBuilder(
-        ui.ParagraphStyle(
-          textAlign: TextAlign.left,
-          fontSize: 16,
-          textDirection: TextDirection.ltr,
-        ),
-      )
-        ..pushStyle(
-          ui.TextStyle(
-            color: Colors.white,
-            background: Paint()..color = color.withOpacity(opacity),
+            path.addPolygon(scaledPoints, true);
+            canvas.drawPath(path, segmentPaint);
+          }
+        }
+      }
+
+      // Draw bounding boxes and labels
+      if (showBoundingBoxes) {
+        canvas.drawRect(
+          Rect.fromLTWH(
+            result.boundingBox.left * displayWidth!,
+            result.boundingBox.top * displayHeight,
+            result.boundingBox.width * displayWidth!,
+            result.boundingBox.height * displayHeight,
           ),
-        )
-        ..addText(' ${detectedObject.label} '
-            '${(detectedObject.confidence * 100).toStringAsFixed(1)}\n')
-        ..pop();
-      canvas.drawParagraph(
-        builder.build()..layout(ui.ParagraphConstraints(width: right - left)),
-        Offset(max(0, left), max(0, top)),
-      );
+          boundingBoxPaint,
+        );
+
+        if (result.label.isNotEmpty) {
+          final textSpan = TextSpan(
+            text: result.label,
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          );
+
+          final textPainter = TextPainter(
+            text: textSpan,
+            textAlign: TextAlign.left,
+            textDirection: TextDirection.ltr,
+          )..layout(
+              minWidth: 0,
+              maxWidth: size.width,
+            );
+
+          final offset = Offset(
+            result.boundingBox.left * displayWidth!,
+            result.boundingBox.top * displayHeight,
+          );
+
+          textPainter.paint(canvas, offset);
+        }
+      }
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant SegmentDetectorPainter oldDelegate) {
+    final should = oldDelegate.results != results;
+
+    return should;
+  }
 }
