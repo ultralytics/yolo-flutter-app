@@ -5,7 +5,7 @@ package com.ultralytics.ultralytics_yolo.predict;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
-
+import android.util.Log;
 import androidx.annotation.Keep;
 import androidx.camera.core.ImageProxy;
 
@@ -51,7 +51,6 @@ public static  int INPUT_SIZE = 320;
 
         Map<String, Object> data = yaml.load(inputStream);
         Map<Integer, String> names = ((Map<Integer, String>) data.get("names"));
-
         List<Integer> imgszArray = (List<Integer>) data.get("imgsz");    
         if(imgszArray!=null&&imgszArray.size()==2){
             
@@ -61,7 +60,6 @@ public static  int INPUT_SIZE = 320;
 
         labels.clear();
         labels.addAll(names.values());
-
         inputStream.close();
     }
 

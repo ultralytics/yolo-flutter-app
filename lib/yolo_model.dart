@@ -16,7 +16,10 @@ enum Task {
   detect('detect'),
 
   /// Pose estimation task.
-  pose('pose');
+  pose('pose'),
+
+  /// Segment Detection task.
+  segment('segment');
 
   const Task(this.name);
 

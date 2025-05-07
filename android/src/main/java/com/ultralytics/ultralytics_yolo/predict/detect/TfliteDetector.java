@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 
+
 public class TfliteDetector extends Detector {
 
     static {
@@ -80,8 +81,10 @@ public class TfliteDetector extends Detector {
             }
 
             final AssetManager assetManager = context.getAssets();
+           
             loadLabels(assetManager, localYoloModel.metadataPath);
             numClasses = labels.size();
+          
             try {
                 MappedByteBuffer modelFile = loadModelFile(assetManager, localYoloModel.modelPath);
                 initDelegate(modelFile, useGpu);

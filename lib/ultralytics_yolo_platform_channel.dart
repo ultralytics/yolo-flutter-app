@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/predict/classify/classification_result.dart';
 import 'package:ultralytics_yolo/predict/detect/detected_object.dart';
+import 'package:ultralytics_yolo/predict/segment/detected_segment.dart';
 
 import 'package:ultralytics_yolo/ultralytics_yolo_platform_interface.dart';
 
@@ -95,6 +96,25 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
       );
 
   @override
+  Stream<List<DetectedSegment?>?> get segmentResultStream =>
+      predictionResultsEventChannel.receiveBroadcastStream().map(
+        (result) {
+          final segments = <DetectedSegment>[];
+          result = result as List;
+
+          for (dynamic json in result) {
+            json = json as Map;
+            segments.add(
+              DetectedSegment.fromJson(
+                json,
+              ),
+            ); // Assuming your fromJson handles the new structure
+          }
+          return segments;
+        },
+      );
+
+  @override
   Stream<List<ClassificationResult?>?> get classificationResultStream =>
       predictionResultsEventChannel.receiveBroadcastStream().map(
         (result) {
@@ -102,8 +122,11 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
           result = result as List;
 
           for (final dynamic json in result) {
-            objects.add(ClassificationResult.fromJson(
-                Map<String, dynamic>.from(json as Map),),);
+            objects.add(
+              ClassificationResult.fromJson(
+                Map<String, dynamic>.from(json as Map),
+              ),
+            );
           }
 
           return objects;
@@ -132,8 +155,11 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
     final objects = <ClassificationResult>[];
 
     result?.forEach((json) {
-      objects.add(ClassificationResult.fromJson(
-          Map<String, dynamic>.from(json! as Map),),);
+      objects.add(
+        ClassificationResult.fromJson(
+          Map<String, dynamic>.from(json! as Map),
+        ),
+      );
     });
 
     return objects;
@@ -154,6 +180,27 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
       json = json as Map<dynamic, dynamic>?;
       if (json == null) return;
       objects.add(DetectedObject.fromJson(json));
+    });
+
+    return objects;
+  }
+
+  @override
+  Future<List<DetectedSegment?>?> segmentImage(String imagePath) async {
+    final result =
+        await methodChannel.invokeMethod<List<Object?>>('segmentImage', {
+      // Keep as List<Object?>
+      'imagePath': imagePath,
+    }).catchError((_) {
+      return <DetectedSegment?>[];
+    });
+
+    final objects = <DetectedSegment>[];
+
+    result?.forEach((json) {
+      json = json as Map<dynamic, dynamic>?;
+      if (json == null) return;
+      objects.add(DetectedSegment.fromJson(json)); // Use the updated fromJson
     });
 
     return objects;

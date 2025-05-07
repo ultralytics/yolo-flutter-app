@@ -1,6 +1,8 @@
 #include <jni.h>
 #include "ultralytics.h"
 
+
+
 static void qsort_descent_inplace(std::vector<DetectedObject> &objects, int left, int right) {
     int i = left;
     int j = right;
@@ -91,6 +93,12 @@ Java_com_ultralytics_ultralytics_1yolo_predict_detect_TfliteDetector_postprocess
     std::vector<DetectedObject> proposals;
     std::vector<DetectedObject> objects;
 
+    if (recognitions == NULL) {
+        
+        return NULL;
+    }
+
+
     // Initialize the C++ vector
     std::vector<std::vector<float>> vec(h, std::vector<float>(w, 0.0f));
     for (int i = 0; i < h; ++i) {
@@ -105,16 +113,19 @@ Java_com_ultralytics_ultralytics_1yolo_predict_detect_TfliteDetector_postprocess
         env->ReleaseFloatArrayElements(row, rowData, JNI_ABORT);
         env->DeleteLocalRef(row);
     }
-
+    
     // find boxes with score > threshold and class > threshold
     for (int i = 0; i < w; ++i) {
+        
         // find class index with max class score
         int class_index = 0;
         float class_score = -FLT_MAX;
-
+       
         // get scores for all class indexes of current box
+        
         std::vector<float> classes(num_classes);
         for (int c = 0; c < num_classes; c++) {
+            
             classes[c] = vec[c + 4][i];
         }
 
@@ -144,7 +155,7 @@ Java_com_ultralytics_ultralytics_1yolo_predict_detect_TfliteDetector_postprocess
             proposals.push_back(obj);
         }
     }
-
+    
     // sort all proposals by score from highest to lowest
     qsort_descent_inplace(proposals);
 
@@ -168,7 +179,7 @@ Java_com_ultralytics_ultralytics_1yolo_predict_detect_TfliteDetector_postprocess
         objects[i].rect.width = (x1 - x0);
         objects[i].rect.height = (y1 - y0);
     }
-
+    
     //return 2-dimension array [detected_box][6(x, y, width, height, conf, class)]
     jobjectArray objArray;
     jclass floatArray = env->FindClass("[F");
