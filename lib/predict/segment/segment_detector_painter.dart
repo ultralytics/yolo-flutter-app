@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/predict/segment/detected_segment.dart';
 
-/// A painter used to draw the detected segements on the screen.
+/// A painter used to draw the detected segments on the screen.
 
 class SegmentDetectorPainter extends CustomPainter {
   /// Creates a [SegmentDetectorPainter].
