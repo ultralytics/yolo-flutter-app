@@ -1,43 +1,34 @@
 {
-	"configurations" : 
-	[
-		{
-			"directories" : 
-			[
-				{
-					"build" : ".",
-					"jsonFile" : "directory-.-RelWithDebInfo-d0094a50bb2071803777.json",
-					"minimumCMakeVersion" : 
-					{
-						"string" : "3.6.0"
-					},
-					"projectIndex" : 0,
-					"source" : "."
-				}
-			],
-			"name" : "RelWithDebInfo",
-			"projects" : 
-			[
-				{
-					"directoryIndexes" : 
-					[
-						0
-					],
-					"name" : "Project"
-				}
-			],
-			"targets" : []
-		}
-	],
-	"kind" : "codemodel",
-	"paths" : 
-	{
-		"build" : "D:/YOLO/yolo-flutter-app/example/android/app/.cxx/RelWithDebInfo/4c1w5c1v/x86_64",
-		"source" : "C:/Android/flutter/packages/flutter_tools/gradle/src/main/groovy"
-	},
-	"version" : 
-	{
-		"major" : 2,
-		"minor" : 3
-	}
+  "configurations": [
+    {
+      "directories": [
+        {
+          "build": ".",
+          "jsonFile": "directory-.-RelWithDebInfo-d0094a50bb2071803777.json",
+          "minimumCMakeVersion": {
+            "string": "3.6.0"
+          },
+          "projectIndex": 0,
+          "source": "."
+        }
+      ],
+      "name": "RelWithDebInfo",
+      "projects": [
+        {
+          "directoryIndexes": [0],
+          "name": "Project"
+        }
+      ],
+      "targets": []
+    }
+  ],
+  "kind": "codemodel",
+  "paths": {
+    "build": "D:/YOLO/yolo-flutter-app/example/android/app/.cxx/RelWithDebInfo/4c1w5c1v/x86_64",
+    "source": "C:/Android/flutter/packages/flutter_tools/gradle/src/main/groovy"
+  },
+  "version": {
+    "major": 2,
+    "minor": 3
+  }
 }
