@@ -20,11 +20,10 @@ class UltralyticsYoloCameraValue {
   UltralyticsYoloCameraValue copyWith({
     int? lensDirection,
     double? strokeWidth,
-  }) =>
-      UltralyticsYoloCameraValue(
-        lensDirection: lensDirection ?? this.lensDirection,
-        strokeWidth: strokeWidth ?? this.strokeWidth,
-      );
+  }) => UltralyticsYoloCameraValue(
+    lensDirection: lensDirection ?? this.lensDirection,
+    strokeWidth: strokeWidth ?? this.strokeWidth,
+  );
 }
 
 /// ValueNotifier that holds the state of the camera
@@ -32,12 +31,7 @@ class UltralyticsYoloCameraController
     extends ValueNotifier<UltralyticsYoloCameraValue> {
   /// Constructor to create an instance of [UltralyticsYoloCameraController]
   UltralyticsYoloCameraController()
-      : super(
-          UltralyticsYoloCameraValue(
-            lensDirection: 1,
-            strokeWidth: 2.5,
-          ),
-        );
+    : super(UltralyticsYoloCameraValue(lensDirection: 1, strokeWidth: 2.5));
 
   final _ultralyticsYoloPlatform = UltralyticsYoloPlatform.instance;
 
@@ -47,10 +41,12 @@ class UltralyticsYoloCameraController
       // Update state first to show loading state if needed
       final newLensDirection = value.lensDirection == 0 ? 1 : 0;
       value = value.copyWith(lensDirection: newLensDirection);
-      
+
       // Request camera switch
-      final result = await _ultralyticsYoloPlatform.setLensDirection(newLensDirection);
-      
+      final result = await _ultralyticsYoloPlatform.setLensDirection(
+        newLensDirection,
+      );
+
       if (result != "Success") {
         // Revert state if failed
         value = value.copyWith(lensDirection: value.lensDirection == 0 ? 1 : 0);
