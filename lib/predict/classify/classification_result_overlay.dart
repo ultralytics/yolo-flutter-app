@@ -27,9 +27,10 @@ class ClassificationResultOverlay extends BaseClassificationOverlay {
   Widget build(BuildContext context) {
     if (classificationResults.isEmpty) return Container();
 
-    final objects = classificationResults
-        .getRange(0, min(classificationResults.length, 3))
-        .toList();
+    final objects =
+        classificationResults
+            .getRange(0, min(classificationResults.length, 3))
+            .toList();
 
     return SafeArea(
       child: Align(

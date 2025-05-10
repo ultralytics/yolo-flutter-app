@@ -68,11 +68,11 @@ abstract class YoloModel {
 
   /// Returns a json representation of an instance of [YoloModel].
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'type': type.name,
-        'task': task.name,
-        'format': format.name,
-      };
+    'id': id,
+    'type': type.name,
+    'task': task.name,
+    'format': format.name,
+  };
 }
 
 /// Options to configure the detector while using a local
@@ -96,10 +96,10 @@ class LocalYoloModel extends YoloModel {
   /// Returns a json representation of an instance of [LocalYoloModel].
   @override
   Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'modelPath': modelPath,
-        'metadataPath': metadataPath,
-      };
+    ...super.toJson(),
+    'modelPath': modelPath,
+    'metadataPath': metadataPath,
+  };
 }
 
 /// Options to configure the detector while using a remote
@@ -118,8 +118,5 @@ class RemoteYoloModel extends YoloModel {
 
   /// Returns a json representation of an instance of [RemoteYoloModel].
   @override
-  Map<String, dynamic> toJson() => {
-        ...super.toJson(),
-        'modelUrl': modelUrl,
-      };
+  Map<String, dynamic> toJson() => {...super.toJson(), 'modelUrl': modelUrl};
 }

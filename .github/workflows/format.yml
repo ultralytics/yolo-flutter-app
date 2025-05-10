@@ -29,6 +29,7 @@ jobs:
           python: true # Format Python with Ruff and docformatter
           prettier: true # Format YAML, JSON, Markdown, CSS
           swift: true # Format Swift (requires macos-latest)
+          dart: true # Format Dart/Flutter
           spelling: true # Check spelling with codespell
           links: false # Check broken links with Lychee
           summary: true # Generate AI-powered PR summaries
