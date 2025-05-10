@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 /// A result of an image classification.
 class ClassificationResult {
   /// Creates a [ClassificationResult].

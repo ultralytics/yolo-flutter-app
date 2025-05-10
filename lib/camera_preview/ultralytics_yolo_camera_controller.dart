@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'package:flutter/foundation.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo_platform_interface.dart';
 
