@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 /* See LICENSE file in the root OpenCV directory */
 
 #ifndef OPENCV_CORE_OPENCL_SVM_HPP
