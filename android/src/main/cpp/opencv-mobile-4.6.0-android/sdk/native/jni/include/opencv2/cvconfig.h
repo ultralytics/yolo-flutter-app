@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 #ifndef OPENCV_CVCONFIG_H_INCLUDED
 #define OPENCV_CVCONFIG_H_INCLUDED
 

@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 //
 // Created by Sergio Sánchez on 23/11/23.
 //
