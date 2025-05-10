@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 #ifndef CV_IMGPROC_HAL_HPP
 #define CV_IMGPROC_HAL_HPP
 
