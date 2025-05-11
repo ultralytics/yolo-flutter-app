@@ -1,5 +1,3 @@
--keep class java.beans.** { *; }
--keep class sun.reflect.** { *; }
 -dontwarn java.beans.BeanInfo
 -dontwarn java.beans.FeatureDescriptor
 -dontwarn java.beans.IntrospectionException
