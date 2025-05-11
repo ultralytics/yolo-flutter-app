@@ -45,43 +45,43 @@ class _MyAppState extends State<MyApp> {
             return !allPermissionsGranted
                 ? const Center(child: Text("Error requesting permissions"))
                 : FutureBuilder<ObjectDetector>(
-                    future: _initObjectDetectorWithLocalModel(),
-                    builder: (context, snapshot) {
-                      final predictor = snapshot.data;
+                  future: _initObjectDetectorWithLocalModel(),
+                  builder: (context, snapshot) {
+                    final predictor = snapshot.data;
 
-                      return predictor == null
-                          ? Container()
-                          : Stack(
-                              children: [
-                                UltralyticsYoloCameraPreview(
-                                  controller: controller,
-                                  predictor: predictor,
-                                  onCameraCreated: () {
-                                    predictor.loadModel(useGpu: true);
-                                  },
-                                ),
-                                StreamBuilder<double?>(
-                                  stream: predictor.inferenceTime,
+                    return predictor == null
+                        ? Container()
+                        : Stack(
+                          children: [
+                            UltralyticsYoloCameraPreview(
+                              controller: controller,
+                              predictor: predictor,
+                              onCameraCreated: () {
+                                predictor.loadModel(useGpu: true);
+                              },
+                            ),
+                            StreamBuilder<double?>(
+                              stream: predictor.inferenceTime,
+                              builder: (context, snapshot) {
+                                final inferenceTime = snapshot.data;
+
+                                return StreamBuilder<double?>(
+                                  stream: predictor.fpsRate,
                                   builder: (context, snapshot) {
-                                    final inferenceTime = snapshot.data;
+                                    final fpsRate = snapshot.data;
 
-                                    return StreamBuilder<double?>(
-                                      stream: predictor.fpsRate,
-                                      builder: (context, snapshot) {
-                                        final fpsRate = snapshot.data;
-
-                                        return Times(
-                                          inferenceTime: inferenceTime,
-                                          fpsRate: fpsRate,
-                                        );
-                                      },
+                                    return Times(
+                                      inferenceTime: inferenceTime,
+                                      fpsRate: fpsRate,
                                     );
                                   },
-                                ),
-                              ],
-                            );
-                    },
-                  );
+                                );
+                              },
+                            ),
+                          ],
+                        );
+                  },
+                );
             // : FutureBuilder<ObjectClassifier>(
             //     future: _initObjectClassifierWithLocalModel(),
             //     builder: (context, snapshot) {

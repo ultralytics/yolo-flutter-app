@@ -40,6 +40,7 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
         'useGpu': useGpu
       }).catchError((dynamic e) => e.toString());
 
+
   @override
   Future<String?> setConfidenceThreshold(double confidence) =>
       methodChannel.invokeMethod<String>('setConfidenceThreshold', {
@@ -84,19 +85,17 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   @override
   Stream<List<DetectedObject?>?> get detectionResultStream =>
-      predictionResultsEventChannel.receiveBroadcastStream().map(
-        (result) {
-          final objects = <DetectedObject>[];
-          result = result as List;
+      predictionResultsEventChannel.receiveBroadcastStream().map((result) {
+        final objects = <DetectedObject>[];
+        result = result as List;
 
-          for (dynamic json in result) {
-            json = json as Map;
-            objects.add(DetectedObject.fromJson(json));
-          }
+        for (dynamic json in result) {
+          json = json as Map;
+          objects.add(DetectedObject.fromJson(json));
+        }
 
-          return objects;
-        },
-      );
+        return objects;
+      });
 
   @override
   Stream<List<DetectedSegment?>?> get segmentResultStream =>
@@ -153,10 +152,12 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   @override
   Future<List<ClassificationResult?>?> classifyImage(String imagePath) async {
+
     final result = await methodChannel.invokeMethod<List<Object?>>(
         'classifyImage', {'imagePath': imagePath}).catchError((_) {
       return <ClassificationResult?>[];
     });
+
 
     final objects = <ClassificationResult>[];
 
@@ -164,11 +165,13 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
       objects.add(
         ClassificationResult.fromJson(Map<String, dynamic>.from(json! as Map)),
       );
+
       objects.add(
         ClassificationResult.fromJson(
           Map<String, dynamic>.from(json! as Map),
         ),
       );
+
     });
 
     return objects;
@@ -176,10 +179,12 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   @override
   Future<List<DetectedObject?>?> detectImage(String imagePath) async {
+
     final result = await methodChannel.invokeMethod<List<Object?>>(
         'detectImage', {'imagePath': imagePath}).catchError((_) {
       return <DetectedObject?>[];
     });
+
 
     final objects = <DetectedObject>[];
 
@@ -191,6 +196,7 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
     return objects;
   }
+
 
   @override
   Future<List<DetectedSegment?>?> segmentImage(String imagePath) async {
@@ -212,4 +218,5 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
     return objects;
   }
+
 }
