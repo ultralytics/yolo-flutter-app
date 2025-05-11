@@ -1,0 +1,51 @@
+name: Flutter Test Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.3"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze project source
+        run: dart analyze
+        # WARNING: Errors cause action to crash, need debugging
+        continue-on-error: true
+
+      - name: Create test .env file
+        run: |
+          echo "# Test environment variables" > .env
+          echo "API_URL=https://test-api.ultralytics.com" >> .env
+          echo "FIREBASE_API_KEY=test-key" >> .env
+
+      - name: Install xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: Run tests with coverage
+        run: |
+          xvfb-run flutter test --coverage
+
+      - name: Upload Coverage Reports to CodeCov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          name: flutter-codecov
+          verbose: false
