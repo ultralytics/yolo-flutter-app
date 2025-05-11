@@ -33,11 +33,9 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
   Future<String?> loadModel(
     Map<String, dynamic> model, {
     bool useGpu = false,
-  }) =>
-      methodChannel.invokeMethod<String>('loadModel', {
-        'model': model,
-        'useGpu': useGpu,
-      }).catchError((dynamic e) => e.toString());
+  }) => methodChannel
+      .invokeMethod<String>('loadModel', {'model': model, 'useGpu': useGpu})
+      .catchError((dynamic e) => e.toString());
 
   @override
   Future<String?> setConfidenceThreshold(double confidence) =>
@@ -124,12 +122,11 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   @override
   Future<List<ClassificationResult?>?> classifyImage(String imagePath) async {
-    final result = await methodChannel.invokeMethod<List<Object?>>(
-      'classifyImage',
-      {'imagePath': imagePath},
-    ).catchError((_) {
-      return <ClassificationResult?>[];
-    });
+    final result = await methodChannel
+        .invokeMethod<List<Object?>>('classifyImage', {'imagePath': imagePath})
+        .catchError((_) {
+          return <ClassificationResult?>[];
+        });
 
     final objects = <ClassificationResult>[];
 
@@ -144,12 +141,11 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   @override
   Future<List<DetectedObject?>?> detectImage(String imagePath) async {
-    final result = await methodChannel.invokeMethod<List<Object?>>(
-      'detectImage',
-      {'imagePath': imagePath},
-    ).catchError((_) {
-      return <DetectedObject?>[];
-    });
+    final result = await methodChannel
+        .invokeMethod<List<Object?>>('detectImage', {'imagePath': imagePath})
+        .catchError((_) {
+          return <DetectedObject?>[];
+        });
 
     final objects = <DetectedObject>[];
 

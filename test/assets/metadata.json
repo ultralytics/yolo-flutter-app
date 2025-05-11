@@ -1,9 +1,3 @@
 {
-  "labels": [
-    "person",
-    "bicycle",
-    "car",
-    "motorcycle",
-    "airplane"
-  ]
-} 
+  "labels": ["person", "bicycle", "car", "motorcycle", "airplane"]
+}

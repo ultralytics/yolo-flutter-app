@@ -22,9 +22,10 @@ class ObjectDetectorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final borderPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = _strokeWidth;
+    final borderPaint =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _strokeWidth;
     final colors = _colors ?? Colors.primaries;
 
     for (final detectedObject in _detectionResults) {
@@ -60,25 +61,26 @@ class ObjectDetectorPainter extends CustomPainter {
       );
 
       // Label
-      final builder = ui.ParagraphBuilder(
-        ui.ParagraphStyle(
-          textAlign: TextAlign.left,
-          fontSize: 16,
-          textDirection: TextDirection.ltr,
-        ),
-      )
-        ..pushStyle(
-          ui.TextStyle(
-            color: Colors.white,
-            background: Paint()
-              ..color = color.withAlpha((opacity * 255).round()),
-          ),
-        )
-        ..addText(
-          ' ${detectedObject.label} '
-          '${(detectedObject.confidence * 100).toStringAsFixed(1)}\n',
-        )
-        ..pop();
+      final builder =
+          ui.ParagraphBuilder(
+              ui.ParagraphStyle(
+                textAlign: TextAlign.left,
+                fontSize: 16,
+                textDirection: TextDirection.ltr,
+              ),
+            )
+            ..pushStyle(
+              ui.TextStyle(
+                color: Colors.white,
+                background:
+                    Paint()..color = color.withAlpha((opacity * 255).round()),
+              ),
+            )
+            ..addText(
+              ' ${detectedObject.label} '
+              '${(detectedObject.confidence * 100).toStringAsFixed(1)}\n',
+            )
+            ..pop();
       canvas.drawParagraph(
         builder.build()..layout(ui.ParagraphConstraints(width: right - left)),
         Offset(max(0, left), max(0, top)),
