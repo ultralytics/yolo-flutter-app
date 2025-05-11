@@ -14,13 +14,15 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   /// The event channel used to stream the detection results
   @visibleForTesting
-  final predictionResultsEventChannel =
-      const EventChannel('ultralytics_yolo_prediction_results');
+  final predictionResultsEventChannel = const EventChannel(
+    'ultralytics_yolo_prediction_results',
+  );
 
   /// The event channel used to stream the inference time
   @visibleForTesting
-  final inferenceTimeEventChannel =
-      const EventChannel('ultralytics_yolo_inference_time');
+  final inferenceTimeEventChannel = const EventChannel(
+    'ultralytics_yolo_inference_time',
+  );
 
   /// The event channel used to stream the inference time
   @visibleForTesting
@@ -33,15 +35,14 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
   }) =>
       methodChannel.invokeMethod<String>('loadModel', {
         'model': model,
-        'useGpu': useGpu,
+        'useGpu': useGpu
       }).catchError((dynamic e) => e.toString());
 
   @override
   Future<String?> setConfidenceThreshold(double confidence) =>
-      methodChannel.invokeMethod<String>(
-        'setConfidenceThreshold',
-        {'confidence': confidence},
-      );
+      methodChannel.invokeMethod<String>('setConfidenceThreshold', {
+        'confidence': confidence,
+      });
 
   @override
   Future<String?> setIouThreshold(double iou) =>
@@ -116,22 +117,27 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   @override
   Stream<List<ClassificationResult?>?> get classificationResultStream =>
-      predictionResultsEventChannel.receiveBroadcastStream().map(
-        (result) {
-          final objects = <ClassificationResult>[];
-          result = result as List;
+      predictionResultsEventChannel.receiveBroadcastStream().map((result) {
+        final objects = <ClassificationResult>[];
+        result = result as List;
 
-          for (final dynamic json in result) {
-            objects.add(
-              ClassificationResult.fromJson(
-                Map<String, dynamic>.from(json as Map),
-              ),
-            );
-          }
+        for (final dynamic json in result) {
+          objects.add(
+            ClassificationResult.fromJson(
+              Map<String, dynamic>.from(json as Map),
+            ),
+          );
+        }
+        for (final dynamic json in result) {
+          objects.add(
+            ClassificationResult.fromJson(
+              Map<String, dynamic>.from(json as Map),
+            ),
+          );
+        }
 
-          return objects;
-        },
-      );
+        return objects;
+      });
 
   @override
   Stream<double>? get inferenceTimeStream => inferenceTimeEventChannel
@@ -145,16 +151,17 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   @override
   Future<List<ClassificationResult?>?> classifyImage(String imagePath) async {
-    final result =
-        await methodChannel.invokeMethod<List<Object?>>('classifyImage', {
-      'imagePath': imagePath,
-    }).catchError((_) {
+    final result = await methodChannel.invokeMethod<List<Object?>>(
+        'classifyImage', {'imagePath': imagePath}).catchError((_) {
       return <ClassificationResult?>[];
     });
 
     final objects = <ClassificationResult>[];
 
     result?.forEach((json) {
+      objects.add(
+        ClassificationResult.fromJson(Map<String, dynamic>.from(json! as Map)),
+      );
       objects.add(
         ClassificationResult.fromJson(
           Map<String, dynamic>.from(json! as Map),
@@ -167,10 +174,8 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   @override
   Future<List<DetectedObject?>?> detectImage(String imagePath) async {
-    final result =
-        await methodChannel.invokeMethod<List<Object?>>('detectImage', {
-      'imagePath': imagePath,
-    }).catchError((_) {
+    final result = await methodChannel.invokeMethod<List<Object?>>(
+        'detectImage', {'imagePath': imagePath}).catchError((_) {
       return <DetectedObject?>[];
     });
 

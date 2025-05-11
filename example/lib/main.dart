@@ -41,13 +41,12 @@ class _MyAppState extends State<MyApp> {
             final allPermissionsGranted = snapshot.data ?? false;
             print(allPermissionsGranted);
             return !allPermissionsGranted
-                ? const Center(
-                    child: Text("Error requesting permissions"),
-                  )
-                : FutureBuilder<SegmentDetector>(
-                    future: _initSegmentDetectorWithLocalModel(),
+                ? const Center(child: Text("Error requesting permissions"))
+                : FutureBuilder<ObjectDetector>(
+                    future: _initObjectDetectorWithLocalModel(),
                     builder: (context, snapshot) {
                       final predictor = snapshot.data;
+
                       return predictor == null
                           ? Container()
                           : Stack(
@@ -57,28 +56,6 @@ class _MyAppState extends State<MyApp> {
                                   predictor: predictor,
                                   onCameraCreated: () {
                                     predictor.loadModel(useGpu: true);
-                                  },
-                                ),
-                                StreamBuilder<List<DetectedSegment?>?>(
-                                  stream: predictor.detectionResultStream,
-                                  builder: (context, snapshot) {
-                                    final detectionResults = snapshot.data;
-                                    if (detectionResults != null &&
-                                        detectionResults.isNotEmpty) {
-                                      print(detectionResults.length);
-                                      return CustomPaint(
-                                        painter: Masks(
-                                          polygons:
-                                              detectionResults.first!.polygons,
-                                          screenSize:
-                                              MediaQuery.of(context).size,
-                                          maskColor: Colors.red,
-                                        ),
-                                        size: MediaQuery.of(context).size,
-                                      );
-                                    } else {
-                                      return const SizedBox();
-                                    }
                                   },
                                 ),
                                 StreamBuilder<double?>(
@@ -222,8 +199,12 @@ class _MyAppState extends State<MyApp> {
     print(assetPath);
     if (!await file.exists()) {
       final byteData = await rootBundle.load(assetPath);
-      await file.writeAsBytes(byteData.buffer
-          .asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
+      await file.writeAsBytes(
+        byteData.buffer.asUint8List(
+          byteData.offsetInBytes,
+          byteData.lengthInBytes,
+        ),
+      );
     }
     return file.path;
   }
@@ -243,8 +224,9 @@ class _MyAppState extends State<MyApp> {
       try {
         Map<Permission, PermissionStatus> statuses =
             await permissions.request();
-        return statuses.values
-            .every((status) => status == PermissionStatus.granted);
+        return statuses.values.every(
+          (status) => status == PermissionStatus.granted,
+        );
       } on Exception catch (_) {
         return false;
       }
@@ -253,11 +235,7 @@ class _MyAppState extends State<MyApp> {
 }
 
 class Times extends StatelessWidget {
-  const Times({
-    super.key,
-    required this.inferenceTime,
-    required this.fpsRate,
-  });
+  const Times({super.key, required this.inferenceTime, required this.fpsRate});
 
   final double? inferenceTime;
   final double? fpsRate;
@@ -268,81 +246,18 @@ class Times extends StatelessWidget {
       child: Align(
         alignment: Alignment.bottomCenter,
         child: Container(
-            margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-              color: Colors.black54,
-            ),
-            child: Text(
-              '${(inferenceTime ?? 0).toStringAsFixed(1)} ms  -  ${(fpsRate ?? 0).toStringAsFixed(1)} FPS',
-              style: const TextStyle(color: Colors.white70),
-            )),
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+            color: Colors.black54,
+          ),
+          child: Text(
+            '${(inferenceTime ?? 0).toStringAsFixed(1)} ms  -  ${(fpsRate ?? 0).toStringAsFixed(1)} FPS',
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ),
       ),
     );
-  }
-}
-
-class Masks extends CustomPainter {
-  Masks({
-    required this.polygons,
-    required this.screenSize,
-    required this.maskColor,
-  });
-
-  final List<dynamic> polygons;
-  final Size screenSize;
-  final Color maskColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = maskColor.withOpacity(0.5) // Adjust opacity as needed
-      ..style = PaintingStyle.fill;
-
-    for (final polygonList in polygons) {
-      if (polygonList is List<dynamic>) {
-        final path = Path();
-        bool firstPoint = true;
-
-        for (final pointData in polygonList) {
-          if (pointData is Map<String, dynamic> &&
-              pointData.containsKey('x') &&
-              pointData.containsKey('y')) {
-            final double xRatio = (pointData['x'] as num).toDouble();
-            final double yRatio = (pointData['y'] as num).toDouble();
-
-            // Scale the normalized coordinates to the actual screen size
-            final double x = xRatio * screenSize.width;
-            final double y = yRatio * screenSize.height;
-
-            if (firstPoint) {
-              path.moveTo(x, y);
-              firstPoint = false;
-            } else {
-              path.lineTo(x, y);
-            }
-          } else if (pointData is Offset) {
-            // Handle direct Offset objects if that's a possibility
-            if (firstPoint) {
-              path.moveTo(pointData.dx, pointData.dy);
-              firstPoint = false;
-            } else {
-              path.lineTo(pointData.dx, pointData.dy);
-            }
-          }
-        }
-
-        path.close();
-        canvas.drawPath(path, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant Masks oldDelegate) {
-    return oldDelegate.polygons != polygons ||
-        oldDelegate.screenSize != screenSize ||
-        oldDelegate.maskColor != maskColor;
   }
 }
