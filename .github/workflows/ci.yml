@@ -1,4 +1,11 @@
-name: Code Coverage
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# Continuous Integration (CI) GitHub Actions tests
+
+name: CI
+
+permissions:
+  contents: read # Read code in PRs
 
 on:
   push:
