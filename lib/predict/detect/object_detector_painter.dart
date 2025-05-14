@@ -41,8 +41,9 @@ class ObjectDetectorPainter extends CustomPainter {
           right.isNaN ||
           bottom.isNaN ||
           width.isNaN ||
-          height.isNaN)
+          height.isNaN) {
         return;
+      }
 
       final opacity = (detectedObject.confidence - 0.2) / (1.0 - 0.2) * 0.9;
 
@@ -56,7 +57,7 @@ class ObjectDetectorPainter extends CustomPainter {
           Rect.fromLTWH(left, top, width, height),
           const Radius.circular(8),
         ),
-        borderPaint..color = color.withOpacity(opacity),
+        borderPaint..color = color.withAlpha((opacity * 255).round()),
       );
 
       // Label
@@ -71,7 +72,8 @@ class ObjectDetectorPainter extends CustomPainter {
             ..pushStyle(
               ui.TextStyle(
                 color: Colors.white,
-                background: Paint()..color = color.withOpacity(opacity),
+                background:
+                    Paint()..color = color.withAlpha((opacity * 255).round()),
               ),
             )
             ..addText(

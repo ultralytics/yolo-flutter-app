@@ -49,10 +49,10 @@ class UltralyticsYoloCameraController
         newLensDirection,
       );
 
-      if (result != "Success") {
+      if (result != 'Success') {
         // Revert state if failed
         value = value.copyWith(lensDirection: value.lensDirection == 0 ? 1 : 0);
-        throw Exception("Failed to switch camera: $result");
+        throw Exception('Failed to switch camera: $result');
       }
     } catch (e) {
       // Handle errors and revert state
