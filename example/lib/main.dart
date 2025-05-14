@@ -145,7 +145,6 @@ class _MyAppState extends State<MyApp> {
         metadataPath: metadataPath,
       );
     }
-
     return ObjectDetector(model: model);
   }
 
