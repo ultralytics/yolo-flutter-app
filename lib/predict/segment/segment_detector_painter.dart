@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -40,10 +42,11 @@ class SegmentDetectorPainter extends CustomPainter {
       return; // Cannot paint without displayWidth
     }
 
-    final Paint boundingBoxPaint = Paint()
-      ..color = Colors.blue.withOpacity(0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+    final Paint boundingBoxPaint =
+        Paint()
+          ..color = Colors.blue.withOpacity(0.5)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0;
 
     final scaleX =
         displayWidth! / 80.0; // Assuming segment polygons are based on 80x80
@@ -53,17 +56,19 @@ class SegmentDetectorPainter extends CustomPainter {
     for (final result in results) {
       // Draw segmentation masks
       if (showSegments && result.polygons.isNotEmpty) {
-        final segmentPaint = Paint()
-          ..color = maskColor?.withOpacity(0.5) ?? _generateRandomColor()
-          ..style = PaintingStyle.fill;
+        final segmentPaint =
+            Paint()
+              ..color = maskColor?.withOpacity(0.5) ?? _generateRandomColor()
+              ..style = PaintingStyle.fill;
 
         for (final polygon in result.polygons) {
           if (polygon.isNotEmpty) {
             final path = Path();
 
-            final scaledPoints = polygon.map((point) {
-              return Offset(point.dx * scaleX, point.dy * scaleY);
-            }).toList();
+            final scaledPoints =
+                polygon.map((point) {
+                  return Offset(point.dx * scaleX, point.dy * scaleY);
+                }).toList();
 
             path.addPolygon(scaledPoints, true);
             canvas.drawPath(path, segmentPaint);
@@ -97,10 +102,7 @@ class SegmentDetectorPainter extends CustomPainter {
             text: textSpan,
             textAlign: TextAlign.left,
             textDirection: TextDirection.ltr,
-          )..layout(
-              minWidth: 0,
-              maxWidth: size.width,
-            );
+          )..layout(minWidth: 0, maxWidth: size.width);
 
           final offset = Offset(
             result.boundingBox.left * displayWidth!,

@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:ui';
 
 /// A detected object with segmentation mask polygons.
@@ -28,7 +30,8 @@ class DetectedSegment {
                 polygon.add(Offset(x.toDouble(), y.toDouble()));
               } else {
                 print(
-                    'Warning: Invalid point format in polygon: $pointDynamic');
+                  'Warning: Invalid point format in polygon: $pointDynamic',
+                );
               }
             } else {
               print('Warning: Point is not a Map: $pointDynamic');
