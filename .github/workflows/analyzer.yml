@@ -1,4 +1,4 @@
-name: Dart Analysis & Linting
+name: Dart Analyzer
 
 on:
   push:
