@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/predict/segment/detected_segment.dart';
@@ -24,14 +26,7 @@ void main() {
       expect(segment.confidence, equals(0.95));
       expect(
         segment.boundingBox,
-        equals(
-          const Rect.fromLTWH(
-            0.1,
-            0.2,
-            0.3,
-            0.4,
-          ),
-        ),
+        equals(const Rect.fromLTWH(0.1, 0.2, 0.3, 0.4)),
       );
       expect(segment.polygons, hasLength(1));
       expect(segment.polygons[0], hasLength(4));
@@ -92,7 +87,7 @@ void main() {
             [0.3, 0.2],
             [0.3, 0.4],
             [0.1, 0.4],
-          ]
+          ],
         ],
       };
 
