@@ -16,62 +16,59 @@ void main() {
       log = <MethodCall>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(platform.methodChannel, (
-        MethodCall methodCall,
-      ) async {
-        log.add(methodCall);
-        switch (methodCall.method) {
-          case 'loadModel':
-            return 'success';
-          case 'detectImage':
-            return [
-              {
-                'label': 'person',
-                'confidence': 0.95,
-                'x': 0.1,
-                'y': 0.2,
-                'width': 0.3,
-                'height': 0.4,
-                'index': 0,
-              },
-            ];
-          case 'classifyImage':
-            return [
-              {'label': 'person', 'confidence': 0.95, 'index': 0},
-            ];
-          case 'segmentImage':
-            return [
-              {
-                'label': 'person',
-                'confidence': 0.95,
-                'x': 0.1,
-                'y': 0.2,
-                'width': 0.3,
-                'height': 0.4,
-                'index': 0,
-                'polygons': [
-                  [
-                    [0.1, 0.2],
-                    [0.3, 0.2],
-                    [0.3, 0.4],
-                    [0.1, 0.4],
-                  ],
-                ],
-              },
-            ];
-          default:
-            return 'success';
-        }
-      });
+            MethodCall methodCall,
+          ) async {
+            log.add(methodCall);
+            switch (methodCall.method) {
+              case 'loadModel':
+                return 'success';
+              case 'detectImage':
+                return [
+                  {
+                    'label': 'person',
+                    'confidence': 0.95,
+                    'x': 0.1,
+                    'y': 0.2,
+                    'width': 0.3,
+                    'height': 0.4,
+                    'index': 0,
+                  },
+                ];
+              case 'classifyImage':
+                return [
+                  {'label': 'person', 'confidence': 0.95, 'index': 0},
+                ];
+              case 'segmentImage':
+                return [
+                  {
+                    'label': 'person',
+                    'confidence': 0.95,
+                    'x': 0.1,
+                    'y': 0.2,
+                    'width': 0.3,
+                    'height': 0.4,
+                    'index': 0,
+                    'polygons': [
+                      [
+                        [0.1, 0.2],
+                        [0.3, 0.2],
+                        [0.3, 0.4],
+                        [0.1, 0.4],
+                      ],
+                    ],
+                  },
+                ];
+              default:
+                return 'success';
+            }
+          });
     });
 
     test('should load model with correct parameters', () async {
-      final result = await platform.loadModel(
-        {
-          'modelPath': 'test_model.tflite',
-          'metadataPath': 'test_metadata.yaml',
-        },
-        useGpu: true,
-      );
+      final result = await platform.loadModel({
+        'modelPath': 'test_model.tflite',
+        'metadataPath': 'test_metadata.yaml',
+      }, useGpu: true);
 
       expect(log, hasLength(1));
       expect(log.first.method, equals('loadModel'));
@@ -154,50 +151,50 @@ void main() {
       log = <MethodCall>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(platform.methodChannel, (
-        MethodCall methodCall,
-      ) async {
-        log.add(methodCall);
-        switch (methodCall.method) {
-          case 'detectImage':
-            return [
-              {
-                'label': 'person',
-                'confidence': 0.95,
-                'x': 0.1,
-                'y': 0.2,
-                'width': 0.3,
-                'height': 0.4,
-                'index': 0,
-              },
-            ];
-          case 'classifyImage':
-            return [
-              {'label': 'person', 'confidence': 0.95, 'index': 0},
-            ];
-          case 'segmentImage':
-            return [
-              {
-                'label': 'person',
-                'confidence': 0.95,
-                'x': 0.1,
-                'y': 0.2,
-                'width': 0.3,
-                'height': 0.4,
-                'index': 0,
-                'polygons': [
-                  [
-                    [0.1, 0.2],
-                    [0.3, 0.2],
-                    [0.3, 0.4],
-                    [0.1, 0.4],
-                  ],
-                ],
-              },
-            ];
-          default:
-            return null;
-        }
-      });
+            MethodCall methodCall,
+          ) async {
+            log.add(methodCall);
+            switch (methodCall.method) {
+              case 'detectImage':
+                return [
+                  {
+                    'label': 'person',
+                    'confidence': 0.95,
+                    'x': 0.1,
+                    'y': 0.2,
+                    'width': 0.3,
+                    'height': 0.4,
+                    'index': 0,
+                  },
+                ];
+              case 'classifyImage':
+                return [
+                  {'label': 'person', 'confidence': 0.95, 'index': 0},
+                ];
+              case 'segmentImage':
+                return [
+                  {
+                    'label': 'person',
+                    'confidence': 0.95,
+                    'x': 0.1,
+                    'y': 0.2,
+                    'width': 0.3,
+                    'height': 0.4,
+                    'index': 0,
+                    'polygons': [
+                      [
+                        [0.1, 0.2],
+                        [0.3, 0.2],
+                        [0.3, 0.4],
+                        [0.1, 0.4],
+                      ],
+                    ],
+                  },
+                ];
+              default:
+                return null;
+            }
+          });
     });
 
     test('should detect objects in image', () async {
@@ -246,11 +243,11 @@ void main() {
       log = <MethodCall>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(platform.methodChannel, (
-        MethodCall methodCall,
-      ) async {
-        log.add(methodCall);
-        return null;
-      });
+            MethodCall methodCall,
+          ) async {
+            log.add(methodCall);
+            return null;
+          });
     });
 
     test('should handle detection result stream', () async {
