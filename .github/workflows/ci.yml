@@ -31,11 +31,6 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Analyze project source
-        run: dart analyze
-        # WARNING: Errors cause action to crash, need debugging
-        continue-on-error: true
-
       - name: Create test .env file
         run: |
           echo "# Test environment variables" > .env

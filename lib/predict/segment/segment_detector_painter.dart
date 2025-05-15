@@ -18,16 +18,27 @@ class SegmentDetectorPainter extends CustomPainter {
     this.showSegments = true,
   });
 
+  /// List of detected segments to be painted.
   final List<DetectedSegment> results;
+
+  /// The actual size of the image being processed.
   final Size imageSize; // Actual image size
+
+  /// Optional color for the segmentation masks.
   final Color? maskColor; // Nullable maskColor
+
+  /// Optional width for displaying the results.
   final double? displayWidth;
+
+  /// Whether to show bounding boxes around detected segments.
   final bool showBoundingBoxes;
+
+  /// Whether to show segmentation masks.
   final bool showSegments;
 
   // Helper function to generate a random color
   Color _generateRandomColor() {
-    final Random random = Random();
+    final random = Random();
     return Color.fromRGBO(
       random.nextInt(256),
       random.nextInt(256),
@@ -42,9 +53,9 @@ class SegmentDetectorPainter extends CustomPainter {
       return; // Cannot paint without displayWidth
     }
 
-    final Paint boundingBoxPaint =
+    final boundingBoxPaint =
         Paint()
-          ..color = Colors.blue.withOpacity(0.5)
+          ..color = Colors.blue.withValues(alpha: 128)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.0;
 
@@ -58,7 +69,8 @@ class SegmentDetectorPainter extends CustomPainter {
       if (showSegments && result.polygons.isNotEmpty) {
         final segmentPaint =
             Paint()
-              ..color = maskColor?.withOpacity(0.5) ?? _generateRandomColor()
+              ..color =
+                  maskColor?.withValues(alpha: 128) ?? _generateRandomColor()
               ..style = PaintingStyle.fill;
 
         for (final polygon in result.polygons) {
@@ -102,7 +114,7 @@ class SegmentDetectorPainter extends CustomPainter {
             text: textSpan,
             textAlign: TextAlign.left,
             textDirection: TextDirection.ltr,
-          )..layout(minWidth: 0, maxWidth: size.width);
+          )..layout(maxWidth: size.width);
 
           final offset = Offset(
             result.boundingBox.left * displayWidth!,

@@ -18,6 +18,7 @@ dev_dependencies:
   coverage: 1.13.1
   flutter_test:
     sdk: flutter
+  mockito: ^5.4.6
   very_good_analysis: ^5.1.0
 
 flutter:
