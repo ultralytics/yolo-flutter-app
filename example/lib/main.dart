@@ -9,11 +9,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import 'package:ultralytics_yolo/yolo_model.dart';
-import 'package:ultralytics_yolo_example/image_picker.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ImagePickerScreen());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
@@ -25,12 +24,12 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final controller = UltralyticsYoloCameraController();
-  @override
-  initState() {
-    super.initState();
-    _initSegmentDetectorWithLocalModel();
-    // _initObjectClassifierWithLocalModel();
-    // _initImageClassifierWithLocalModel();
+  bool _isCameraMode = true;
+
+  void _toggleMode() {
+    setState(() {
+      _isCameraMode = !_isCameraMode;
+    });
   }
 
   @override
@@ -43,89 +42,72 @@ class _MyAppState extends State<MyApp> {
             final allPermissionsGranted = snapshot.data ?? false;
             return !allPermissionsGranted
                 ? const Center(child: Text("Error requesting permissions"))
-                : FutureBuilder<ObjectDetector>(
-                    future: _initObjectDetectorWithLocalModel(),
-                    builder: (context, snapshot) {
-                      final predictor = snapshot.data;
+                : _isCameraMode
+                    ? FutureBuilder<ObjectDetector>(
+                        future: _initObjectDetectorWithLocalModel(),
+                        builder: (context, snapshot) {
+                          final predictor = snapshot.data;
 
-                      return predictor == null
-                          ? Container()
-                          : Stack(
-                              children: [
-                                UltralyticsYoloCameraPreview(
-                                  controller: controller,
-                                  predictor: predictor,
-                                  onCameraCreated: () {
-                                    predictor.loadModel(useGpu: true);
-                                  },
-                                ),
-                                StreamBuilder<double?>(
-                                  stream: predictor.inferenceTime,
-                                  builder: (context, snapshot) {
-                                    final inferenceTime = snapshot.data;
-
-                                    return StreamBuilder<double?>(
-                                      stream: predictor.fpsRate,
+                          return predictor == null
+                              ? Container()
+                              : Stack(
+                                  children: [
+                                    UltralyticsYoloCameraPreview(
+                                      controller: controller,
+                                      predictor: predictor,
+                                      onCameraCreated: () {
+                                        predictor.loadModel(useGpu: true);
+                                      },
+                                    ),
+                                    StreamBuilder<double?>(
+                                      stream: predictor.inferenceTime,
                                       builder: (context, snapshot) {
-                                        final fpsRate = snapshot.data;
+                                        final inferenceTime = snapshot.data;
 
-                                        return Times(
-                                          inferenceTime: inferenceTime,
-                                          fpsRate: fpsRate,
+                                        return StreamBuilder<double?>(
+                                          stream: predictor.fpsRate,
+                                          builder: (context, snapshot) {
+                                            final fpsRate = snapshot.data;
+
+                                            return Times(
+                                              inferenceTime: inferenceTime,
+                                              fpsRate: fpsRate,
+                                            );
+                                          },
                                         );
                                       },
-                                    );
-                                  },
-                                ),
-                              ],
-                            );
-                    },
-                  );
-            // : FutureBuilder<ObjectClassifier>(
-            //     future: _initObjectClassifierWithLocalModel(),
-            //     builder: (context, snapshot) {
-            //       final predictor = snapshot.data;
-
-            //       return predictor == null
-            //           ? Container()
-            //           : Stack(
-            //               children: [
-            //                 UltralyticsYoloCameraPreview(
-            //                   controller: controller,
-            //                   predictor: predictor,
-            //                   onCameraCreated: () {
-            //                     predictor.loadModel();
-            //                   },
-            //                 ),
-            //                 StreamBuilder<double?>(
-            //                   stream: predictor.inferenceTime,
-            //                   builder: (context, snapshot) {
-            //                     final inferenceTime = snapshot.data;
-
-            //                     return StreamBuilder<double?>(
-            //                       stream: predictor.fpsRate,
-            //                       builder: (context, snapshot) {
-            //                         final fpsRate = snapshot.data;
-
-            //                         return Times(
-            //                           inferenceTime: inferenceTime,
-            //                           fpsRate: fpsRate,
-            //                         );
-            //                       },
-            //                     );
-            //                   },
-            //                 ),
-            //               ],
-            //             );
-            //     },
-            //   );
+                                    ),
+                                  ],
+                                );
+                        },
+                      )
+                    : const Center(
+                        child: Text(
+                          'Image Picker feature is not supported yet.\nComing soon!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      );
           },
         ),
-        floatingActionButton: FloatingActionButton(
-          child: const Icon(Icons.cameraswitch),
-          onPressed: () {
-            controller.toggleLensDirection();
-          },
+        floatingActionButton: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            FloatingActionButton(
+              onPressed: _toggleMode,
+              child: Icon(_isCameraMode ? Icons.image : Icons.camera_alt),
+            ),
+            if (_isCameraMode)
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: FloatingActionButton(
+                  child: const Icon(Icons.cameraswitch),
+                  onPressed: () {
+                    controller.toggleLensDirection();
+                  },
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -154,43 +136,6 @@ class _MyAppState extends State<MyApp> {
       return ObjectDetector(model: model);
     }
   }
-
-  Future<SegmentDetector> _initSegmentDetectorWithLocalModel() async {
-    final modelPath = await _copy('assets/yolo11n-seg_float16.tflite');
-    final metadataPath = await _copy('assets/metaxy.yaml');
-    final model = LocalYoloModel(
-      id: '',
-      task: Task.segment,
-      format: Format.tflite,
-      modelPath: modelPath,
-      metadataPath: metadataPath,
-    );
-
-    return SegmentDetector(model: model);
-  }
-
-  // Future<ImageClassifier> _initImageClassifierWithLocalModel() async {
-  //   final modelPath = await _copy('assets/yolov8n-cls.mlmodel');
-  //   final model = LocalYoloModel(
-  //     id: '',
-  //     task: Task.classify,
-  //     format: Format.coreml,
-  //     modelPath: modelPath,
-  //   );
-
-  //   // final modelPath = await _copy('assets/yolov8n-cls.bin');
-  //   // final paramPath = await _copy('assets/yolov8n-cls.param');
-  //   // final metadataPath = await _copy('assets/metadata-cls.yaml');
-  //   // final model = LocalYoloModel(
-  //   //   id: '',
-  //   //   task: Task.classify,
-  //   //   modelPath: modelPath,
-  //   //   paramPath: paramPath,
-  //   //   metadataPath: metadataPath,
-  //   // );
-
-  //   return ImageClassifier(model: model);
-  // }
 
   Future<String> _copy(String assetPath) async {
     final path = '${(await getApplicationSupportDirectory()).path}/$assetPath';
