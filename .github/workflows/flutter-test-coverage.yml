@@ -1,4 +1,4 @@
-name: Flutter Test Coverage
+name: Dart Analysis & Linting
 
 on:
   push:
@@ -7,13 +7,13 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  analyze:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.19.0"
+          flutter-version: "3.29.3"
           channel: "stable"
 
       - name: Install dependencies
