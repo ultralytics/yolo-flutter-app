@@ -1,5 +1,3 @@
-% Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-
 #import "UltralyticsYoloPlugin.h"
 #if __has_include(<ultralytics_yolo/ultralytics_yolo-Swift.h>)
 #import <ultralytics_yolo/ultralytics_yolo-Swift.h>
