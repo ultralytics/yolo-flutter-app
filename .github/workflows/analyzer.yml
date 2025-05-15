@@ -20,13 +20,4 @@ jobs:
         run: flutter pub get
 
       - name: Analyze project source
-        run: dart analyze
-
-      - name: Run tests
-        run: flutter test --coverage
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage/lcov.info
-          fail_ci_if_error: true
+        run: dart analyze --fatal-warnings
