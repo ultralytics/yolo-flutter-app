@@ -53,10 +53,11 @@ class SegmentDetectorPainter extends CustomPainter {
       return; // Cannot paint without displayWidth
     }
 
-    final boundingBoxPaint = Paint()
-      ..color = Colors.blue.withValues(alpha: 128)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+    final boundingBoxPaint =
+        Paint()
+          ..color = Colors.blue.withValues(alpha: 128)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0;
 
     final scaleX =
         displayWidth! / 80.0; // Assuming segment polygons are based on 80x80
@@ -66,17 +67,20 @@ class SegmentDetectorPainter extends CustomPainter {
     for (final result in results) {
       // Draw segmentation masks
       if (showSegments && result.polygons.isNotEmpty) {
-        final segmentPaint = Paint()
-          ..color = maskColor?.withValues(alpha: 128) ?? _generateRandomColor()
-          ..style = PaintingStyle.fill;
+        final segmentPaint =
+            Paint()
+              ..color =
+                  maskColor?.withValues(alpha: 128) ?? _generateRandomColor()
+              ..style = PaintingStyle.fill;
 
         for (final polygon in result.polygons) {
           if (polygon.isNotEmpty) {
             final path = Path();
 
-            final scaledPoints = polygon.map((point) {
-              return Offset(point.dx * scaleX, point.dy * scaleY);
-            }).toList();
+            final scaledPoints =
+                polygon.map((point) {
+                  return Offset(point.dx * scaleX, point.dy * scaleY);
+                }).toList();
 
             path.addPolygon(scaledPoints, true);
             canvas.drawPath(path, segmentPaint);
