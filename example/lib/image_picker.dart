@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:io' as io;
 import 'dart:ui' as ui;
 
@@ -28,8 +30,12 @@ class _ImagePickerState extends State<ImagePickerScreen> {
     final file = io.File(path);
     if (!await file.exists()) {
       final byteData = await rootBundle.load(assetPath);
-      await file.writeAsBytes(byteData.buffer
-          .asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
+      await file.writeAsBytes(
+        byteData.buffer.asUint8List(
+          byteData.offsetInBytes,
+          byteData.lengthInBytes,
+        ),
+      );
     }
     return file.path;
   }
@@ -85,36 +91,31 @@ class _ImagePickerState extends State<ImagePickerScreen> {
       home: SafeArea(
         child: Scaffold(
           body: Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: 16.0,
-            ),
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: Column(
               children: [
                 segments.isNotEmpty && imagePath.isNotEmpty
                     ? Expanded(
-                        child: Stack(
-                          children: [
-                            Image.file(
-                              io.File(
-                                imagePath,
+                      child: Stack(
+                        children: [
+                          Image.file(
+                            io.File(imagePath),
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                          RepaintBoundary(
+                            child: CustomPaint(
+                              painter: SegmentDetectorPainter(
+                                results: box,
+                                imageSize: imageSize,
+                                displayWidth: MediaQuery.of(context).size.width,
                               ),
-                              width: double.infinity,
-                              fit: BoxFit.cover,
+                              size: imageSize,
                             ),
-                            RepaintBoundary(
-                              child: CustomPaint(
-                                painter: SegmentDetectorPainter(
-                                  results: box,
-                                  imageSize: imageSize,
-                                  displayWidth:
-                                      MediaQuery.of(context).size.width,
-                                ),
-                                size: imageSize,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
+                          ),
+                        ],
+                      ),
+                    )
                     : const SizedBox(),
                 Expanded(
                   child: Center(
@@ -123,7 +124,7 @@ class _ImagePickerState extends State<ImagePickerScreen> {
                       child: const Text("pick image"),
                     ),
                   ),
-                )
+                ),
               ],
             ),
           ),

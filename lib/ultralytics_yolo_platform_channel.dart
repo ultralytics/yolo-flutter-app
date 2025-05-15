@@ -34,12 +34,9 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
   Future<String?> loadModel(
     Map<String, dynamic> model, {
     bool useGpu = false,
-  }) =>
-      methodChannel.invokeMethod<String>('loadModel', {
-        'model': model,
-        'useGpu': useGpu
-      }).catchError((dynamic e) => e.toString());
-
+  }) => methodChannel
+      .invokeMethod<String>('loadModel', {'model': model, 'useGpu': useGpu})
+      .catchError((dynamic e) => e.toString());
 
   @override
   Future<String?> setConfidenceThreshold(double confidence) =>
@@ -99,22 +96,18 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   @override
   Stream<List<DetectedSegment?>?> get segmentResultStream =>
-      predictionResultsEventChannel.receiveBroadcastStream().map(
-        (result) {
-          final segments = <DetectedSegment>[];
-          result = result as List;
+      predictionResultsEventChannel.receiveBroadcastStream().map((result) {
+        final segments = <DetectedSegment>[];
+        result = result as List;
 
-          for (dynamic json in result) {
-            json = json as Map;
-            segments.add(
-              DetectedSegment.fromJson(
-                json,
-              ),
-            ); // Assuming your fromJson handles the new structure
-          }
-          return segments;
-        },
-      );
+        for (dynamic json in result) {
+          json = json as Map;
+          segments.add(
+            DetectedSegment.fromJson(json),
+          ); // Assuming your fromJson handles the new structure
+        }
+        return segments;
+      });
 
   @override
   Stream<List<ClassificationResult?>?> get classificationResultStream =>
@@ -152,12 +145,11 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   @override
   Future<List<ClassificationResult?>?> classifyImage(String imagePath) async {
-
-    final result = await methodChannel.invokeMethod<List<Object?>>(
-        'classifyImage', {'imagePath': imagePath}).catchError((_) {
-      return <ClassificationResult?>[];
-    });
-
+    final result = await methodChannel
+        .invokeMethod<List<Object?>>('classifyImage', {'imagePath': imagePath})
+        .catchError((_) {
+          return <ClassificationResult?>[];
+        });
 
     final objects = <ClassificationResult>[];
 
@@ -167,11 +159,8 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
       );
 
       objects.add(
-        ClassificationResult.fromJson(
-          Map<String, dynamic>.from(json! as Map),
-        ),
+        ClassificationResult.fromJson(Map<String, dynamic>.from(json! as Map)),
       );
-
     });
 
     return objects;
@@ -179,12 +168,11 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
   @override
   Future<List<DetectedObject?>?> detectImage(String imagePath) async {
-
-    final result = await methodChannel.invokeMethod<List<Object?>>(
-        'detectImage', {'imagePath': imagePath}).catchError((_) {
-      return <DetectedObject?>[];
-    });
-
+    final result = await methodChannel
+        .invokeMethod<List<Object?>>('detectImage', {'imagePath': imagePath})
+        .catchError((_) {
+          return <DetectedObject?>[];
+        });
 
     final objects = <DetectedObject>[];
 
@@ -197,16 +185,16 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
     return objects;
   }
 
-
   @override
   Future<List<DetectedSegment?>?> segmentImage(String imagePath) async {
-    final result =
-        await methodChannel.invokeMethod<List<Object?>>('segmentImage', {
-      // Keep as List<Object?>
-      'imagePath': imagePath,
-    }).catchError((_) {
-      return <DetectedSegment?>[];
-    });
+    final result = await methodChannel
+        .invokeMethod<List<Object?>>('segmentImage', {
+          // Keep as List<Object?>
+          'imagePath': imagePath,
+        })
+        .catchError((_) {
+          return <DetectedSegment?>[];
+        });
 
     final objects = <DetectedSegment>[];
 
@@ -218,5 +206,4 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
 
     return objects;
   }
-
 }
