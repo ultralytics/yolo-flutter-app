@@ -4,6 +4,9 @@ package com.ultralytics.ultralytics_yolo;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.util.Size;
 
 import androidx.camera.core.AspectRatio;
@@ -11,6 +14,7 @@ import androidx.camera.core.Camera;
 import androidx.camera.core.CameraControl;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
@@ -20,10 +24,15 @@ import androidx.lifecycle.LifecycleOwner;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.ultralytics.ultralytics_yolo.predict.Predictor;
 
+import java.io.ByteArrayOutputStream;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 
 public class CameraPreview {
@@ -36,6 +45,8 @@ public class CameraPreview {
     private PreviewView mPreviewView;
     private boolean busy = false;
     private boolean deferredProcessing = false;
+    private boolean shouldCaptureFrame = false;
+    BlockingQueue<byte[]> capturedFrameQueue = new LinkedBlockingQueue<>();
 
     public CameraPreview(Context context) {
         this.context = context;
@@ -93,6 +104,17 @@ public class CameraPreview {
                     executorService.submit(() -> {
                         try {
                             predictor.predict(imageProxy, isMirrored);
+
+                            if (shouldCaptureFrame) {
+                                shouldCaptureFrame = false;
+
+                                try {
+                                    final byte[] data = toCapturedFrameData(imageProxy);
+                                    capturedFrameQueue.put(data);
+                                } catch (InterruptedException ex) {
+                                    ex.printStackTrace();
+                                }
+                            }
                         } catch (Exception e) {
                           e.printStackTrace();
                         } finally {
@@ -106,6 +128,18 @@ public class CameraPreview {
             } else {
                 imageAnalysis.setAnalyzer(Runnable::run, imageProxy -> {
                     predictor.predict(imageProxy, isMirrored);
+
+                    if (shouldCaptureFrame) {
+                        shouldCaptureFrame = false;
+
+                        try {
+                            final byte[] data = toCapturedFrameData(imageProxy);
+                            capturedFrameQueue.put(data);
+                        } catch (InterruptedException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+
                     //clear stream for next image
                     imageProxy.close();
                 });
@@ -138,5 +172,43 @@ public class CameraPreview {
 
     public void setScaleFactor(double factor) {
         cameraControl.setZoomRatio((float)factor);
+    }
+
+    public CompletableFuture<byte[]> requestCaptureVideo(int timeoutSec) {
+        this.shouldCaptureFrame = true;
+
+        CompletableFuture<byte[]> future = new CompletableFuture<>();
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                final byte[] captured = capturedFrameQueue.poll(timeoutSec, TimeUnit.SECONDS);
+                if (captured != null) {
+                    future.complete(captured);
+                } else {
+                    future.completeExceptionally(new Error("Buffer is null"));
+                }
+            } catch (InterruptedException e) {
+                future.completeExceptionally(e);
+            }
+        });
+
+        return future;
+    }
+
+    private byte[] toCapturedFrameData(ImageProxy imageProxy) {
+        Bitmap bitmap = ImageUtils.toBitmap(imageProxy);
+
+        final Bitmap outputBitmap = Bitmap.createBitmap(bitmap.getHeight(), bitmap.getWidth(), Bitmap.Config.ARGB_8888);
+        final Matrix transformationMatrix = ImageUtils.getTransformationMatrix(bitmap.getWidth(), bitmap.getHeight(),
+                bitmap.getHeight(), bitmap.getWidth(),
+                90, false);
+
+        Canvas canvas = new Canvas(outputBitmap);
+        canvas.drawBitmap(bitmap, transformationMatrix, null);
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        outputBitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+
+        return outputStream.toByteArray();
     }
 }
