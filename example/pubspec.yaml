@@ -25,6 +25,7 @@ dependencies:
   path: ^1.9.0
   path_provider: ^2.1.4
   permission_handler: ^11.3.1
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -50,6 +51,8 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
+    - assets/metaxy.yaml
+    - assets/yolo11n-seg_float16.tflite
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

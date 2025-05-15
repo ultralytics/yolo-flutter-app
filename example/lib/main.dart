@@ -9,9 +9,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import 'package:ultralytics_yolo/yolo_model.dart';
+import 'package:ultralytics_yolo_example/image_picker.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const ImagePickerScreen());
 }
 
 class MyApp extends StatefulWidget {
@@ -23,6 +25,13 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final controller = UltralyticsYoloCameraController();
+  @override
+  initState() {
+    super.initState();
+    _initSegmentDetectorWithLocalModel();
+    // _initObjectClassifierWithLocalModel();
+    // _initImageClassifierWithLocalModel();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +41,7 @@ class _MyAppState extends State<MyApp> {
           future: _checkPermissions(),
           builder: (context, snapshot) {
             final allPermissionsGranted = snapshot.data ?? false;
-
+            print(allPermissionsGranted);
             return !allPermissionsGranted
                 ? const Center(child: Text("Error requesting permissions"))
                 : FutureBuilder<ObjectDetector>(
@@ -123,56 +132,73 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
-  Future<ObjectDetector> _initObjectDetectorWithLocalModel() async {
-    // FOR IOS
-    final modelPath = await _copy('assets/yolov8n.mlmodel');
+  // Future<ObjectDetector> _initObjectDetectorWithLocalModel() async {
+  //   //   // FOR IOS
+  //   //   final modelPath = await _copy('assets/yolov8n.mlmodel');
+  //   //   final model = LocalYoloModel(
+  //   //     id: '',
+  //   //     task: Task.detect,
+  //   //     format: Format.coreml,
+  //   //     modelPath: modelPath,
+  //   //   );
+  //   // FOR ANDROID
+  //   final modelPath = await _copy('assets/yolov8n_int8.tflite');
+  //   final metadataPath = await _copy('assets/obj.yaml');
+  //   final model = LocalYoloModel(
+  //     id: '',
+  //     task: Task.detect,
+  //     format: Format.tflite,
+  //     modelPath: modelPath,
+  //     metadataPath: metadataPath,
+  //   );
+
+  //   return ObjectDetector(model: model);
+  // }
+
+  Future<SegmentDetector> _initSegmentDetectorWithLocalModel() async {
+    final modelPath = await _copy('assets/yolo11n-seg_float16.tflite');
+    final metadataPath = await _copy('assets/metaxy.yaml');
+    print("here lkanfbknaob");
+    print(metadataPath);
     final model = LocalYoloModel(
       id: '',
-      task: Task.detect,
-      format: Format.coreml,
+      task: Task.segment,
+      format: Format.tflite,
       modelPath: modelPath,
-    );
-    // FOR ANDROID
-    // final modelPath = await _copy('assets/yolov8n_int8.tflite');
-    // final metadataPath = await _copy('assets/metadata.yaml');
-    // final model = LocalYoloModel(
-    //   id: '',
-    //   task: Task.detect,
-    //   format: Format.tflite,
-    //   modelPath: modelPath,
-    //   metadataPath: metadataPath,
-    // );
-
-    return ObjectDetector(model: model);
-  }
-
-  Future<ImageClassifier> _initImageClassifierWithLocalModel() async {
-    final modelPath = await _copy('assets/yolov8n-cls.mlmodel');
-    final model = LocalYoloModel(
-      id: '',
-      task: Task.classify,
-      format: Format.coreml,
-      modelPath: modelPath,
+      metadataPath: metadataPath,
     );
 
-    // final modelPath = await _copy('assets/yolov8n-cls.bin');
-    // final paramPath = await _copy('assets/yolov8n-cls.param');
-    // final metadataPath = await _copy('assets/metadata-cls.yaml');
-    // final model = LocalYoloModel(
-    //   id: '',
-    //   task: Task.classify,
-    //   modelPath: modelPath,
-    //   paramPath: paramPath,
-    //   metadataPath: metadataPath,
-    // );
-
-    return ImageClassifier(model: model);
+    return SegmentDetector(model: model);
   }
+
+  // Future<ImageClassifier> _initImageClassifierWithLocalModel() async {
+  //   final modelPath = await _copy('assets/yolov8n-cls.mlmodel');
+  //   final model = LocalYoloModel(
+  //     id: '',
+  //     task: Task.classify,
+  //     format: Format.coreml,
+  //     modelPath: modelPath,
+  //   );
+
+  //   // final modelPath = await _copy('assets/yolov8n-cls.bin');
+  //   // final paramPath = await _copy('assets/yolov8n-cls.param');
+  //   // final metadataPath = await _copy('assets/metadata-cls.yaml');
+  //   // final model = LocalYoloModel(
+  //   //   id: '',
+  //   //   task: Task.classify,
+  //   //   modelPath: modelPath,
+  //   //   paramPath: paramPath,
+  //   //   metadataPath: metadataPath,
+  //   // );
+
+  //   return ImageClassifier(model: model);
+  // }
 
   Future<String> _copy(String assetPath) async {
     final path = '${(await getApplicationSupportDirectory()).path}/$assetPath';
     await io.Directory(dirname(path)).create(recursive: true);
     final file = io.File(path);
+    print(assetPath);
     if (!await file.exists()) {
       final byteData = await rootBundle.load(assetPath);
       await file.writeAsBytes(

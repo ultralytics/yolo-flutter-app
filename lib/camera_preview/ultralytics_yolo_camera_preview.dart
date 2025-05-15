@@ -127,6 +127,26 @@ class _UltralyticsYoloCameraPreviewState
                       );
                     },
                   );
+                case SegmentDetector:
+                  return StreamBuilder(
+                    stream: (widget.predictor! as SegmentDetector)
+                        .detectionResultStream,
+                    builder: (
+                      BuildContext context,
+                      AsyncSnapshot<List<DetectedSegment?>?> snapshot,
+                    ) {
+                      if (snapshot.data == null) return Container();
+
+                      return CustomPaint(
+                        painter: SegmentDetectorPainter(
+                          results: snapshot.data! as List<DetectedSegment>,
+                          imageSize: const Size(720, 480),
+                          maskColor: Colors.red,
+                          displayWidth: MediaQuery.sizeOf(context).width,
+                        ),
+                      );
+                    },
+                  );
                 case ImageClassifier:
                   return widget.classificationOverlay ??
                       StreamBuilder(
