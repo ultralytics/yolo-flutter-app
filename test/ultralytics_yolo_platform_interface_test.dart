@@ -19,25 +19,25 @@ void main() {
       // Set up method channel mock
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        debugPrint('Method called: ${methodCall.method}');
-        debugPrint('Arguments: ${methodCall.arguments}');
+            debugPrint('Method called: ${methodCall.method}');
+            debugPrint('Arguments: ${methodCall.arguments}');
 
-        if (methodCall.method == 'loadModel') {
-          final args = methodCall.arguments as Map<dynamic, dynamic>;
-          final modelData = args['model'] as Map<dynamic, dynamic>;
+            if (methodCall.method == 'loadModel') {
+              final args = methodCall.arguments as Map<dynamic, dynamic>;
+              final modelData = args['model'] as Map<dynamic, dynamic>;
 
-          // Return null for invalid model
-          if (modelData.containsKey('invalid')) {
-            debugPrint('Returning null for invalid model');
+              // Return null for invalid model
+              if (modelData.containsKey('invalid')) {
+                debugPrint('Returning null for invalid model');
+                return null;
+              }
+
+              // Return success for valid model
+              debugPrint('Returning success for valid model');
+              return 'success';
+            }
             return null;
-          }
-
-          // Return success for valid model
-          debugPrint('Returning success for valid model');
-          return 'success';
-        }
-        return null;
-      });
+          });
     });
 
     tearDown(() {
