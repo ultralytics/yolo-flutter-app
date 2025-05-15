@@ -23,7 +23,7 @@ jobs:
         run: dart format --output=none --set-exit-if-changed .
 
       - name: Analyze project source
-        run: flutter analyze
+        run: dart analyze
 
       - name: Run tests
         run: flutter test --coverage
