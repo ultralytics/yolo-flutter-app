@@ -7,8 +7,6 @@
 #ifndef ANDROID_ULTRALYTICS_H
 #define ANDROID_ULTRALYTICS_H
 
-#include <opencv2/core/core.hpp>
-
 struct DetectedObject {
     cv::Rect_<float> rect;
     int index;
