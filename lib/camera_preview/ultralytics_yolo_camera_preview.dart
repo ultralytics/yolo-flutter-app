@@ -75,6 +75,8 @@ class _UltralyticsYoloCameraPreviewState
               final creationParams = <String, dynamic>{
                 'lensDirection': widget.controller.value.lensDirection,
                 'format': widget.predictor?.model.format.name,
+                'deferredProcessing':
+                    widget.controller.value.deferredProcessing,
               };
 
               switch (defaultTargetPlatform) {

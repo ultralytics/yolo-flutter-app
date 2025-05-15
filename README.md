@@ -179,10 +179,9 @@ await imageClassifier.loadModel();
 Use the `UltralyticsYoloCameraPreview` [widget](https://api.flutter.dev/flutter/widgets/Widget-class.html) to display the live camera feed and overlay prediction results.
 
 ```dart
-// Create a camera controller
-final _controller = UltralyticsYoloCameraController();
-
-// Add the preview widget to your UI
+final _controller = UltralyticsYoloCameraController(
+  deferredProcessing: true, // deferred processing for better performance of android (Android only, default: false)
+);
 UltralyticsYoloCameraPreview(
   predictor: objectDetector, // Pass your initialized predictor (ObjectDetector or ImageClassifier)
   controller: _controller, // Pass the camera controller
