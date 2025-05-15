@@ -129,8 +129,9 @@ class _UltralyticsYoloCameraPreviewState
                   );
                 case SegmentDetector:
                   return StreamBuilder(
-                    stream: (widget.predictor! as SegmentDetector)
-                        .detectionResultStream,
+                    stream:
+                        (widget.predictor! as SegmentDetector)
+                            .detectionResultStream,
                     builder: (
                       BuildContext context,
                       AsyncSnapshot<List<DetectedSegment?>?> snapshot,

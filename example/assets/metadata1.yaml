@@ -1,8 +1,5 @@
-description: Ultralytics YOLO11n-seg model trained on /content/Denim-Jeans-Pockets-1/data.yaml
-author: Ultralytics
-date: "2025-04-18T06:59:26.016884"
-version: 8.3.111
-license: AGPL-3.0 License (https://ultralytics.com/license)
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 docs: https://docs.ultralytics.com
 stride: 32
 task: segment
