@@ -27,11 +27,12 @@ class UltralyticsYoloCameraValue {
     int? lensDirection,
     double? strokeWidth,
     bool? deferredProcessing,
-  }) => UltralyticsYoloCameraValue(
-    lensDirection: lensDirection ?? this.lensDirection,
-    strokeWidth: strokeWidth ?? this.strokeWidth,
-    deferredProcessing: deferredProcessing ?? this.deferredProcessing,
-  );
+  }) =>
+      UltralyticsYoloCameraValue(
+        lensDirection: lensDirection ?? this.lensDirection,
+        strokeWidth: strokeWidth ?? this.strokeWidth,
+        deferredProcessing: deferredProcessing ?? this.deferredProcessing,
+      );
 }
 
 /// ValueNotifier that holds the state of the camera
@@ -39,13 +40,13 @@ class UltralyticsYoloCameraController
     extends ValueNotifier<UltralyticsYoloCameraValue> {
   /// Constructor to create an instance of [UltralyticsYoloCameraController]
   UltralyticsYoloCameraController({bool deferredProcessing = false})
-    : super(
-        UltralyticsYoloCameraValue(
-          lensDirection: 1,
-          strokeWidth: 2.5,
-          deferredProcessing: deferredProcessing,
-        ),
-      );
+      : super(
+          UltralyticsYoloCameraValue(
+            lensDirection: 1,
+            strokeWidth: 2.5,
+            deferredProcessing: deferredProcessing,
+          ),
+        );
 
   final _ultralyticsYoloPlatform = UltralyticsYoloPlatform.instance;
 
