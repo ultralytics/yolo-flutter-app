@@ -41,47 +41,46 @@ class _MyAppState extends State<MyApp> {
           future: _checkPermissions(),
           builder: (context, snapshot) {
             final allPermissionsGranted = snapshot.data ?? false;
-            print(allPermissionsGranted);
             return !allPermissionsGranted
                 ? const Center(child: Text("Error requesting permissions"))
                 : FutureBuilder<ObjectDetector>(
-                  future: _initObjectDetectorWithLocalModel(),
-                  builder: (context, snapshot) {
-                    final predictor = snapshot.data;
+                    future: _initObjectDetectorWithLocalModel(),
+                    builder: (context, snapshot) {
+                      final predictor = snapshot.data;
 
-                    return predictor == null
-                        ? Container()
-                        : Stack(
-                          children: [
-                            UltralyticsYoloCameraPreview(
-                              controller: controller,
-                              predictor: predictor,
-                              onCameraCreated: () {
-                                predictor.loadModel(useGpu: true);
-                              },
-                            ),
-                            StreamBuilder<double?>(
-                              stream: predictor.inferenceTime,
-                              builder: (context, snapshot) {
-                                final inferenceTime = snapshot.data;
-
-                                return StreamBuilder<double?>(
-                                  stream: predictor.fpsRate,
+                      return predictor == null
+                          ? Container()
+                          : Stack(
+                              children: [
+                                UltralyticsYoloCameraPreview(
+                                  controller: controller,
+                                  predictor: predictor,
+                                  onCameraCreated: () {
+                                    predictor.loadModel(useGpu: true);
+                                  },
+                                ),
+                                StreamBuilder<double?>(
+                                  stream: predictor.inferenceTime,
                                   builder: (context, snapshot) {
-                                    final fpsRate = snapshot.data;
+                                    final inferenceTime = snapshot.data;
 
-                                    return Times(
-                                      inferenceTime: inferenceTime,
-                                      fpsRate: fpsRate,
+                                    return StreamBuilder<double?>(
+                                      stream: predictor.fpsRate,
+                                      builder: (context, snapshot) {
+                                        final fpsRate = snapshot.data;
+
+                                        return Times(
+                                          inferenceTime: inferenceTime,
+                                          fpsRate: fpsRate,
+                                        );
+                                      },
                                     );
                                   },
-                                );
-                              },
-                            ),
-                          ],
-                        );
-                  },
-                );
+                                ),
+                              ],
+                            );
+                    },
+                  );
             // : FutureBuilder<ObjectClassifier>(
             //     future: _initObjectClassifierWithLocalModel(),
             //     builder: (context, snapshot) {
@@ -132,34 +131,33 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
-  // Future<ObjectDetector> _initObjectDetectorWithLocalModel() async {
-  //   //   // FOR IOS
-  //   //   final modelPath = await _copy('assets/yolov8n.mlmodel');
-  //   //   final model = LocalYoloModel(
-  //   //     id: '',
-  //   //     task: Task.detect,
-  //   //     format: Format.coreml,
-  //   //     modelPath: modelPath,
-  //   //   );
-  //   // FOR ANDROID
-  //   final modelPath = await _copy('assets/yolov8n_int8.tflite');
-  //   final metadataPath = await _copy('assets/obj.yaml');
-  //   final model = LocalYoloModel(
-  //     id: '',
-  //     task: Task.detect,
-  //     format: Format.tflite,
-  //     modelPath: modelPath,
-  //     metadataPath: metadataPath,
-  //   );
-
-  //   return ObjectDetector(model: model);
-  // }
+  Future<ObjectDetector> _initObjectDetectorWithLocalModel() async {
+    if (io.Platform.isIOS) {
+      final modelPath = await _copy('assets/yolov8n.mlmodel');
+      final model = LocalYoloModel(
+        id: '',
+        task: Task.detect,
+        format: Format.coreml,
+        modelPath: modelPath,
+      );
+      return ObjectDetector(model: model);
+    } else {
+      final modelPath = await _copy('assets/yolov8n_int8.tflite');
+      final metadataPath = await _copy('assets/obj.yaml');
+      final model = LocalYoloModel(
+        id: '',
+        task: Task.detect,
+        format: Format.tflite,
+        modelPath: modelPath,
+        metadataPath: metadataPath,
+      );
+      return ObjectDetector(model: model);
+    }
+  }
 
   Future<SegmentDetector> _initSegmentDetectorWithLocalModel() async {
     final modelPath = await _copy('assets/yolo11n-seg_float16.tflite');
     final metadataPath = await _copy('assets/metaxy.yaml');
-    print("here lkanfbknaob");
-    print(metadataPath);
     final model = LocalYoloModel(
       id: '',
       task: Task.segment,
@@ -198,7 +196,6 @@ class _MyAppState extends State<MyApp> {
     final path = '${(await getApplicationSupportDirectory()).path}/$assetPath';
     await io.Directory(dirname(path)).create(recursive: true);
     final file = io.File(path);
-    print(assetPath);
     if (!await file.exists()) {
       final byteData = await rootBundle.load(assetPath);
       await file.writeAsBytes(

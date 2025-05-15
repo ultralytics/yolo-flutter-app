@@ -19,28 +19,20 @@ class DetectedSegment {
     final polygonsList = <List<Offset>>[];
 
     if (polygonListDynamic != null) {
-      for (var polygonDynamic in polygonListDynamic) {
+      for (final polygonDynamic in polygonListDynamic) {
         if (polygonDynamic is List) {
           final polygon = <Offset>[];
-          for (var pointDynamic in polygonDynamic) {
+          for (final pointDynamic in polygonDynamic) {
             if (pointDynamic is Map) {
               final x = pointDynamic['x'];
               final y = pointDynamic['y'];
               if (x is num && y is num) {
                 polygon.add(Offset(x.toDouble(), y.toDouble()));
-              } else {
-                print(
-                  'Warning: Invalid point format in polygon: $pointDynamic',
-                );
-              }
-            } else {
-              print('Warning: Point is not a Map: $pointDynamic');
-            }
+              } else {}
+            } else {}
           }
           polygonsList.add(polygon);
-        } else {
-          print('Warning: Polygon is not a List: $polygonDynamic');
-        }
+        } else {}
       }
     }
 
@@ -70,6 +62,7 @@ class DetectedSegment {
   /// The label of the detection.
   final String label;
 
-  /// The segmentation mask polygons. Each list of Offset represents a single polygon.
+  /// The segmentation mask polygons. Each list of Offset represents
+  ///  a single polygon.
   final List<List<Offset>> polygons;
 }
