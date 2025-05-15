@@ -8,7 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.1.2'
+        classpath 'com.android.tools.build:gradle:8.3.0'
     }
 }
 
@@ -23,7 +23,9 @@ rootProject.allprojects {
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 33
+    compileSdkVersion 34
+
+    namespace "com.ultralytics.ultralytics_yolo"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -67,7 +69,7 @@ android {
         implementation 'org.tensorflow:tensorflow-lite-gpu:2.14.0'
         implementation 'org.tensorflow:tensorflow-lite-gpu-api:2.14.0'
 //        implementation 'org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.3'
-        implementation 'org.tensorflow:tensorflow-lite-select-tf-ops:2.11.0'
+        //implementation 'org.tensorflow:tensorflow-lite-select-tf-ops:2.11.0'
 
         // SnakeYAML
         implementation 'org.yaml:snakeyaml:1.29'

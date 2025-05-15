@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -93,9 +95,9 @@ class _UltralyticsYoloCameraPreviewState
                     creationParamsCodec: const StandardMessageCodec(),
                   );
                 case TargetPlatform.fuchsia ||
-                      TargetPlatform.linux ||
-                      TargetPlatform.windows ||
-                      TargetPlatform.macOS:
+                    TargetPlatform.linux ||
+                    TargetPlatform.windows ||
+                    TargetPlatform.macOS:
                   return Container();
               }
             }(),
@@ -109,8 +111,9 @@ class _UltralyticsYoloCameraPreviewState
               switch (widget.predictor.runtimeType) {
                 case ObjectDetector:
                   return StreamBuilder(
-                    stream: (widget.predictor! as ObjectDetector)
-                        .detectionResultStream,
+                    stream:
+                        (widget.predictor! as ObjectDetector)
+                            .detectionResultStream,
                     builder: (
                       BuildContext context,
                       AsyncSnapshot<List<DetectedObject?>?> snapshot,
@@ -129,8 +132,9 @@ class _UltralyticsYoloCameraPreviewState
                 case ImageClassifier:
                   return widget.classificationOverlay ??
                       StreamBuilder(
-                        stream: (widget.predictor! as ImageClassifier)
-                            .classificationResultStream,
+                        stream:
+                            (widget.predictor! as ImageClassifier)
+                                .classificationResultStream,
                         builder: (context, snapshot) {
                           final classificationResults = snapshot.data;
 
@@ -158,19 +162,23 @@ class _UltralyticsYoloCameraPreviewState
 
                   // Adjust the sensitivity for zoom out
                   if (newZoomFactor < _currentZoomFactor) {
-                    newZoomFactor = _currentZoomFactor -
+                    newZoomFactor =
+                        _currentZoomFactor -
                         (_zoomSensitivity *
                             (_currentZoomFactor - newZoomFactor));
                   } else {
-                    newZoomFactor = _currentZoomFactor +
+                    newZoomFactor =
+                        _currentZoomFactor +
                         (_zoomSensitivity *
                             (newZoomFactor - _currentZoomFactor));
                   }
 
                   // Limit the zoom factor to a range between
                   // _minZoomLevel and _maxZoomLevel
-                  final clampedZoomFactor =
-                      max(_minZoomLevel, min(_maxZoomLevel, newZoomFactor));
+                  final clampedZoomFactor = max(
+                    _minZoomLevel,
+                    min(_maxZoomLevel, newZoomFactor),
+                  );
 
                   // Update the zoom factor
                   _ultralyticsYoloPlatform.setZoomRatio(clampedZoomFactor);

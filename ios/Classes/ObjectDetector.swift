@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import Foundation
 import UIKit
 import Vision
@@ -256,9 +258,9 @@ public class ObjectDetector: Predictor {
             let prediction = results[i]
 
             var rect = prediction.boundingBox  // normalized xywh, origin lower left
-            print("rect: \(rect)")
 
             if screenRatio >= 1 {  // iPhone ratio = 1.218
+              // let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: -1)
               let offset = (1 - screenRatio) * (0.5 - rect.minX)
               let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: offset, y: -1)
               rect = rect.applying(transform)
@@ -271,7 +273,6 @@ public class ObjectDetector: Predictor {
             }
 
             rect = VNImageRectForNormalizedRect(rect, Int(screenWidth), Int(newHeight))
-            print("rect: \(rect)")
 
             // The labels array is a list of VNClassificationObservation objects,
             // with the highest scoring class first in the list.

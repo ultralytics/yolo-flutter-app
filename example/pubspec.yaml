@@ -1,3 +1,5 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 name: ultralytics_yolo_example
 description: Demonstrates how to use the ultralytics_yolo plugin.
 
@@ -20,9 +22,9 @@ dependencies:
 
   ultralytics_yolo:
     path: ../
-  path: ^1.8.2
-  path_provider: ^2.0.11
-  permission_handler: ^10.2.0
+  path: ^1.9.0
+  path_provider: ^2.1.4
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

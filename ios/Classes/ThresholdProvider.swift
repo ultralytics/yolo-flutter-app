@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 //  Copyright © 2018-2021 Ultralytics LLC. All rights reserved.
 //  Class providing custom thresholds for an object detection model.
 import CoreML

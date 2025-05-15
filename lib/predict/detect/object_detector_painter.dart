@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:math';
 import 'dart:ui' as ui;
 
@@ -20,9 +22,10 @@ class ObjectDetectorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final borderPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = _strokeWidth;
+    final borderPaint =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _strokeWidth;
     final colors = _colors ?? Colors.primaries;
 
     for (final detectedObject in _detectionResults) {
@@ -38,7 +41,9 @@ class ObjectDetectorPainter extends CustomPainter {
           right.isNaN ||
           bottom.isNaN ||
           width.isNaN ||
-          height.isNaN) return;
+          height.isNaN) {
+        return;
+      }
 
       final opacity = (detectedObject.confidence - 0.2) / (1.0 - 0.2) * 0.9;
 
@@ -52,26 +57,30 @@ class ObjectDetectorPainter extends CustomPainter {
           Rect.fromLTWH(left, top, width, height),
           const Radius.circular(8),
         ),
-        borderPaint..color = color.withOpacity(opacity),
+        borderPaint..color = color.withAlpha((opacity * 255).round()),
       );
 
       // Label
-      final builder = ui.ParagraphBuilder(
-        ui.ParagraphStyle(
-          textAlign: TextAlign.left,
-          fontSize: 16,
-          textDirection: TextDirection.ltr,
-        ),
-      )
-        ..pushStyle(
-          ui.TextStyle(
-            color: Colors.white,
-            background: Paint()..color = color.withOpacity(opacity),
-          ),
-        )
-        ..addText(' ${detectedObject.label} '
-            '${(detectedObject.confidence * 100).toStringAsFixed(1)}\n')
-        ..pop();
+      final builder =
+          ui.ParagraphBuilder(
+              ui.ParagraphStyle(
+                textAlign: TextAlign.left,
+                fontSize: 16,
+                textDirection: TextDirection.ltr,
+              ),
+            )
+            ..pushStyle(
+              ui.TextStyle(
+                color: Colors.white,
+                background:
+                    Paint()..color = color.withAlpha((opacity * 255).round()),
+              ),
+            )
+            ..addText(
+              ' ${detectedObject.label} '
+              '${(detectedObject.confidence * 100).toStringAsFixed(1)}\n',
+            )
+            ..pop();
       canvas.drawParagraph(
         builder.build()..layout(ui.ParagraphConstraints(width: right - left)),
         Offset(max(0, left), max(0, top)),

@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 package com.ultralytics.ultralytics_yolo.predict.detect;
 
 import static com.ultralytics.ultralytics_yolo.CameraPreview.CAMERA_PREVIEW_SIZE;
@@ -64,9 +66,7 @@ public class TfliteDetector extends Detector {
         super(context);
 
         pendingBitmapFrame = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.ARGB_8888);
-        transformationMatrix = ImageUtils.getTransformationMatrix(CAMERA_PREVIEW_SIZE.getWidth(), CAMERA_PREVIEW_SIZE.getHeight(),
-                INPUT_SIZE, INPUT_SIZE,
-                90, false);
+        transformationMatrix = new Matrix();
     }
 
     @Override
@@ -185,8 +185,33 @@ public class TfliteDetector extends Detector {
 
         Bitmap bitmap = ImageUtils.toBitmap(imageProxy);
         Canvas canvas = new Canvas(pendingBitmapFrame);
-        Matrix cropToFrameTransform = new Matrix();
-        transformationMatrix.invert(cropToFrameTransform);
+        
+        // Calculate transformation based on orientation and mirroring
+        transformationMatrix.reset();
+        
+        // Handle rotation based on image rotation
+        float rotation = imageProxy.getImageInfo().getRotationDegrees();
+        float centerX = INPUT_SIZE / 2f;
+        float centerY = INPUT_SIZE / 2f;
+        
+        transformationMatrix.postRotate(rotation, centerX, centerY);
+        
+        // Handle mirroring for front camera
+        if (isMirrored) {
+            transformationMatrix.postScale(-1, 1, centerX, centerY);
+        }
+        
+        // Scale the image to fit INPUT_SIZE
+        float scaleX = (float) INPUT_SIZE / bitmap.getWidth();
+        float scaleY = (float) INPUT_SIZE / bitmap.getHeight();
+        float scale = Math.max(scaleX, scaleY);
+        transformationMatrix.postScale(scale, scale, centerX, centerY);
+        
+        // Center the image
+        float dx = centerX - (bitmap.getWidth() * scale) / 2;
+        float dy = centerY - (bitmap.getHeight() * scale) / 2;
+        transformationMatrix.postTranslate(dx, dy);
+        
         canvas.drawBitmap(bitmap, transformationMatrix, null);
 
         handler.post(() -> {
@@ -194,6 +219,17 @@ public class TfliteDetector extends Detector {
 
             long start = System.currentTimeMillis();
             float[][] result = runInference();
+            
+            // If front camera, flip the x coordinates of the bounding boxes
+            if (isMirrored) {
+                for (float[] detection : result) {
+                    if (detection != null && detection.length >= 4) {
+                        // Flip x coordinate
+                        detection[0] = 1.0f - detection[0];
+                    }
+                }
+            }
+            
             long end = System.currentTimeMillis();
 
             // Increment frame count
