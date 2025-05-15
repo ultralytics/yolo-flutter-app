@@ -21,21 +21,6 @@ jobs:
   actions:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.29.3"
-          channel: "stable"
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Format Dart code
-        run: |
-          dart format --line-length=80 --set-exit-if-changed .
-
       - name: Run Ultralytics Actions
         uses: ultralytics/actions@main
         with:
