@@ -103,17 +103,19 @@ void main() {
       });
 
       group('Classification Operations', () {
-        test('should throw UnimplementedError for classification operations',
-            () {
-          expect(
-            () => dummy.classificationResultStream,
-            throwsA(isA<UnimplementedError>()),
-          );
-          expect(
-            () => dummy.classifyImage(''),
-            throwsA(isA<UnimplementedError>()),
-          );
-        });
+        test(
+          'should throw UnimplementedError for classification operations',
+          () {
+            expect(
+              () => dummy.classificationResultStream,
+              throwsA(isA<UnimplementedError>()),
+            );
+            expect(
+              () => dummy.classifyImage(''),
+              throwsA(isA<UnimplementedError>()),
+            );
+          },
+        );
       });
 
       group('Performance Metrics', () {
