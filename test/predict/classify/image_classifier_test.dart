@@ -36,23 +36,30 @@ void main() {
         ClassificationResult(label: 'cat', confidence: 0.9, index: 0),
         ClassificationResult(label: 'dog', confidence: 0.8, index: 1),
       ];
-      mockPlatform._stream = Stream.value(mockResults);
-      mockPlatform._classifyImage = (imagePath) async => mockResults;
+      mockPlatform
+        .._stream = Stream.value(mockResults)
+        .._classifyImage = (imagePath) async => mockResults;
       UltralyticsYoloPlatform.instance = mockPlatform;
       classifier = ImageClassifier(model: mockModel);
     });
 
-    test('can be constructed', () {
-      expect(classifier, isA<ImageClassifier>());
+    group('Construction', () {
+      test('should create instance with valid model', () {
+        expect(classifier, isA<ImageClassifier>());
+      });
     });
 
-    test('classificationResultStream proxies to platform', () {
-      expect(classifier.classificationResultStream, emits(mockResults));
+    group('Streams', () {
+      test('should emit classification results from platform stream', () {
+        expect(classifier.classificationResultStream, emits(mockResults));
+      });
     });
 
-    test('classify calls platform method', () async {
-      final result = await classifier.classify(imagePath: 'test.jpg');
-      expect(result, mockResults);
+    group('Classification', () {
+      test('should classify image and return results', () async {
+        final result = await classifier.classify(imagePath: 'test.jpg');
+        expect(result, mockResults);
+      });
     });
   });
 }
