@@ -43,51 +43,51 @@ class _MyAppState extends State<MyApp> {
             return !allPermissionsGranted
                 ? const Center(child: Text("Error requesting permissions"))
                 : _isCameraMode
-                ? FutureBuilder<ObjectDetector>(
-                  future: _initObjectDetectorWithLocalModel(),
-                  builder: (context, snapshot) {
-                    final predictor = snapshot.data;
+                    ? FutureBuilder<ObjectDetector>(
+                        future: _initObjectDetectorWithLocalModel(),
+                        builder: (context, snapshot) {
+                          final predictor = snapshot.data;
 
-                    return predictor == null
-                        ? Container()
-                        : Stack(
-                          children: [
-                            UltralyticsYoloCameraPreview(
-                              controller: controller,
-                              predictor: predictor,
-                              onCameraCreated: () {
-                                predictor.loadModel(useGpu: true);
-                              },
-                            ),
-                            StreamBuilder<double?>(
-                              stream: predictor.inferenceTime,
-                              builder: (context, snapshot) {
-                                final inferenceTime = snapshot.data;
+                          return predictor == null
+                              ? Container()
+                              : Stack(
+                                  children: [
+                                    UltralyticsYoloCameraPreview(
+                                      controller: controller,
+                                      predictor: predictor,
+                                      onCameraCreated: () {
+                                        predictor.loadModel(useGpu: true);
+                                      },
+                                    ),
+                                    StreamBuilder<double?>(
+                                      stream: predictor.inferenceTime,
+                                      builder: (context, snapshot) {
+                                        final inferenceTime = snapshot.data;
 
-                                return StreamBuilder<double?>(
-                                  stream: predictor.fpsRate,
-                                  builder: (context, snapshot) {
-                                    final fpsRate = snapshot.data;
+                                        return StreamBuilder<double?>(
+                                          stream: predictor.fpsRate,
+                                          builder: (context, snapshot) {
+                                            final fpsRate = snapshot.data;
 
-                                    return Times(
-                                      inferenceTime: inferenceTime,
-                                      fpsRate: fpsRate,
-                                    );
-                                  },
+                                            return Times(
+                                              inferenceTime: inferenceTime,
+                                              fpsRate: fpsRate,
+                                            );
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ],
                                 );
-                              },
-                            ),
-                          ],
-                        );
-                  },
-                )
-                : const Center(
-                  child: Text(
-                    'Image Picker feature is not supported yet.\nComing soon!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
-                  ),
-                );
+                        },
+                      )
+                    : const Center(
+                        child: Text(
+                          'Image Picker feature is not supported yet.\nComing soon!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      );
           },
         ),
         floatingActionButton: Row(
