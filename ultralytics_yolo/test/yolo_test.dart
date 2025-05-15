@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 // dart:typed_data is already imported via flutter/services.dart
 
 import 'package:flutter_test/flutter_test.dart';
@@ -7,10 +9,7 @@ import 'package:ultralytics_yolo/yolo_method_channel.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:flutter/services.dart';
 
-class MockYoloPlatform
-    with MockPlatformInterfaceMixin
-    implements YoloPlatform {
-
+class MockYoloPlatform with MockPlatformInterfaceMixin implements YoloPlatform {
   @override
   Future<String?> getPlatformVersion() => Future.value('42');
 }
@@ -24,36 +23,35 @@ void main() {
 
   setUp(() {
     // Configure mock response for the channel
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      channel,
-      (MethodCall methodCall) async {
-        log.add(methodCall);
-        
-        if (methodCall.method == 'loadModel') {
-          return true;
-        } else if (methodCall.method == 'predictSingleImage') {
-          // Return mock detection result
-          return {
-            'boxes': [
-              {
-                'class': 'person',
-                'confidence': 0.95,
-                'x': 10,
-                'y': 10,
-                'width': 100,
-                'height': 200,
-              }
-            ],
-            'annotatedImage': Uint8List.fromList(List.filled(100, 0)),
-          };
-        }
-        return null;
-      },
-    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+
+          if (methodCall.method == 'loadModel') {
+            return true;
+          } else if (methodCall.method == 'predictSingleImage') {
+            // Return mock detection result
+            return {
+              'boxes': [
+                {
+                  'class': 'person',
+                  'confidence': 0.95,
+                  'x': 10,
+                  'y': 10,
+                  'width': 100,
+                  'height': 200,
+                },
+              ],
+              'annotatedImage': Uint8List.fromList(List.filled(100, 0)),
+            };
+          }
+          return null;
+        });
   });
 
   tearDown(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
     log.clear();
   });
 
@@ -71,13 +69,13 @@ void main() {
         modelPath: 'test_model.tflite',
         task: YOLOTask.detect,
       );
-      
+
       // Execute the loadModel method
       final result = await testYolo.loadModel();
-      
+
       // Verify result
       expect(result, isTrue);
-      
+
       // Verify the correct method was called with proper parameters
       expect(log, hasLength(1));
       expect(log[0].method, 'loadModel');
@@ -93,13 +91,13 @@ void main() {
         modelPath: 'test_model.tflite',
         task: YOLOTask.detect,
       );
-      
+
       // Create a dummy image
       final Uint8List dummyImage = Uint8List.fromList(List.filled(100, 0));
-      
+
       // Execute predict method
       final result = await testYolo.predict(dummyImage);
-      
+
       // Verify result
       expect(result, isA<Map<String, dynamic>>());
       expect(result.containsKey('boxes'), isTrue);
@@ -107,7 +105,7 @@ void main() {
       expect(result['boxes'].length, 1);
       expect(result['boxes'][0]['class'], 'person');
       expect(result['boxes'][0]['confidence'], 0.95);
-      
+
       // Verify the correct method was called with proper parameters
       expect(log, hasLength(1));
       expect(log[0].method, 'predictSingleImage');
@@ -123,7 +121,7 @@ void main() {
       expect(YOLOTask.pose.toString(), contains('pose'));
       expect(YOLOTask.obb.toString(), contains('obb'));
     });
-    
+
     test('All task types have a valid name', () {
       expect(YOLOTask.detect.name, equals('detect'));
       expect(YOLOTask.segment.name, equals('segment'));

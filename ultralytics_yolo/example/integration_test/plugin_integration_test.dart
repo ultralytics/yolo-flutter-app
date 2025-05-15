@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 // This is a basic Flutter integration test.
 //
 // Since integration tests run in a full Flutter application, they can interact
@@ -5,7 +7,6 @@
 //
 // For more information about Flutter integration tests, please see
 // https://flutter.dev/to/integration-testing
-
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -22,13 +23,13 @@ void main() {
       modelPath: 'assets/models/yolo11n.tflite',
       task: YOLOTask.detect,
     );
-    
+
     // Check that YOLO instance was created successfully
     expect(yolo, isNotNull);
     expect(yolo.modelPath, 'assets/models/yolo11n.tflite');
     expect(yolo.task, YOLOTask.detect);
   });
-  
+
   testWidgets('getPlatformVersion test', (WidgetTester tester) async {
     final String? version = await YoloPlatform.instance.getPlatformVersion();
     // The version string depends on the host platform running the test, so

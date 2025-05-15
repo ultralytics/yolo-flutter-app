@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 // example/lib/main.dart
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -15,10 +17,7 @@ class YoloExampleApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'Yolo Plugin Example',
-      home: HomeScreen(),
-    );
+    return const MaterialApp(title: 'Yolo Plugin Example', home: HomeScreen());
   }
 }
 
@@ -37,7 +36,9 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const CameraInferenceScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const CameraInferenceScreen(),
+                  ),
                 );
               },
               child: const Text('Camera Inference'),
@@ -47,7 +48,9 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const SingleImageScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const SingleImageScreen(),
+                  ),
                 );
               },
               child: const Text('Single Image Inference'),
@@ -71,49 +74,55 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   double _confidenceThreshold = 0.5;
   double _iouThreshold = 0.45;
   String _lastDetection = "";
-  
+
   // Method 1: Create a controller to interact with the YoloView
   final _yoloController = YoloViewController();
-  
+
   // Method 2: Create a GlobalKey to access the YoloView directly
   final _yoloViewKey = GlobalKey<YoloViewState>();
-  
+
   // Flag to toggle between using controller and direct key access
   // This is just for demonstration - normally you'd pick one approach
   bool _useController = true;
-  
+
   void _onDetectionResults(List<YOLOResult> results) {
     if (!mounted) return;
-    
+
     debugPrint('_onDetectionResults called with ${results.length} results');
-    
+
     // Print details of the first few detections for debugging
     for (var i = 0; i < results.length && i < 3; i++) {
       final r = results[i];
-      debugPrint('  Detection $i: ${r.className} (${(r.confidence * 100).toStringAsFixed(1)}%) at ${r.boundingBox}');
+      debugPrint(
+        '  Detection $i: ${r.className} (${(r.confidence * 100).toStringAsFixed(1)}%) at ${r.boundingBox}',
+      );
     }
-    
+
     // Make sure to actually update the state
     setState(() {
       _detectionCount = results.length;
       if (results.isNotEmpty) {
         // Get detection with highest confidence
-        final topDetection = results.reduce((a, b) => 
-          a.confidence > b.confidence ? a : b);
-        _lastDetection = "${topDetection.className} (${(topDetection.confidence * 100).toStringAsFixed(1)}%)";
-        
-        debugPrint('Updated state: count=$_detectionCount, top=$_lastDetection');
+        final topDetection = results.reduce(
+          (a, b) => a.confidence > b.confidence ? a : b,
+        );
+        _lastDetection =
+            "${topDetection.className} (${(topDetection.confidence * 100).toStringAsFixed(1)}%)";
+
+        debugPrint(
+          'Updated state: count=$_detectionCount, top=$_lastDetection',
+        );
       } else {
         _lastDetection = "None";
         debugPrint('Updated state: No detections');
       }
     });
   }
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Set initial thresholds via controller
     // We do this in a post-frame callback to ensure the view is initialized
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -145,7 +154,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           // This is just for demonstration purposes
           IconButton(
             icon: Icon(_useController ? Icons.gamepad : Icons.key),
-            tooltip: _useController ? 'Using Controller' : 'Using Direct Access',
+            tooltip:
+                _useController ? 'Using Controller' : 'Using Direct Access',
             onPressed: () {
               setState(() {
                 _useController = !_useController;
@@ -189,7 +199,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                         if (_useController) {
                           _yoloController.setConfidenceThreshold(value);
                         } else {
-                          _yoloViewKey.currentState?.setConfidenceThreshold(value);
+                          _yoloViewKey.currentState?.setConfidenceThreshold(
+                            value,
+                          );
                         }
                       });
                     },
@@ -288,15 +300,15 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       } else {
         _detections = [];
       }
-      
+
       // Check if annotated image exists
-      if (result.containsKey('annotatedImage') && 
+      if (result.containsKey('annotatedImage') &&
           result['annotatedImage'] is Uint8List) {
         _annotatedImage = result['annotatedImage'] as Uint8List;
       } else {
         _annotatedImage = null;
       }
-      
+
       _imageBytes = bytes;
     });
   }

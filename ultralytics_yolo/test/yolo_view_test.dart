@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 // These imports are needed for the widget implementation
 // import 'package:flutter/foundation.dart';
 // import 'package:flutter/material.dart';
@@ -13,7 +15,7 @@ void main() {
       modelPath: 'test_model.tflite',
       task: YOLOTask.segment,
     );
-    
+
     // Verify properties are correctly set
     expect(view.modelPath, equals('test_model.tflite'));
     expect(view.task, equals(YOLOTask.segment));
