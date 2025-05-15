@@ -3,6 +3,7 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:ultralytics_yolo/predict/classify/classification_result.dart';
 import 'package:ultralytics_yolo/predict/detect/detected_object.dart';
+import 'package:ultralytics_yolo/predict/segment/detected_segment.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo_platform_channel.dart';
 
 /// The interface that implementations of ultralytics_yolo must implement.
@@ -86,6 +87,16 @@ abstract class UltralyticsYoloPlatform extends PlatformInterface {
 
   /// Detect objects in the given [imagePath].
   Future<List<DetectedObject?>?> detectImage(String imagePath) {
+    throw UnimplementedError('detectImage has not been implemented.');
+  }
+
+  /// Stream of detected objects.
+  Stream<List<DetectedSegment?>?> get segmentResultStream {
+    throw UnimplementedError('detectionResultStream has not been implemented.');
+  }
+
+  /// Detect objects in the given [imagePath].
+  Future<List<DetectedSegment?>?> segmentImage(String imagePath) {
     throw UnimplementedError('detectImage has not been implemented.');
   }
 
