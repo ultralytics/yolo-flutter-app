@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
