@@ -154,13 +154,15 @@ class PlatformChannelUltralyticsYolo implements UltralyticsYoloPlatform {
     final objects = <ClassificationResult>[];
 
     result?.forEach((json) {
-      objects.add(
-        ClassificationResult.fromJson(Map<String, dynamic>.from(json! as Map)),
-      );
-
-      objects.add(
-        ClassificationResult.fromJson(Map<String, dynamic>.from(json! as Map)),
-      );
+      objects
+        ..add(
+          ClassificationResult.fromJson(
+            Map<String, dynamic>.from(json! as Map),
+          ),
+        )
+        ..add(
+          ClassificationResult.fromJson(Map<String, dynamic>.from(json as Map)),
+        );
     });
 
     return objects;

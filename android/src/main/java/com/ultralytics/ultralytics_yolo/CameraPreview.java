@@ -21,6 +21,9 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.ultralytics.ultralytics_yolo.predict.Predictor;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 public class CameraPreview {
@@ -32,14 +35,16 @@ public class CameraPreview {
     private Activity activity;
     private PreviewView mPreviewView;
     private boolean busy = false;
+    private boolean deferredProcessing = false;
 
     public CameraPreview(Context context) {
         this.context = context;
     }
 
-    public void openCamera(int facing, Activity activity, PreviewView mPreviewView) {
+    public void openCamera(int facing, Activity activity, PreviewView mPreviewView, boolean deferredProcessing) {
         this.activity = activity;
         this.mPreviewView = mPreviewView;
+        this.deferredProcessing = deferredProcessing;
 
         final ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(context);
         cameraProviderFuture.addListener(() -> {
@@ -57,6 +62,8 @@ public class CameraPreview {
         if (!busy) {
             busy = true;
 
+            final boolean isMirrored = (facing == CameraSelector.LENS_FACING_FRONT);
+
             Preview cameraPreview = new Preview.Builder()
                     .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                     .build();
@@ -67,15 +74,42 @@ public class CameraPreview {
 
             ImageAnalysis imageAnalysis =
                     new ImageAnalysis.Builder()
-                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .setBackpressureStrategy(deferredProcessing ? ImageAnalysis.STRATEGY_BLOCK_PRODUCER : ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                             .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                             .build();
-            imageAnalysis.setAnalyzer(Runnable::run, imageProxy -> {
-                predictor.predict(imageProxy, facing == CameraSelector.LENS_FACING_FRONT);
 
-                //clear stream for next image
-                imageProxy.close();
-            });
+            if (deferredProcessing) {
+                final ExecutorService executorService = Executors.newSingleThreadExecutor();
+                final AtomicBoolean isPredicting = new AtomicBoolean(false);
+
+                imageAnalysis.setAnalyzer(Runnable::run, imageProxy -> {
+                    if (isPredicting.get()) {
+                        imageProxy.close();
+                        return;
+                    }
+
+                    isPredicting.set(true);
+
+                    executorService.submit(() -> {
+                        try {
+                            predictor.predict(imageProxy, isMirrored);
+                        } catch (Exception e) {
+                          e.printStackTrace();
+                        } finally {
+                            //clear stream for next image
+                            imageProxy.close();
+
+                            isPredicting.set(false);
+                        }
+                    });
+                });
+            } else {
+                imageAnalysis.setAnalyzer(Runnable::run, imageProxy -> {
+                    predictor.predict(imageProxy, isMirrored);
+                    //clear stream for next image
+                    imageProxy.close();
+                });
+            }
 
             // Unbind use cases before rebinding
             cameraProvider.unbindAll();

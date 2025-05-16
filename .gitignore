@@ -35,3 +35,7 @@ coverage/
 *.lcov
 coverage.json
 coverage.xml
+
+# Python virtual environment
+yolo_env/
+yolov8n_saved_model/

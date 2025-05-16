@@ -9,6 +9,7 @@ class UltralyticsYoloCameraValue {
   UltralyticsYoloCameraValue({
     required this.lensDirection,
     required this.strokeWidth,
+    required this.deferredProcessing,
   });
 
   /// The direction of the camera lens
@@ -17,14 +18,19 @@ class UltralyticsYoloCameraValue {
   /// The width of the stroke used to draw the bounding boxes
   final double strokeWidth;
 
+  /// Whether the processing of the frames should be deferred (android only)
+  final bool deferredProcessing;
+
   /// Creates a copy of this [UltralyticsYoloCameraValue] but with
   /// the given fields
   UltralyticsYoloCameraValue copyWith({
     int? lensDirection,
     double? strokeWidth,
+    bool? deferredProcessing,
   }) => UltralyticsYoloCameraValue(
     lensDirection: lensDirection ?? this.lensDirection,
     strokeWidth: strokeWidth ?? this.strokeWidth,
+    deferredProcessing: deferredProcessing ?? this.deferredProcessing,
   );
 }
 
@@ -32,8 +38,14 @@ class UltralyticsYoloCameraValue {
 class UltralyticsYoloCameraController
     extends ValueNotifier<UltralyticsYoloCameraValue> {
   /// Constructor to create an instance of [UltralyticsYoloCameraController]
-  UltralyticsYoloCameraController()
-    : super(UltralyticsYoloCameraValue(lensDirection: 1, strokeWidth: 2.5));
+  UltralyticsYoloCameraController({bool deferredProcessing = false})
+    : super(
+        UltralyticsYoloCameraValue(
+          lensDirection: 1,
+          strokeWidth: 2.5,
+          deferredProcessing: deferredProcessing,
+        ),
+      );
 
   final _ultralyticsYoloPlatform = UltralyticsYoloPlatform.instance;
 
