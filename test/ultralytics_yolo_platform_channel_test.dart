@@ -68,7 +68,9 @@ void main() {
       final result = await platform.loadModel({
         'modelPath': 'test_model.tflite',
         'metadataPath': 'test_metadata.yaml',
-      }, useGpu: true);
+      }, 
+      useGpu: true,
+      );
 
       expect(log, hasLength(1));
       expect(log.first.method, equals('loadModel'));
