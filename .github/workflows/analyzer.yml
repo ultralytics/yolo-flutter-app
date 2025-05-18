@@ -15,8 +15,8 @@ jobs:
         with:
           sdk: stable
 
-      - name: Install dependencies
-        run: flutter pub get
+      #- name: Install dependencies
+      #  run: flutter pub get
 
       - name: Analyze project source
         run: dart analyze --fatal-warnings
