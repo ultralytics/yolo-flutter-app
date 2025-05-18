@@ -44,30 +44,30 @@ from ultralytics.utils.downloads import zip_directory
 
 
 def export_and_zip_yolo_models(
-   model_types=("", "-seg", "-cls", "-pose", "-obb"),
-   model_sizes=("n",),  #  optional additional sizes are "s", "m", "l", "x"
+    model_types=("", "-seg", "-cls", "-pose", "-obb"),
+    model_sizes=("n",),  #  optional additional sizes are "s", "m", "l", "x"
 ):
-   """Exports YOLO11 models to CoreML format and optionally zips the output packages."""
-   for model_type in model_types:
-       imgsz = [224, 224] if "cls" in model_type else [640, 384]  # default input image sizes
-       nms = True if model_type == "" else False  # only apply NMS to Detect models
-       for size in model_sizes:
-           model_name = f"yolo11{size}{model_type}"
-           model = YOLO(f"{model_name}.pt")           
-           
-           # iOS Export
-           model.export(format="coreml", int8=True, imgsz=imgsz, nms=nms)
-           zip_directory(f"{model_name}.mlpackage").rename(f"{model_name}.mlpackage.zip")
-            
-           # TFLite Export
-           model.export(format="tflite", int8=True, imgsz=[320, 320], nms=False)
+    """Exports YOLO11 models to CoreML format and optionally zips the output packages."""
+    for model_type in model_types:
+        imgsz = [224, 224] if "cls" in model_type else [640, 384]  # default input image sizes
+        nms = True if model_type == "" else False  # only apply NMS to Detect models
+        for size in model_sizes:
+            model_name = f"yolo11{size}{model_type}"
+            model = YOLO(f"{model_name}.pt")
+
+            # iOS Export
+            model.export(format="coreml", int8=True, imgsz=imgsz, nms=nms)
+            zip_directory(f"{model_name}.mlpackage").rename(f"{model_name}.mlpackage.zip")
+
+            # TFLite Export
+            model.export(format="tflite", int8=True, imgsz=[320, 320], nms=False)
+
 
 # Execute with default parameters
 export_and_zip_yolo_models()
 ```
 
 After running the commands, use the generated `*.tflite` and `*.mlpackage` files in your project.
-
 
 ### 🛠️ Installation
 
