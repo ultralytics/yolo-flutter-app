@@ -11,12 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          flutter-version: "3.29.3"
+          channel: "stable"
 
-      #- name: Install dependencies
-      #  run: flutter pub get
+      - name: Install dependencies
+        run: flutter pub get
 
       - name: Analyze project source
         run: dart analyze --fatal-warnings
