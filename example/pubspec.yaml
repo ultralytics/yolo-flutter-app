@@ -52,7 +52,7 @@ flutter:
   assets:
     - assets/
     - assets/metaxy.yaml
-    - assets/yolo11n-seg_int8.tflite
+  #   - assets/yolo11n-seg_int8.tflite
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
