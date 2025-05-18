@@ -32,51 +32,46 @@ This Ultralytics YOLO plugin is specifically designed for mobile platforms, targ
 
 #### Export Ultralytics YOLO Models
 
-Before integrating Ultralytics YOLO into your app, you must export the necessary models. The [export process](https://docs.ultralytics.com/modes/export/) generates `.tflite` (for Android) and `.mlmodel` (for iOS) files, which you'll include in your app. Use the Ultralytics YOLO Command Line Interface (CLI) for exporting.
+Before integrating Ultralytics YOLO into your app, you must export the necessary models. The [export process](https://docs.ultralytics.com/modes/export/) generates `.tflite` (for Android) and `.mlpackage` (for iOS) files, which you'll include in your app. Use the Ultralytics YOLO Command Line Interface (CLI) for exporting.
 
 > **IMPORTANT:** The parameters specified in the commands below are **mandatory**. This Flutter plugin currently only supports models exported using these exact commands. Using different parameters may cause the plugin to malfunction. We are actively working on expanding support for more models and parameters.
 
-Use the following commands to export the required models:
+Use the following commands to export the required YOLO models:
 
-<details>
-<summary><b>Android</b></summary>
+```python
+from ultralytics import YOLO
+from ultralytics.utils.downloads import zip_directory
 
-#### Detection
 
-Export the [YOLOv8n](https://docs.ultralytics.com/models/yolov8/) detection model:
+def export_and_zip_yolo_models(
+   model_types=("", "-seg", "-cls", "-pose", "-obb"),
+   model_sizes=("n",),  #  optional additional sizes are "s", "m", "l", "x"
+):
+   """Exports YOLO11 models to CoreML format and optionally zips the output packages."""
+   for model_type in model_types:
+       imgsz = [224, 224] if "cls" in model_type else [640, 384]  # default input image sizes
+       nms = True if model_type == "" else False  # only apply NMS to Detect models
+       for size in model_sizes:
+           model_name = f"yolo11{size}{model_type}"
+           model = YOLO(f"{model_name}.pt")           
+           
+           # iOS Export
+           model.export(format="coreml", int8=True, imgsz=imgsz, nms=nms)
+           zip_directory(f"{model_name}.mlpackage").rename(f"{model_name}.mlpackage.zip")
+            
+           # TFLite Export
+           model.export(format="tflite", int8=True, imgsz=[320, 320], nms=False)
 
-```bash
-yolo export format=tflite model=yolov8n imgsz=320 int8
+# Execute with default parameters
+export_and_zip_yolo_models()
 ```
 
-#### Classification
+After running the commands, use the generated `*.tflite` and `*.mlpackage` files in your project.
 
-Export the YOLOv8n-cls classification model:
-
-```bash
-yolo export format=tflite model=yolov8n-cls imgsz=320 int8
-```
-
-After running the commands, use the generated `yolov8n_int8.tflite` or `yolov8n-cls_int8.tflite` file in your Android project.
-
-</details>
-
-<details>
-<summary><b>iOS</b></summary>
-
-Export the [YOLOv8n](https://docs.ultralytics.com/models/yolov8/) detection model for iOS:
-
-```bash
-yolo export format=mlmodel model=yolov8n imgsz=[320, 192] half nms
-```
-
-Use the resulting `.mlmodel` file in your iOS project.
-
-</details>
 
 ### 🛠️ Installation
 
-After exporting the models, include the generated `.tflite` and `.mlmodel` files in your Flutter app's `assets` folder. Refer to the [Flutter documentation on adding assets](https://docs.flutter.dev/ui/assets/assets-and-images) for guidance.
+After exporting the models, include the generated `.tflite` and `.mlpackage` files in your Flutter app's `assets` folder. Refer to the [Flutter documentation on adding assets](https://docs.flutter.dev/ui/assets/assets-and-images) for guidance.
 
 #### Permissions
 
