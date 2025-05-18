@@ -114,27 +114,44 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<ObjectDetector> _initObjectDetectorWithLocalModel() async {
+    var model;
     if (io.Platform.isIOS) {
       final modelPath = await _copy('assets/yolov8n.mlmodel');
-      final model = LocalYoloModel(
+      model = LocalYoloModel(
         id: '',
         task: Task.detect,
         format: Format.coreml,
         modelPath: modelPath,
       );
-      return ObjectDetector(model: model);
-    } else {
+    }
+    if (io.Platform.isAndroid) {
       final modelPath = await _copy('assets/yolov8n_int8.tflite');
-      final metadataPath = await _copy('assets/obj.yaml');
-      final model = LocalYoloModel(
+      final metadataPath = await _copy('assets/metadata.yaml');
+      model = LocalYoloModel(
         id: '',
         task: Task.detect,
         format: Format.tflite,
         modelPath: modelPath,
         metadataPath: metadataPath,
       );
-      return ObjectDetector(model: model);
     }
+    return ObjectDetector(model: model);
+  }
+
+  Future<SegmentDetector> _initSegmentDetectorWithLocalModel() async {
+    final modelPath = await _copy('assets/yolo11n-seg_float16.tflite');
+    final metadataPath = await _copy('assets/metaxy.yaml');
+    print("here lkanfbknaob");
+    print(metadataPath);
+    final model = LocalYoloModel(
+      id: '',
+      task: Task.segment,
+      format: Format.tflite,
+      modelPath: modelPath,
+      metadataPath: metadataPath,
+    );
+
+    return SegmentDetector(model: model);
   }
 
   Future<String> _copy(String assetPath) async {
