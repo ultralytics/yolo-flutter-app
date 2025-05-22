@@ -61,9 +61,9 @@ flutter:
   assets:
     - assets/
     - assets/models/
-    - assets/models/yolo11n.mlmodel # Existing mlmodel
+#    - assets/models/yolo11n.mlmodel # Existing mlmodel
     # Asset for the zipped .mlpackage
-    - assets/models/yolo11n.mlpackage.zip # Using yolo11n for the test mlpackage
+#    - assets/models/yolo11n.mlpackage.zip  Using yolo11n for the test mlpackage
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
