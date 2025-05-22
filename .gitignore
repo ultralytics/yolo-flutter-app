@@ -36,9 +36,9 @@ build/
 **/windows/flutter/ephemeral/
 
 # Model files
-*.tflite
-*.mlmodel
-*.mlpackage
+**/*.tflite
+**/*.mlmodel
+**/*.mlpackage
 
 # Coverage
 coverage/

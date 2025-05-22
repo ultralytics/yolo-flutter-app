@@ -24,10 +24,10 @@ example/test/widget_test.dart
 example/
 hello_yolo/
 
-# Exclude example model files from .pubignore to ensure they are included in the published package
-!example/android/app/src/main/assets/yolo11n.tflite
-!example/assets/models/yolo11n.mlmodel
-!hello_yolo/android/app/src/main/assets/yolo11n.tflite
+# Model files (exclude all TFLite, MLPackage, and MLModel files)
+**/*.tflite
+**/*.mlpackage
+**/*.mlmodel
 
 # Development documents and notes
 CLAUDE.md
