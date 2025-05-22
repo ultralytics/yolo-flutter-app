@@ -138,6 +138,19 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
+          // Camera Switch Button
+          IconButton(
+            icon: const Icon(Icons.flip_camera_ios),
+            tooltip: 'Switch Camera',
+            onPressed: () {
+              if (_useController) {
+                _yoloController.switchCamera();
+              } else {
+                _yoloViewKey.currentState?.switchCamera();
+              }
+            },
+          ),
+          // Controller Toggle Button
           IconButton(
             icon: Icon(_useController ? Icons.gamepad : Icons.key),
             tooltip: _useController ? 'Using Controller' : 'Using Direct Access',
@@ -266,7 +279,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               child: YoloView(
                 key: _useController ? null : _yoloViewKey,
                 controller: _useController ? _yoloController : null,
-                modelPath: 'yolo11m-seg', // Default model for camera view
+                modelPath: 'yolo11n-seg', // Default model for camera view
                 task: YOLOTask.segment,
                 onResult: _onDetectionResults,
                 onPerformanceMetrics: (metrics) {

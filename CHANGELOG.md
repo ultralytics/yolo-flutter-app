@@ -1,3 +1,13 @@
+## 0.1.3
+
+*   Added camera switching functionality to toggle between front and back cameras.
+*   Added `switchCamera()` method to YoloViewController for programmatic camera switching.
+*   Added `switchCamera()` method to YoloViewState for GlobalKey-based camera switching.
+*   Updated sample app with camera switching button in the app bar.
+*   Updated README documentation with examples of camera switching functionality.
+*   Improved code coverage with additional unit tests.
+*   Updated codecov badge to show coverage percentage.
+
 ## 0.1.2
 
 *   Android: Fixed pose estimation keypoints not displaying correctly by properly implementing object pooling in PoseEstimator.kt.

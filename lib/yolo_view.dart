@@ -116,6 +116,32 @@ class YoloViewController {
     }
     return _applyThresholds();
   }
+  
+  /// Switches between front and back camera.
+  /// 
+  /// This method toggles the camera between front-facing and back-facing modes.
+  /// Returns a [Future] that completes when the camera has been switched.
+  /// 
+  /// Example:
+  /// ```dart
+  /// // Create a controller
+  /// final controller = YoloViewController();
+  /// 
+  /// // Switch between front and back camera
+  /// await controller.switchCamera();
+  /// ```
+  Future<void> switchCamera() async {
+    if (_methodChannel == null) {
+      debugPrint('YoloViewController: Warning - Cannot switch camera, view not yet created');
+      return;
+    }
+    try {
+      await _methodChannel!.invokeMethod('switchCamera');
+      debugPrint('YoloViewController: Camera switched successfully');
+    } catch (e) {
+      debugPrint('YoloViewController: Error switching camera: $e');
+    }
+  }
 }
 
 class YoloView extends StatefulWidget {
@@ -442,5 +468,14 @@ class YoloViewState extends State<YoloView> {
       iouThreshold: iouThreshold,
       numItemsThreshold: numItemsThreshold,
     );
+  }
+  
+  /// Switches between front and back camera.
+  /// 
+  /// This method toggles the camera between front-facing and back-facing modes.
+  /// It delegates to the effective controller's switchCamera method.
+  /// Returns a [Future] that completes when the camera has been switched.
+  Future<void> switchCamera() {
+    return _effectiveController.switchCamera();
   }
 }
