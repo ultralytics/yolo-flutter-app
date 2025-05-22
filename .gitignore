@@ -49,4 +49,5 @@ coverage.xml
 
 # Python virtual environment
 yolo_env/
-yolov8n_saved_model/
+yolov8n_saved_model/android/reference/build.gradle
+android/src/test/kotlin/com/ultralytics/yolo/
