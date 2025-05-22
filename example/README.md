@@ -1,55 +1,168 @@
-<a href="https://www.ultralytics.com/"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
-
 # Ultralytics YOLO Flutter Example App
 
-This example application demonstrates how to integrate and utilize the [`ultralytics_yolo`](https://github.com/ultralytics/yolo-flutter-app) Flutter plugin to run powerful [Ultralytics YOLO](https://docs.ultralytics.com/) models directly within your Flutter projects. It serves as a practical starting point for developers looking to incorporate state-of-the-art [object detection](https://www.ultralytics.com/glossary/object-detection), segmentation, or other vision AI tasks into their mobile applications.
+This example app demonstrates how to use the Ultralytics YOLO Flutter plugin (`ultralytics_yolo`) for various computer vision tasks such as object detection, segmentation, classification, pose estimation, and oriented bounding box detection.
 
-Explore the capabilities of running efficient [deep learning models](https://www.ultralytics.com/glossary/deep-learning-dl) on edge devices using Flutter and Ultralytics.
-
-## 🚀 Getting Started
-
-This project provides a basic implementation showcasing the core functionalities of the `ultralytics_yolo` plugin. If you're new to Flutter, these resources can help you get started:
-
-- **[Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab):** A guided tutorial for beginners.
-- **[Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook):** Practical examples for common Flutter tasks.
-- **[Flutter online documentation](https://docs.flutter.dev/):** Offers tutorials, samples, guidance on mobile development, and a full API reference.
+## Getting Started
 
 ### Prerequisites
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) installed on your machine.
-- An editor like [VS Code](https://code.visualstudio.com/) with the Flutter plugin or [Android Studio](https://developer.android.com/studio).
-- A physical device or emulator to run the app.
+- Flutter SDK installed and configured
+- An Android or iOS device/emulator
+- YOLO model files (included in the assets)
 
-### Running the Example
+### Installation
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/ultralytics/yolo-flutter-app.git
-    cd yolo-flutter-app/example
-    ```
-2.  **Install dependencies:**
-    ```bash
-    flutter pub get
-    ```
-3.  **Run the app:**
-    ```bash
-    flutter run
-    ```
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/ultralytics/yolo-flutter-app
+   cd yolo-flutter-app/example
+   ```
 
-This will launch the example application on your connected device or emulator. The app demonstrates loading an [Ultralytics YOLO model](https://docs.ultralytics.com/models/) (like [YOLOv8](https://docs.ultralytics.com/models/yolov8/) or [YOLO11](https://docs.ultralytics.com/models/yolo11/)) and performing inference on a sample image or live camera feed (depending on the example's implementation).
+2. Install dependencies:
+   ```bash
+   flutter pub get
+   ```
 
-## ✨ Features Demonstrated
+3. Run the app:
+   ```bash
+   flutter run
+   ```
 
-This example aims to illustrate:
+## Implementation Strategy
 
-- Initializing the `ultralytics_yolo` plugin.
-- Loading a YOLO model (potentially exported to an edge-compatible format like [TFLite](https://docs.ultralytics.com/integrations/tflite/)).
-- Running inference using the `predict` function. See the [Predict mode](https://docs.ultralytics.com/modes/predict/) documentation for more details.
-- Processing and displaying the detection, segmentation, or pose estimation results. Learn about different [Ultralytics Tasks](https://docs.ultralytics.com/tasks/).
-- Integrating with Flutter widgets for user interaction and display.
+This document outlines the step-by-step strategy for enhancing the example app to showcase all features of the YOLO Flutter plugin.
 
-For more advanced use cases and deployment strategies, refer to the [Model Deployment Options guide](https://docs.ultralytics.com/guides/model-deployment-options/).
+### Phase 1: Basic Structure and Object Detection
 
-## 🤝 Contributing
+1. **Create a task selection home screen**
+   - Card-based UI for selecting different YOLO tasks
+   - Add descriptive text and icons for each task
+   - Add navigation to task-specific screens
 
-Contributions are welcome! If you'd like to improve this example application or the underlying plugin, please feel free to fork the repository, make your changes, and submit a pull request. Check out our [Contributing Guide](https://docs.ultralytics.com/help/contributing/) for more details on how to get involved with Ultralytics projects. We appreciate your support in making Vision AI accessible to everyone.
+2. **Improve existing object detection**
+   - Enhance visualization of bounding boxes
+   - Add confidence score display
+   - Format detection results in a structured list view
+   - Add support for resizing and processing larger images
+
+3. **Add camera feed improvements**
+   - Implement camera resolution switching
+   - Add front/back camera toggle
+   - Add confidence threshold slider
+   - Improve real-time detection display
+
+### Phase 2: Additional YOLO Tasks
+
+4. **Implement segmentation screen**
+   - Create a dedicated screen for segmentation
+   - Visualize segmentation masks with adjustable opacity
+   - Display class and confidence information
+   - Support both camera feed and image picking
+
+5. **Implement classification screen**
+   - Create a dedicated screen for classification
+   - Show top-N classification results with confidence bars
+   - Support both camera feed and image picking
+
+6. **Implement pose estimation screen**
+   - Create a dedicated screen for pose estimation
+   - Visualize keypoints and skeleton connections
+   - Add different color schemes for multiple people detection
+   - Display confidence scores for each keypoint
+
+7. **Implement oriented bounding box screen**
+   - Create a dedicated screen for OBB detection
+   - Visualize rotated bounding boxes
+   - Display orientation angles and dimensions
+   - Support both camera feed and image picking
+
+### Phase 3: Settings and Optimizations
+
+8. **Add model settings screen**
+   - Create a model selection interface
+   - Bundle multiple pre-trained models
+   - Display model information (size, classes, speed)
+   - Allow confidence threshold adjustments globally
+
+9. **Implement error handling**
+   - Add user-friendly error messages for model loading failures
+   - Handle invalid inputs gracefully
+   - Add loading indicators during processing
+   - Implement process cancellation mechanism
+
+10. **Optimize performance**
+    - Implement image resizing for large inputs
+    - Add performance options for lower-end devices
+    - Optimize memory usage during inference
+    - Add performance metrics display (FPS, latency)
+
+### Phase 4: Documentation and Polish
+
+11. **Enhance in-app documentation**
+    - Add explanation screens for each YOLO task
+    - Include sample use cases for each feature
+    - Provide tooltips and help buttons
+
+12. **Visual polish**
+    - Consistent color scheme and typography
+    - Smooth transitions between screens
+    - Professional icons and graphics
+    - Responsive layout for different screen sizes
+
+13. **Enhance README documentation**
+    - Add screenshots and GIFs of the app in action
+    - Include code explanations and customization guides
+    - Document example app architecture
+    - Add troubleshooting section
+
+## Code Structure
+
+Currently, the example app has a simpler structure:
+
+```
+lib/
+├── main.dart               # App entry point with two demo screens:
+│   ├── CameraInferenceScreen - Real-time detection with device camera
+│   └── SingleImageScreen - Detection on images from gallery
+```
+
+The planned structure will include more sophisticated components as development continues:
+
+```
+lib/
+├── main.dart               # App entry point
+├── screens/
+│   ├── home_screen.dart    # Main task selection screen
+│   ├── detection_screen.dart
+│   ├── segmentation_screen.dart
+│   ├── classification_screen.dart
+│   ├── pose_screen.dart
+│   ├── obb_screen.dart
+│   └── settings_screen.dart
+├── widgets/
+│   ├── task_card.dart      # Card widget for task selection
+│   ├── result_list.dart    # List view for displaying results
+│   ├── camera_feed.dart    # Reusable camera feed widget
+│   └── visualization/      # Task-specific visualization widgets
+├── utils/
+│   ├── image_utils.dart    # Image processing utilities
+│   └── model_manager.dart  # Model loading and management
+└── models/
+    └── result_models.dart  # Structured models for results
+```
+
+## Feature Roadmap
+
+- [x] Basic object detection with camera
+- [x] Object detection with image picker
+- [ ] Segmentation visualization
+- [ ] Pose estimation visualization
+- [ ] Classification results display
+- [ ] Oriented bounding box visualization
+- [ ] Multiple model support
+- [ ] Performance optimization
+- [ ] UI polish and documentation
+
+## Contributing
+
+Contributions to improve the example app are welcome. Please feel free to submit pull requests or create issues for bugs or feature requests.

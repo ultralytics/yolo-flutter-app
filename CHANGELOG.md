@@ -1,0 +1,81 @@
+## 0.1.2
+
+*   Android: Fixed pose estimation keypoints not displaying correctly by properly implementing object pooling in PoseEstimator.kt.
+*   Android: Improved segmentation to work with all model classes, not just early ones like "person" and "car".
+*   Android: Enhanced model metadata loading to extract labels from model files with fallback to COCO dataset classes.
+*   Android: Fixed lifecycle management in YoloView.kt with proper onLifecycleOwnerAvailable implementation.
+*   Android: Made Box class fields mutable (var instead of val) to properly support object pooling.
+*   Performance: Various optimizations for faster inference and more reliable detection.
+
+## 0.1.0
+
+*   iOS: Implemented direct FPS (Frames Per Second) reporting to Flutter, similar to Android. Native-calculated FPS is now included in the data sent to Dart during real-time inference.
+*   Android: Fixed an issue where the camera preview would remain black by improving native lifecycle management and camera initialization timing. (Previously part of 0.0.9 prep)
+*   Android: Added detailed debug logs to `YoloPlatformView` initialization. (Previously part of 0.0.9 prep)
+*   `lib/yolo_view.dart`: Added debug logs for communication channel creation and improved null checks. (Previously part of 0.0.9 prep)
+*   `.pubignore`: Updated to optimize the content of the published package. (Previously part of 0.0.9 prep)
+*   General: Incorporated various improvements from previous development versions (including enhanced model path resolution and logging). (Previously part of 0.0.9 prep)
+## 0.0.9
+
+*   Android: Fixed an issue where the camera preview would remain black by improving native lifecycle management and camera initialization timing.
+*   Android: Added detailed debug logs to `YoloPlatformView` initialization for easier troubleshooting.
+*   `lib/yolo_view.dart`: Added debug logs for communication channel creation and improved null checks.
+*   `.pubignore`: Updated to optimize the content of the published package.
+*   General: Incorporated various improvements from previous development versions (including enhanced model path resolution and logging).
+## 0.0.7
+
+* Fix Android implementation for inference results not displaying or updating
+* Fix "Unresolved reference: setIoUThreshold" error by fixing method name casing
+* Add support for both "setIoUThreshold" and "setIouThreshold" method names for robustness
+* Enhance error handling and logging for event channel communication
+* Improve StreamHandler implementation for more reliable event dispatching
+* Add fallback mechanisms for when direct method calls fail
+* Fix reflection-based sink access for CustomStreamHandler
+* Add test message mechanism to verify event channel connection
+* Significantly increase logging for easier troubleshooting
+* Update documentation with clear guidance on model placement and path resolution
+* Recommend using model name only (without extension) for best cross-platform compatibility
+
+## 0.0.8
+
+* Fix iOS implementation for loading .mlmodel files from Flutter assets
+* Significantly improve model path resolution for different path formats
+* Add extensive logging to help debug model loading issues
+* Fix Flutter asset bundle path issues with nested directories
+
+## 0.0.7
+
+* Fix iOS implementation to properly load models from Flutter assets
+* Improve asset path resolution for paths like 'assets/models/yolo11n.mlmodel'
+* Fix syntax errors in YoloPlugin.swift
+
+## 0.0.6
+
+* Add iOS implementation for checkModelExists method
+* Add iOS implementation for getStoragePaths method
+* Fix cross-platform consistency for model path resolution
+
+## 0.0.5
+
+* Update README to match current implementation of YOLO class constructor
+* Fix documentation for threshold management in the API reference
+* Add optional controller-based approach for managing YoloView settings
+* Make onResult callback truly optional
+* Improve threshold controls with IoU threshold support
+* Update code documentation with detailed examples
+* Add support for direct YoloView state access via GlobalKey
+* Enhance error handling and debug logging
+* Translate Japanese comments to English
+
+## 0.0.4
+
+* Initial release
+* Object detection with YOLOv8 models
+* Segmentation support
+* Image classification support
+* Pose estimation support
+* Oriented Bounding Box (OBB) detection support
+* Android/iOS platform support
+* Real-time detection with camera feed
+* Customizable confidence threshold
+* YoloView Flutter widget implementation

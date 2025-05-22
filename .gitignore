@@ -10,6 +10,7 @@
 .svn/
 .cxx
 migrate_working_dir/
+LICENSE.txt
 
 # IntelliJ related
 *.iml
@@ -29,6 +30,15 @@ migrate_working_dir/
 .dart_tool/
 .packages
 build/
+
+# Plugin symlinks
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# Model files
+*.tflite
+*.mlmodel
+*.mlpackage
 
 # Coverage
 coverage/
