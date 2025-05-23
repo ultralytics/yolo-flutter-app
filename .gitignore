@@ -9,7 +9,9 @@
 .history
 .svn/
 .cxx
+.CLAUDE.md
 migrate_working_dir/
+LICENSE.txt
 
 # IntelliJ related
 *.iml
@@ -30,6 +32,15 @@ migrate_working_dir/
 .packages
 build/
 
+# Plugin symlinks
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# Model files
+**/*.tflite
+**/*.mlmodel
+**/*.mlpackage
+
 # Coverage
 coverage/
 *.lcov
@@ -38,4 +49,6 @@ coverage.xml
 
 # Python virtual environment
 yolo_env/
-yolov8n_saved_model/
+yolov8n_saved_model/android/reference/build.gradle
+android/src/test/kotlin/com/ultralytics/yolo/
+android/reference/build.gradle
