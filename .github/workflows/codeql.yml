@@ -42,18 +42,21 @@ jobs:
         channel: "stable"
         cache: true
 
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-and-quality
+
     - name: Install dependencies
       run: |
         flutter pub get
         cd example && flutter pub get
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: ${{ matrix.language }}
-
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v3
+    - name: Build Flutter plugin
+      run: |
+        cd example
+        flutter build apk --debug
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
