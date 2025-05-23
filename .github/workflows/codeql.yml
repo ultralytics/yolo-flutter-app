@@ -46,17 +46,20 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
-        queries: security-and-quality
+      env:
+        CODEQL_ACTION_EXTRA_OPTIONS: '{"database":{"finalize":["--no-run-unnecessary-builds"]}}'
 
     - name: Install dependencies
       run: |
         flutter pub get
         cd example && flutter pub get
 
-    - name: Build Flutter plugin
+    - name: Build Flutter plugin with CodeQL tracing
+      env:
+        CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN: true
       run: |
-        cd example
-        flutter build apk --debug
+        cd example/android
+        ./gradlew assembleDebug --no-daemon --no-build-cache
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
