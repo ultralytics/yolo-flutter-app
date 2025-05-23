@@ -46,7 +46,7 @@ analyzer:
     missing_return: warning
     todo: ignore
     avoid_print: warning
-    public_member_api_docs: warning
+    public_member_api_docs: info
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
