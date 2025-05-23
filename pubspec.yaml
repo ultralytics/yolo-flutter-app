@@ -18,10 +18,10 @@ dependencies:
   plugin_platform_interface: ^2.0.2
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
   coverage: 1.13.1
   flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
   mockito: ^5.4.4
 
 flutter:

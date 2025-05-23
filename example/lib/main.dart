@@ -177,6 +177,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(8.0),
+            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.1),
             child: Column(
               // Changed to Column to stack rows of info
