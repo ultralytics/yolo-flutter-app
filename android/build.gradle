@@ -1,3 +1,26 @@
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterRoot = localProperties.getProperty('flutter.sdk')
+if (flutterRoot == null) {
+    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0'
+}
+
 group = "com.ultralytics.yolo"
 version = "1.0-SNAPSHOT"
 
@@ -74,6 +97,12 @@ android {
     }
 
     dependencies {
+        // Flutter embedding
+        compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-arm/flutter.jar")
+        compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-arm64/flutter.jar")
+        compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-x86/flutter.jar")
+        compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-x64/flutter.jar")
+        
         implementation("com.google.ai.edge.litert:litert:1.2.0")
         implementation("com.google.ai.edge.litert:litert-gpu:1.2.0")
         implementation('com.google.ai.edge.litert:litert-support-api:1.2.0')
