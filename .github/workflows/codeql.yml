@@ -73,7 +73,13 @@ jobs:
         debug: true
 
     - name: Build Android projects
+      env:
+        FLUTTER_ROOT: ${{ env.FLUTTER_ROOT }}
       run: |
+        # Flutter SDKのパスを設定
+        export FLUTTER_ROOT="${FLUTTER_ROOT:-$(which flutter | xargs dirname | xargs dirname)}"
+        echo "FLUTTER_ROOT=$FLUTTER_ROOT"
+        
         # Build main plugin
         cd android
         ./gradlew clean assembleDebug --no-daemon --stacktrace
