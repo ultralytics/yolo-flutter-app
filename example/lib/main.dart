@@ -1,7 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 // example/lib/main.dart
-import 'dart:convert'; // Added for json.decode
 import 'dart:io'; // Added for File and Directory
 import 'dart:typed_data';
 import 'package:archive/archive_io.dart'; // Added for zip decoding

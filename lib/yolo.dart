@@ -133,13 +133,13 @@ class YOLO {
 
       if (result is Map) {
         // Convert Map<Object?, Object?> to Map<String, dynamic>
-        Map<String, dynamic> resultMap = Map<String, dynamic>.fromEntries(
+        final Map<String, dynamic> resultMap = Map<String, dynamic>.fromEntries(
           result.entries.map((e) => MapEntry(e.key.toString(), e.value)),
         );
 
         // Convert boxes list if it exists
         if (resultMap.containsKey('boxes') && resultMap['boxes'] is List) {
-          List<Map<String, dynamic>> boxes = (resultMap['boxes'] as List).map((
+          final List<Map<String, dynamic>> boxes = (resultMap['boxes'] as List).map((
             item,
           ) {
             if (item is Map) {

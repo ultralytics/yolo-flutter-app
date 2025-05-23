@@ -20,8 +20,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
   coverage: 1.13.1
+  flutter_lints: ^4.0.0
   mockito: ^5.4.4
 
 flutter:
