@@ -1,4 +1,5 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 //
 //  This file is part of the Ultralytics YOLO Package, providing the core UI component for real-time object detection.
 //  Licensed under AGPL-3.0. For commercial use, refer to Ultralytics licensing: https://ultralytics.com/license
@@ -108,10 +109,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   private var maskLayer: CALayer?
   private var poseLayer: CALayer?
   private var obbLayer: CALayer?
-  
+
   // Flag to control UI visibility (sliders, buttons, etc.)
   private var _showUIControls: Bool = false
-  
+
   /// Property to get or set the visibility of UI controls
   public var showUIControls: Bool {
     get { return _showUIControls }
@@ -222,7 +223,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     // Common failure handling for all tasks
     func handleFailure(_ error: Error) {
       print("Failed to load model with error: \(error)")
-      self.activityIndicator.stopAnimating()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+      self.activityIndicator.stopAnimating()
       completion?(.failure(error))
     }
 
@@ -780,18 +781,18 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       labelSliderConf, sliderConf,
       labelSliderIoU, sliderIoU,
       labelName, labelFPS,
-      toolbar, playButton, pauseButton, switchCameraButton
+      toolbar, playButton, pauseButton, switchCameraButton,
     ]
-    
+
     // Set visibility for all UI elements
     for element in controlElements {
       element.isHidden = !_showUIControls
     }
-    
+
     // Force layout update
     self.setNeedsLayout()
   }
-  
+
   public override func layoutSubviews() {
     setupOverlayLayer()
     let isLandscape = bounds.width > bounds.height

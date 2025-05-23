@@ -150,7 +150,7 @@ import 'package:ultralytics_yolo/yolo_task.dart';
 class YoloDemo extends StatelessWidget {
   // Create a controller to interact with the YoloView
   final controller = YoloViewController();
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -175,7 +175,7 @@ class YoloDemo extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // YoloView with controller
           Expanded(
             child: YoloView(
@@ -193,11 +193,11 @@ class YoloDemo extends StatelessWidget {
       ),
     );
   }
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Set initial detection parameters
     controller.setThresholds(
       confidenceThreshold: 0.5,
@@ -400,6 +400,7 @@ enum YOLOTask {
 ### Common Issues
 
 1. **Model loading fails**
+
    - Make sure your model file is correctly placed as described above
    - Verify that the model path is correctly specified
    - For iOS, ensure `.mlpackage` files are added directly to the Xcode project and properly included in target's "Build Phases" → "Copy Bundle Resources"
@@ -407,6 +408,7 @@ enum YOLOTask {
    - Use `YOLO.checkModelExists(modelPath)` to verify if your model can be found
 
 2. **Low performance on older devices**
+
    - Try using smaller models (e.g., YOLOv8n instead of YOLOv8l)
    - Reduce input image resolution
    - Increase confidence threshold to reduce the number of detections

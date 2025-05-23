@@ -1,7 +1,8 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import Flutter
 import UIKit
 import XCTest
-
 
 @testable import yolo
 

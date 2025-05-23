@@ -3,11 +3,13 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Code Modification Policy
+
 - Do not modify any code until explicitly instructed to do so
 - Review code thoroughly before making any changes
 - Confirm with user before implementing major structural changes
 
 ## Build and Test Commands
+
 - Install dependencies: `flutter pub get`
 - Run all tests: `flutter test`
 - Run single test: `flutter test test/FILE_PATH.dart`
@@ -16,15 +18,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Code coverage: `flutter test --coverage`
 
 ## Architecture Overview
+
 This repository contains a Flutter plugin for integrating Ultralytics YOLO computer vision models into mobile applications. The plugin follows a platform channel architecture:
 
 1. **Core Plugin Structure**:
+
    - `lib/yolo.dart`: Main plugin class
    - `lib/yolo_view.dart`: Camera preview widget with YOLO detection
    - `lib/yolo_task.dart`: Enum defining supported YOLO tasks
    - `lib/yolo_result.dart`: Detection result classes
 
 2. **Platform Channel Communication**:
+
    - Method channels for one-time operations (loadModel, detect, classify)
    - Event channels for streaming data (inferenceTime, fpsRate, results)
 
@@ -33,8 +38,9 @@ This repository contains a Flutter plugin for integrating Ultralytics YOLO compu
    - iOS: Uses Core ML for model inference
 
 ## Code Style Guidelines
+
 - Follow Flutter/Dart style in package:flutter_lints/flutter.yaml
-- Import order: dart:*, package:flutter/*, other packages, relative imports
+- Import order: dart:_, package:flutter/_, other packages, relative imports
 - Use named parameters for constructors with 2+ parameters
 - Class Structure: constructors, fields, methods
 - Error handling: Use try/catch with specific error types
@@ -45,11 +51,14 @@ This repository contains a Flutter plugin for integrating Ultralytics YOLO compu
 - Avoid print statements in production code; use proper logging
 
 ## Important Implementation Details
+
 1. **Model Format Support**:
+
    - Android: TensorFlow Lite (.tflite) models
    - iOS: Core ML (.mlpackage, .mlmodel) models
 
 2. **Supported YOLO Tasks**:
+
    - Object Detection
    - Image Segmentation
    - Image Classification
@@ -57,6 +66,7 @@ This repository contains a Flutter plugin for integrating Ultralytics YOLO compu
    - Oriented Bounding Boxes (OBB)
 
 3. **Permission Handling**:
+
    - Camera permissions required for live detection
    - Storage permissions required for image-based detection
 

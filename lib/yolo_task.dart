@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 // lib/yolo_task.dart
 
 /// Represents the different types of tasks that can be performed by YOLO models.
@@ -7,16 +9,16 @@
 enum YOLOTask {
   /// Object detection - identifies objects and their locations with bounding boxes
   detect,
-  
+
   /// Instance segmentation - provides pixel-level masks for detected objects
   segment,
-  
+
   /// Image classification - categorizes the main subject of an image
   classify,
-  
+
   /// Pose estimation - detects human body keypoints and poses
   pose,
-  
+
   /// Oriented Bounding Box detection - detects rotated bounding boxes for objects
   obb,
 }

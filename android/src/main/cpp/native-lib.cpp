@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 // app/src/main/cpp/native-lib.cpp
 
 #include <jni.h>

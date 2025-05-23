@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 // example/lib/main.dart
 import 'dart:convert'; // Added for json.decode
 import 'dart:io'; // Added for File and Directory
@@ -20,10 +22,7 @@ class YoloExampleApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'Yolo Plugin Example',
-      home: HomeScreen(),
-    );
+    return const MaterialApp(title: 'Yolo Plugin Example', home: HomeScreen());
   }
 }
 
@@ -42,7 +41,9 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const CameraInferenceScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const CameraInferenceScreen(),
+                  ),
                 );
               },
               child: const Text('Camera Inference'),
@@ -52,7 +53,9 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const SingleImageScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const SingleImageScreen(),
+                  ),
                 );
               },
               child: const Text('Single Image Inference'),
@@ -79,35 +82,41 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   String _lastDetection = "";
   double _currentProcessingTimeMs = 0.0;
   double _currentFps = 0.0;
-  
+
   final _yoloController = YoloViewController();
   final _yoloViewKey = GlobalKey<YoloViewState>();
   bool _useController = true;
-  
+
   void _onDetectionResults(List<YOLOResult> results) {
     if (!mounted) return;
-    
+
     debugPrint('_onDetectionResults called with ${results.length} results');
-    
+
     for (var i = 0; i < results.length && i < 3; i++) {
       final r = results[i];
-      debugPrint('  Detection $i: ${r.className} (${(r.confidence * 100).toStringAsFixed(1)}%) at ${r.boundingBox}');
+      debugPrint(
+        '  Detection $i: ${r.className} (${(r.confidence * 100).toStringAsFixed(1)}%) at ${r.boundingBox}',
+      );
     }
-    
+
     setState(() {
       _detectionCount = results.length;
       if (results.isNotEmpty) {
-        final topDetection = results.reduce((a, b) => 
-          a.confidence > b.confidence ? a : b);
-        _lastDetection = "${topDetection.className} (${(topDetection.confidence * 100).toStringAsFixed(1)}%)";
-        debugPrint('Updated state: count=$_detectionCount, top=$_lastDetection');
+        final topDetection = results.reduce(
+          (a, b) => a.confidence > b.confidence ? a : b,
+        );
+        _lastDetection =
+            "${topDetection.className} (${(topDetection.confidence * 100).toStringAsFixed(1)}%)";
+        debugPrint(
+          'Updated state: count=$_detectionCount, top=$_lastDetection',
+        );
       } else {
         _lastDetection = "None";
         debugPrint('Updated state: No detections');
       }
     });
   }
-  
+
   @override
   void initState() {
     super.initState();
@@ -153,7 +162,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           // Controller Toggle Button
           IconButton(
             icon: Icon(_useController ? Icons.gamepad : Icons.key),
-            tooltip: _useController ? 'Using Controller' : 'Using Direct Access',
+            tooltip: _useController
+                ? 'Using Controller'
+                : 'Using Direct Access',
             onPressed: () {
               setState(() {
                 _useController = !_useController;
@@ -168,7 +179,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           Container(
             padding: const EdgeInsets.all(8.0),
             color: Colors.black.withOpacity(0.1),
-            child: Column( // Changed to Column to stack rows of info
+            child: Column(
+              // Changed to Column to stack rows of info
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -182,7 +194,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Processing: ${_currentProcessingTimeMs.toStringAsFixed(0)}ms'),
+                    Text(
+                      'Processing: ${_currentProcessingTimeMs.toStringAsFixed(0)}ms',
+                    ),
                     Text('FPS: ${_currentFps.toStringAsFixed(1)}'),
                   ],
                 ),
@@ -207,7 +221,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                         if (_useController) {
                           _yoloController.setConfidenceThreshold(value);
                         } else {
-                          _yoloViewKey.currentState?.setConfidenceThreshold(value);
+                          _yoloViewKey.currentState?.setConfidenceThreshold(
+                            value,
+                          );
                         }
                       });
                     },
@@ -261,9 +277,13 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                       setState(() {
                         _numItemsThreshold = value.toInt();
                         if (_useController) {
-                          _yoloController.setNumItemsThreshold(_numItemsThreshold);
+                          _yoloController.setNumItemsThreshold(
+                            _numItemsThreshold,
+                          );
                         } else {
-                          _yoloViewKey.currentState?.setNumItemsThreshold(_numItemsThreshold);
+                          _yoloViewKey.currentState?.setNumItemsThreshold(
+                            _numItemsThreshold,
+                          );
                         }
                       });
                     },
@@ -285,7 +305,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                 onPerformanceMetrics: (metrics) {
                   if (mounted) {
                     setState(() {
-                      _currentProcessingTimeMs = metrics['processingTimeMs'] ?? 0.0;
+                      _currentProcessingTimeMs =
+                          metrics['processingTimeMs'] ?? 0.0;
                       _currentFps = metrics['fps'] ?? 0.0;
                     });
                     // Optional: print to debug console
@@ -315,13 +336,15 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   Uint8List? _annotatedImage;
 
   late YOLO _yolo;
-  String _modelPathForYolo = 'yolo11n'; // Default asset path for non-iOS or if local copy fails
+  String _modelPathForYolo =
+      'yolo11n'; // Default asset path for non-iOS or if local copy fails
   bool _isModelReady = false;
 
   // Name of the .mlpackage directory in local storage (after unzipping)
   final String _mlPackageDirName = 'yolo11n.mlpackage'; // Changed to yolo11n
   // Name of the zip file in assets (e.g., assets/models/yolo11n.mlpackage.zip)
-  final String _mlPackageZipAssetName = 'yolo11n.mlpackage.zip'; // Changed to yolo11n
+  final String _mlPackageZipAssetName =
+      'yolo11n.mlpackage.zip'; // Changed to yolo11n
 
   @override
   void initState() {
@@ -337,29 +360,33 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
           _modelPathForYolo = localPath;
           debugPrint('iOS: Using local .mlpackage path: $_modelPathForYolo');
         } else {
-          debugPrint('iOS: Failed to copy .mlpackage, using default asset path.');
+          debugPrint(
+            'iOS: Failed to copy .mlpackage, using default asset path.',
+          );
         }
       } catch (e) {
         debugPrint('Error during .mlpackage copy for iOS: $e');
       }
     }
-    
+
     _yolo = YOLO(modelPath: _modelPathForYolo, task: YOLOTask.detect);
 
     try {
-      await _yolo.loadModel(); 
+      await _yolo.loadModel();
       if (mounted) {
         setState(() {
           _isModelReady = true;
         });
       }
-      debugPrint('YOLO model initialized. Path: $_modelPathForYolo, Ready: $_isModelReady');
+      debugPrint(
+        'YOLO model initialized. Path: $_modelPathForYolo, Ready: $_isModelReady',
+      );
     } catch (e) {
       debugPrint('Error loading YOLO model: $e');
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading model: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading model: $e')));
       }
     }
   }
@@ -367,16 +394,21 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   Future<String?> _copyMlPackageFromAssets() async {
     try {
       final Directory appDocDir = await getApplicationDocumentsDirectory();
-      final String localMlPackageDirPath = '${appDocDir.path}/$_mlPackageDirName';
+      final String localMlPackageDirPath =
+          '${appDocDir.path}/$_mlPackageDirName';
       final Directory localMlPackageDir = Directory(localMlPackageDirPath);
 
       final manifestFile = File('$localMlPackageDirPath/Manifest.json');
       if (await localMlPackageDir.exists() && await manifestFile.exists()) {
-        debugPrint('.mlpackage directory and Manifest.json already exist and are correctly placed: $localMlPackageDirPath');
+        debugPrint(
+          '.mlpackage directory and Manifest.json already exist and are correctly placed: $localMlPackageDirPath',
+        );
         return localMlPackageDirPath;
       } else {
         if (await localMlPackageDir.exists()) {
-          debugPrint('Manifest.json not found at expected location or .mlpackage directory is incomplete. Will attempt to re-extract.');
+          debugPrint(
+            'Manifest.json not found at expected location or .mlpackage directory is incomplete. Will attempt to re-extract.',
+          );
           // To ensure a clean state, you might consider deleting the directory first:
           // await localMlPackageDir.delete(recursive: true);
           // debugPrint('Deleted existing incomplete directory: $localMlPackageDirPath');
@@ -384,16 +416,23 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
         // Ensure the base directory exists before extraction
         if (!await localMlPackageDir.exists()) {
           await localMlPackageDir.create(recursive: true);
-          debugPrint('Created .mlpackage directory for extraction: $localMlPackageDirPath');
+          debugPrint(
+            'Created .mlpackage directory for extraction: $localMlPackageDirPath',
+          );
         }
       }
 
       final String assetZipPath = 'assets/models/$_mlPackageZipAssetName';
-      
-      debugPrint('Attempting to copy and unzip $assetZipPath to $localMlPackageDirPath');
+
+      debugPrint(
+        'Attempting to copy and unzip $assetZipPath to $localMlPackageDirPath',
+      );
 
       final ByteData zipData = await rootBundle.load(assetZipPath);
-      final List<int> zipBytes = zipData.buffer.asUint8List(zipData.offsetInBytes, zipData.lengthInBytes);
+      final List<int> zipBytes = zipData.buffer.asUint8List(
+        zipData.offsetInBytes,
+        zipData.lengthInBytes,
+      );
 
       final archive = ZipDecoder().decodeBytes(zipBytes);
 
@@ -403,11 +442,15 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
 
         final String expectedPrefix = '$_mlPackageDirName/';
         if (originalFilenameInZip.startsWith(expectedPrefix)) {
-          filenameForExtraction = originalFilenameInZip.substring(expectedPrefix.length);
+          filenameForExtraction = originalFilenameInZip.substring(
+            expectedPrefix.length,
+          );
         }
-        
+
         if (filenameForExtraction.isEmpty) {
-          debugPrint('Skipping empty filename after prefix strip: $originalFilenameInZip');
+          debugPrint(
+            'Skipping empty filename after prefix strip: $originalFilenameInZip',
+          );
           continue;
         }
 
@@ -419,7 +462,9 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
           try {
             await localFile.parent.create(recursive: true);
             await localFile.writeAsBytes(data);
-            debugPrint('Extracted file: $filePath (Size: ${data.length} bytes)');
+            debugPrint(
+              'Extracted file: $filePath (Size: ${data.length} bytes)',
+            );
             if (filenameForExtraction == 'Manifest.json') {
               debugPrint('Manifest.json was written to $filePath');
             }
@@ -437,16 +482,23 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
         }
       }
 
-      final manifestFileAfterExtraction = File('$localMlPackageDirPath/Manifest.json');
+      final manifestFileAfterExtraction = File(
+        '$localMlPackageDirPath/Manifest.json',
+      );
       if (await manifestFileAfterExtraction.exists()) {
-        debugPrint('CONFIRMED: Manifest.json exists at ${manifestFileAfterExtraction.path}');
+        debugPrint(
+          'CONFIRMED: Manifest.json exists at ${manifestFileAfterExtraction.path}',
+        );
       } else {
-        debugPrint('ERROR: Manifest.json DOES NOT exist at ${manifestFileAfterExtraction.path} after extraction loop.');
+        debugPrint(
+          'ERROR: Manifest.json DOES NOT exist at ${manifestFileAfterExtraction.path} after extraction loop.',
+        );
       }
 
-      debugPrint('Successfully finished attempt to unzip .mlpackage to local storage: $localMlPackageDirPath');
+      debugPrint(
+        'Successfully finished attempt to unzip .mlpackage to local storage: $localMlPackageDirPath',
+      );
       return localMlPackageDirPath;
-
     } catch (e) {
       debugPrint('Error in _copyMlPackageFromAssets (outer try-catch): $e');
       return null;
@@ -475,14 +527,14 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
         } else {
           _detections = [];
         }
-        
-        if (result.containsKey('annotatedImage') && 
+
+        if (result.containsKey('annotatedImage') &&
             result['annotatedImage'] is Uint8List) {
           _annotatedImage = result['annotatedImage'] as Uint8List;
         } else {
           _annotatedImage = null;
         }
-        
+
         _imageBytes = bytes;
       });
     }
@@ -506,7 +558,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
             child: const Text('Pick Image & Run Inference'),
           ),
           const SizedBox(height: 10),
-          if (!_isModelReady && Platform.isIOS) 
+          if (!_isModelReady && Platform.isIOS)
             const Padding(
               padding: EdgeInsets.all(8.0),
               child: Row(
@@ -519,7 +571,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
               ),
             )
           else if (!_isModelReady)
-             const Padding(
+            const Padding(
               padding: EdgeInsets.all(8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
