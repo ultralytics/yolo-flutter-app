@@ -2,4 +2,4 @@
 # Organization-level CodeQL is not compatible with Flutter plugin structure
 # Using Dart analyzer and dependency scanning instead
 paths-ignore:
-  - '**/*'
+  - "**/*"
