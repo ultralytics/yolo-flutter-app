@@ -54,6 +54,7 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
+        build-mode: manual
         debug: true
 
     - name: Build Android projects
