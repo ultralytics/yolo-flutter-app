@@ -1,7 +1,7 @@
-// Flutter SDKの場所を環境変数から取得（CI用）
+// Get Flutter SDK location from environment variable (for CI)
 def flutterRoot = System.getenv('FLUTTER_ROOT')
 if (!flutterRoot) {
-    // ローカル開発用にlocal.propertiesから読み込み
+    // Read from local.properties for local development
     def localProperties = new Properties()
     def localPropertiesFile = rootProject.file('local.properties')
     if (localPropertiesFile.exists()) {
@@ -12,7 +12,7 @@ if (!flutterRoot) {
     }
 }
 
-// それでも見つからない場合はCIのFlutterアクションが設定するパスを使用
+// If still not found, use path set by CI Flutter action
 if (!flutterRoot && System.getenv('RUNNER_TEMP')) {
     def flutterPath = new File(System.getenv('RUNNER_TEMP'), 'flutter')
     if (flutterPath.exists()) {
@@ -74,7 +74,7 @@ android {
     defaultConfig {
         minSdk = 21
         
-        // ネイティブライブラリビルド設定
+        // Native library build configuration
         externalNativeBuild {
             cmake {
                 cppFlags ""
@@ -82,13 +82,13 @@ android {
             }
         }
 
-        // サポートするABIを明示
+        // Supported ABIs
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
         }
     }
     
-    // CMakeビルド設定
+    // CMake build configuration
     externalNativeBuild {
         cmake {
             path "src/main/cpp/CMakeLists.txt"
@@ -96,14 +96,14 @@ android {
     }
 
     dependencies {
-        // Flutter embedding - CI環境で見つからない場合でもビルドを続行
+        // Flutter embedding - continue build even if not found in CI environment
         if (flutterRoot) {
             compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-arm/flutter.jar")
             compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-arm64/flutter.jar") 
             compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-x86/flutter.jar")
             compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-x64/flutter.jar")
         } else {
-            // Flutter SDKが見つからない場合は、代替としてembedding-releaseを使用
+            // If Flutter SDK not found, use embedding-release as fallback
             compileOnly 'io.flutter:flutter_embedding_release:1.0.0-ee76268252c22f5c11e82a7b87423ca3982e51a7'
         }
         

@@ -55,6 +55,7 @@ This repository contains a Flutter plugin for integrating Ultralytics YOLO compu
 - Platform-specific code: Keep in android/ios directories
 - Method channels: Use consistent channel names across platforms
 - Avoid print statements in production code; use proper logging
+- Use English only for all code comments and documentation (no Japanese or other languages)
 
 ## Important Implementation Details
 

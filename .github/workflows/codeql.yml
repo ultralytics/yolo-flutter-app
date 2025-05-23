@@ -76,7 +76,7 @@ jobs:
       env:
         FLUTTER_ROOT: ${{ env.FLUTTER_ROOT }}
       run: |
-        # Flutter SDKのパスを設定
+        # Set Flutter SDK path
         export FLUTTER_ROOT="${FLUTTER_ROOT:-$(which flutter | xargs dirname | xargs dirname)}"
         echo "FLUTTER_ROOT=$FLUTTER_ROOT"
         
