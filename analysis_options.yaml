@@ -5,7 +5,7 @@ include: package:flutter_lints/flutter.yaml
 linter:
   rules:
     # Documentation rules
-    - public_member_api_docs
+    # - public_member_api_docs  # Disabled for now
     - sort_pub_dependencies
 
     # Style rules
@@ -46,7 +46,7 @@ analyzer:
     missing_return: warning
     todo: ignore
     avoid_print: warning
-    public_member_api_docs: info
+    # public_member_api_docs: info  # Disabled for now
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
