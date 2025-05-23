@@ -42,28 +42,27 @@ jobs:
         channel: "stable"
         cache: true
 
-    - name: Install dependencies
-      run: |
-        flutter pub get
-        cd example && flutter pub get
-
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
-        build-mode: none
 
-    - name: Build Android projects
+    - name: Setup build environment
+      run: |
+        flutter pub get
+        cd example && flutter pub get
+        cd android && chmod +x gradlew
+        cd ../../android && chmod +x gradlew
+
+    - name: Build with CodeQL
       run: |
         # Build main plugin
         cd android
-        chmod +x gradlew
-        ./gradlew assembleDebug --no-daemon
+        ./gradlew clean assembleDebug --no-daemon
         
         # Build example app
         cd ../example/android
-        chmod +x gradlew
-        ./gradlew assembleDebug --no-daemon
+        ./gradlew clean assembleDebug --no-daemon
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
