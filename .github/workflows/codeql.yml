@@ -46,9 +46,24 @@ jobs:
       run: |
         flutter pub get
         cd example && flutter pub get
-        # Make gradlew executable
-        chmod +x android/gradlew
-        chmod +x example/android/gradlew
+        
+    - name: Check gradlew files
+      run: |
+        echo "Checking gradlew files..."
+        ls -la android/
+        ls -la example/android/
+        # Make gradlew executable if they exist
+        if [ -f android/gradlew ]; then
+          chmod +x android/gradlew
+        else
+          echo "ERROR: android/gradlew not found"
+          exit 1
+        fi
+        if [ -f example/android/gradlew ]; then
+          chmod +x example/android/gradlew
+        else
+          echo "WARNING: example/android/gradlew not found - will use Flutter build instead"
+        fi
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
@@ -63,9 +78,9 @@ jobs:
         cd android
         ./gradlew clean assembleDebug --no-daemon --stacktrace
         
-        # Build example app
-        cd ../example/android
-        ./gradlew clean assembleDebug --no-daemon --stacktrace
+        # Build example app using Flutter
+        cd ../example
+        flutter build apk --debug
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
