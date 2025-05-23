@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Confirm with user before implementing major structural changes
 
 ## Git Commit Messages
+
 - Do not include any Claude-related attribution or references in commit messages
 - Keep commit messages professional and focused on the changes made
 - Do not add "Generated with Claude Code" or "Co-Authored-By: Claude" signatures

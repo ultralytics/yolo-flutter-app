@@ -139,16 +139,18 @@ class YOLO {
 
         // Convert boxes list if it exists
         if (resultMap.containsKey('boxes') && resultMap['boxes'] is List) {
-          final List<Map<String, dynamic>> boxes = (resultMap['boxes'] as List).map((
-            item,
-          ) {
-            if (item is Map) {
-              return Map<String, dynamic>.fromEntries(
-                item.entries.map((e) => MapEntry(e.key.toString(), e.value)),
-              );
-            }
-            return <String, dynamic>{};
-          }).toList();
+          final List<Map<String, dynamic>> boxes = (resultMap['boxes'] as List)
+              .map((item) {
+                if (item is Map) {
+                  return Map<String, dynamic>.fromEntries(
+                    item.entries.map(
+                      (e) => MapEntry(e.key.toString(), e.value),
+                    ),
+                  );
+                }
+                return <String, dynamic>{};
+              })
+              .toList();
 
           resultMap['boxes'] = boxes;
         }
