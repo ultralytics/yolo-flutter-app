@@ -25,10 +25,7 @@ apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 
 android {
-    if (project.android.hasProperty("namespace")) {
-        namespace = "com.ultralytics.yolo"
-    }
-
+    namespace = "com.ultralytics.yolo"
     compileSdk = 35
 
     compileOptions {
