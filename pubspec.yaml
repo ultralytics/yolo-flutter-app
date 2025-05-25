@@ -29,8 +29,8 @@ funding:
   - https://github.com/sponsors/ultralytics
 
 environment:
-  flutter: ">=3.19.0"
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ^3.5.3
+  flutter: ">=3.3.0"
 
 dependencies:
   flutter:
@@ -43,12 +43,13 @@ dev_dependencies:
     sdk: flutter
   mockito: ^5.4.6
   very_good_analysis: ^5.1.0
+  flutter_lints: ^2.0.0
 
 flutter:
   plugin:
     platforms:
       android:
-        package: com.ultralytics.ultralytics_yolo
-        pluginClass: UltralyticsYoloPlugin
+        package: com.ultralytics.yolo
+        pluginClass: YoloPlugin
       ios:
-        pluginClass: UltralyticsYoloPlugin
+        pluginClass: YoloPlugin

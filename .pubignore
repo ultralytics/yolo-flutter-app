@@ -1,0 +1,43 @@
+# Files to exclude from publishing
+example/test/widget_test.dart
+
+# Development files
+.idea/
+.vscode/
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/ephemeral/
+**/ios/Pods/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/gradle/wrapper/
+**/android/.gradle
+**/android/captures/
+
+# Generated files
+**/doc/api/
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+
+# Example and test applications
+example/
+hello_yolo/
+
+# Model files (exclude all TFLite, MLPackage, and MLModel files)
+**/*.tflite
+**/*.mlpackage
+**/*.mlmodel
+**/*.mlpackage.zip
+**/*.zip
+
+# Development documents and notes
+CLAUDE.md
+fix_summary.md
+MISSING_FEATURES.md
+PUBLISH_CHECKLIST.md
+
+# OS or editor specific files (additional)
+.DS_Store
+*.swp
+PUBLISHING_GUIDE_0.0.9.md

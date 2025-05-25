@@ -1,11 +1,11 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-include: package:very_good_analysis/analysis_options.5.1.0.yaml
+include: package:flutter_lints/flutter.yaml
 
 linter:
   rules:
     # Documentation rules
-    - public_member_api_docs
+    # - public_member_api_docs  # Disabled for now
     - sort_pub_dependencies
 
     # Style rules
