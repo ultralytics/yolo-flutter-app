@@ -19,11 +19,11 @@ topics:
   - flutter-plugin
   - mobile
 
-screenshots:
-  - description: "Real-time object detection"
-    path: example/screenshots/detection.png
-  - description: "Image classification"
-    path: example/screenshots/classification.png
+# screenshots:
+#  - description: "Real-time object detection"
+#    path: example/screenshots/detection.png
+#  - description: "Image classification"
+#    path: example/screenshots/classification.png
 
 funding:
   - https://github.com/sponsors/ultralytics
