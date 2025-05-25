@@ -10,7 +10,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    if: github.repository == 'ultralytics/yolo-flutter-app' && contains(fromJson('["glenn-jocher", "asabri97", "john-rocky"]'), github.actor)
+    if: github.repository == 'ultralytics/yolo-flutter-app' && (github.actor == 'glenn-jocher' || github.actor == 'asabri97' || github.actor == 'john-rocky')
     outputs:
       version: ${{ steps.version.outputs.version }}
     
