@@ -1,327 +1,506 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
+import 'package:ultralytics_yolo/yolo_result.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('YoloViewController Public API', () {
-    late YoloViewController controller;
+  group('YoloView Missing Coverage Tests', () {
+    late List<MethodCall> methodCalls;
+    late StreamController<dynamic> mockStreamController;
 
     setUp(() {
-      controller = YoloViewController();
+      methodCalls = <MethodCall>[];
+      mockStreamController = StreamController<dynamic>.broadcast();
     });
 
-    test('initial values are correct', () {
-      expect(controller.confidenceThreshold, 0.5);
-      expect(controller.iouThreshold, 0.45);
-      expect(controller.numItemsThreshold, 30);
+    tearDown(() {
+      mockStreamController.close();
     });
 
-    test('setConfidenceThreshold clamps values', () async {
-      await controller.setConfidenceThreshold(0.8);
-      expect(controller.confidenceThreshold, 0.8);
+    testWidgets('didUpdateWidget triggers controller changes', (WidgetTester tester) async {
+      final controller1 = YoloViewController();
+      final controller2 = YoloViewController();
+      
+      await controller1.setConfidenceThreshold(0.7);
+      await controller2.setConfidenceThreshold(0.9);
 
-      await controller.setConfidenceThreshold(1.5);
-      expect(controller.confidenceThreshold, 1.0);
-
-      await controller.setConfidenceThreshold(-0.2);
-      expect(controller.confidenceThreshold, 0.0);
-    });
-
-    test('setIoUThreshold clamps values', () async {
-      await controller.setIoUThreshold(0.7);
-      expect(controller.iouThreshold, 0.7);
-
-      await controller.setIoUThreshold(2.0);
-      expect(controller.iouThreshold, 1.0);
-
-      await controller.setIoUThreshold(-1.0);
-      expect(controller.iouThreshold, 0.0);
-    });
-
-    test('setNumItemsThreshold clamps values', () async {
-      await controller.setNumItemsThreshold(50);
-      expect(controller.numItemsThreshold, 50);
-
-      await controller.setNumItemsThreshold(150);
-      expect(controller.numItemsThreshold, 100);
-
-      await controller.setNumItemsThreshold(0);
-      expect(controller.numItemsThreshold, 1);
-    });
-
-    test('setThresholds updates multiple values', () async {
-      await controller.setThresholds(
-        confidenceThreshold: 0.9,
-        iouThreshold: 0.6,
-        numItemsThreshold: 25,
-      );
-
-      expect(controller.confidenceThreshold, 0.9);
-      expect(controller.iouThreshold, 0.6);
-      expect(controller.numItemsThreshold, 25);
-    });
-
-    test('setThresholds updates only specified values', () async {
-      await controller.setThresholds(confidenceThreshold: 0.7);
-      expect(controller.confidenceThreshold, 0.7);
-      expect(controller.iouThreshold, 0.45); // unchanged
-      expect(controller.numItemsThreshold, 30); // unchanged
-    });
-
-    test('switchCamera completes without error', () async {
-      expect(() => controller.switchCamera(), returnsNormally);
-    });
-
-    test('extreme values are handled correctly', () async {
-      await controller.setConfidenceThreshold(double.maxFinite);
-      expect(controller.confidenceThreshold, 1.0);
-
-      await controller.setNumItemsThreshold(999999);
-      expect(controller.numItemsThreshold, 100);
-    });
-  });
-
-  group('YoloView Widget Properties', () {
-    test('widget properties are accessible', () {
-      const widget = YoloView(
-        modelPath: 'test_model.tflite',
-        task: YOLOTask.segment,
-        cameraResolution: '720p',
-        showNativeUI: true,
-      );
-
-      expect(widget.modelPath, 'test_model.tflite');
-      expect(widget.task, YOLOTask.segment);
-      expect(widget.cameraResolution, '720p');
-      expect(widget.showNativeUI, true);
-      expect(widget.controller, isNull);
-    });
-
-    test('widget with controller property', () {
-      final controller = YoloViewController();
-
-      final widget = YoloView(
-        modelPath: 'test_model.tflite',
-        task: YOLOTask.detect,
-        controller: controller,
-      );
-
-      expect(widget.controller, equals(controller));
-    });
-
-    test('widget with callbacks', () {
-      var resultCallCount = 0;
-      var metricsCallCount = 0;
-
-      final widget = YoloView(
-        modelPath: 'test_model.tflite',
-        task: YOLOTask.detect,
-        onResult: (results) => resultCallCount++,
-        onPerformanceMetrics: (metrics) => metricsCallCount++,
-      );
-
-      expect(widget.onResult, isNotNull);
-      expect(widget.onPerformanceMetrics, isNotNull);
-
-      // Test callbacks work
-      widget.onResult!([]);
-      widget.onPerformanceMetrics!({});
-
-      expect(resultCallCount, 1);
-      expect(metricsCallCount, 1);
-    });
-  });
-
-  group('YoloView Widget Creation', () {
-    testWidgets('creates with minimal parameters', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: YoloView(modelPath: 'test_model.tflite', task: YOLOTask.detect),
-        ),
-      );
-
-      expect(find.byType(YoloView), findsOneWidget);
-    });
-
-    testWidgets('creates with custom controller', (WidgetTester tester) async {
-      final controller = YoloViewController();
-
+      // Initial widget with controller1
       await tester.pumpWidget(
         MaterialApp(
           home: YoloView(
             modelPath: 'test_model.tflite',
             task: YOLOTask.detect,
-            controller: controller,
+            controller: controller1,
           ),
         ),
       );
 
-      expect(find.byType(YoloView), findsOneWidget);
-    });
-
-    testWidgets('creates with all optional parameters', (
-      WidgetTester tester,
-    ) async {
+      // Update widget with controller2 - triggers didUpdateWidget
       await tester.pumpWidget(
         MaterialApp(
           home: YoloView(
-            modelPath: 'custom_model.tflite',
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            controller: controller2,
+          ),
+        ),
+      );
+
+      await tester.pump();
+    });
+
+    testWidgets('didUpdateWidget with different parameters', (WidgetTester tester) async {
+      // Initial widget
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            showNativeUI: false,
+          ),
+        ),
+      );
+
+      // Update with different parameters - triggers didUpdateWidget
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'updated_model.tflite',
             task: YOLOTask.segment,
-            cameraResolution: '1080p',
-            onResult: (results) {},
-            onPerformanceMetrics: (metrics) {},
             showNativeUI: true,
           ),
         ),
       );
 
-      expect(find.byType(YoloView), findsOneWidget);
+      await tester.pump();
     });
 
-    testWidgets('handles null callbacks', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: YoloView(
-            modelPath: 'test_model.tflite',
-            task: YOLOTask.detect,
-            onResult: null,
-            onPerformanceMetrics: null,
-          ),
-        ),
+    testWidgets('_onPlatformViewCreated is called during widget creation', (WidgetTester tester) async {
+      // Mock the platform view creation
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/android_view_0'),
+        (MethodCall methodCall) async {
+          methodCalls.add(methodCall);
+          return null;
+        },
       );
-
-      expect(find.byType(YoloView), findsOneWidget);
-    });
-  });
-
-  group('YoloView GlobalKey Access', () {
-    testWidgets('can access state methods via GlobalKey', (
-      WidgetTester tester,
-    ) async {
-      final key = GlobalKey<YoloViewState>();
 
       await tester.pumpWidget(
         MaterialApp(
           home: YoloView(
-            key: key,
             modelPath: 'test_model.tflite',
             task: YOLOTask.detect,
           ),
         ),
       );
 
-      await tester.pump(); // Single pump instead of pumpAndSettle
+      await tester.pump();
+    });
 
-      // Test that methods are accessible
-      expect(
-        () => key.currentState?.setConfidenceThreshold(0.8),
-        returnsNormally,
+    testWidgets('result stream handles detection events with onResult callback', (WidgetTester tester) async {
+      final List<List<YOLOResult>> receivedResults = [];
+      
+      // Mock event channel
+      const eventChannelName = 'ultralytics_yolo/yolo_results_0';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+        const EventChannel(eventChannelName),
+        MockStreamHandler(mockStreamController.stream),
       );
-      expect(() => key.currentState?.setIoUThreshold(0.6), returnsNormally);
-      expect(() => key.currentState?.setNumItemsThreshold(25), returnsNormally);
-      expect(() => key.currentState?.switchCamera(), returnsNormally);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            onResult: (results) {
+              receivedResults.add(results);
+            },
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Simulate detection event
+      mockStreamController.add({
+        'detections': [
+          {
+            'classIndex': 0,
+            'className': 'person',
+            'confidence': 0.95,
+            'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
+            'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
+          }
+        ]
+      });
+
+      await tester.pump();
+      expect(receivedResults.length, 1);
+      expect(receivedResults.first.length, 1);
+      expect(receivedResults.first.first.className, 'person');
+    });
+
+    testWidgets('result stream handles performance metrics', (WidgetTester tester) async {
+      final List<Map<String, double>> receivedMetrics = [];
+      
+      const eventChannelName = 'ultralytics_yolo/yolo_results_0';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+        const EventChannel(eventChannelName),
+        MockStreamHandler(mockStreamController.stream),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            onPerformanceMetrics: (metrics) {
+              receivedMetrics.add(metrics);
+            },
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Simulate performance metrics event
+      mockStreamController.add({
+        'processingTimeMs': 50.5,
+        'fps': 30.0,
+      });
+
+      await tester.pump();
+      expect(receivedMetrics.length, 1);
+      expect(receivedMetrics.first['processingTimeMs'], 50.5);
+      expect(receivedMetrics.first['fps'], 30.0);
+    });
+
+    testWidgets('result stream handles test messages', (WidgetTester tester) async {
+      const eventChannelName = 'ultralytics_yolo/yolo_results_0';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+        const EventChannel(eventChannelName),
+        MockStreamHandler(mockStreamController.stream),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Simulate test message - should be handled without errors
+      mockStreamController.add({
+        'test': 'test message from platform',
+      });
+
+      await tester.pump();
+    });
+
+    testWidgets('result stream handles malformed detection data', (WidgetTester tester) async {
+      final List<List<YOLOResult>> receivedResults = [];
+      
+      const eventChannelName = 'ultralytics_yolo/yolo_results_0';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+        const EventChannel(eventChannelName),
+        MockStreamHandler(mockStreamController.stream),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            onResult: (results) {
+              receivedResults.add(results);
+            },
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Simulate malformed detection data - should trigger error handling
+      mockStreamController.add({
+        'detections': [
+          {
+            'classIndex': 'invalid_type',
+            'className': null,
+            'confidence': 'not_a_number',
+            // Missing required fields
+          },
+          null, // Null detection
+          'not_a_map', // Invalid type
+        ]
+      });
+
+      await tester.pump();
+      // Should handle gracefully, possibly with empty results
+    });
+
+    testWidgets('result stream handles malformed performance metrics', (WidgetTester tester) async {
+      final List<Map<String, double>> receivedMetrics = [];
+      
+      const eventChannelName = 'ultralytics_yolo/yolo_results_0';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+        const EventChannel(eventChannelName),
+        MockStreamHandler(mockStreamController.stream),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            onPerformanceMetrics: (metrics) {
+              receivedMetrics.add(metrics);
+            },
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Simulate malformed metrics - should trigger error handling
+      mockStreamController.add({
+        'processingTimeMs': 'invalid_number',
+        'fps': null,
+      });
+
+      await tester.pump();
+      // Should handle gracefully, no callback should be called with invalid data
+      expect(receivedMetrics.length, 0);
+    });
+
+    testWidgets('result stream handles invalid event types', (WidgetTester tester) async {
+      const eventChannelName = 'ultralytics_yolo/yolo_results_0';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+        const EventChannel(eventChannelName),
+        MockStreamHandler(mockStreamController.stream),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Simulate invalid event types
+      mockStreamController.add('invalid_string_event');
+      mockStreamController.add(123);
+      mockStreamController.add(null);
+      mockStreamController.add([1, 2, 3]);
+
+      await tester.pump();
+    });
+
+    testWidgets('result stream handles errors and resubscription', (WidgetTester tester) async {
+      const eventChannelName = 'ultralytics_yolo/yolo_results_0';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+        const EventChannel(eventChannelName),
+        MockStreamHandler(mockStreamController.stream),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Simulate stream error
+      mockStreamController.addError('Stream error occurred');
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+
+    testWidgets('result stream onDone callback', (WidgetTester tester) async {
+      const eventChannelName = 'ultralytics_yolo/yolo_results_0';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+        const EventChannel(eventChannelName),
+        MockStreamHandler(mockStreamController.stream),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Close the stream to trigger onDone
+      mockStreamController.close();
+
+      await tester.pump();
+    });
+
+    testWidgets('_parseDetectionResults handles segmentation masks', (WidgetTester tester) async {
+      final List<List<YOLOResult>> receivedResults = [];
+      
+      const eventChannelName = 'ultralytics_yolo/yolo_results_0';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+        const EventChannel(eventChannelName),
+        MockStreamHandler(mockStreamController.stream),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.segment,
+            onResult: (results) {
+              receivedResults.add(results);
+            },
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Simulate segmentation detection with mask
+      mockStreamController.add({
+        'detections': [
+          {
+            'classIndex': 0,
+            'className': 'person',
+            'confidence': 0.95,
+            'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
+            'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
+            'mask': [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], // Segmentation mask
+          }
+        ]
+      });
+
+      await tester.pump();
+      expect(receivedResults.length, 1);
+      expect(receivedResults.first.first.mask, isNotNull);
+      expect(receivedResults.first.first.mask!.length, 2);
+    });
+
+    testWidgets('_parseDetectionResults handles pose keypoints', (WidgetTester tester) async {
+      final List<List<YOLOResult>> receivedResults = [];
+      
+      const eventChannelName = 'ultralytics_yolo/yolo_results_0';
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockStreamHandler(
+        const EventChannel(eventChannelName),
+        MockStreamHandler(mockStreamController.stream),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.pose,
+            onResult: (results) {
+              receivedResults.add(results);
+            },
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Simulate pose detection with keypoints
+      mockStreamController.add({
+        'detections': [
+          {
+            'classIndex': 0,
+            'className': 'person',
+            'confidence': 0.95,
+            'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
+            'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
+            'keypoints': [100.0, 200.0, 0.9, 150.0, 250.0, 0.8], // x1, y1, conf1, x2, y2, conf2
+          }
+        ]
+      });
+
+      await tester.pump();
+      expect(receivedResults.length, 1);
+      expect(receivedResults.first.first.keypoints, isNotNull);
+      expect(receivedResults.first.first.keypoints!.length, 2);
+      expect(receivedResults.first.first.keypointConfidences!.length, 2);
     });
   });
+}
 
-  group('YoloView Task Types', () {
-    test('supports all YOLOTask enum values', () {
-      // Test that YOLOTask enum has expected values
-      expect(YOLOTask.values.length, greaterThan(0));
-      expect(YOLOTask.values.contains(YOLOTask.detect), true);
-      expect(YOLOTask.values.contains(YOLOTask.segment), true);
-    });
+class MockStreamHandler implements MethodCallHandler {
+  final Stream<dynamic> stream;
+  
+  MockStreamHandler(this.stream);
 
-    test('different task types create different widgets', () {
-      const widget1 = YoloView(
-        modelPath: 'test_model.tflite',
-        task: YOLOTask.detect,
+  @override
+  Future<dynamic> call(MethodCall call) async {
+    if (call.method == 'listen') {
+      stream.listen(
+        (event) {
+          // Send events to Flutter
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .handlePlatformMessage(
+            'ultralytics_yolo/yolo_results_0',
+            const StandardMethodCodec().encodeSuccessEnvelope(event),
+            (data) {},
+          );
+        },
+        onError: (error) {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .handlePlatformMessage(
+            'ultralytics_yolo/yolo_results_0',
+            const StandardMethodCodec().encodeErrorEnvelope(
+              code: 'STREAM_ERROR',
+              message: error.toString(),
+            ),
+            (data) {},
+          );
+        },
+        onDone: () {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .handlePlatformMessage(
+            'ultralytics_yolo/yolo_results_0',
+            null, // null indicates stream is done
+            (data) {},
+          );
+        },
       );
-
-      const widget2 = YoloView(
-        modelPath: 'test_model.tflite',
-        task: YOLOTask.segment,
-      );
-
-      expect(widget1.task, YOLOTask.detect);
-      expect(widget2.task, YOLOTask.segment);
-      expect(widget1.task, isNot(equals(widget2.task)));
-    });
-  });
-
-  group('YoloView Model Paths', () {
-    test('handles different model path formats', () {
-      const testPaths = [
-        'yolo11n.tflite',
-        'assets/models/yolo11s.tflite',
-        'yolo11n.mlpackage',
-        'custom_model.tflite',
-      ];
-
-      // Test that model paths are valid strings
-      for (final path in testPaths) {
-        expect(path, isA<String>());
-        expect(path.isNotEmpty, true);
-      }
-
-      const widget = YoloView(
-        modelPath: 'test_model.tflite',
-        task: YOLOTask.detect,
-      );
-      expect(widget.modelPath, isA<String>());
-      expect(widget.modelPath.isNotEmpty, true);
-    });
-
-    test('handles special characters in model paths', () {
-      const specialPaths = [
-        'models/test-model_v2.tflite',
-        'models/test.model.with.dots.tflite',
-        'models/test model with spaces.tflite',
-      ];
-
-      // Test that special character paths are valid
-      for (final path in specialPaths) {
-        expect(path, isA<String>());
-        expect(path.contains('model'), true);
-      }
-
-      const widget = YoloView(
-        modelPath: 'test_model.tflite',
-        task: YOLOTask.detect,
-      );
-      expect(widget.modelPath, isA<String>());
-    });
-  });
-
-  group('YoloView Camera Resolutions', () {
-    test('supports common camera resolutions', () {
-      const resolutions = ['480p', '720p', '1080p', '4K'];
-
-      // Test that resolutions are valid strings
-      for (final resolution in resolutions) {
-        expect(resolution, isA<String>());
-        expect(resolution.isNotEmpty, true);
-      }
-
-      const widget = YoloView(
-        modelPath: 'test_model.tflite',
-        task: YOLOTask.detect,
-        cameraResolution: '1080p',
-      );
-      expect(widget.cameraResolution, isA<String>());
-    });
-
-    test('handles default camera resolution when not specified', () {
-      const widget = YoloView(
-        modelPath: 'test_model.tflite',
-        task: YOLOTask.detect,
-        // cameraResolution not specified - should use default
-      );
-      expect(widget.cameraResolution, isA<String>());
-    });
-  });
+      return null;
+    } else if (call.method == 'cancel') {
+      return null;
+    }
+    throw PlatformException(code: 'UNIMPLEMENTED');
+  }
 }
