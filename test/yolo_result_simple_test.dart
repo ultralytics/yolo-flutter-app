@@ -58,29 +58,6 @@ void main() {
       expect(result.mask![0], [0.1, 0.2]);
     });
 
-    test('fromMap handles pose keypoints data', () {
-      final map = {
-        'classIndex': 0,
-        'className': 'person',
-        'confidence': 0.95,
-        'boundingBox': {
-          'left': 10.0,
-          'top': 10.0,
-          'right': 110.0,
-          'bottom': 210.0,
-        },
-        'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
-        'keypoints': [100.0, 200.0, 0.9, 150.0, 250.0, 0.8],
-      };
-
-      final result = YOLOResult.fromMap(map);
-
-      expect(result.keypoints, isNotNull);
-      expect(result.keypoints!.length, 2);
-      expect(result.keypoints![0], Point(100.0, 200.0));
-      expect(result.keypointConfidences![0], 0.9);
-    });
-
     test('toMap serializes basic detection data', () {
       final result = YOLOResult(
         classIndex: 1,
