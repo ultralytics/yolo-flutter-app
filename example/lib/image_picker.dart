@@ -96,26 +96,28 @@ class _ImagePickerState extends State<ImagePickerScreen> {
               children: [
                 segments.isNotEmpty && imagePath.isNotEmpty
                     ? Expanded(
-                      child: Stack(
-                        children: [
-                          Image.file(
-                            io.File(imagePath),
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
-                          RepaintBoundary(
-                            child: CustomPaint(
-                              painter: SegmentDetectorPainter(
-                                results: box,
-                                imageSize: imageSize,
-                                displayWidth: MediaQuery.of(context).size.width,
-                              ),
-                              size: imageSize,
+                        child: Stack(
+                          children: [
+                            Image.file(
+                              io.File(imagePath),
+                              width: double.infinity,
+                              fit: BoxFit.cover,
                             ),
-                          ),
-                        ],
-                      ),
-                    )
+                            RepaintBoundary(
+                              child: CustomPaint(
+                                painter: SegmentDetectorPainter(
+                                  results: box,
+                                  imageSize: imageSize,
+                                  displayWidth: MediaQuery.of(
+                                    context,
+                                  ).size.width,
+                                ),
+                                size: imageSize,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
                     : const SizedBox(),
                 Expanded(
                   child: Center(

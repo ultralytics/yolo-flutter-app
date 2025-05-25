@@ -44,50 +44,50 @@ class _MyAppState extends State<MyApp> {
                 ? const Center(child: Text("Error requesting permissions"))
                 : _isCameraMode
                 ? FutureBuilder<ObjectDetector>(
-                  future: _initObjectDetectorWithLocalModel(),
-                  builder: (context, snapshot) {
-                    final predictor = snapshot.data;
+                    future: _initObjectDetectorWithLocalModel(),
+                    builder: (context, snapshot) {
+                      final predictor = snapshot.data;
 
-                    return predictor == null
-                        ? Container()
-                        : Stack(
-                          children: [
-                            UltralyticsYoloCameraPreview(
-                              controller: controller,
-                              predictor: predictor,
-                              onCameraCreated: () {
-                                predictor.loadModel(useGpu: true);
-                              },
-                            ),
-                            StreamBuilder<double?>(
-                              stream: predictor.inferenceTime,
-                              builder: (context, snapshot) {
-                                final inferenceTime = snapshot.data;
-
-                                return StreamBuilder<double?>(
-                                  stream: predictor.fpsRate,
+                      return predictor == null
+                          ? Container()
+                          : Stack(
+                              children: [
+                                UltralyticsYoloCameraPreview(
+                                  controller: controller,
+                                  predictor: predictor,
+                                  onCameraCreated: () {
+                                    predictor.loadModel(useGpu: true);
+                                  },
+                                ),
+                                StreamBuilder<double?>(
+                                  stream: predictor.inferenceTime,
                                   builder: (context, snapshot) {
-                                    final fpsRate = snapshot.data;
+                                    final inferenceTime = snapshot.data;
 
-                                    return Times(
-                                      inferenceTime: inferenceTime,
-                                      fpsRate: fpsRate,
+                                    return StreamBuilder<double?>(
+                                      stream: predictor.fpsRate,
+                                      builder: (context, snapshot) {
+                                        final fpsRate = snapshot.data;
+
+                                        return Times(
+                                          inferenceTime: inferenceTime,
+                                          fpsRate: fpsRate,
+                                        );
+                                      },
                                     );
                                   },
-                                );
-                              },
-                            ),
-                          ],
-                        );
-                  },
-                )
+                                ),
+                              ],
+                            );
+                    },
+                  )
                 : const Center(
-                  child: Text(
-                    'Image Picker feature is not supported yet.\nComing soon!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
-                  ),
-                );
+                    child: Text(
+                      'Image Picker feature is not supported yet.\nComing soon!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  );
           },
         ),
         floatingActionButton: Row(
@@ -183,8 +183,8 @@ class _MyAppState extends State<MyApp> {
       return true;
     } else {
       try {
-        Map<Permission, PermissionStatus> statuses =
-            await permissions.request();
+        Map<Permission, PermissionStatus> statuses = await permissions
+            .request();
         return statuses.values.every(
           (status) => status == PermissionStatus.granted,
         );
