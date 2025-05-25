@@ -22,10 +22,9 @@ class ObjectDetectorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final borderPaint =
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = _strokeWidth;
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _strokeWidth;
     final colors = _colors ?? Colors.primaries;
 
     for (final detectedObject in _detectionResults) {
@@ -72,8 +71,8 @@ class ObjectDetectorPainter extends CustomPainter {
             ..pushStyle(
               ui.TextStyle(
                 color: Colors.white,
-                background:
-                    Paint()..color = color.withAlpha((opacity * 255).round()),
+                background: Paint()
+                  ..color = color.withAlpha((opacity * 255).round()),
               ),
             )
             ..addText(
