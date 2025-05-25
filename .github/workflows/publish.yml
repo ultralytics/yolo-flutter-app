@@ -10,9 +10,11 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       packages: write
+
     if: github.repository == 'ultralytics/yolo-flutter-app' && (github.actor == 'glenn-jocher' || github.actor == 'asabri97' || github.actor == 'john-rocky')
     outputs:
       version: ${{ steps.version.outputs.version }}
