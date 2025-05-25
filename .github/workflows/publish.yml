@@ -1,0 +1,77 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+name: Publish to pub.dev
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: github.repository == 'ultralytics/yolo-flutter-app' && contains(fromJson('["glenn-jocher", "asabri97", "john-rocky"]'), github.actor)
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get package version
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | cut -d' ' -f2)
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "Publishing version: ${VERSION}"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.3"
+          channel: "stable"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Analyze code
+        run: dart analyze --fatal-warnings
+
+      - name: Check package
+        run: dart pub publish --dry-run
+
+      - name: Publish to pub.dev
+        uses: k-paxian/dart-package-publisher@v1.6
+        with:
+          credentialJson: ${{ secrets.PUB_DEV_PUBLISH_ACCESS_TOKEN }}
+          flutter: true
+          skipTests: true
+
+  notify:
+    needs: [publish]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Notify Success
+        if: needs.publish.result == 'success'
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook-type: incoming-webhook
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUB }}
+          payload: |
+            text: "<!channel> GitHub Actions success for ${{ github.workflow }} ✅\n\n\n*Repository:* https://github.com/${{ github.repository }}\n*Action:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Author:* ${{ github.actor }}\n*Event:* NEW `ultralytics_yolo ${{ needs.publish.outputs.version }}` pub.dev package published 🎉\n*Job Status:* ${{ job.status }}\n*Package:* https://pub.dev/packages/ultralytics_yolo"
+      
+      - name: Notify Failure
+        if: needs.publish.result != 'success'
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook-type: incoming-webhook
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUB }}
+          payload: |
+            text: "<!channel> GitHub Actions error for ${{ github.workflow }} ❌\n\n\n*Repository:* https://github.com/${{ github.repository }}\n*Action:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Author:* ${{ github.actor }}\n*Event:* ${{ github.event_name }}\n*Job Status:* ${{ job.status }}"
