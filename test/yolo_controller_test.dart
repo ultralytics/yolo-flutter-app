@@ -19,9 +19,9 @@ void main() {
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(mockChannel, (MethodCall methodCall) async {
-        log.add(methodCall);
-        return null;
-      });
+            log.add(methodCall);
+            return null;
+          });
 
       controller._init(mockChannel);
     });
@@ -93,12 +93,18 @@ void main() {
       expect(log.last.method, 'switchCamera');
     });
 
-    test('methods handle platform channel not initialized gracefully', () async {
-      final uninitializedController = YoloViewController();
-      
-      // Should not throw, just log warning
-      expect(() => uninitializedController.setConfidenceThreshold(0.8), returnsNormally);
-      expect(() => uninitializedController.switchCamera(), returnsNormally);
-    });
+    test(
+      'methods handle platform channel not initialized gracefully',
+      () async {
+        final uninitializedController = YoloViewController();
+
+        // Should not throw, just log warning
+        expect(
+          () => uninitializedController.setConfidenceThreshold(0.8),
+          returnsNormally,
+        );
+        expect(() => uninitializedController.switchCamera(), returnsNormally);
+      },
+    );
   });
 }
