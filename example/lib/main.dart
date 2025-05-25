@@ -141,8 +141,6 @@ class _MyAppState extends State<MyApp> {
   Future<SegmentDetector> _initSegmentDetectorWithLocalModel() async {
     final modelPath = await _copy('assets/yolo11n-seg_float16.tflite');
     final metadataPath = await _copy('assets/metaxy.yaml');
-    print("here lkanfbknaob");
-    print(metadataPath);
     final model = LocalYoloModel(
       id: '',
       task: Task.segment,
