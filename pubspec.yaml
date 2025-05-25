@@ -1,9 +1,9 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 name: ultralytics_yolo
-description: A Flutter plugin for Ultralytics YOLO computer vision models
+description: A Flutter plugin for Ultralytics YOLO
 version: 0.0.3
-homepage: https://github.com/ultralytics/ultralytics_yolo.git
+homepage: https://github.com/ultralytics/yolo-flutter-app
 
 environment:
   flutter: ">=3.19.0"
