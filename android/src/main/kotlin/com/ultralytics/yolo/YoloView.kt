@@ -498,7 +498,10 @@ class YoloView @JvmOverloads constructor(
             val dx = (vw - scaledW) / 2f
             val dy = (vh - scaledH) / 2f
             
-            Log.d(TAG, "OverlayView scaling: scale=${scale}, dx=${dx}, dy=${dy}")
+            // Check if using front camera
+            val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
+            
+            Log.d(TAG, "OverlayView scaling: scale=${scale}, dx=${dx}, dy=${dy}, frontCamera=${isFrontCamera}")
 
             when (task) {
                 // ----------------------------------------
@@ -521,10 +524,18 @@ class YoloView @JvmOverloads constructor(
                         Log.d(TAG, "Box raw coords: L=${box.xywh.left}, T=${box.xywh.top}, R=${box.xywh.right}, B=${box.xywh.bottom}, cls=${box.cls}, conf=${box.conf}")
                         
                         // Draw bounding box like in the original code
-                        val left   = box.xywh.left   * scale + dx
-                        val top    = box.xywh.top    * scale + dy
-                        val right  = box.xywh.right  * scale + dx
-                        val bottom = box.xywh.bottom * scale + dy
+                        var left   = box.xywh.left   * scale + dx
+                        var top    = box.xywh.top    * scale + dy
+                        var right  = box.xywh.right  * scale + dx
+                        var bottom = box.xywh.bottom * scale + dy
+                        
+                        // Flip vertically for front camera
+                        if (isFrontCamera) {
+                            val flippedTop = vh - bottom
+                            val flippedBottom = vh - top
+                            top = flippedTop
+                            bottom = flippedBottom
+                        }
                         
                         Log.d(TAG, "Drawing box for ${box.cls}: L=$left, T=$top, R=$right, B=$bottom, conf=${box.conf}")
 
@@ -589,10 +600,18 @@ class YoloView @JvmOverloads constructor(
                         )
 
                         // Draw bounding box
-                        val left   = box.xywh.left   * scale + dx
-                        val top    = box.xywh.top    * scale + dy
-                        val right  = box.xywh.right  * scale + dx
-                        val bottom = box.xywh.bottom * scale + dy
+                        var left   = box.xywh.left   * scale + dx
+                        var top    = box.xywh.top    * scale + dy
+                        var right  = box.xywh.right  * scale + dx
+                        var bottom = box.xywh.bottom * scale + dy
+                        
+                        // Flip vertically for front camera
+                        if (isFrontCamera) {
+                            val flippedTop = vh - bottom
+                            val flippedBottom = vh - top
+                            top = flippedTop
+                            bottom = flippedBottom
+                        }
 
                         paint.color = newColor
                         paint.style = Paint.Style.STROKE
@@ -633,7 +652,19 @@ class YoloView @JvmOverloads constructor(
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
                         val dst = RectF(dx, dy, dx + scaledW, dy + scaledH)
                         val maskPaint = Paint().apply { alpha = 128 }
-                        canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                        
+                        if (isFrontCamera) {
+                            // For front camera, flip the mask vertically
+                            canvas.save()
+                            // Translate to center, flip vertically, translate back
+                            canvas.translate(0f, vh / 2f)
+                            canvas.scale(1f, -1f)
+                            canvas.translate(0f, -vh / 2f)
+                            canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                            canvas.restore()
+                        } else {
+                            canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                        }
                     }
                 }
                 // ----------------------------------------
@@ -692,10 +723,18 @@ class YoloView @JvmOverloads constructor(
                             Color.blue(baseColor)
                         )
 
-                        val left   = box.xywh.left   * scale + dx
-                        val top    = box.xywh.top    * scale + dy
-                        val right  = box.xywh.right  * scale + dx
-                        val bottom = box.xywh.bottom * scale + dy
+                        var left   = box.xywh.left   * scale + dx
+                        var top    = box.xywh.top    * scale + dy
+                        var right  = box.xywh.right  * scale + dx
+                        var bottom = box.xywh.bottom * scale + dy
+                        
+                        // Flip vertically for front camera
+                        if (isFrontCamera) {
+                            val flippedTop = vh - bottom
+                            val flippedBottom = vh - top
+                            top = flippedTop
+                            bottom = flippedBottom
+                        }
 
                         paint.color = newColor
                         paint.style = Paint.Style.STROKE
@@ -717,7 +756,12 @@ class YoloView @JvmOverloads constructor(
                                 val pxCam = kp.first * iw
                                 val pyCam = kp.second * ih
                                 val px = pxCam * scale + dx
-                                val py = pyCam * scale + dy
+                                var py = pyCam * scale + dy
+                                
+                                // Flip vertically for front camera
+                                if (isFrontCamera) {
+                                    py = vh - py
+                                }
 
                                 val colorIdx = if (i < kptColorIndices.size) kptColorIndices[i] else 0
                                 val rgbArray = posePalette[colorIdx % posePalette.size]
@@ -776,7 +820,15 @@ class YoloView @JvmOverloads constructor(
 
                         // Draw rotated rectangle (polygon) using path
                         val polygon = obbRes.box.toPolygon().map { pt ->
-                            PointF(pt.x * scaledW + dx, pt.y * scaledH + dy)
+                            val x = pt.x * scaledW + dx
+                            var y = pt.y * scaledH + dy
+                            
+                            // Flip vertically for front camera
+                            if (isFrontCamera) {
+                                y = vh - y
+                            }
+                            
+                            PointF(x, y)
                         }
                         if (polygon.size >= 4) {
                             val path = Path().apply {
