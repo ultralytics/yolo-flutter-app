@@ -1,8 +1,5 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-import 'dart:async';
-import 'dart:ui';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
@@ -123,10 +120,10 @@ void main() {
       ];
 
       for (final testCase in testCases) {
-        await controller.setConfidenceThreshold(testCase['input']! as double);
+        await controller.setConfidenceThreshold(testCase['input']!);
         expect(controller.confidenceThreshold, testCase['expected']);
 
-        await controller.setIoUThreshold(testCase['input']! as double);
+        await controller.setIoUThreshold(testCase['input']!);
         expect(controller.iouThreshold, testCase['expected']);
       }
     });
@@ -141,19 +138,20 @@ void main() {
       ];
 
       for (final testCase in testCases) {
-        await controller.setNumItemsThreshold(testCase['input']! as int);
+        await controller.setNumItemsThreshold(testCase['input']!);
         expect(controller.numItemsThreshold, testCase['expected']);
       }
     });
   });
 
   group('YoloView Widget Creation', () {
-    testWidgets('creates with minimal required parameters', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('creates with minimal required parameters', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: YoloView(modelPath: 'test_model.tflite', task: YOLOTask.detect),
+        const MaterialApp(
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+          ),
         ),
       );
 
@@ -162,8 +160,6 @@ void main() {
 
     testWidgets('creates with all parameters', (WidgetTester tester) async {
       final controller = YoloViewController();
-      List<YOLOResult>? receivedResults;
-      Map<String, double>? receivedMetrics;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -172,8 +168,12 @@ void main() {
             task: YOLOTask.segment,
             controller: controller,
             cameraResolution: '1080p',
-            onResult: (results) => receivedResults = results,
-            onPerformanceMetrics: (metrics) => receivedMetrics = metrics,
+            onResult: (results) {
+              // Callback provided but we're just testing widget creation
+            },
+            onPerformanceMetrics: (metrics) {
+              // Callback provided but we're just testing widget creation
+            },
             showNativeUI: true,
           ),
         ),
@@ -186,7 +186,10 @@ void main() {
       for (final task in YOLOTask.values) {
         await tester.pumpWidget(
           MaterialApp(
-            home: YoloView(modelPath: 'test_model.tflite', task: task),
+            home: YoloView(
+              modelPath: 'test_model.tflite',
+              task: task,
+            ),
           ),
         );
 
@@ -195,9 +198,7 @@ void main() {
       }
     });
 
-    testWidgets('creates with different camera resolutions', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('creates with different camera resolutions', (WidgetTester tester) async {
       const resolutions = ['480p', '720p', '1080p', '4K'];
 
       for (final resolution in resolutions) {
@@ -216,9 +217,7 @@ void main() {
       }
     });
 
-    testWidgets('creates with showNativeUI variations', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('creates with showNativeUI variations', (WidgetTester tester) async {
       // Test with showNativeUI = false
       await tester.pumpWidget(
         MaterialApp(
@@ -244,9 +243,7 @@ void main() {
       expect(find.byType(YoloView), findsOneWidget);
     });
 
-    testWidgets('widget properties are accessible', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('widget properties are accessible', (WidgetTester tester) async {
       final controller = YoloViewController();
       final onResultCalled = <YOLOResult>[];
       final onMetricsCalled = <Map<String, double>>[];
@@ -272,9 +269,7 @@ void main() {
   });
 
   group('YoloView GlobalKey Access', () {
-    testWidgets('can access state methods via GlobalKey', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('can access state methods via GlobalKey', (WidgetTester tester) async {
       final key = GlobalKey<YoloViewState>();
 
       await tester.pumpWidget(
@@ -288,22 +283,14 @@ void main() {
       );
 
       // These methods should be accessible via GlobalKey
-      expect(
-        () => key.currentState?.setConfidenceThreshold(0.8),
-        returnsNormally,
-      );
+      expect(() => key.currentState?.setConfidenceThreshold(0.8), returnsNormally);
       expect(() => key.currentState?.setIoUThreshold(0.6), returnsNormally);
       expect(() => key.currentState?.setNumItemsThreshold(25), returnsNormally);
-      expect(
-        () => key.currentState?.setThresholds(confidenceThreshold: 0.7),
-        returnsNormally,
-      );
+      expect(() => key.currentState?.setThresholds(confidenceThreshold: 0.7), returnsNormally);
       expect(() => key.currentState?.switchCamera(), returnsNormally);
     });
 
-    testWidgets('GlobalKey methods delegate correctly', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('GlobalKey methods delegate correctly', (WidgetTester tester) async {
       final key = GlobalKey<YoloViewState>();
       final controller = YoloViewController();
 
@@ -333,9 +320,7 @@ void main() {
   });
 
   group('YoloView Callback Handling', () {
-    testWidgets('handles null callbacks gracefully', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('handles null callbacks gracefully', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: YoloView(
@@ -350,9 +335,7 @@ void main() {
       expect(find.byType(YoloView), findsOneWidget);
     });
 
-    testWidgets('stores callback references correctly', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('stores callback references correctly', (WidgetTester tester) async {
       var resultCallCount = 0;
       var metricsCallCount = 0;
 
@@ -376,9 +359,7 @@ void main() {
   });
 
   group('YoloView Model Path Variations', () {
-    testWidgets('handles different model path formats', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('handles different model path formats', (WidgetTester tester) async {
       final modelPaths = [
         'yolo11n.tflite',
         'assets/models/yolo11s.tflite',
@@ -393,7 +374,10 @@ void main() {
       for (final modelPath in modelPaths) {
         await tester.pumpWidget(
           MaterialApp(
-            home: YoloView(modelPath: modelPath, task: YOLOTask.detect),
+            home: YoloView(
+              modelPath: modelPath,
+              task: YOLOTask.detect,
+            ),
           ),
         );
 
@@ -413,7 +397,10 @@ void main() {
       for (final modelPath in unicodePaths) {
         await tester.pumpWidget(
           MaterialApp(
-            home: YoloView(modelPath: modelPath, task: YOLOTask.detect),
+            home: YoloView(
+              modelPath: modelPath,
+              task: YOLOTask.detect,
+            ),
           ),
         );
 
@@ -474,9 +461,7 @@ void main() {
       }
     });
 
-    testWidgets('handles extreme threshold values through widget', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('handles extreme threshold values through widget', (WidgetTester tester) async {
       final controller = YoloViewController();
 
       await tester.pumpWidget(
