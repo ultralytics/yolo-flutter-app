@@ -9,7 +9,6 @@ void main() {
 
   group('YoloViewController', () {
     late YoloViewController controller;
-    late MethodChannel mockChannel;
     final List<MethodCall> log = <MethodCall>[];
 
     setUp(() {
@@ -21,8 +20,7 @@ void main() {
     });
 
     tearDown(() {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(mockChannel, null);
+      // No cleanup needed since we don't mock channels
     });
 
     test('default values are set correctly', () {
