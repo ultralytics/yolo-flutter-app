@@ -90,7 +90,7 @@ void main() {
   group('YoloView Widget Properties', () {
     test('widget properties are accessible', () {
       final controller = YoloViewController();
-      
+
       const widget = YoloView(
         modelPath: 'test_model.tflite',
         task: YOLOTask.segment,
@@ -107,7 +107,7 @@ void main() {
 
     test('widget with controller property', () {
       final controller = YoloViewController();
-      
+
       final widget = YoloView(
         modelPath: 'test_model.tflite',
         task: YOLOTask.detect,
@@ -144,10 +144,7 @@ void main() {
     testWidgets('creates with minimal parameters', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: YoloView(
-            modelPath: 'test_model.tflite',
-            task: YOLOTask.detect,
-          ),
+          home: YoloView(modelPath: 'test_model.tflite', task: YOLOTask.detect),
         ),
       );
 
@@ -170,7 +167,9 @@ void main() {
       expect(find.byType(YoloView), findsOneWidget);
     });
 
-    testWidgets('creates with all optional parameters', (WidgetTester tester) async {
+    testWidgets('creates with all optional parameters', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: YoloView(
@@ -204,7 +203,9 @@ void main() {
   });
 
   group('YoloView GlobalKey Access', () {
-    testWidgets('can access state methods via GlobalKey', (WidgetTester tester) async {
+    testWidgets('can access state methods via GlobalKey', (
+      WidgetTester tester,
+    ) async {
       final key = GlobalKey<YoloViewState>();
 
       await tester.pumpWidget(
@@ -220,7 +221,10 @@ void main() {
       await tester.pump(); // Single pump instead of pumpAndSettle
 
       // Test that methods are accessible
-      expect(() => key.currentState?.setConfidenceThreshold(0.8), returnsNormally);
+      expect(
+        () => key.currentState?.setConfidenceThreshold(0.8),
+        returnsNormally,
+      );
       expect(() => key.currentState?.setIoUThreshold(0.6), returnsNormally);
       expect(() => key.currentState?.setNumItemsThreshold(25), returnsNormally);
       expect(() => key.currentState?.switchCamera(), returnsNormally);
@@ -243,7 +247,7 @@ void main() {
         modelPath: 'test_model.tflite',
         task: YOLOTask.detect,
       );
-      
+
       const widget2 = YoloView(
         modelPath: 'test_model.tflite',
         task: YOLOTask.segment,
