@@ -1,27 +1,5 @@
-// Get Flutter SDK location from environment variable (for CI)
-def flutterRoot = System.getenv('FLUTTER_ROOT')
-if (!flutterRoot) {
-    // Read from local.properties for local development
-    def localProperties = new Properties()
-    def localPropertiesFile = rootProject.file('local.properties')
-    if (localPropertiesFile.exists()) {
-        localPropertiesFile.withReader('UTF-8') { reader ->
-            localProperties.load(reader)
-        }
-        flutterRoot = localProperties.getProperty('flutter.sdk')
-    }
-}
-
-// If still not found, use path set by CI Flutter action
-if (!flutterRoot && System.getenv('RUNNER_TEMP')) {
-    def flutterPath = new File(System.getenv('RUNNER_TEMP'), 'flutter')
-    if (flutterPath.exists()) {
-        flutterRoot = flutterPath.absolutePath
-    }
-}
-
-group = "com.ultralytics.yolo"
-version = "1.0-SNAPSHOT"
+group 'com.ultralytics.yolo'
+version '1.0'
 
 buildscript {
     ext.kotlin_version = "1.8.22"
