@@ -78,12 +78,18 @@ void main() {
       expect(() => controller.switchCamera(), returnsNormally);
     });
 
-    test('methods handle platform channel not initialized gracefully', () async {
-      final uninitializedController = YoloViewController();
-      
-      // Should not throw, just log warning
-      expect(() => uninitializedController.setConfidenceThreshold(0.8), returnsNormally);
-      expect(() => uninitializedController.switchCamera(), returnsNormally);
-    });
+    test(
+      'methods handle platform channel not initialized gracefully',
+      () async {
+        final uninitializedController = YoloViewController();
+
+        // Should not throw, just log warning
+        expect(
+          () => uninitializedController.setConfidenceThreshold(0.8),
+          returnsNormally,
+        );
+        expect(() => uninitializedController.switchCamera(), returnsNormally);
+      },
+    );
   });
 }
