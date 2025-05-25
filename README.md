@@ -1,4 +1,4 @@
-<a href="https://www.ultralytics.com/" target="_blank"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
+<a href="https://www.ultralytics.com/"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
 
 # Ultralytics YOLO Flutter App
 
@@ -8,9 +8,9 @@
 
 [![Ultralytics Discord](https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue)](https://discord.com/invite/ultralytics)
 [![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
-[![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://reddit.com/r/ultralytics)
+[![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://www.reddit.com/r/ultralytics/)
 
-Welcome to the Ultralytics YOLO Flutter plugin! Integrate cutting-edge [Ultralytics YOLO](https://docs.ultralytics.com/) [computer vision](https://www.ultralytics.com/glossary/computer-vision-cv) models seamlessly into your Flutter mobile applications. This plugin at https://pub.dev/packages/ultralytics_yolo supports both Android and iOS platforms, offering APIs for [object detection](https://docs.ultralytics.com/tasks/detect/) and [image classification](https://docs.ultralytics.com/tasks/classify/).
+Welcome to the Ultralytics YOLO Flutter plugin! Integrate cutting-edge [Ultralytics YOLO](https://docs.ultralytics.com/) [computer vision](https://www.ultralytics.com/glossary/computer-vision-cv) models seamlessly into your Flutter mobile applications. This plugin at https://pub.dev/packages/ultralytics_yolo supports both Android and iOS platforms, offering APIs for [object detection](https://docs.ultralytics.com/tasks/detect/), [image classification](https://docs.ultralytics.com/tasks/classify/), [instance segmentation](https://docs.ultralytics.com/tasks/segment/), [pose estimation](https://docs.ultralytics.com/tasks/pose/), and [oriented bounding box detection](https://docs.ultralytics.com/tasks/obb/).
 
 ## ✨ Features
 
@@ -22,9 +22,10 @@ Welcome to the Ultralytics YOLO Flutter plugin! Integrate cutting-edge [Ultralyt
 | Pose Estimation | ✅      | ✅  |
 | OBB Detection   | ✅      | ✅  |
 
-- **Real-time Processing**: Optimized for real-time inference on mobile devices
-- **Camera Integration**: Easy integration with device cameras
-- **Cross-Platform**: Works on both Android and iOS
+- **Real-time Processing**: Optimized for [real-time inference](https://www.ultralytics.com/glossary/real-time-inference) on mobile devices
+- **Camera Integration**: Easy integration with device cameras for live detection
+- **Cross-Platform**: Works seamlessly on both Android and iOS platforms
+- **High Performance**: Leverages [TensorFlow Lite](https://www.ultralytics.com/glossary/tensorflow) for Android and [Core ML](https://docs.ultralytics.com/integrations/coreml/) for iOS
 
 ## 🚀 Installation
 
@@ -41,7 +42,7 @@ Then run:
 flutter pub get
 ```
 
-## Platform-Specific Setup
+## 📱 Platform-Specific Setup
 
 ### Android
 
@@ -299,7 +300,7 @@ For the most reliable cross-platform experience, the simplest approach is to:
 
 This approach avoids path resolution issues across platforms and lets each platform automatically find the appropriate model file without complicated path handling.
 
-## API Reference
+## 📚 API Reference
 
 ### Classes
 
@@ -394,7 +395,7 @@ enum YOLOTask {
 }
 ```
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 ### Common Issues
 
@@ -403,20 +404,25 @@ enum YOLOTask {
    - Make sure your model file is correctly placed as described above
    - Verify that the model path is correctly specified
    - For iOS, ensure `.mlpackage` files are added directly to the Xcode project and properly included in target's "Build Phases" → "Copy Bundle Resources"
-   - Check that the model format is compatible with TFLite (Android) or Core ML (iOS)
+   - Check that the model format is compatible with [TensorFlow Lite](https://www.ultralytics.com/glossary/tensorflow) (Android) or [Core ML](https://docs.ultralytics.com/integrations/coreml/) (iOS)
    - Use `YOLO.checkModelExists(modelPath)` to verify if your model can be found
 
 2. **Low performance on older devices**
 
-   - Try using smaller models (e.g., YOLOv8n instead of YOLOv8l)
+   - Try using smaller models (e.g., YOLO11n instead of YOLO11l)
    - Reduce input image resolution
-   - Increase confidence threshold to reduce the number of detections
-   - Adjust IoU threshold to control overlapping detections
+   - Increase [confidence threshold](https://www.ultralytics.com/glossary/confidence) to reduce the number of detections
+   - Adjust [IoU threshold](https://www.ultralytics.com/glossary/intersection-over-union-iou) to control overlapping detections
    - Limit the maximum number of detection items
 
 3. **Camera permission issues**
    - Ensure that your app has the proper permissions in the manifest or Info.plist
    - Handle runtime permissions properly in your app
+
+4. **Performance optimization tips**
+   - Use [model quantization](https://www.ultralytics.com/glossary/model-quantization) for faster inference
+   - Consider [edge computing](https://www.ultralytics.com/glossary/edge-computing) approaches for better performance
+   - Implement proper [data preprocessing](https://www.ultralytics.com/glossary/data-preprocessing) for optimal results
 
 ## 💡 Contribute
 
