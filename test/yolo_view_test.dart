@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
-import 'package:ultralytics_yolo/yolo_result.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -89,8 +88,6 @@ void main() {
 
   group('YoloView Widget Properties', () {
     test('widget properties are accessible', () {
-      final controller = YoloViewController();
-
       const widget = YoloView(
         modelPath: 'test_model.tflite',
         task: YOLOTask.segment,
@@ -107,7 +104,7 @@ void main() {
 
     test('widget with controller property', () {
       final controller = YoloViewController();
-
+      
       final widget = YoloView(
         modelPath: 'test_model.tflite',
         task: YOLOTask.detect,
@@ -144,7 +141,10 @@ void main() {
     testWidgets('creates with minimal parameters', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: YoloView(modelPath: 'test_model.tflite', task: YOLOTask.detect),
+          home: YoloView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+          ),
         ),
       );
 
@@ -167,9 +167,7 @@ void main() {
       expect(find.byType(YoloView), findsOneWidget);
     });
 
-    testWidgets('creates with all optional parameters', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('creates with all optional parameters', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: YoloView(
@@ -203,9 +201,7 @@ void main() {
   });
 
   group('YoloView GlobalKey Access', () {
-    testWidgets('can access state methods via GlobalKey', (
-      WidgetTester tester,
-    ) async {
+    testWidgets('can access state methods via GlobalKey', (WidgetTester tester) async {
       final key = GlobalKey<YoloViewState>();
 
       await tester.pumpWidget(
@@ -221,10 +217,7 @@ void main() {
       await tester.pump(); // Single pump instead of pumpAndSettle
 
       // Test that methods are accessible
-      expect(
-        () => key.currentState?.setConfidenceThreshold(0.8),
-        returnsNormally,
-      );
+      expect(() => key.currentState?.setConfidenceThreshold(0.8), returnsNormally);
       expect(() => key.currentState?.setIoUThreshold(0.6), returnsNormally);
       expect(() => key.currentState?.setNumItemsThreshold(25), returnsNormally);
       expect(() => key.currentState?.switchCamera(), returnsNormally);
@@ -233,13 +226,10 @@ void main() {
 
   group('YoloView Task Types', () {
     test('supports all YOLOTask enum values', () {
-      for (final task in YOLOTask.values) {
-        const widget = YoloView(
-          modelPath: 'test_model.tflite',
-          task: YOLOTask.detect, // Use const value instead of variable
-        );
-        expect(widget.task, isA<YOLOTask>());
-      }
+      // Test that YOLOTask enum has expected values
+      expect(YOLOTask.values.length, greaterThan(0));
+      expect(YOLOTask.values.contains(YOLOTask.detect), true);
+      expect(YOLOTask.values.contains(YOLOTask.segment), true);
     });
 
     test('different task types create different widgets', () {
@@ -247,7 +237,7 @@ void main() {
         modelPath: 'test_model.tflite',
         task: YOLOTask.detect,
       );
-
+      
       const widget2 = YoloView(
         modelPath: 'test_model.tflite',
         task: YOLOTask.segment,
@@ -268,14 +258,18 @@ void main() {
         'custom_model.tflite',
       ];
 
+      // Test that model paths are valid strings
       for (final path in testPaths) {
-        const widget = YoloView(
-          modelPath: 'test_model.tflite', // Use const value
-          task: YOLOTask.detect,
-        );
-        expect(widget.modelPath, isA<String>());
-        expect(widget.modelPath.isNotEmpty, true);
+        expect(path, isA<String>());
+        expect(path.isNotEmpty, true);
       }
+      
+      const widget = YoloView(
+        modelPath: 'test_model.tflite',
+        task: YOLOTask.detect,
+      );
+      expect(widget.modelPath, isA<String>());
+      expect(widget.modelPath.isNotEmpty, true);
     });
 
     test('handles special characters in model paths', () {
@@ -285,13 +279,17 @@ void main() {
         'models/test model with spaces.tflite',
       ];
 
+      // Test that special character paths are valid
       for (final path in specialPaths) {
-        const widget = YoloView(
-          modelPath: 'test_model.tflite', // Use const value
-          task: YOLOTask.detect,
-        );
-        expect(widget.modelPath, isA<String>());
+        expect(path, isA<String>());
+        expect(path.contains('model'), true);
       }
+      
+      const widget = YoloView(
+        modelPath: 'test_model.tflite',
+        task: YOLOTask.detect,
+      );
+      expect(widget.modelPath, isA<String>());
     });
   });
 
@@ -299,18 +297,22 @@ void main() {
     test('supports common camera resolutions', () {
       const resolutions = ['480p', '720p', '1080p', '4K'];
 
+      // Test that resolutions are valid strings
       for (final resolution in resolutions) {
-        const widget = YoloView(
-          modelPath: 'test_model.tflite',
-          task: YOLOTask.detect,
-          cameraResolution: '1080p', // Use const value
-        );
-        expect(widget.cameraResolution, isA<String>());
+        expect(resolution, isA<String>());
+        expect(resolution.isNotEmpty, true);
       }
+      
+      const widget = YoloView(
+        modelPath: 'test_model.tflite',
+        task: YOLOTask.detect,
+        cameraResolution: '1080p',
+      );
+      expect(widget.cameraResolution, isA<String>());
     });
 
     test('handles null camera resolution', () {
-      const widget = YoloView(
+      final widget = YoloView(
         modelPath: 'test_model.tflite',
         task: YOLOTask.detect,
         cameraResolution: null,
