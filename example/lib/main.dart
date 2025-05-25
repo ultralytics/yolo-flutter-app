@@ -299,8 +299,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               child: YoloView(
                 key: _useController ? null : _yoloViewKey,
                 controller: _useController ? _yoloController : null,
-                modelPath: 'yolo11n-seg', // Default model for camera view
-                task: YOLOTask.segment,
+                modelPath: 'yolo11m-obb', // Default model for camera view
+                task: YOLOTask.obb,
                 onResult: _onDetectionResults,
                 onPerformanceMetrics: (metrics) {
                   if (mounted) {

@@ -28,6 +28,8 @@ hello_yolo/
 **/*.tflite
 **/*.mlpackage
 **/*.mlmodel
+**/*.mlpackage.zip
+**/*.zip
 
 # Development documents and notes
 CLAUDE.md

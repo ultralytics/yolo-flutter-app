@@ -1,3 +1,10 @@
+## 0.1.4
+
+- Fixed front camera orientation issue on Android where detection results were displayed upside down.
+- Fixed vertical flipping for bounding boxes, segmentation masks, pose keypoints, and OBB (oriented bounding boxes) when using front camera.
+- Added proper canvas transformations for segmentation mask rendering with front camera.
+- Improved overall detection accuracy and visual alignment for front-facing camera usage.
+
 ## 0.1.3
 
 - Added camera switching functionality to toggle between front and back cameras.
