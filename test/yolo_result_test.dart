@@ -15,12 +15,7 @@ void main() {
         'classIndex': 1,
         'className': 'car',
         'confidence': 0.85,
-        'boundingBox': {
-          'left': 10.0,
-          'top': 10.0,
-          'right': 110.0,
-          'bottom': 210.0,
-        },
+        'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
         'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
       };
 
@@ -38,17 +33,9 @@ void main() {
         'classIndex': 0,
         'className': 'person',
         'confidence': 0.95,
-        'boundingBox': {
-          'left': 10.0,
-          'top': 10.0,
-          'right': 110.0,
-          'bottom': 210.0,
-        },
+        'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
         'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
-        'mask': [
-          [0.1, 0.2],
-          [0.3, 0.4],
-        ],
+        'mask': [[0.1, 0.2], [0.3, 0.4]],
       };
 
       final result = YOLOResult.fromMap(map);
@@ -63,12 +50,7 @@ void main() {
         'classIndex': 0,
         'className': 'person',
         'confidence': 0.95,
-        'boundingBox': {
-          'left': 10.0,
-          'top': 10.0,
-          'right': 110.0,
-          'bottom': 210.0,
-        },
+        'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
         'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
         'keypoints': [100.0, 200.0, 0.9, 150.0, 250.0, 0.8],
       };
@@ -109,19 +91,13 @@ void main() {
         confidence: 0.95,
         boundingBox: testBoundingBox,
         normalizedBox: testNormalizedBox,
-        mask: [
-          [0.1, 0.2],
-          [0.3, 0.4],
-        ],
+        mask: [[0.1, 0.2], [0.3, 0.4]],
       );
 
       final map = result.toMap();
 
       expect(map.containsKey('mask'), true);
-      expect(map['mask'], [
-        [0.1, 0.2],
-        [0.3, 0.4],
-      ]);
+      expect(map['mask'], [[0.1, 0.2], [0.3, 0.4]]);
     });
 
     test('toMap includes keypoints when present', () {
@@ -146,12 +122,7 @@ void main() {
         'classIndex': 2,
         'className': 'car',
         'confidence': 0.88,
-        'boundingBox': {
-          'left': 20.0,
-          'top': 30.0,
-          'right': 120.0,
-          'bottom': 180.0,
-        },
+        'boundingBox': {'left': 20.0, 'top': 30.0, 'right': 120.0, 'bottom': 180.0},
         'normalizedBox': {'left': 0.2, 'top': 0.3, 'right': 0.6, 'bottom': 0.8},
         'orientation': 45.0, // OBB-specific field
       };
@@ -184,12 +155,7 @@ void main() {
         'classIndex': 0,
         'className': 'person',
         'confidence': 0.95,
-        'boundingBox': {
-          'left': 10.0,
-          'top': 10.0,
-          'right': 110.0,
-          'bottom': 210.0,
-        },
+        'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
         'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
         // No mask, keypoints, etc.
       };
@@ -206,12 +172,7 @@ void main() {
         'classIndex': 0,
         'className': 'person',
         'confidence': 0.95,
-        'boundingBox': {
-          'left': 10.0,
-          'top': 10.0,
-          'right': 110.0,
-          'bottom': 210.0,
-        },
+        'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
         'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
         'mask': [],
       };
@@ -226,12 +187,7 @@ void main() {
         'classIndex': 0,
         'className': 'person',
         'confidence': 0.95,
-        'boundingBox': {
-          'left': 10.0,
-          'top': 10.0,
-          'right': 110.0,
-          'bottom': 210.0,
-        },
+        'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
         'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
         'keypoints': [],
       };
@@ -256,12 +212,7 @@ void main() {
           'className': 'test',
           'confidence': testCase['confidence'],
           'boundingBox': {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0},
-          'normalizedBox': {
-            'left': 0.0,
-            'top': 0.0,
-            'right': 1.0,
-            'bottom': 1.0,
-          },
+          'normalizedBox': {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0},
         };
 
         final result = YOLOResult.fromMap(map);
@@ -274,12 +225,7 @@ void main() {
         'classIndex': 0,
         'className': 'large_object',
         'confidence': 0.95,
-        'boundingBox': {
-          'left': 0.0,
-          'top': 0.0,
-          'right': 4000.0,
-          'bottom': 3000.0,
-        },
+        'boundingBox': {'left': 0.0, 'top': 0.0, 'right': 4000.0, 'bottom': 3000.0},
         'normalizedBox': {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0},
       };
 
@@ -294,18 +240,8 @@ void main() {
         'classIndex': 0,
         'className': 'test',
         'confidence': 0.95,
-        'boundingBox': {
-          'left': -10.0,
-          'top': -5.0,
-          'right': 100.0,
-          'bottom': 200.0,
-        },
-        'normalizedBox': {
-          'left': -0.1,
-          'top': -0.05,
-          'right': 0.5,
-          'bottom': 0.9,
-        },
+        'boundingBox': {'left': -10.0, 'top': -5.0, 'right': 100.0, 'bottom': 200.0},
+        'normalizedBox': {'left': -0.1, 'top': -0.05, 'right': 0.5, 'bottom': 0.9},
       };
 
       final result = YOLOResult.fromMap(map);
@@ -319,23 +255,14 @@ void main() {
       // Simulate 17 keypoints (COCO pose format: nose, eyes, ears, shoulders, elbows, wrists, hips, knees, ankles)
       final keypointsData = <double>[];
       for (var i = 0; i < 17; i++) {
-        keypointsData.addAll([
-          i * 10.0,
-          i * 15.0,
-          0.8 + (i * 0.01),
-        ]); // x, y, confidence
+        keypointsData.addAll([i * 10.0, i * 15.0, 0.8 + (i * 0.01)]); // x, y, confidence
       }
 
       final map = {
         'classIndex': 0,
         'className': 'person',
         'confidence': 0.95,
-        'boundingBox': {
-          'left': 10.0,
-          'top': 10.0,
-          'right': 110.0,
-          'bottom': 210.0,
-        },
+        'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
         'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
         'keypoints': keypointsData,
       };
@@ -349,7 +276,7 @@ void main() {
       expect(result.keypointConfidences![0], 0.8);
       expect(result.keypoints![16].x, 160.0);
       expect(result.keypoints![16].y, 240.0);
-      expect(result.keypointConfidences![16], 0.96);
+      expect(result.keypointConfidences![16], closeTo(0.96, 0.001)); // Use closeTo for floating point
     });
   });
 
@@ -361,19 +288,9 @@ void main() {
             'classIndex': 0,
             'className': 'person',
             'confidence': 0.95,
-            'boundingBox': {
-              'left': 10.0,
-              'top': 10.0,
-              'right': 110.0,
-              'bottom': 210.0,
-            },
-            'normalizedBox': {
-              'left': 0.1,
-              'top': 0.1,
-              'right': 0.5,
-              'bottom': 0.9,
-            },
-          },
+            'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
+            'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
+          }
         ],
         'processingTimeMs': 25.5,
         'annotatedImage': Uint8List.fromList([1, 2, 3]),
@@ -387,7 +304,10 @@ void main() {
     });
 
     test('fromMap handles empty detections list', () {
-      final map = {'detections': <dynamic>[], 'processingTimeMs': 15.0};
+      final map = {
+        'detections': <dynamic>[],
+        'processingTimeMs': 15.0,
+      };
 
       final results = YOLODetectionResults.fromMap(map);
 
@@ -397,7 +317,9 @@ void main() {
     });
 
     test('fromMap handles null detections', () {
-      final map = {'processingTimeMs': 20.0};
+      final map = {
+        'processingTimeMs': 20.0,
+      };
 
       final results = YOLODetectionResults.fromMap(map);
 
@@ -406,7 +328,9 @@ void main() {
     });
 
     test('fromMap handles missing processingTimeMs', () {
-      final map = {'detections': <dynamic>[]};
+      final map = {
+        'detections': <dynamic>[],
+      };
 
       final results = YOLODetectionResults.fromMap(map);
 
@@ -420,41 +344,18 @@ void main() {
             'classIndex': 0,
             'className': 'person',
             'confidence': 0.95,
-            'boundingBox': {
-              'left': 10.0,
-              'top': 10.0,
-              'right': 110.0,
-              'bottom': 210.0,
-            },
-            'normalizedBox': {
-              'left': 0.1,
-              'top': 0.1,
-              'right': 0.5,
-              'bottom': 0.9,
-            },
+            'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
+            'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
             'keypoints': [100.0, 200.0, 0.9],
           },
           {
             'classIndex': 1,
             'className': 'car',
             'confidence': 0.88,
-            'boundingBox': {
-              'left': 200.0,
-              'top': 100.0,
-              'right': 300.0,
-              'bottom': 250.0,
-            },
-            'normalizedBox': {
-              'left': 0.6,
-              'top': 0.2,
-              'right': 0.8,
-              'bottom': 0.7,
-            },
-            'mask': [
-              [0.1, 0.2],
-              [0.3, 0.4],
-            ],
-          },
+            'boundingBox': {'left': 200.0, 'top': 100.0, 'right': 300.0, 'bottom': 250.0},
+            'normalizedBox': {'left': 0.6, 'top': 0.2, 'right': 0.8, 'bottom': 0.7},
+            'mask': [[0.1, 0.2], [0.3, 0.4]],
+          }
         ],
         'processingTimeMs': 45.2,
       };
