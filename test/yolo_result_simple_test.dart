@@ -15,7 +15,12 @@ void main() {
         'classIndex': 1,
         'className': 'car',
         'confidence': 0.85,
-        'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
+        'boundingBox': {
+          'left': 10.0,
+          'top': 10.0,
+          'right': 110.0,
+          'bottom': 210.0,
+        },
         'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
       };
 
@@ -33,9 +38,17 @@ void main() {
         'classIndex': 0,
         'className': 'person',
         'confidence': 0.95,
-        'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
+        'boundingBox': {
+          'left': 10.0,
+          'top': 10.0,
+          'right': 110.0,
+          'bottom': 210.0,
+        },
         'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
-        'mask': [[0.1, 0.2], [0.3, 0.4]],
+        'mask': [
+          [0.1, 0.2],
+          [0.3, 0.4],
+        ],
       };
 
       final result = YOLOResult.fromMap(map);
@@ -50,7 +63,12 @@ void main() {
         'classIndex': 0,
         'className': 'person',
         'confidence': 0.95,
-        'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
+        'boundingBox': {
+          'left': 10.0,
+          'top': 10.0,
+          'right': 110.0,
+          'bottom': 210.0,
+        },
         'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
         'keypoints': [100.0, 200.0, 0.9, 150.0, 250.0, 0.8],
       };
@@ -87,13 +105,19 @@ void main() {
         confidence: 0.95,
         boundingBox: testBoundingBox,
         normalizedBox: testNormalizedBox,
-        mask: [[0.1, 0.2], [0.3, 0.4]],
+        mask: [
+          [0.1, 0.2],
+          [0.3, 0.4],
+        ],
       );
 
       final map = result.toMap();
 
       expect(map.containsKey('mask'), true);
-      expect(map['mask'], [[0.1, 0.2], [0.3, 0.4]]);
+      expect(map['mask'], [
+        [0.1, 0.2],
+        [0.3, 0.4],
+      ]);
     });
   });
 
@@ -105,9 +129,19 @@ void main() {
             'classIndex': 0,
             'className': 'person',
             'confidence': 0.95,
-            'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
-            'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
-          }
+            'boundingBox': {
+              'left': 10.0,
+              'top': 10.0,
+              'right': 110.0,
+              'bottom': 210.0,
+            },
+            'normalizedBox': {
+              'left': 0.1,
+              'top': 0.1,
+              'right': 0.5,
+              'bottom': 0.9,
+            },
+          },
         ],
         'processingTimeMs': 25.5,
         'annotatedImage': Uint8List.fromList([1, 2, 3]),
