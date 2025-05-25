@@ -7,7 +7,7 @@ The YOLO Swift Package provides an easy way to integrate Core ML-exported [Ultra
 [![Ultralytics Actions](https://github.com/ultralytics/yolo-ios-app/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/yolo-ios-app/actions/workflows/format.yml)
 [![Ultralytics Discord](https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue)](https://discord.com/invite/ultralytics)
 [![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
-[![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://reddit.com/r/ultralytics)
+[![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://www.reddit.com/r/ultralytics/)
 
 - [✨ Features](#-features)
 - [📋 Requirements](#-requirements)
@@ -15,8 +15,9 @@ The YOLO Swift Package provides an easy way to integrate Core ML-exported [Ultra
 - [💡 Usage](#-usage)
   - [YOLO Class (Inference)](#yolo-class-inference)
   - [YOLOCamera / YOLOView (Real-Time Camera Inference)](#yolocamera--yoloview-real-time-camera-inference)
-- [🤝 Contributing](contributing)
-- [📜 License](license)
+- [⚙️ How to Obtain YOLO Core ML Models](#️-how-to-obtain-yolo-core-ml-models)
+- [🤝 Contributing](#-contributing)
+- [📜 License](#-license)
 
 ## ✨ Features
 
@@ -35,7 +36,7 @@ The YOLO Swift Package provides an easy way to integrate Core ML-exported [Ultra
 | watchOS  | 6.0+            | Limited use cases due to hardware constraints                                                            |
 
 - **Swift 5.7+**: Required for modern language features.
-- **Xcode 14.0+**: Needed to leverage Core ML and the latest [Swift Concurrency](https://developer.apple.com/documentation/swift/swift_standard_library/concurrency) features. Download from the [Apple Developer site](https://developer.apple.com/xcode/).
+- **Xcode 14.0+**: Needed to leverage Core ML and the latest [Swift Concurrency](https://developer.apple.com/documentation/swift/concurrency) features. Download from the [Apple Developer site](https://developer.apple.com/xcode/).
 
 ## 🚀 Installation
 
@@ -51,7 +52,7 @@ Select the repository when it appears. Choose the `main` branch or the latest ve
 
 Next, in the "Choose Package Products for yolo-ios-app.git" popup, specify your app project in Add to Target and click Add package.
 
-If the package has been added to your project, you’re successful.
+If the package has been added to your project, you're successful.
 
 (Optional)
 
@@ -231,7 +232,7 @@ class CameraViewController: UIViewController {
 }
 ```
 
-With just a few lines of code, you can integrate real-time, YOLO-based inference into your application’s camera feed. For more advanced use cases, explore the customization options available for these components.
+With just a few lines of code, you can integrate real-time, YOLO-based inference into your application's camera feed. For more advanced use cases, explore the customization options available for these components.
 
 ## ⚙️ How to Obtain YOLO Core ML Models
 
@@ -239,7 +240,7 @@ You can get [Ultralytics YOLO](https://github.com/ultralytics/ultralytics) model
 
 ### 1. Download Pre-Exported Models
 
-You can download pre-exported Core ML models (compiled `.mlmodelc` directories or `.mlmodel` files) directly from the Assets section of the [Ultralytics YOLO releases page](https://github.com/ultralytics/ultralytics/releases). Look for files ending in `.mlpackage` or `.mlmodel`. We recommend using models quantized to [INT8](https://www.ultralytics.com/glossary/model-quantization) for better performance on mobile devices.
+You can download pre-exported Core ML models (compiled `.mlmodelc` directories or `.mlmodel` files) directly from the Assets section of the [Ultralytics YOLO releases page](https://github.com/ultralytics/ultralytics/releases). Look for files ending in `.mlpackage` or `.mlmodel`. We recommend using models quantized to [INT8](https://docs.ultralytics.com/integrations/coreml/) for better performance on mobile devices.
 
 [Download YOLO Core ML Models (GitHub Releases)](https://github.com/ultralytics/ultralytics/releases)
 
@@ -255,7 +256,7 @@ First, install the `ultralytics` package using [pip](https://pip.pypa.io/en/stab
 pip install ultralytics
 ```
 
-Then, use the following Python script to export your desired [YOLO11](https://docs.ultralytics.com/models/yolo11/) models (or other YOLO versions like [YOLOv8](https://docs.ultralytics.com/models/yolov8/)). The example below exports YOLO11 detection models in various sizes to Core ML INT8 format, including [NMS](https://www.ultralytics.com/glossary/non-maximum-suppression-nms) for detection models.
+Then, use the following Python script to export your desired [YOLO11](https://docs.ultralytics.com/models/yolo11/) models (or other YOLO versions like [YOLOv8](https://docs.ultralytics.com/models/yolov8/)). The example below exports YOLO11 detection models in various sizes to Core ML INT8 format, including [NMS](https://docs.ultralytics.com/reference/utils/ops/#ultralytics.utils.ops.non_max_suppression) for detection models.
 
 ```python
 from ultralytics import YOLO
@@ -292,8 +293,8 @@ This script assumes you have the base [PyTorch](https://pytorch.org/) (`.pt`) mo
 
 ## 🤝 Contributing
 
-Contributions are welcome! Whether it's bug reports, feature requests, or code contributions, please feel free to open an issue or submit a pull request on the [GitHub repository](https://github.com/ultralytics/yolo-ios-app). Check the [`contributing`](contributing) guide for more details on how to get involved. We appreciate your help in making this package better! You can also join the conversation on [Discord](https://discord.com/invite/ultralytics).
+Contributions are welcome! Whether it's bug reports, feature requests, or code contributions, please feel free to open an issue or submit a pull request on the [GitHub repository](https://github.com/ultralytics/yolo-ios-app). Check the [contributing guide](https://docs.ultralytics.com/help/contributing/) for more details on how to get involved. We appreciate your help in making this package better! You can also join the conversation on [Discord](https://discord.com/invite/ultralytics) or visit our [community forums](https://community.ultralytics.com/).
 
 ## 📜 License
 
-This project is licensed under the [AGPL-3.0 License](https://opensource.org/licenses/AGPL-3.0). See the [`license`](license) file for details. For alternative licensing options, please visit [Ultralytics Licensing](https://www.ultralytics.com/license).
+This project is licensed under the [AGPL-3.0 License](https://opensource.org/license/agpl-v3). See the [license file](https://github.com/ultralytics/yolo-ios-app/blob/main/LICENSE) for details. For alternative licensing options, please visit [Ultralytics Licensing](https://www.ultralytics.com/license).
