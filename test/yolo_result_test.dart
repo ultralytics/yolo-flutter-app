@@ -7,8 +7,8 @@ import 'package:ultralytics_yolo/yolo_result.dart';
 
 void main() {
   group('YOLOResult', () {
-    final testBoundingBox = const Rect.fromLTRB(10, 10, 110, 210);
-    final testNormalizedBox = const Rect.fromLTRB(0.1, 0.1, 0.5, 0.9);
+    const testBoundingBox = Rect.fromLTRB(10, 10, 110, 210);
+    const testNormalizedBox = Rect.fromLTRB(0.1, 0.1, 0.5, 0.9);
 
     test('fromMap creates instance with detection data', () {
       final map = {
