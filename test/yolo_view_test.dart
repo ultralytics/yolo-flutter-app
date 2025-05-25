@@ -24,10 +24,12 @@ void main() {
       mockStreamController.close();
     });
 
-    testWidgets('didUpdateWidget triggers controller changes', (WidgetTester tester) async {
+    testWidgets('didUpdateWidget triggers controller changes', (
+      WidgetTester tester,
+    ) async {
       final controller1 = YoloViewController();
       final controller2 = YoloViewController();
-      
+
       await controller1.setConfidenceThreshold(0.7);
       await controller2.setConfidenceThreshold(0.9);
 
@@ -56,7 +58,9 @@ void main() {
       await tester.pump();
     });
 
-    testWidgets('didUpdateWidget with different parameters', (WidgetTester tester) async {
+    testWidgets('didUpdateWidget with different parameters', (
+      WidgetTester tester,
+    ) async {
       // Initial widget
       await tester.pumpWidget(
         MaterialApp(
@@ -82,82 +86,96 @@ void main() {
       await tester.pump();
     });
 
-    testWidgets('_onPlatformViewCreated is called during widget creation', (WidgetTester tester) async {
+    testWidgets('_onPlatformViewCreated is called during widget creation', (
+      WidgetTester tester,
+    ) async {
       // Mock the platform view creation
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-        const MethodChannel('plugins.flutter.io/android_view_0'),
-        (MethodCall methodCall) async {
-          methodCalls.add(methodCall);
-          return null;
-        },
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: YoloView(
-            modelPath: 'test_model.tflite',
-            task: YOLOTask.detect,
-          ),
-        ),
-      );
-
-      await tester.pump();
-    });
-
-    testWidgets('result stream handles detection events with onResult callback', (WidgetTester tester) async {
-      final List<List<YOLOResult>> receivedResults = [];
-      
-      // Mock event channel
-      const eventChannelName = 'ultralytics_yolo/yolo_results_0';
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockStreamHandler(
-        const EventChannel(eventChannelName),
-        MockStreamHandler(mockStreamController.stream),
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: YoloView(
-            modelPath: 'test_model.tflite',
-            task: YOLOTask.detect,
-            onResult: (results) {
-              receivedResults.add(results);
+            const MethodChannel('plugins.flutter.io/android_view_0'),
+            (MethodCall methodCall) async {
+              methodCalls.add(methodCall);
+              return null;
             },
-          ),
+          );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YoloView(modelPath: 'test_model.tflite', task: YOLOTask.detect),
         ),
       );
 
       await tester.pump();
-
-      // Simulate detection event
-      mockStreamController.add({
-        'detections': [
-          {
-            'classIndex': 0,
-            'className': 'person',
-            'confidence': 0.95,
-            'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
-            'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
-          }
-        ]
-      });
-
-      await tester.pump();
-      expect(receivedResults.length, 1);
-      expect(receivedResults.first.length, 1);
-      expect(receivedResults.first.first.className, 'person');
     });
 
-    testWidgets('result stream handles performance metrics', (WidgetTester tester) async {
+    testWidgets(
+      'result stream handles detection events with onResult callback',
+      (WidgetTester tester) async {
+        final List<List<YOLOResult>> receivedResults = [];
+
+        // Mock event channel
+        const eventChannelName = 'ultralytics_yolo/yolo_results_0';
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockStreamHandler(
+              const EventChannel(eventChannelName),
+              MockStreamHandler(mockStreamController.stream),
+            );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: YoloView(
+              modelPath: 'test_model.tflite',
+              task: YOLOTask.detect,
+              onResult: (results) {
+                receivedResults.add(results);
+              },
+            ),
+          ),
+        );
+
+        await tester.pump();
+
+        // Simulate detection event
+        mockStreamController.add({
+          'detections': [
+            {
+              'classIndex': 0,
+              'className': 'person',
+              'confidence': 0.95,
+              'boundingBox': {
+                'left': 10.0,
+                'top': 10.0,
+                'right': 110.0,
+                'bottom': 210.0,
+              },
+              'normalizedBox': {
+                'left': 0.1,
+                'top': 0.1,
+                'right': 0.5,
+                'bottom': 0.9,
+              },
+            },
+          ],
+        });
+
+        await tester.pump();
+        expect(receivedResults.length, 1);
+        expect(receivedResults.first.length, 1);
+        expect(receivedResults.first.first.className, 'person');
+      },
+    );
+
+    testWidgets('result stream handles performance metrics', (
+      WidgetTester tester,
+    ) async {
       final List<Map<String, double>> receivedMetrics = [];
-      
+
       const eventChannelName = 'ultralytics_yolo/yolo_results_0';
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-        const EventChannel(eventChannelName),
-        MockStreamHandler(mockStreamController.stream),
-      );
+            const EventChannel(eventChannelName),
+            MockStreamHandler(mockStreamController.stream),
+          );
 
       await tester.pumpWidget(
         MaterialApp(
@@ -174,10 +192,7 @@ void main() {
       await tester.pump();
 
       // Simulate performance metrics event
-      mockStreamController.add({
-        'processingTimeMs': 50.5,
-        'fps': 30.0,
-      });
+      mockStreamController.add({'processingTimeMs': 50.5, 'fps': 30.0});
 
       await tester.pump();
       expect(receivedMetrics.length, 1);
@@ -185,42 +200,41 @@ void main() {
       expect(receivedMetrics.first['fps'], 30.0);
     });
 
-    testWidgets('result stream handles test messages', (WidgetTester tester) async {
+    testWidgets('result stream handles test messages', (
+      WidgetTester tester,
+    ) async {
       const eventChannelName = 'ultralytics_yolo/yolo_results_0';
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-        const EventChannel(eventChannelName),
-        MockStreamHandler(mockStreamController.stream),
-      );
+            const EventChannel(eventChannelName),
+            MockStreamHandler(mockStreamController.stream),
+          );
 
       await tester.pumpWidget(
         MaterialApp(
-          home: YoloView(
-            modelPath: 'test_model.tflite',
-            task: YOLOTask.detect,
-          ),
+          home: YoloView(modelPath: 'test_model.tflite', task: YOLOTask.detect),
         ),
       );
 
       await tester.pump();
 
       // Simulate test message - should be handled without errors
-      mockStreamController.add({
-        'test': 'test message from platform',
-      });
+      mockStreamController.add({'test': 'test message from platform'});
 
       await tester.pump();
     });
 
-    testWidgets('result stream handles malformed detection data', (WidgetTester tester) async {
+    testWidgets('result stream handles malformed detection data', (
+      WidgetTester tester,
+    ) async {
       final List<List<YOLOResult>> receivedResults = [];
-      
+
       const eventChannelName = 'ultralytics_yolo/yolo_results_0';
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-        const EventChannel(eventChannelName),
-        MockStreamHandler(mockStreamController.stream),
-      );
+            const EventChannel(eventChannelName),
+            MockStreamHandler(mockStreamController.stream),
+          );
 
       await tester.pumpWidget(
         MaterialApp(
@@ -247,22 +261,24 @@ void main() {
           },
           null, // Null detection
           'not_a_map', // Invalid type
-        ]
+        ],
       });
 
       await tester.pump();
       // Should handle gracefully, possibly with empty results
     });
 
-    testWidgets('result stream handles malformed performance metrics', (WidgetTester tester) async {
+    testWidgets('result stream handles malformed performance metrics', (
+      WidgetTester tester,
+    ) async {
       final List<Map<String, double>> receivedMetrics = [];
-      
+
       const eventChannelName = 'ultralytics_yolo/yolo_results_0';
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-        const EventChannel(eventChannelName),
-        MockStreamHandler(mockStreamController.stream),
-      );
+            const EventChannel(eventChannelName),
+            MockStreamHandler(mockStreamController.stream),
+          );
 
       await tester.pumpWidget(
         MaterialApp(
@@ -289,20 +305,19 @@ void main() {
       expect(receivedMetrics.length, 0);
     });
 
-    testWidgets('result stream handles invalid event types', (WidgetTester tester) async {
+    testWidgets('result stream handles invalid event types', (
+      WidgetTester tester,
+    ) async {
       const eventChannelName = 'ultralytics_yolo/yolo_results_0';
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-        const EventChannel(eventChannelName),
-        MockStreamHandler(mockStreamController.stream),
-      );
+            const EventChannel(eventChannelName),
+            MockStreamHandler(mockStreamController.stream),
+          );
 
       await tester.pumpWidget(
         MaterialApp(
-          home: YoloView(
-            modelPath: 'test_model.tflite',
-            task: YOLOTask.detect,
-          ),
+          home: YoloView(modelPath: 'test_model.tflite', task: YOLOTask.detect),
         ),
       );
 
@@ -317,20 +332,19 @@ void main() {
       await tester.pump();
     });
 
-    testWidgets('result stream handles errors and resubscription', (WidgetTester tester) async {
+    testWidgets('result stream handles errors and resubscription', (
+      WidgetTester tester,
+    ) async {
       const eventChannelName = 'ultralytics_yolo/yolo_results_0';
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-        const EventChannel(eventChannelName),
-        MockStreamHandler(mockStreamController.stream),
-      );
+            const EventChannel(eventChannelName),
+            MockStreamHandler(mockStreamController.stream),
+          );
 
       await tester.pumpWidget(
         MaterialApp(
-          home: YoloView(
-            modelPath: 'test_model.tflite',
-            task: YOLOTask.detect,
-          ),
+          home: YoloView(modelPath: 'test_model.tflite', task: YOLOTask.detect),
         ),
       );
 
@@ -347,16 +361,13 @@ void main() {
       const eventChannelName = 'ultralytics_yolo/yolo_results_0';
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-        const EventChannel(eventChannelName),
-        MockStreamHandler(mockStreamController.stream),
-      );
+            const EventChannel(eventChannelName),
+            MockStreamHandler(mockStreamController.stream),
+          );
 
       await tester.pumpWidget(
         MaterialApp(
-          home: YoloView(
-            modelPath: 'test_model.tflite',
-            task: YOLOTask.detect,
-          ),
+          home: YoloView(modelPath: 'test_model.tflite', task: YOLOTask.detect),
         ),
       );
 
@@ -368,15 +379,17 @@ void main() {
       await tester.pump();
     });
 
-    testWidgets('_parseDetectionResults handles segmentation masks', (WidgetTester tester) async {
+    testWidgets('_parseDetectionResults handles segmentation masks', (
+      WidgetTester tester,
+    ) async {
       final List<List<YOLOResult>> receivedResults = [];
-      
+
       const eventChannelName = 'ultralytics_yolo/yolo_results_0';
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-        const EventChannel(eventChannelName),
-        MockStreamHandler(mockStreamController.stream),
-      );
+            const EventChannel(eventChannelName),
+            MockStreamHandler(mockStreamController.stream),
+          );
 
       await tester.pumpWidget(
         MaterialApp(
@@ -399,11 +412,24 @@ void main() {
             'classIndex': 0,
             'className': 'person',
             'confidence': 0.95,
-            'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
-            'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
-            'mask': [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]], // Segmentation mask
-          }
-        ]
+            'boundingBox': {
+              'left': 10.0,
+              'top': 10.0,
+              'right': 110.0,
+              'bottom': 210.0,
+            },
+            'normalizedBox': {
+              'left': 0.1,
+              'top': 0.1,
+              'right': 0.5,
+              'bottom': 0.9,
+            },
+            'mask': [
+              [0.1, 0.2, 0.3],
+              [0.4, 0.5, 0.6],
+            ], // Segmentation mask
+          },
+        ],
       });
 
       await tester.pump();
@@ -412,15 +438,17 @@ void main() {
       expect(receivedResults.first.first.mask!.length, 2);
     });
 
-    testWidgets('_parseDetectionResults handles pose keypoints', (WidgetTester tester) async {
+    testWidgets('_parseDetectionResults handles pose keypoints', (
+      WidgetTester tester,
+    ) async {
       final List<List<YOLOResult>> receivedResults = [];
-      
+
       const eventChannelName = 'ultralytics_yolo/yolo_results_0';
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-        const EventChannel(eventChannelName),
-        MockStreamHandler(mockStreamController.stream),
-      );
+            const EventChannel(eventChannelName),
+            MockStreamHandler(mockStreamController.stream),
+          );
 
       await tester.pumpWidget(
         MaterialApp(
@@ -443,11 +471,28 @@ void main() {
             'classIndex': 0,
             'className': 'person',
             'confidence': 0.95,
-            'boundingBox': {'left': 10.0, 'top': 10.0, 'right': 110.0, 'bottom': 210.0},
-            'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.5, 'bottom': 0.9},
-            'keypoints': [100.0, 200.0, 0.9, 150.0, 250.0, 0.8], // x1, y1, conf1, x2, y2, conf2
-          }
-        ]
+            'boundingBox': {
+              'left': 10.0,
+              'top': 10.0,
+              'right': 110.0,
+              'bottom': 210.0,
+            },
+            'normalizedBox': {
+              'left': 0.1,
+              'top': 0.1,
+              'right': 0.5,
+              'bottom': 0.9,
+            },
+            'keypoints': [
+              100.0,
+              200.0,
+              0.9,
+              150.0,
+              250.0,
+              0.8,
+            ], // x1, y1, conf1, x2, y2, conf2
+          },
+        ],
       });
 
       await tester.pump();
@@ -461,7 +506,7 @@ void main() {
 
 class MockStreamHandler implements MethodCallHandler {
   final Stream<dynamic> stream;
-  
+
   MockStreamHandler(this.stream);
 
   @override
@@ -472,29 +517,29 @@ class MockStreamHandler implements MethodCallHandler {
           // Send events to Flutter
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
               .handlePlatformMessage(
-            'ultralytics_yolo/yolo_results_0',
-            const StandardMethodCodec().encodeSuccessEnvelope(event),
-            (data) {},
-          );
+                'ultralytics_yolo/yolo_results_0',
+                const StandardMethodCodec().encodeSuccessEnvelope(event),
+                (data) {},
+              );
         },
         onError: (error) {
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
               .handlePlatformMessage(
-            'ultralytics_yolo/yolo_results_0',
-            const StandardMethodCodec().encodeErrorEnvelope(
-              code: 'STREAM_ERROR',
-              message: error.toString(),
-            ),
-            (data) {},
-          );
+                'ultralytics_yolo/yolo_results_0',
+                const StandardMethodCodec().encodeErrorEnvelope(
+                  code: 'STREAM_ERROR',
+                  message: error.toString(),
+                ),
+                (data) {},
+              );
         },
         onDone: () {
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
               .handlePlatformMessage(
-            'ultralytics_yolo/yolo_results_0',
-            null, // null indicates stream is done
-            (data) {},
-          );
+                'ultralytics_yolo/yolo_results_0',
+                null, // null indicates stream is done
+                (data) {},
+              );
         },
       );
       return null;
