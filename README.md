@@ -416,6 +416,7 @@ enum YOLOTask {
    - Limit the maximum number of detection items
 
 3. **Camera permission issues**
+
    - Ensure that your app has the proper permissions in the manifest or Info.plist
    - Handle runtime permissions properly in your app
 
