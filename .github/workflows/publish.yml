@@ -29,6 +29,8 @@ jobs:
         with:
           python-version: "3.x"
       - uses: astral-sh/setup-uv@v6
+        with:
+          ignore-empty-workdir: true
       - run: uv pip install --system --no-cache ultralytics-actions
       - id: check_pubdev
         shell: python
