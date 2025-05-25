@@ -32,7 +32,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.1.2
+  ultralytics_yolo: ^0.1.4
 ```
 
 Then run:
