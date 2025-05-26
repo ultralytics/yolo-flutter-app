@@ -52,4 +52,4 @@ flutter:
       ios:
         pluginClass: YoloPlugin
   assets:
-    - example/assets/logo.png
+    - example/assets/

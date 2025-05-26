@@ -17,22 +17,38 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   double _confidenceThreshold = 0.5;
   double _iouThreshold = 0.45;
   int _numItemsThreshold = 30;
-  double _currentProcessingTimeMs = 0.0;
   double _currentFps = 0.0;
+  int _frameCount = 0;
+  DateTime _lastFpsUpdate = DateTime.now();
 
   SliderType _activeSlider = SliderType.none;
 
   final _yoloController = YoloViewController();
   final _yoloViewKey = GlobalKey<YoloViewState>();
-  bool _useController = true;
+  final bool _useController = true;
 
   void _onDetectionResults(List<YOLOResult> results) {
     if (!mounted) return;
 
+    _frameCount++;
+    final now = DateTime.now();
+    final elapsed = now.difference(_lastFpsUpdate).inMilliseconds;
+
+    if (elapsed >= 1000) {
+      final calculatedFps = _frameCount * 1000 / elapsed;
+      debugPrint('Calculated FPS: ${calculatedFps.toStringAsFixed(1)}');
+
+      _currentFps = calculatedFps;
+      _frameCount = 0;
+      _lastFpsUpdate = now;
+    }
+
+    // Still update detection count in the UI
     setState(() {
       _detectionCount = results.length;
     });
 
+    // Debug first few detections
     for (var i = 0; i < results.length && i < 3; i++) {
       final r = results[i];
       debugPrint(
@@ -66,24 +82,65 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 🟢 YOLO View: must be at back
+          // YOLO View: must be at back
           YoloView(
-            key: _useController ? null : _yoloViewKey,
-            controller: _useController ? _yoloController : null,
-            modelPath: 'yolo11s-pose',
-            task: YOLOTask.pose,
-            onResult: _onDetectionResults,
-            onPerformanceMetrics: (metrics) {
-              if (mounted) {
-                setState(() {
-                  _currentProcessingTimeMs = metrics['processingTimeMs'] ?? 0.0;
-                  _currentFps = metrics['fps'] ?? 0.0;
-                });
-              }
-            },
-          ),
+              key: _useController ? null : _yoloViewKey,
+              controller: _useController ? _yoloController : null,
+              modelPath: 'yolo11s-pose',
+              task: YOLOTask.pose,
+              onResult: _onDetectionResults,
+              onPerformanceMetrics: (metrics) {
+                if (mounted) {
+                  setState(() {
+                    if (metrics['fps'] != null) {
+                      _currentFps = metrics['fps']!;
+                    }
+                  });
+                }
+              }),
 
-          // 🟡 Center logo
+          // Top info pills (detection, FPS, and current threshold)
+          Positioned(
+              top: MediaQuery.of(context).padding.top +
+                  16, // Safe area + spacing
+              left: 16,
+              right: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'DETECTIONS: $_detectionCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        'FPS: ${_currentFps.toStringAsFixed(1)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (_activeSlider == SliderType.confidence)
+                    _buildTopPill(
+                        'CONFIDENCE THRESHOLD: ${_confidenceThreshold.toStringAsFixed(2)}'),
+                  if (_activeSlider == SliderType.iou)
+                    _buildTopPill(
+                        'IOU THRESHOLD: ${_iouThreshold.toStringAsFixed(2)}'),
+                  if (_activeSlider == SliderType.numItems)
+                    _buildTopPill('ITEMS MAX: $_numItemsThreshold'),
+                ],
+              )),
+
+          // Center logo
           Positioned.fill(
             child: Align(
               alignment: Alignment.center,
@@ -98,14 +155,14 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             ),
           ),
 
-          // 🔵 Control buttons
+          // Control buttons
           Positioned(
             bottom: 32,
             right: 16,
             child: Column(
               children: [
-                _buildCircleButton('1.0x', onPressed: () {
-                  // Zoom logic (static for now)
+                _buildCircleButton('1.0', onPressed: () {
+                  // TODO: Implement zoom logic
                 }),
                 const SizedBox(height: 12),
                 _buildIconButton(Icons.layers, () {
@@ -116,18 +173,15 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                   _toggleSlider(SliderType.confidence);
                 }),
                 const SizedBox(height: 12),
-                _buildIconButton(Icons.filter_alt, () {
+                _buildIconButton('assets/iou.png', () {
                   _toggleSlider(SliderType.iou);
                 }),
-                const SizedBox(height: 12),
-                _buildIconButton(Icons.logout, () {
-                  Navigator.of(context).pop();
-                }),
+                const SizedBox(height: 40),
               ],
             ),
           ),
 
-          // 🔻 Bottom slider overlay
+          // Bottom slider overlay
           if (_activeSlider != SliderType.none)
             Positioned(
               left: 0,
@@ -159,28 +213,53 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                 ),
               ),
             ),
+          // Camera flip top-right
+          Positioned(
+            bottom: MediaQuery.of(context).padding.top + 16,
+            left: 16,
+            child: CircleAvatar(
+              radius: 24,
+              backgroundColor: Colors.black.withOpacity(0.5),
+              child: IconButton(
+                icon: const Icon(Icons.flip_camera_ios, color: Colors.white),
+                onPressed: () {
+                  if (_useController) {
+                    _yoloController.switchCamera();
+                  } else {
+                    _yoloViewKey.currentState?.switchCamera();
+                  }
+                },
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // 🔘 Round icon button
-  Widget _buildIconButton(IconData icon, VoidCallback onPressed) {
+  Widget _buildIconButton(dynamic iconOrAsset, VoidCallback onPressed) {
     return CircleAvatar(
       radius: 24,
-      backgroundColor: Colors.black.withOpacity(0.5),
+      backgroundColor: Colors.black.withOpacity(0.2),
       child: IconButton(
-        icon: Icon(icon, color: Colors.white),
+        icon: iconOrAsset is IconData
+            ? Icon(iconOrAsset, color: Colors.white)
+            : Image.asset(
+                iconOrAsset,
+                width: 24,
+                height: 24,
+                color: Colors.white,
+              ),
         onPressed: onPressed,
       ),
     );
   }
 
-  // 🔘 Zoom circle button
+  // Zoom circle button
   Widget _buildCircleButton(String label, {required VoidCallback onPressed}) {
     return CircleAvatar(
       radius: 24,
-      backgroundColor: Colors.black.withOpacity(0.5),
+      backgroundColor: Colors.black.withOpacity(0.2),
       child: TextButton(
         onPressed: onPressed,
         child: Text(label, style: const TextStyle(color: Colors.white)),
@@ -188,14 +267,31 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     );
   }
 
-  // 🧠 Toggle slider state
+  // Toggle slider state
   void _toggleSlider(SliderType type) {
     setState(() {
       _activeSlider = (_activeSlider == type) ? SliderType.none : type;
     });
   }
 
-  // 📊 Slider value helpers
+  Widget _buildTopPill(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  // Slider value helpers
   double _getSliderValue() {
     switch (_activeSlider) {
       case SliderType.numItems:
