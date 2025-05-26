@@ -93,8 +93,8 @@ class YOLOResult {
   /// - 'confidence': double
   /// - 'boundingBox': Map with 'left', 'top', 'right', 'bottom'
   /// - 'normalizedBox': Map with 'left', 'top', 'right', 'bottom'
-  /// - 'mask': (optional) List<List<double>>
-  /// - 'keypoints': (optional) List<double> in x,y,confidence triplets
+  /// - 'mask': (optional) List of List of double
+  /// - 'keypoints': (optional) List of double in x,y,confidence triplets
   factory YOLOResult.fromMap(Map<dynamic, dynamic> map) {
     final classIndex = map['classIndex'] as int;
     final className = map['className'] as String;
@@ -263,8 +263,8 @@ class YOLODetectionResults {
     final detectionsData = map['detections'] as List<dynamic>?;
     final detections = detectionsData != null
         ? detectionsData
-              .map((detection) => YOLOResult.fromMap(detection))
-              .toList()
+            .map((detection) => YOLOResult.fromMap(detection))
+            .toList()
         : <YOLOResult>[];
 
     // Parse annotated image if available

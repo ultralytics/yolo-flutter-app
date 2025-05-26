@@ -25,28 +25,28 @@ void main() {
     // Configure mock response for the channel
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          log.add(methodCall);
+      log.add(methodCall);
 
-          if (methodCall.method == 'loadModel') {
-            return true;
-          } else if (methodCall.method == 'predictSingleImage') {
-            // Return mock detection result
-            return {
-              'boxes': [
-                {
-                  'class': 'person',
-                  'confidence': 0.95,
-                  'x': 10,
-                  'y': 10,
-                  'width': 100,
-                  'height': 200,
-                },
-              ],
-              'annotatedImage': Uint8List.fromList(List.filled(100, 0)),
-            };
-          }
-          return null;
-        });
+      if (methodCall.method == 'loadModel') {
+        return true;
+      } else if (methodCall.method == 'predictSingleImage') {
+        // Return mock detection result
+        return {
+          'boxes': [
+            {
+              'class': 'person',
+              'confidence': 0.95,
+              'x': 10,
+              'y': 10,
+              'width': 100,
+              'height': 200,
+            },
+          ],
+          'annotatedImage': Uint8List.fromList(List.filled(100, 0)),
+        };
+      }
+      return null;
+    });
   });
 
   tearDown(() {
