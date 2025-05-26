@@ -13,11 +13,11 @@ void main() {
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'getPlatformVersion') {
-            return '42';
-          }
-          return null;
-        });
+      if (methodCall.method == 'getPlatformVersion') {
+        return '42';
+      }
+      return null;
+    });
   });
 
   tearDown(() {
