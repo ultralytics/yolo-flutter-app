@@ -24,6 +24,21 @@ allprojects {
 apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 
+// Flutter SDK path
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterRoot = localProperties.getProperty('flutter.sdk')
+if (flutterRoot == null) {
+    // Try to get Flutter root from environment variable
+    flutterRoot = System.getenv('FLUTTER_ROOT')
+}
+
 android {
     namespace = "com.ultralytics.yolo"
     compileSdk = 35
