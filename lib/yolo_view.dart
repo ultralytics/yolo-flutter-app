@@ -559,6 +559,11 @@ class YoloViewState extends State<YoloView> {
     debugPrint('YoloView: Event stream listener setup complete for $_viewId');
   }
 
+  @visibleForTesting
+  void cancelResultSubscription() {
+    _cancelResultSubscription();
+  }
+
   void _cancelResultSubscription() {
     if (_resultSubscription != null) {
       debugPrint(
@@ -567,6 +572,11 @@ class YoloViewState extends State<YoloView> {
       _resultSubscription!.cancel();
       _resultSubscription = null;
     }
+  }
+
+  @visibleForTesting
+  List<YOLOResult> parseDetectionResults(Map<dynamic, dynamic> event) {
+    return _parseDetectionResults(event);
   }
 
   List<YOLOResult> _parseDetectionResults(Map<dynamic, dynamic> event) {

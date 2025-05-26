@@ -2,7 +2,7 @@
 
 name: ultralytics_yolo
 description: Flutter plugin for Ultralytics YOLO computer vision models. Supports object detection, segmentation, pose, OBB, and classification.
-version: 0.1.4
+version: 0.1.5
 homepage: https://github.com/ultralytics/yolo-flutter-app
 repository: https://github.com/ultralytics/yolo-flutter-app
 issue_tracker: https://github.com/ultralytics/yolo-flutter-app/issues
@@ -40,7 +40,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_test:
     sdk: flutter
-  mockito: ^5.4.4
+  mockito: ^5.4.6
   very_good_analysis: ^8.0.0
 
 flutter:

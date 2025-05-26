@@ -1,5 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
@@ -7,6 +8,16 @@ import 'package:ultralytics_yolo/yolo_task.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
+      (MethodCall methodCall) async {
+        return null;
+      },
+    );
+  });
 
   group('YoloViewController Public API', () {
     late YoloViewController controller;
@@ -83,6 +94,12 @@ void main() {
 
       await controller.setNumItemsThreshold(999999);
       expect(controller.numItemsThreshold, 100);
+    });
+
+    test('YoloViewController clamps confidence threshold', () {
+      final controller = YoloViewController();
+      controller.setConfidenceThreshold(1.5);
+      expect(controller.confidenceThreshold, 1.0);
     });
   });
 
@@ -323,5 +340,43 @@ void main() {
       );
       expect(widget.cameraResolution, isA<String>());
     });
+  });
+
+  group('YoloViewState internal logic', () {
+    test('parses empty detection result', () {
+      final state = YoloViewState();
+      final result = state.parseDetectionResults({});
+      expect(result, isEmpty);
+    });
+
+    test('handles malformed detection data gracefully', () {
+      final state = YoloViewState();
+      final malformedEvent = {
+        'detections': [
+          {'badKey': 123}
+        ]
+      };
+
+      final result = state.parseDetectionResults(malformedEvent);
+      expect(result, isEmpty);
+    });
+
+    test('cancelResultSubscription does not crash', () {
+      final state = YoloViewState();
+      state.cancelResultSubscription();
+    });
+  });
+
+  test('setThresholds works without method channel', () async {
+    final controller = YoloViewController();
+    await controller.setThresholds(confidenceThreshold: 0.9);
+    await controller.setIoUThreshold(0.8);
+    await controller.setNumItemsThreshold(50);
+    await controller.switchCamera();
+  });
+
+  test('controller._applyThresholds fallback path', () async {
+    final controller = YoloViewController();
+    await controller.setConfidenceThreshold(0.9);
   });
 }
