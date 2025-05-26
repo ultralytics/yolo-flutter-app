@@ -10,7 +10,45 @@ import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 
-/// Controller for interacting with a YoloView.
+/// Controller for interacting with a [YoloView] widget.
+///
+/// This controller provides methods to adjust detection thresholds
+/// and camera settings for real-time object detection. It manages
+/// the communication with the native platform views.
+///
+/// Example:
+/// ```dart
+/// class MyDetectorScreen extends StatefulWidget {
+///   @override
+///   State<MyDetectorScreen> createState() => _MyDetectorScreenState();
+/// }
+///
+/// class _MyDetectorScreenState extends State<MyDetectorScreen> {
+///   final controller = YoloViewController();
+///
+///   @override
+///   Widget build(BuildContext context) {
+///     return Column(
+///       children: [
+///         Expanded(
+///           child: YoloView(
+///             modelPath: 'assets/yolov8n.mlmodel',
+///             task: YOLOTask.detect,
+///             controller: controller,
+///             onResult: (results) {
+///               print('Detected ${results.length} objects');
+///             },
+///           ),
+///         ),
+///         ElevatedButton(
+///           onPressed: () => controller.switchCamera(),
+///           child: Text('Switch Camera'),
+///         ),
+///       ],
+///     );
+///   }
+/// }
+/// ```
 class YoloViewController {
   MethodChannel? _methodChannel;
 
@@ -18,8 +56,22 @@ class YoloViewController {
   double _iouThreshold = 0.45;
   int _numItemsThreshold = 30;
 
+  /// The current confidence threshold for detections.
+  ///
+  /// Only detections with confidence scores above this threshold
+  /// will be returned. Default is 0.5 (50%).
   double get confidenceThreshold => _confidenceThreshold;
+
+  /// The current Intersection over Union (IoU) threshold.
+  ///
+  /// Used for non-maximum suppression to filter overlapping
+  /// detections. Default is 0.45.
   double get iouThreshold => _iouThreshold;
+
+  /// The maximum number of items to detect per frame.
+  ///
+  /// Limits the number of detections returned to improve
+  /// performance. Default is 30.
   int get numItemsThreshold => _numItemsThreshold;
 
   void _init(MethodChannel methodChannel) {
@@ -73,6 +125,16 @@ class YoloViewController {
     }
   }
 
+  /// Sets the confidence threshold for object detection.
+  ///
+  /// Only detections with confidence scores above [threshold] will be
+  /// returned. The value is automatically clamped between 0.0 and 1.0.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Only show detections with 70% confidence or higher
+  /// await controller.setConfidenceThreshold(0.7);
+  /// ```
   Future<void> setConfidenceThreshold(double threshold) async {
     final clampedThreshold = threshold.clamp(0.0, 1.0);
     _confidenceThreshold = clampedThreshold;
@@ -95,6 +157,17 @@ class YoloViewController {
     }
   }
 
+  /// Sets the Intersection over Union (IoU) threshold.
+  ///
+  /// This threshold is used for non-maximum suppression to filter
+  /// overlapping detections. Lower values result in fewer overlapping
+  /// boxes. The value is automatically clamped between 0.0 and 1.0.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Use stricter overlap filtering
+  /// await controller.setIoUThreshold(0.3);
+  /// ```
   Future<void> setIoUThreshold(double threshold) async {
     final clampedThreshold = threshold.clamp(0.0, 1.0);
     _iouThreshold = clampedThreshold;
@@ -115,6 +188,17 @@ class YoloViewController {
     }
   }
 
+  /// Sets the maximum number of items to detect per frame.
+  ///
+  /// Limiting the number of detections can improve performance,
+  /// especially on lower-end devices. The value is automatically
+  /// clamped between 1 and 100.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Only detect up to 10 objects per frame
+  /// await controller.setNumItemsThreshold(10);
+  /// ```
   Future<void> setNumItemsThreshold(int numItems) async {
     final clampedValue = numItems.clamp(1, 100);
     _numItemsThreshold = clampedValue;
@@ -137,6 +221,20 @@ class YoloViewController {
     }
   }
 
+  /// Sets multiple thresholds at once.
+  ///
+  /// This is more efficient than calling individual threshold setters
+  /// when you need to update multiple values. Only non-null parameters
+  /// will be updated.
+  ///
+  /// Example:
+  /// ```dart
+  /// await controller.setThresholds(
+  ///   confidenceThreshold: 0.6,
+  ///   iouThreshold: 0.4,
+  ///   numItemsThreshold: 20,
+  /// );
+  /// ```
   Future<void> setThresholds({
     double? confidenceThreshold,
     double? iouThreshold,
@@ -183,13 +281,76 @@ class YoloViewController {
   }
 }
 
+/// A Flutter widget that displays a real-time camera preview with YOLO object detection.
+///
+/// This widget creates a platform view that runs YOLO inference on camera frames
+/// and provides detection results through callbacks. It supports various YOLO tasks
+/// including object detection, segmentation, classification, pose estimation, and
+/// oriented bounding box detection.
+///
+/// Example:
+/// ```dart
+/// YoloView(
+///   modelPath: 'assets/models/yolov8n.mlmodel',
+///   task: YOLOTask.detect,
+///   onResult: (List<YOLOResult> results) {
+///     // Handle detection results
+///     for (var result in results) {
+///       print('Detected ${result.className} with ${result.confidence}');
+///     }
+///   },
+///   onPerformanceMetrics: (Map<String, double> metrics) {
+///     print('FPS: ${metrics['fps']}');
+///   },
+/// )
+/// ```
+///
+/// The widget requires camera permissions to be granted before use.
+/// On iOS, add NSCameraUsageDescription to Info.plist.
+/// On Android, add CAMERA permission to AndroidManifest.xml.
 class YoloView extends StatefulWidget {
+  /// Path to the YOLO model file.
+  ///
+  /// The model should be placed in the app's assets folder and
+  /// included in pubspec.yaml. Supported formats:
+  /// - iOS: .mlmodel (Core ML)
+  /// - Android: .tflite (TensorFlow Lite)
   final String modelPath;
+
+  /// The type of YOLO task to perform.
+  ///
+  /// This must match the task the model was trained for.
+  /// See [YOLOTask] for available options.
   final YOLOTask task;
+
+  /// Optional controller for managing detection settings.
+  ///
+  /// If not provided, a default controller will be created internally.
+  /// Use a controller when you need to adjust thresholds or switch cameras.
   final YoloViewController? controller;
+
+  /// The camera resolution to use.
+  ///
+  /// Currently not implemented. Reserved for future use.
   final String cameraResolution;
+
+  /// Callback invoked when new detection results are available.
+  ///
+  /// This callback is called for each processed frame that contains
+  /// detections. The frequency depends on the device's processing speed.
   final Function(List<YOLOResult>)? onResult;
+
+  /// Callback invoked with performance metrics.
+  ///
+  /// Provides real-time performance data including:
+  /// - 'processingTimeMs': Time to process a single frame
+  /// - 'fps': Current frames per second
   final Function(Map<String, double> metrics)? onPerformanceMetrics;
+
+  /// Whether to show native UI controls on the camera preview.
+  ///
+  /// When true, platform-specific UI elements may be displayed,
+  /// such as bounding boxes and labels drawn natively.
   final bool showNativeUI;
 
   const YoloView({
@@ -207,6 +368,10 @@ class YoloView extends StatefulWidget {
   State<YoloView> createState() => YoloViewState();
 }
 
+/// State for the [YoloView] widget.
+///
+/// Manages platform view creation, event channel subscriptions,
+/// and communication with native YOLO implementations.
 class YoloViewState extends State<YoloView> {
   late EventChannel _resultEventChannel;
   StreamSubscription<dynamic>? _resultSubscription;
@@ -536,18 +701,35 @@ class YoloViewState extends State<YoloView> {
   }
 
   // Methods to be called via GlobalKey
+  /// Sets the confidence threshold through the widget's state.
+  ///
+  /// This method can be called using a GlobalKey to access the state:
+  /// ```dart
+  /// final key = GlobalKey<YoloViewState>();
+  /// // Later...
+  /// key.currentState?.setConfidenceThreshold(0.7);
+  /// ```
   Future<void> setConfidenceThreshold(double threshold) {
     return _effectiveController.setConfidenceThreshold(threshold);
   }
 
+  /// Sets the IoU threshold through the widget's state.
+  ///
+  /// This method can be called using a GlobalKey to access the state.
   Future<void> setIoUThreshold(double threshold) {
     return _effectiveController.setIoUThreshold(threshold);
   }
 
+  /// Sets the maximum number of items threshold through the widget's state.
+  ///
+  /// This method can be called using a GlobalKey to access the state.
   Future<void> setNumItemsThreshold(int numItems) {
     return _effectiveController.setNumItemsThreshold(numItems);
   }
 
+  /// Sets multiple thresholds through the widget's state.
+  ///
+  /// This method can be called using a GlobalKey to access the state.
   Future<void> setThresholds({
     double? confidenceThreshold,
     double? iouThreshold,
