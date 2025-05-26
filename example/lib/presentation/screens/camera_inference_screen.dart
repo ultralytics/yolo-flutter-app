@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
@@ -84,61 +86,64 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         children: [
           // YOLO View: must be at back
           YoloView(
-              key: _useController ? null : _yoloViewKey,
-              controller: _useController ? _yoloController : null,
-              modelPath: 'yolo11s-pose',
-              task: YOLOTask.pose,
-              onResult: _onDetectionResults,
-              onPerformanceMetrics: (metrics) {
-                if (mounted) {
-                  setState(() {
-                    if (metrics['fps'] != null) {
-                      _currentFps = metrics['fps']!;
-                    }
-                  });
-                }
-              }),
+            key: _useController ? null : _yoloViewKey,
+            controller: _useController ? _yoloController : null,
+            modelPath: 'yolo11s-pose',
+            task: YOLOTask.pose,
+            onResult: _onDetectionResults,
+            onPerformanceMetrics: (metrics) {
+              if (mounted) {
+                setState(() {
+                  if (metrics['fps'] != null) {
+                    _currentFps = metrics['fps']!;
+                  }
+                });
+              }
+            },
+          ),
 
           // Top info pills (detection, FPS, and current threshold)
           Positioned(
-              top: MediaQuery.of(context).padding.top +
-                  16, // Safe area + spacing
-              left: 16,
-              right: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'DETECTIONS: $_detectionCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
+            top: MediaQuery.of(context).padding.top + 16, // Safe area + spacing
+            left: 16,
+            right: 16,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'DETECTIONS: $_detectionCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(width: 16),
-                      Text(
-                        'FPS: ${_currentFps.toStringAsFixed(1)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      'FPS: ${_currentFps.toStringAsFixed(1)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_activeSlider == SliderType.confidence)
+                  _buildTopPill(
+                    'CONFIDENCE THRESHOLD: ${_confidenceThreshold.toStringAsFixed(2)}',
                   ),
-                  const SizedBox(height: 8),
-                  if (_activeSlider == SliderType.confidence)
-                    _buildTopPill(
-                        'CONFIDENCE THRESHOLD: ${_confidenceThreshold.toStringAsFixed(2)}'),
-                  if (_activeSlider == SliderType.iou)
-                    _buildTopPill(
-                        'IOU THRESHOLD: ${_iouThreshold.toStringAsFixed(2)}'),
-                  if (_activeSlider == SliderType.numItems)
-                    _buildTopPill('ITEMS MAX: $_numItemsThreshold'),
-                ],
-              )),
+                if (_activeSlider == SliderType.iou)
+                  _buildTopPill(
+                    'IOU THRESHOLD: ${_iouThreshold.toStringAsFixed(2)}',
+                  ),
+                if (_activeSlider == SliderType.numItems)
+                  _buildTopPill('ITEMS MAX: $_numItemsThreshold'),
+              ],
+            ),
+          ),
 
           // Center logo
           Positioned.fill(
@@ -161,9 +166,12 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             right: 16,
             child: Column(
               children: [
-                _buildCircleButton('1.0', onPressed: () {
-                  // TODO: Implement zoom logic
-                }),
+                _buildCircleButton(
+                  '1.0',
+                  onPressed: () {
+                    // TODO: Implement zoom logic
+                  },
+                ),
                 const SizedBox(height: 12),
                 _buildIconButton(Icons.layers, () {
                   _toggleSlider(SliderType.numItems);
@@ -188,8 +196,10 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               right: 0,
               bottom: 0,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 color: Colors.black.withOpacity(0.8),
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(
