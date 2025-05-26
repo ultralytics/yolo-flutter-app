@@ -1,9 +1,7 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 name: ultralytics_yolo
-description: >-
-  Flutter plugin for Ultralytics YOLO computer vision models. Supports object detection 
-  and image classification on Android and iOS with real-time camera inference.
+description: Flutter plugin for Ultralytics YOLO computer vision models. Supports object detection, segmentation, pose, OBB, and classification.
 version: 0.1.4
 homepage: https://github.com/ultralytics/yolo-flutter-app
 repository: https://github.com/ultralytics/yolo-flutter-app
