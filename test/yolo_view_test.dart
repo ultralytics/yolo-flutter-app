@@ -12,11 +12,11 @@ void main() {
   setUpAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
-      (MethodCall methodCall) async {
-        return null;
-      },
-    );
+          const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
+          (MethodCall methodCall) async {
+            return null;
+          },
+        );
   });
 
   group('YoloViewController Public API', () {
@@ -353,8 +353,8 @@ void main() {
       final state = YoloViewState();
       final malformedEvent = {
         'detections': [
-          {'badKey': 123}
-        ]
+          {'badKey': 123},
+        ],
       };
 
       final result = state.parseDetectionResults(malformedEvent);
