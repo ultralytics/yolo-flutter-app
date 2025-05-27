@@ -161,8 +161,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           // Controller Toggle Button
           IconButton(
             icon: Icon(_useController ? Icons.gamepad : Icons.key),
-            tooltip:
-                _useController ? 'Using Controller' : 'Using Direct Access',
+            tooltip: _useController
+                ? 'Using Controller'
+                : 'Using Direct Access',
             onPressed: () {
               setState(() {
                 _useController = !_useController;
