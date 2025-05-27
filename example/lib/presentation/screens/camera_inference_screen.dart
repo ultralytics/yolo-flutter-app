@@ -1,9 +1,13 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:archive/archive.dart';
 
 class CameraInferenceScreen extends StatefulWidget {
   const CameraInferenceScreen({super.key});
@@ -13,6 +17,18 @@ class CameraInferenceScreen extends StatefulWidget {
 }
 
 enum SliderType { none, numItems, confidence, iou }
+
+enum ModelType {
+  detect('yolo11n', YOLOTask.detect),
+  segment('yolo11n-seg', YOLOTask.segment),
+  classify('yolo11n-cls', YOLOTask.classify),
+  pose('yolo11n-pose', YOLOTask.pose),
+  obb('yolo11n-obb', YOLOTask.obb);
+
+  final String modelName;
+  final YOLOTask task;
+  const ModelType(this.modelName, this.task);
+}
 
 class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   int _detectionCount = 0;
@@ -24,6 +40,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   DateTime _lastFpsUpdate = DateTime.now();
 
   SliderType _activeSlider = SliderType.none;
+  ModelType _selectedModel = ModelType.detect;
+  bool _isModelLoading = false;
+  String? _modelPath;
 
   final _yoloController = YoloViewController();
   final _yoloViewKey = GlobalKey<YoloViewState>();
@@ -62,6 +81,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   @override
   void initState() {
     super.initState();
+    _loadModelForPlatform();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_useController) {
         _yoloController.setThresholds(
@@ -85,22 +105,29 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       body: Stack(
         children: [
           // YOLO View: must be at back
-          YoloView(
-            key: _useController ? null : _yoloViewKey,
-            controller: _useController ? _yoloController : null,
-            modelPath: 'yolo11s-pose',
-            task: YOLOTask.pose,
-            onResult: _onDetectionResults,
-            onPerformanceMetrics: (metrics) {
-              if (mounted) {
-                setState(() {
-                  if (metrics['fps'] != null) {
-                    _currentFps = metrics['fps']!;
-                  }
-                });
-              }
-            },
-          ),
+          if (_modelPath != null && !_isModelLoading)
+            YoloView(
+              key: _useController ? null : _yoloViewKey,
+              controller: _useController ? _yoloController : null,
+              modelPath: _modelPath!,
+              task: _selectedModel.task,
+              onResult: _onDetectionResults,
+              onPerformanceMetrics: (metrics) {
+                if (mounted) {
+                  setState(() {
+                    if (metrics['fps'] != null) {
+                      _currentFps = metrics['fps']!;
+                    }
+                  });
+                }
+              },
+            )
+          else if (_isModelLoading)
+            const Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+              ),
+            ),
 
           // Top info pills (detection, FPS, and current threshold)
           Positioned(
@@ -110,6 +137,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // Model selector
+                _buildModelSelector(),
+                const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -364,5 +394,151 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       default:
         break;
     }
+  }
+
+  Widget _buildModelSelector() {
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: ModelType.values.map((model) {
+          final isSelected = _selectedModel == model;
+          return GestureDetector(
+            onTap: () {
+              if (!_isModelLoading && model != _selectedModel) {
+                setState(() {
+                  _selectedModel = model;
+                });
+                _loadModelForPlatform();
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.white : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                model.name.toUpperCase(),
+                style: TextStyle(
+                  color: isSelected ? Colors.black : Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Future<void> _loadModelForPlatform() async {
+    setState(() {
+      _isModelLoading = true;
+    });
+
+    try {
+      String? modelPath;
+      
+      if (Platform.isIOS) {
+        // Try local bundle first
+        // If not found, download and extract mlpackage.zip
+        modelPath = await _getIOSModelPath();
+      } else if (Platform.isAndroid) {
+        // Try local bundle first (model name without extension)
+        // If not found, download tflite
+        modelPath = await _getAndroidModelPath();
+      }
+
+      if (mounted) {
+        setState(() {
+          _modelPath = modelPath ?? _selectedModel.modelName;
+          _isModelLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading model: $e');
+      if (mounted) {
+        setState(() {
+          _modelPath = _selectedModel.modelName; // Fallback to asset name
+          _isModelLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<String?> _getIOSModelPath() async {
+    // For iOS, check if model exists in bundle
+    // This is a simplified check - in reality you'd need to verify the model exists
+    // For now, return the model name and let native code handle it
+    
+    // If model doesn't exist in bundle, download and extract
+    final documentsDir = await getApplicationDocumentsDirectory();
+    final modelDir = Directory('${documentsDir.path}/${_selectedModel.modelName}.mlpackage');
+    
+    if (await modelDir.exists()) {
+      return modelDir.path;
+    }
+    
+    // Download model from GitHub (placeholder URL)
+    final url = 'https://github.com/ultralytics/assets/releases/download/v8.3.0/${_selectedModel.modelName}.mlpackage.zip';
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        // Extract zip
+        final archive = ZipDecoder().decodeBytes(response.bodyBytes);
+        for (final file in archive) {
+          final filename = file.name;
+          if (file.isFile) {
+            final data = file.content as List<int>;
+            File('${documentsDir.path}/$filename')
+              ..createSync(recursive: true)
+              ..writeAsBytesSync(data);
+          } else {
+            Directory('${documentsDir.path}/$filename').createSync(recursive: true);
+          }
+        }
+        return modelDir.path;
+      }
+    } catch (e) {
+      debugPrint('Failed to download iOS model: $e');
+    }
+    
+    // Fallback to model name
+    return _selectedModel.modelName;
+  }
+
+  Future<String?> _getAndroidModelPath() async {
+    // For Android, first try the model name (without extension)
+    // Native code will check assets folder
+    
+    // If model doesn't exist in assets, download it
+    final documentsDir = await getApplicationDocumentsDirectory();
+    final modelFile = File('${documentsDir.path}/${_selectedModel.modelName}.tflite');
+    
+    if (await modelFile.exists()) {
+      return modelFile.path;
+    }
+    
+    // Download model from GitHub (placeholder URL)
+    final url = 'https://github.com/ultralytics/assets/releases/download/v8.3.0/${_selectedModel.modelName}.tflite';
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        await modelFile.writeAsBytes(response.bodyBytes);
+        return modelFile.path;
+      }
+    } catch (e) {
+      debugPrint('Failed to download Android model: $e');
+    }
+    
+    // Fallback to model name
+    return _selectedModel.modelName;
   }
 }
