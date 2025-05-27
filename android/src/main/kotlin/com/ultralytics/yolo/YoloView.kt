@@ -747,12 +747,16 @@ class YoloView @JvmOverloads constructor(
                     }
 
                     // Keypoints & skeleton
-                    for (person in result.keypointsList) {
+                    Log.d(TAG, "🎨 Drawing keypoints - keypointsList size: ${result.keypointsList.size}")
+                    for ((personIdx, person) in result.keypointsList.withIndex()) {
+                        Log.d(TAG, "👤 Person $personIdx - keypoints: ${person.xyn.size}, conf array size: ${person.conf.size}")
                         val points = arrayOfNulls<PointF>(person.xyn.size)
+                        var drawnKps = 0
                         for (i in person.xyn.indices) {
                             val kp = person.xyn[i]
                             val conf = person.conf[i]
                             if (conf > 0.25f) {
+                                drawnKps++
                                 val pxCam = kp.first * iw
                                 val pyCam = kp.second * ih
                                 val px = pxCam * scale + dx
@@ -775,8 +779,14 @@ class YoloView @JvmOverloads constructor(
                                 canvas.drawCircle(px, py, 8f, paint)
 
                                 points[i] = PointF(px, py)
+                                
+                                // Debug first few keypoints
+                                if (i < 3) {
+                                    Log.d(TAG, "🔵 Person $personIdx KP[$i] - normalized(${kp.first},${kp.second}) pixel($px,$py) conf=$conf")
+                                }
                             }
                         }
+                        Log.d(TAG, "✅ Person $personIdx - Drew $drawnKps/${person.xyn.size} keypoints (conf>0.25)")
 
                         // Skeleton connection
                         paint.style = Paint.Style.STROKE

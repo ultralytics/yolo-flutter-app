@@ -36,6 +36,7 @@ class PoseEstimator(
 ) : BasePredictor() {
 
     companion object {
+        private const val TAG = "🏃 PoseEstimator"
         // xywh(4) + conf(1) + keypoints(17*3=51) = 56
         private const val OUTPUT_FEATURES = 56
         private const val KEYPOINTS_COUNT = 17
@@ -254,6 +255,12 @@ class PoseEstimator(
 //        val annotatedImage = drawPoseOnBitmap(bitmap, keypointsList, boxes)
 
         val fpsDouble: Double = if (t4 > 0) (1.0 / t4) else 0.0
+        
+        Log.d(TAG, "📦 Creating YOLOResult - boxes: ${boxes.size}, keypointsList: ${keypointsList.size}")
+        keypointsList.forEachIndexed { idx, kps ->
+            Log.d(TAG, "📍 YOLOResult keypointsList[$idx] - points: ${kps.xy.size}")
+        }
+        
         // YOLOResultに詰めて返す
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(bitmap.height, bitmap.width),
@@ -284,6 +291,11 @@ class PoseEstimator(
         val (modelW, modelH) = modelInputSize
         val scaleX = origWidth.toFloat() / modelW
         val scaleY = origHeight.toFloat() / modelH
+        
+        Log.d(TAG, "🚀 Starting postProcessPose - numAnchors=$numAnchors")
+        Log.d(TAG, "📐 Model dimensions - modelW=$modelW, modelH=$modelH")
+        Log.d(TAG, "🖼️ Original image dimensions - origWidth=$origWidth, origHeight=$origHeight")
+        Log.d(TAG, "🔍 Scale factors - scaleX=$scaleX, scaleY=$scaleY")
 
         for (j in 0 until numAnchors) {
             // 例: features[0][j] ~ features[3][j] は 0～1 の正規化値
@@ -294,6 +306,8 @@ class PoseEstimator(
             val conf = features[4][j]       // 0..1
 
             if (conf < confidenceThreshold) continue
+            
+            Log.d(TAG, "👤 Detection $j - conf=$conf (threshold=$confidenceThreshold)")
 
             // (A) まず正規化をモデル入力解像度に拡大 (640等) する
             val xScaled = rawX * modelW
@@ -321,21 +335,37 @@ class PoseEstimator(
             // キーポイント (5..55) も同様にモデル解像度 → 実画像スケールに変換
             val kpArray = mutableListOf<Pair<Float, Float>>()
             val kpConfArray = mutableListOf<Float>()
+            Log.d(TAG, "🦴 Detection $j - Processing $KEYPOINTS_COUNT keypoints")
             for (k in 0 until KEYPOINTS_COUNT) {
-                val rawKx = features[5 + k * 3][j] // 0..1
+                val rawKx = features[5 + k * 3][j]
                 val rawKy = features[5 + k * 3 + 1][j]
                 val kpC   = features[5 + k * 3 + 2][j]
 
-                // モデル入力解像度スケールへ
-                val kxScaled = rawKx * modelW
-                val kyScaled = rawKy * modelH
-
-                // 元画像スケールへ
-                val finalKx = kxScaled * scaleX
-                val finalKy = kyScaled * scaleY
+                // Check if values are already in pixel coordinates (>1) or normalized (0-1)
+                val isNormalized = rawKx <= 1.0f && rawKy <= 1.0f
+                
+                val finalKx: Float
+                val finalKy: Float
+                
+                if (isNormalized) {
+                    // 正規化された座標の場合（0-1）
+                    val kxScaled = rawKx * modelW
+                    val kyScaled = rawKy * modelH
+                    finalKx = kxScaled * scaleX
+                    finalKy = kyScaled * scaleY
+                } else {
+                    // すでにモデル入力解像度のピクセル座標の場合
+                    finalKx = rawKx * scaleX
+                    finalKy = rawKy * scaleY
+                }
 
                 kpArray.add(finalKx to finalKy)
                 kpConfArray.add(kpC)
+                
+                // Debug log for first 5 keypoints
+                if (k < 5) {
+                    Log.d(TAG, "🔵 Det[$j] KP[$k] - raw(${rawKx},${rawKy}) isNorm=$isNormalized final(${finalKx},${finalKy}) conf=$kpC")
+                }
             }
 
             // プールからオブジェクトを取得して再利用
@@ -364,6 +394,10 @@ class PoseEstimator(
                 xy = kpArray,
                 conf = kpConfArray
             )
+            
+            Log.d(TAG, "✅ Detection $j - Created keypoints with ${kpArray.size} points")
+            val highConfKps = kpConfArray.count { it > 0.25f }
+            Log.d(TAG, "💪 Detection $j - Keypoints with conf>0.25: $highConfKps")
             
             detections.add(
                 PoseDetection(
@@ -419,6 +453,16 @@ class PoseEstimator(
                 }
             }
         }
+        
+        // Debug log for final results
+        Log.d(TAG, "🎯 NMS complete - returning ${picked.size} detections from ${detections.size} input")
+        picked.forEachIndexed { idx, detection ->
+            Log.d(TAG, "📊 Final detection $idx - keypoints count: ${detection.keypoints.xy.size}")
+            val highConfKps = detection.keypoints.conf.count { it > 0.25f }
+            val avgConf = if (detection.keypoints.conf.isNotEmpty()) detection.keypoints.conf.average() else 0.0
+            Log.d(TAG, "💯 Final detection $idx - high conf keypoints (>0.25): $highConfKps, avg conf: $avgConf")
+        }
+        
         return picked
     }
 
