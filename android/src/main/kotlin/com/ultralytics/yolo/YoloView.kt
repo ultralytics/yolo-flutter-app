@@ -470,6 +470,10 @@ class YoloView @JvmOverloads constructor(
 
             setWillNotDraw(false)
 
+            // Make overlay not intercept touch events
+            isClickable = false
+            isFocusable = false
+
             Log.d(TAG, "OverlayView initialized with enhanced Z-order + hardware acceleration")
         }
 
@@ -873,6 +877,11 @@ class YoloView @JvmOverloads constructor(
                     }
                 }
             }
+        }
+        
+        override fun onTouchEvent(event: MotionEvent?): Boolean {
+            // Pass through all touch events
+            return false
         }
     }
 }
