@@ -15,6 +15,7 @@ import android.widget.Toast
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.camera.core.Camera
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -23,6 +24,10 @@ import androidx.lifecycle.LifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.Executors
 import kotlin.math.max
+import kotlin.math.min
+import android.view.ScaleGestureDetector
+import android.widget.TextView
+import android.view.Gravity
 
 class YoloView @JvmOverloads constructor(
     context: Context,
@@ -161,6 +166,14 @@ class YoloView @JvmOverloads constructor(
     // Camera config
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
+    private var camera: Camera? = null
+    
+    // Zoom variables
+    private var currentZoomRatio = 1.0f
+    private var minZoomRatio = 1.0f
+    private var maxZoomRatio = 1.0f
+    private lateinit var scaleGestureDetector: ScaleGestureDetector
+    private lateinit var zoomLabel: TextView
 
     // detection thresholds (can be changed externally via setters)
     private var confidenceThreshold = 0.25  // initial value
@@ -198,6 +211,28 @@ class YoloView @JvmOverloads constructor(
         overlayView.elevation = 100f
         overlayView.translationZ = 100f
         previewContainer.elevation = 1f
+        
+        // 5) Add zoom label
+        zoomLabel = TextView(context).apply {
+            text = "1.0x"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.argb(128, 0, 0, 0))
+            setPadding(16, 8, 16, 8)
+            visibility = View.GONE
+        }
+        
+        val zoomLabelParams = LayoutParams(
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            topMargin = 32
+        }
+        addView(zoomLabel, zoomLabelParams)
+        
+        // Initialize pinch-to-zoom
+        scaleGestureDetector = ScaleGestureDetector(context, ScaleListener())
 
         Log.d(TAG, "YoloView init: forced TextureView usage for camera preview + overlay on top.")
     }
@@ -368,7 +403,7 @@ class YoloView @JvmOverloads constructor(
                         }
 
                         Log.d(TAG, "Binding camera use cases to lifecycle")
-                        cameraProvider.bindToLifecycle(
+                        camera = cameraProvider.bindToLifecycle(
                             owner,
                             cameraSelector,
                             preview,
@@ -377,6 +412,16 @@ class YoloView @JvmOverloads constructor(
 
                         Log.d(TAG, "Setting surface provider to previewView")
                         preview.setSurfaceProvider(previewView.surfaceProvider)
+                        
+                        // Initialize zoom
+                        camera?.let { cam: Camera ->
+                            val cameraInfo = cam.cameraInfo
+                            minZoomRatio = cameraInfo.zoomState.value?.minZoomRatio ?: 1.0f
+                            maxZoomRatio = cameraInfo.zoomState.value?.maxZoomRatio ?: 1.0f
+                            currentZoomRatio = cameraInfo.zoomState.value?.zoomRatio ?: 1.0f
+                            Log.d(TAG, "Zoom initialized - min: $minZoomRatio, max: $maxZoomRatio, current: $currentZoomRatio")
+                        }
+                        
                         Log.d(TAG, "Camera setup completed successfully")
                     } catch (e: Exception) {
                         Log.e(TAG, "Use case binding failed", e)
@@ -873,6 +918,45 @@ class YoloView @JvmOverloads constructor(
                     }
                 }
             }
+        }
+    }
+    
+    // Touch event handling for pinch-to-zoom
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        scaleGestureDetector.onTouchEvent(event)
+        return true
+    }
+    
+    // Scale listener for pinch-to-zoom
+    private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            // Show zoom label when pinch starts
+            zoomLabel.visibility = View.VISIBLE
+            return true
+        }
+        
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            val scaleFactor = detector.scaleFactor
+            val newZoomRatio = currentZoomRatio * scaleFactor
+            
+            // Clamp zoom within min/max bounds
+            val clampedZoom = newZoomRatio.coerceIn(minZoomRatio, maxZoomRatio)
+            
+            // Apply zoom to camera
+            camera?.cameraControl?.setZoomRatio(clampedZoom)
+            currentZoomRatio = clampedZoom
+            
+            // Update zoom label
+            zoomLabel.text = String.format("%.1fx", currentZoomRatio)
+            
+            return true
+        }
+        
+        override fun onScaleEnd(detector: ScaleGestureDetector) {
+            // Hide zoom label after 2 seconds
+            zoomLabel.postDelayed({
+                zoomLabel.visibility = View.GONE
+            }, 2000)
         }
     }
 }
