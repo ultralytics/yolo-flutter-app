@@ -43,6 +43,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   ModelType _selectedModel = ModelType.detect;
   bool _isModelLoading = false;
   String? _modelPath;
+  String _loadingMessage = '';
+  double _downloadProgress = 0.0;
 
   final _yoloController = YoloViewController();
   final _yoloViewKey = GlobalKey<YoloViewState>();
@@ -123,9 +125,60 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               },
             )
           else if (_isModelLoading)
-            const Center(
-              child: CircularProgressIndicator(
-                color: Colors.white,
+            Container(
+              color: Colors.black87,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Ultralytics logo
+                    Image.asset(
+                      'assets/logo.png',
+                      width: 120,
+                      height: 120,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                    const SizedBox(height: 32),
+                    // Loading message
+                    Text(
+                      _loadingMessage,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    // Progress indicator
+                    if (_downloadProgress > 0)
+                      Column(
+                        children: [
+                          SizedBox(
+                            width: 200,
+                            child: LinearProgressIndicator(
+                              value: _downloadProgress,
+                              backgroundColor: Colors.white24,
+                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                              minHeight: 4,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            '${(_downloadProgress * 100).toInt()}%',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      const CircularProgressIndicator(
+                        color: Colors.white,
+                      ),
+                  ],
+                ),
               ),
             ),
 
@@ -441,6 +494,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   Future<void> _loadModelForPlatform() async {
     setState(() {
       _isModelLoading = true;
+      _loadingMessage = 'Loading ${_selectedModel.modelName} model...';
+      _downloadProgress = 0.0;
     });
 
     try {
@@ -460,6 +515,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         setState(() {
           _modelPath = modelPath ?? _selectedModel.modelName;
           _isModelLoading = false;
+          _loadingMessage = '';
+          _downloadProgress = 0.0;
         });
       }
     } catch (e) {
@@ -468,12 +525,21 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         setState(() {
           _modelPath = _selectedModel.modelName; // Fallback to asset name
           _isModelLoading = false;
+          _loadingMessage = '';
+          _downloadProgress = 0.0;
         });
       }
     }
   }
 
   Future<String?> _getIOSModelPath() async {
+    // Update message for checking
+    if (mounted) {
+      setState(() {
+        _loadingMessage = 'Checking for ${_selectedModel.modelName} model...';
+      });
+    }
+    
     // For iOS, check if model exists in bundle
     // This is a simplified check - in reality you'd need to verify the model exists
     // For now, return the model name and let native code handle it
@@ -486,11 +552,28 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       return modelDir.path;
     }
     
+    // Update message for downloading
+    if (mounted) {
+      setState(() {
+        _loadingMessage = 'Downloading ${_selectedModel.modelName} model...';
+      });
+    }
+    
     // Download model from GitHub (placeholder URL)
-    final url = 'https://github.com/ultralytics/assets/releases/download/v8.3.0/${_selectedModel.modelName}.mlpackage.zip';
+    final url = 'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/${_selectedModel.modelName}.mlpackage.zip';
     try {
-      final response = await http.get(Uri.parse(url));
+      final request = await http.Client().send(http.Request('GET', Uri.parse(url)));
+      final contentLength = request.contentLength ?? 0;
+      final response = await http.Response.fromStream(request);
+      
       if (response.statusCode == 200) {
+        if (mounted) {
+          setState(() {
+            _loadingMessage = 'Extracting ${_selectedModel.modelName} model...';
+            _downloadProgress = 1.0;
+          });
+        }
+        
         // Extract zip
         final archive = ZipDecoder().decodeBytes(response.bodyBytes);
         for (final file in archive) {
@@ -508,6 +591,11 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       }
     } catch (e) {
       debugPrint('Failed to download iOS model: $e');
+      if (mounted) {
+        setState(() {
+          _loadingMessage = 'Failed to download model. Using bundled version.';
+        });
+      }
     }
     
     // Fallback to model name
@@ -515,6 +603,13 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   }
 
   Future<String?> _getAndroidModelPath() async {
+    // Update message for checking
+    if (mounted) {
+      setState(() {
+        _loadingMessage = 'Checking for ${_selectedModel.modelName} model...';
+      });
+    }
+    
     // For Android, first try the model name (without extension)
     // Native code will check assets folder
     
@@ -526,16 +621,52 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       return modelFile.path;
     }
     
+    // Update message for downloading
+    if (mounted) {
+      setState(() {
+        _loadingMessage = 'Downloading ${_selectedModel.modelName} model...';
+      });
+    }
+    
     // Download model from GitHub (placeholder URL)
-    final url = 'https://github.com/ultralytics/assets/releases/download/v8.3.0/${_selectedModel.modelName}.tflite';
+    final url = 'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/${_selectedModel.modelName}.tflite';
     try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        await modelFile.writeAsBytes(response.bodyBytes);
+      final client = http.Client();
+      final request = await client.send(http.Request('GET', Uri.parse(url)));
+      final contentLength = request.contentLength ?? 0;
+      
+      // Download with progress tracking
+      final bytes = <int>[];
+      int downloadedBytes = 0;
+      
+      await for (final chunk in request.stream) {
+        bytes.addAll(chunk);
+        downloadedBytes += chunk.length;
+        
+        if (contentLength > 0 && mounted) {
+          setState(() {
+            _downloadProgress = downloadedBytes / contentLength;
+          });
+        }
+      }
+      
+      if (request.statusCode == 200) {
+        if (mounted) {
+          setState(() {
+            _loadingMessage = 'Saving ${_selectedModel.modelName} model...';
+          });
+        }
+        
+        await modelFile.writeAsBytes(bytes);
         return modelFile.path;
       }
     } catch (e) {
       debugPrint('Failed to download Android model: $e');
+      if (mounted) {
+        setState(() {
+          _loadingMessage = 'Failed to download model. Using bundled version.';
+        });
+      }
     }
     
     // Fallback to model name
