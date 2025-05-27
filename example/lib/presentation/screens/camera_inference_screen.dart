@@ -532,7 +532,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           _loadingMessage = '';
           _downloadProgress = 0.0;
         });
-        
+
         // If modelPath is null, show error
         if (modelPath == null) {
           showDialog(
@@ -548,7 +548,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    if (Platform.isAndroid && _selectedModel != ModelType.test) {
+                    if (Platform.isAndroid &&
+                        _selectedModel != ModelType.test) {
                       setState(() {
                         _selectedModel = ModelType.test;
                       });
@@ -575,7 +576,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Model Loading Error'),
-            content: Text('Failed to load ${_selectedModel.modelName} model. Please try again.'),
+            content: Text(
+              'Failed to load ${_selectedModel.modelName} model. Please try again.',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -625,13 +628,13 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     // Download model from GitHub
     final url =
         'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/${_selectedModel.modelName}.mlpackage.zip';
-    
+
     try {
       final request = await http.Client().send(
         http.Request('GET', Uri.parse(url)),
       );
       final contentLength = request.contentLength ?? 0;
-      
+
       // Download with progress tracking
       final bytes = <int>[];
       int downloadedBytes = 0;
@@ -646,7 +649,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           });
         }
       }
-      
+
       if (request.statusCode == 200) {
         if (mounted) {
           setState(() {
@@ -656,40 +659,42 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         }
 
         // Save zip file temporarily
-        final zipFile = File('${documentsDir.path}/${_selectedModel.modelName}.mlpackage.zip');
+        final zipFile = File(
+          '${documentsDir.path}/${_selectedModel.modelName}.mlpackage.zip',
+        );
         await zipFile.writeAsBytes(bytes);
 
         // Extract zip
         try {
           final archive = ZipDecoder().decodeBytes(bytes);
-          
+
           // Create the mlpackage directory
           await modelDir.create(recursive: true);
-          
+
           // Extract files with prefix handling
           for (final file in archive) {
             if (file.isFile) {
               // Handle various zip structure patterns
               String targetPath = file.name;
-              
+
               // Remove common prefixes that might exist in the zip
               final prefixes = [
                 '${_selectedModel.modelName}.mlpackage/',
                 '${_selectedModel.modelName}/',
                 'mlpackage/',
               ];
-              
+
               for (final prefix in prefixes) {
                 if (targetPath.startsWith(prefix)) {
                   targetPath = targetPath.substring(prefix.length);
                   break;
                 }
               }
-              
+
               // Create the full path within the mlpackage directory
               final fullPath = path.join(modelDir.path, targetPath);
               final outFile = File(fullPath);
-              
+
               // Create parent directories if needed
               await outFile.parent.create(recursive: true);
               await outFile.writeAsBytes(file.content as List<int>);
@@ -698,7 +703,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
           // Delete the zip file after extraction
           await zipFile.delete();
-          
+
           // Verify the mlpackage directory exists
           if (await modelDir.exists()) {
             return modelDir.path;
@@ -734,11 +739,12 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
     // First check if model exists in assets (bundled)
     final bundledModelName = '${_selectedModel.modelName}.tflite';
-    
+
     // Try to use bundled model first
     // Note: We can't easily check if asset exists, so we'll try to use it
     // The plugin will handle the asset loading
-    if (_selectedModel == ModelType.detect || _selectedModel == ModelType.test) {
+    if (_selectedModel == ModelType.detect ||
+        _selectedModel == ModelType.test) {
       // These models are known to be bundled
       debugPrint('Using bundled Android model: $bundledModelName');
       return bundledModelName;
@@ -765,7 +771,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     // Download model from GitHub
     final url =
         'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/${_selectedModel.modelName}.tflite';
-    
+
     try {
       final client = http.Client();
       final request = await client.send(http.Request('GET', Uri.parse(url)));
