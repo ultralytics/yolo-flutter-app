@@ -159,7 +159,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                             child: LinearProgressIndicator(
                               value: _downloadProgress,
                               backgroundColor: Colors.white24,
-                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                               minHeight: 4,
                             ),
                           ),
@@ -174,9 +176,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                         ],
                       )
                     else
-                      const CircularProgressIndicator(
-                        color: Colors.white,
-                      ),
+                      const CircularProgressIndicator(color: Colors.white),
                   ],
                 ),
               ),
@@ -505,7 +505,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
     try {
       String? modelPath;
-      
+
       if (Platform.isIOS) {
         // Try local bundle first
         // If not found, download and extract mlpackage.zip
@@ -544,33 +544,38 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         _loadingMessage = 'Checking for ${_selectedModel.modelName} model...';
       });
     }
-    
+
     // For iOS, check if model exists in bundle
     // This is a simplified check - in reality you'd need to verify the model exists
     // For now, return the model name and let native code handle it
-    
+
     // If model doesn't exist in bundle, download and extract
     final documentsDir = await getApplicationDocumentsDirectory();
-    final modelDir = Directory('${documentsDir.path}/${_selectedModel.modelName}.mlpackage');
-    
+    final modelDir = Directory(
+      '${documentsDir.path}/${_selectedModel.modelName}.mlpackage',
+    );
+
     if (await modelDir.exists()) {
       return modelDir.path;
     }
-    
+
     // Update message for downloading
     if (mounted) {
       setState(() {
         _loadingMessage = 'Downloading ${_selectedModel.modelName} model...';
       });
     }
-    
+
     // Download model from GitHub (placeholder URL)
-    final url = 'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/${_selectedModel.modelName}.mlpackage.zip';
+    final url =
+        'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/${_selectedModel.modelName}.mlpackage.zip';
     try {
-      final request = await http.Client().send(http.Request('GET', Uri.parse(url)));
+      final request = await http.Client().send(
+        http.Request('GET', Uri.parse(url)),
+      );
       final contentLength = request.contentLength ?? 0;
       final response = await http.Response.fromStream(request);
-      
+
       if (response.statusCode == 200) {
         if (mounted) {
           setState(() {
@@ -578,7 +583,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             _downloadProgress = 1.0;
           });
         }
-        
+
         // Extract zip
         final archive = ZipDecoder().decodeBytes(response.bodyBytes);
         for (final file in archive) {
@@ -589,7 +594,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               ..createSync(recursive: true)
               ..writeAsBytesSync(data);
           } else {
-            Directory('${documentsDir.path}/$filename').createSync(recursive: true);
+            Directory(
+              '${documentsDir.path}/$filename',
+            ).createSync(recursive: true);
           }
         }
         return modelDir.path;
@@ -602,7 +609,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         });
       }
     }
-    
+
     // Fallback to model name
     return _selectedModel.modelName;
   }
@@ -614,54 +621,57 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         _loadingMessage = 'Checking for ${_selectedModel.modelName} model...';
       });
     }
-    
+
     // For Android, first try the model name (without extension)
     // Native code will check assets folder
-    
+
     // If model doesn't exist in assets, download it
     final documentsDir = await getApplicationDocumentsDirectory();
-    final modelFile = File('${documentsDir.path}/${_selectedModel.modelName}.tflite');
-    
+    final modelFile = File(
+      '${documentsDir.path}/${_selectedModel.modelName}.tflite',
+    );
+
     if (await modelFile.exists()) {
       return modelFile.path;
     }
-    
+
     // Update message for downloading
     if (mounted) {
       setState(() {
         _loadingMessage = 'Downloading ${_selectedModel.modelName} model...';
       });
     }
-    
+
     // Download model from GitHub (placeholder URL)
-    final url = 'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/${_selectedModel.modelName}.tflite';
+    final url =
+        'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/${_selectedModel.modelName}.tflite';
     try {
       final client = http.Client();
       final request = await client.send(http.Request('GET', Uri.parse(url)));
       final contentLength = request.contentLength ?? 0;
-      
+
       // Download with progress tracking
       final bytes = <int>[];
       int downloadedBytes = 0;
-      
+
       await for (final chunk in request.stream) {
         bytes.addAll(chunk);
         downloadedBytes += chunk.length;
-        
+
         if (contentLength > 0 && mounted) {
           setState(() {
             _downloadProgress = downloadedBytes / contentLength;
           });
         }
       }
-      
+
       if (request.statusCode == 200) {
         if (mounted) {
           setState(() {
             _loadingMessage = 'Saving ${_selectedModel.modelName} model...';
           });
         }
-        
+
         await modelFile.writeAsBytes(bytes);
         return modelFile.path;
       }
@@ -673,7 +683,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         });
       }
     }
-    
+
     // Fallback to model name
     return _selectedModel.modelName;
   }
