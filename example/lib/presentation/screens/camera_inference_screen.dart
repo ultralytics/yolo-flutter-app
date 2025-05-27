@@ -193,25 +193,27 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                 // Model selector
                 _buildModelSelector(),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'DETECTIONS: $_detectionCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                IgnorePointer(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'DETECTIONS: $_detectionCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      'FPS: ${_currentFps.toStringAsFixed(1)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(width: 16),
+                      Text(
+                        'FPS: ${_currentFps.toStringAsFixed(1)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 8),
                 if (_activeSlider == SliderType.confidence)
@@ -228,20 +230,23 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             ),
           ),
 
-          // Center logo
-          Positioned.fill(
-            child: Align(
-              alignment: Alignment.center,
-              child: FractionallySizedBox(
-                widthFactor: 0.5,
-                heightFactor: 0.5,
-                child: Image.asset(
-                  'assets/logo.png',
-                  color: Colors.white.withOpacity(0.4),
+          // Center logo - only show when camera is active
+          if (_modelPath != null && !_isModelLoading)
+            IgnorePointer(
+              child: Positioned.fill(
+                child: Align(
+                  alignment: Alignment.center,
+                  child: FractionallySizedBox(
+                    widthFactor: 0.5,
+                    heightFactor: 0.5,
+                    child: Image.asset(
+                      'assets/logo.png',
+                      color: Colors.white.withOpacity(0.4),
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
 
           // Control buttons
           Positioned(
