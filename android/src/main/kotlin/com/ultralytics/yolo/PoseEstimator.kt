@@ -322,17 +322,27 @@ class PoseEstimator(
             val kpArray = mutableListOf<Pair<Float, Float>>()
             val kpConfArray = mutableListOf<Float>()
             for (k in 0 until KEYPOINTS_COUNT) {
-                val rawKx = features[5 + k * 3][j] // 0..1
+                val rawKx = features[5 + k * 3][j]
                 val rawKy = features[5 + k * 3 + 1][j]
                 val kpC   = features[5 + k * 3 + 2][j]
 
-                // モデル入力解像度スケールへ
-                val kxScaled = rawKx * modelW
-                val kyScaled = rawKy * modelH
-
-                // 元画像スケールへ
-                val finalKx = kxScaled * scaleX
-                val finalKy = kyScaled * scaleY
+                // Check if values are already in pixel coordinates (>1) or normalized (0-1)
+                val isNormalized = rawKx <= 1.0f && rawKy <= 1.0f
+                
+                val finalKx: Float
+                val finalKy: Float
+                
+                if (isNormalized) {
+                    // 正規化された座標の場合（0-1）
+                    val kxScaled = rawKx * modelW
+                    val kyScaled = rawKy * modelH
+                    finalKx = kxScaled * scaleX
+                    finalKy = kyScaled * scaleY
+                } else {
+                    // すでにモデル入力解像度のピクセル座標の場合
+                    finalKx = rawKx * scaleX
+                    finalKy = rawKy * scaleY
+                }
 
                 kpArray.add(finalKx to finalKy)
                 kpConfArray.add(kpC)
