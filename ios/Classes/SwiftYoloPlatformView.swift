@@ -310,6 +310,11 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
             ))
         }
 
+      case "switchCamera":
+        print("SwiftYoloPlatformView: Received switchCamera call")
+        self.yoloView?.switchCameraTapped()
+        result(nil)  // Success
+
       // Additional methods can be added here in the future
 
       default:
