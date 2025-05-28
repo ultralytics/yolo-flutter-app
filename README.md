@@ -26,6 +26,8 @@ Welcome to the Ultralytics YOLO Flutter plugin! Integrate cutting-edge [Ultralyt
 - **Camera Integration**: Easy integration with device cameras for live detection
 - **Cross-Platform**: Works seamlessly on both Android and iOS platforms
 - **High Performance**: Leverages [TensorFlow Lite](https://www.ultralytics.com/glossary/tensorflow) for Android and [Core ML](https://docs.ultralytics.com/integrations/coreml/) for iOS
+- **Camera Zoom Control**: Support for pinch-to-zoom and programmatic zoom control
+- **Dynamic Model Switching**: Switch between different YOLO models without recreating the view
 
 ## 🚀 Installation
 
@@ -33,7 +35,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.1.4
+  ultralytics_yolo: ^0.1.5
 ```
 
 Then run:
@@ -147,30 +149,100 @@ import 'package:ultralytics_yolo/yolo.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 
-class YoloDemo extends StatelessWidget {
+class YoloDemo extends StatefulWidget {
+  @override
+  _YoloDemoState createState() => _YoloDemoState();
+}
+
+class _YoloDemoState extends State<YoloDemo> {
   // Create a controller to interact with the YoloView
   final controller = YoloViewController();
+  double _confidenceValue = 0.5;
+  double _currentZoom = 1.0;
+  YOLOTask _currentTask = YOLOTask.detect;
+  String _currentModel = 'yolo11n';
+
+  @override
+  void initState() {
+    super.initState();
+    // Set initial detection parameters
+    controller.setThresholds(
+      confidenceThreshold: 0.5,
+      iouThreshold: 0.45,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('YOLO Object Detection')),
+      appBar: AppBar(
+        title: Text('YOLO Object Detection'),
+        actions: [
+          // Switch camera button
+          IconButton(
+            icon: Icon(Icons.flip_camera_ios),
+            onPressed: () => controller.switchCamera(),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // Controls for adjusting detection parameters
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Row(
+            child: Column(
               children: [
-                Text('Confidence: '),
-                Slider(
-                  value: 0.5,
-                  min: 0.1,
-                  max: 0.9,
-                  onChanged: (value) {
-                    // Update confidence threshold
-                    controller.setConfidenceThreshold(value);
-                  },
+                // Confidence threshold slider
+                Row(
+                  children: [
+                    Text('Confidence: ${_confidenceValue.toStringAsFixed(2)}'),
+                    Expanded(
+                      child: Slider(
+                        value: _confidenceValue,
+                        min: 0.1,
+                        max: 0.9,
+                        onChanged: (value) {
+                          setState(() => _confidenceValue = value);
+                          controller.setConfidenceThreshold(value);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                // Zoom control
+                Row(
+                  children: [
+                    Text('Zoom: ${_currentZoom.toStringAsFixed(1)}x'),
+                    IconButton(
+                      icon: Icon(Icons.zoom_out),
+                      onPressed: () => controller.setZoomLevel(1.0),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.zoom_in),
+                      onPressed: () => controller.setZoomLevel(3.0),
+                    ),
+                  ],
+                ),
+                // Model switcher
+                Row(
+                  children: [
+                    Text('Model: '),
+                    DropdownButton<String>(
+                      value: _currentModel,
+                      items: ['yolo11n', 'yolo11s', 'yolo11m']
+                          .map((model) => DropdownMenuItem(
+                                value: model,
+                                child: Text(model),
+                              ))
+                          .toList(),
+                      onChanged: (model) {
+                        if (model != null) {
+                          setState(() => _currentModel = model);
+                          controller.switchModel(model, _currentTask);
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -180,28 +252,22 @@ class YoloDemo extends StatelessWidget {
           Expanded(
             child: YoloView(
               controller: controller,
-              task: YOLOTask.detect,
-              // Use model name only - recommended approach for cross-platform compatibility
-              modelPath: 'yolo11n',
+              task: _currentTask,
+              modelPath: _currentModel,
               onResult: (results) {
                 // Handle detection results
                 print('Detected ${results.length} objects');
+              },
+              onZoomChanged: (zoom) {
+                setState(() => _currentZoom = zoom);
+              },
+              onPerformanceMetrics: (metrics) {
+                print('FPS: ${metrics['fps']?.toStringAsFixed(1)}');
               },
             ),
           ),
         ],
       ),
-    );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Set initial detection parameters
-    controller.setThresholds(
-      confidenceThreshold: 0.5,
-      iouThreshold: 0.45,
     );
   }
 }
@@ -210,6 +276,30 @@ class YoloDemo extends StatelessWidget {
 ### Object Detection with Camera Feed
 
 There are three ways to control YoloView's detection parameters:
+
+#### Camera Zoom Control
+
+The plugin now supports camera zoom functionality through both gestures and programmatic control:
+
+```dart
+// Enable zoom callbacks to track zoom changes
+YoloView(
+  controller: controller,
+  task: YOLOTask.detect,
+  modelPath: 'yolo11n',
+  onZoomChanged: (zoomLevel) {
+    print('Current zoom: ${zoomLevel}x');
+  },
+  onResult: (results) {
+    // Handle results
+  },
+)
+
+// Programmatically set zoom level
+controller.setZoomLevel(2.5);  // Set to 2.5x zoom
+
+// Users can also pinch-to-zoom on the camera view
+```
 
 #### Method 1: Using a Controller (Recommended)
 
@@ -287,6 +377,32 @@ YoloView(
 // with default threshold values (0.5 for confidence, 0.45 for IoU)
 ```
 
+### Dynamic Model Switching
+
+You can switch between different YOLO models at runtime without recreating the entire view:
+
+```dart
+final controller = YoloViewController();
+
+// Initial model
+YoloView(
+  controller: controller,
+  task: YOLOTask.detect,
+  modelPath: 'yolo11n',  // Start with nano model
+  onResult: (results) {
+    // Handle results
+  },
+)
+
+// Switch to a different model based on user preference or device capabilities
+await controller.switchModel('yolo11s', YOLOTask.detect);  // Switch to small model
+await controller.switchModel('yolo11m', YOLOTask.detect);  // Switch to medium model
+
+// Switch to a different task type
+await controller.switchModel('yolo11n-seg', YOLOTask.segment);  // Switch to segmentation
+await controller.switchModel('yolo11n-pose', YOLOTask.pose);    // Switch to pose estimation
+```
+
 ### Model Loading
 
 #### Important: Recommended Approach For Both Platforms
@@ -346,6 +462,12 @@ await controller.setThresholds(
 
 // Switch between front and back camera
 await controller.switchCamera();
+
+// Set camera zoom level (1.0 = no zoom, 2.0 = 2x zoom)
+await controller.setZoomLevel(2.0);
+
+// Switch to a different model dynamically
+await controller.switchModel('yolo11s', YOLOTask.detect);
 ```
 
 #### YoloView
@@ -358,6 +480,9 @@ YoloView({
   required String modelPath,
   YoloViewController? controller,  // Optional: Controller for managing view settings
   Function(List<YOLOResult>)? onResult,
+  Function(Map<String, double>)? onPerformanceMetrics,  // Optional: Performance tracking
+  Function(double)? onZoomChanged,  // Optional: Zoom level callback
+  bool showNativeUI = false,  // Optional: Show native UI controls
 });
 ```
 
