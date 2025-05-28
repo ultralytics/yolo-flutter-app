@@ -13,8 +13,6 @@ public class SwiftYOLOPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
   }
 
   public func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
-    // Dart 側で `creationParamsCodec: const StandardMessageCodec()` を指定しているので
-    // こちらでも FlutterStandardMessageCodec.sharedInstance() を使う
     return FlutterStandardMessageCodec.sharedInstance()
   }
 

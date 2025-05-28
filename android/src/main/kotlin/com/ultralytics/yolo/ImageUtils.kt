@@ -82,9 +82,6 @@ object ImageUtils {
         return matrix
     }
 
-    /**
-     * Sample to convert [YuvImage] to [Bitmap]
-     */
     private fun yuvImageToBitmap(yuvImage: YuvImage): Bitmap? {
         val out = ByteArrayOutputStream()
         val success = yuvImage.compressToJpeg(
@@ -97,9 +94,7 @@ object ImageUtils {
         return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
     }
 
-    /**
-     * Convert [ImageProxy] to NV21 (byte array).
-     */
+
     private fun yuv420888ToNv21(imageProxy: ImageProxy): ByteArray {
         val cropRect = imageProxy.cropRect
         val pixelCount = cropRect.width() * cropRect.height()
@@ -109,9 +104,7 @@ object ImageUtils {
         return outputBuffer
     }
 
-    /**
-     * Read pixels from each Plane (Y/U/V) of [ImageProxy] and write to NV21 byte array ([outputBuffer]).
-     */
+
     private fun imageToByteBuffer(
         imageProxy: ImageProxy,
         outputBuffer: ByteArray,
@@ -137,8 +130,6 @@ object ImageUtils {
             val rowStride = plane.rowStride
             val pixelStride = plane.pixelStride
 
-            // Y plane uses cropRect as is
-            // U / V plane shrinks cropRect to 1/2
             val planeCrop = if (planeIndex == 0) {
                 imageCrop
             } else {
@@ -156,7 +147,6 @@ object ImageUtils {
             val rowBuffer = ByteArray(rowStride)
             var outputOffset = startOffset
 
-            // Can read pixel by pixel, but if pixelStride and outputStride are 1, can read in bulk
             val rowLength = if (pixelStride == 1 && outputStride == 1) {
                 planeWidth
             } else {
@@ -164,18 +154,15 @@ object ImageUtils {
             }
 
             for (row in 0 until planeHeight) {
-                // Advance ByteBuffer to the start position of current row
                 planeBuffer.position(
                     (row + planeCrop.top) * rowStride +
                             planeCrop.left * pixelStride
                 )
 
                 if (pixelStride == 1 && outputStride == 1) {
-                    // Can copy in bulk
                     planeBuffer.get(outputBuffer, outputOffset, rowLength)
                     outputOffset += rowLength
                 } else {
-                    // Need to copy pixel by pixel
                     planeBuffer.get(rowBuffer, 0, rowLength)
                     for (col in 0 until planeWidth) {
                         outputBuffer[outputOffset] = rowBuffer[col * pixelStride]
