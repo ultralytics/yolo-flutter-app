@@ -46,8 +46,8 @@ flutter:
     platforms:
       android:
         package: com.ultralytics.yolo
-        pluginClass: YoloPlugin
+        pluginClass: YOLOPlugin
       ios:
-        pluginClass: YoloPlugin
+        pluginClass: YOLOPlugin
   assets:
     - example/assets/

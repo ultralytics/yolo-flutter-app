@@ -4,19 +4,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/yolo_exceptions.dart';
 
 void main() {
-  group('YoloException', () {
+  group('YOLOException', () {
     test('constructor creates instance with message', () {
       const message = 'Test error message';
-      final exception = YoloException(message);
+      final exception = YOLOException(message);
 
       expect(exception.message, message);
     });
 
     test('toString returns formatted message', () {
       const message = 'Test error message';
-      final exception = YoloException(message);
+      final exception = YOLOException(message);
 
-      expect(exception.toString(), 'YoloException: $message');
+      expect(exception.toString(), 'YOLOException: $message');
     });
   });
 

@@ -7,12 +7,12 @@ import 'package:ultralytics_yolo/yolo_view.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('YoloViewController', () {
-    late YoloViewController controller;
+  group('YOLOViewController', () {
+    late YOLOViewController controller;
     final List<MethodCall> log = <MethodCall>[];
 
     setUp(() {
-      controller = YoloViewController();
+      controller = YOLOViewController();
       log.clear();
 
       // Note: Cannot test _init directly as it's private
@@ -81,7 +81,7 @@ void main() {
     test(
       'methods handle platform channel not initialized gracefully',
       () async {
-        final uninitializedController = YoloViewController();
+        final uninitializedController = YOLOViewController();
 
         // Should not throw, just log warning
         expect(

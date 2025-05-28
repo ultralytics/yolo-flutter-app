@@ -13,27 +13,27 @@ import 'yolo_method_channel.dart';
 /// does not consider newly added methods to be breaking changes. Extending this class
 /// (using `extends`) ensures that the subclass will get the default implementation, while
 /// platform implementations that `implements` this interface will be broken by newly added
-/// [YoloPlatform] methods.
+/// [YOLOPlatform] methods.
 ///
 /// The plugin uses method channels for communication between Flutter and native code.
 /// Each platform (iOS, Android) provides its own implementation of the YOLO inference engine.
-abstract class YoloPlatform extends PlatformInterface {
-  /// Constructs a YoloPlatform.
-  YoloPlatform() : super(token: _token);
+abstract class YOLOPlatform extends PlatformInterface {
+  /// Constructs a YOLOPlatform.
+  YOLOPlatform() : super(token: _token);
 
   static final Object _token = Object();
 
-  static YoloPlatform _instance = MethodChannelYolo();
+  static YOLOPlatform _instance = YOLOMethodChannel();
 
-  /// The default instance of [YoloPlatform] to use.
+  /// The default instance of [YOLOPlatform] to use.
   ///
-  /// Defaults to [MethodChannelYolo].
-  static YoloPlatform get instance => _instance;
+  /// Defaults to [YOLOMethodChannel].
+  static YOLOPlatform get instance => _instance;
 
   /// Platform-specific implementations should set this with their own
-  /// platform-specific class that extends [YoloPlatform] when
+  /// platform-specific class that extends [YOLOPlatform] when
   /// they register themselves.
-  static set instance(YoloPlatform instance) {
+  static set instance(YOLOPlatform instance) {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
   }

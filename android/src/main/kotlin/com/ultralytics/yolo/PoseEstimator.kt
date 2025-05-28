@@ -30,8 +30,8 @@ class PoseEstimator(
     modelPath: String,
     override var labels: List<String>,
     private val useGpu: Boolean = true,
-    private val confidenceThreshold: Float = 0.25f,   // 任意で変更
-    private val iouThreshold: Float = 0.45f,          // 任意で変更
+    private val confidenceThreshold: Float = 0.25f,   // Can be changed as needed
+    private val iouThreshold: Float = 0.45f,          // Can be changed as needed
     private val customOptions: Interpreter.Options? = null
 ) : BasePredictor() {
 
@@ -40,13 +40,11 @@ class PoseEstimator(
         private const val OUTPUT_FEATURES = 56
         private const val KEYPOINTS_COUNT = 17
         private const val KEYPOINTS_FEATURES = KEYPOINTS_COUNT * 3 // x, y, conf per keypoint
-        private const val MAX_POOL_SIZE = 100  // 最大プールサイズ
+        private const val MAX_POOL_SIZE = 100 
         
-        // 標準的な入力サイズ (通常は 640)
         private const val INPUT_SIZE = 640
     }
     
-    // Box および Keypoints のオブジェクトプール
     private val boxPool = ObjectPool<Box>(MAX_POOL_SIZE) { Box(0, "", 0f, RectF(), RectF()) }
     private val keypointsPool = ObjectPool<Keypoints>(MAX_POOL_SIZE) {
         Keypoints(
@@ -56,7 +54,6 @@ class PoseEstimator(
         )
     }
     
-    // プーリングされたオブジェクトの管理クラス
     private class ObjectPool<T>(
         private val maxSize: Int,
         private val factory: () -> T
@@ -115,10 +112,8 @@ class PoseEstimator(
     private var numAnchors = 0
 
     init {
-        // (1) TFLiteモデルをロード (拡張子自動付与)
-        val modelBuffer = YoloUtils.loadModelFile(context, modelPath)
+        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
-        // ===== メタデータ読み込み（必要に応じて） =====
         try {
             val metadataExtractor = MetadataExtractor(modelBuffer)
             val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
@@ -159,45 +154,37 @@ class PoseEstimator(
             Log.e("PoseEstimator", "Failed to extract metadata: ${e.message}")
         }
 
-        // (2) Interpreterの生成
         interpreter = Interpreter(modelBuffer, interpreterOptions)
         // Call allocateTensors() once during initialization
         interpreter.allocateTensors()
         Log.d("PoseEstimator", "TFLite model loaded and tensors allocated")
 
-        // (3) 入力テンソル形状を取得: [1, height, width, 3]
         val inputShape = interpreter.getInputTensor(0).shape()
         val inHeight = inputShape[1]
         val inWidth = inputShape[2]
         inputSize = com.ultralytics.yolo.Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
         
-        // 出力テンソル形状を取得・初期化
-        val outputShape = interpreter.getOutputTensor(0).shape()  // 例: [1, 56, 2100]
+        val outputShape = interpreter.getOutputTensor(0).shape()  // e.g.: [1, 56, 2100]
         batchSize = outputShape[0]           // 1
         val outFeatures = outputShape[1]     // 56
-        numAnchors = outputShape[2]          // 2100等
+        numAnchors = outputShape[2]          // 2100 etc.
         require(outFeatures == OUTPUT_FEATURES) {
             "Unexpected output feature size. Expected=$OUTPUT_FEATURES, Actual=$outFeatures"
         }
         
-        // 出力バッファを一度だけ初期化
         outputArray = Array(batchSize) {
             Array(outFeatures) { FloatArray(numAnchors) }
         }
         
-        // 入力バッファの初期化 (直接確保 + ネイティブオーダリング)
-        val inputBytes = 1 * inHeight * inWidth * 3 * 4 // FLOAT32は4バイト
+        val inputBytes = 1 * inHeight * inWidth * 3 * 4 // FLOAT32 is 4 bytes
         inputBuffer = ByteBuffer.allocateDirect(inputBytes).apply {
             order(java.nio.ByteOrder.nativeOrder())
         }
         Log.d("PoseEstimator", "Direct ByteBuffer allocated with native ordering: $inputBytes bytes")
-
-        // (4) ImageProcessorの初期化 - both with and without rotation
         
-        // For camera feed (with rotation)
         imageProcessorCamera = ImageProcessor.Builder()
-            .add(Rot90Op(3)) // 必要に応じて回転する場合は数値を変えてください
+            .add(Rot90Op(3))
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))
             .add(CastOp(DataType.FLOAT32))
@@ -213,7 +200,6 @@ class PoseEstimator(
 
     override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
         t0 = System.nanoTime()
-        // (1) 前処理: TensorImageへロード & ImageProcessorで処理
         val tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bitmap)
         
@@ -226,17 +212,14 @@ class PoseEstimator(
             imageProcessorSingleImage.process(tensorImage)
         }
         
-        // 再利用可能なバッファへ入力をコピー
         inputBuffer.clear()
         inputBuffer.put(processedImage.buffer)
         inputBuffer.rewind()
 
-        // (3) 推論実行 (出力バッファは初期化時に確保済み)
         interpreter.run(inputBuffer, outputArray)
-        // 処理時間の計測更新
+        // Update processing time measurement
         updateTiming()
 
-        // (4) 後処理: NMS + キーポイント計算
         val rawDetections = postProcessPose(
             features = outputArray[0],  // shape: [56][numAnchors]
             numAnchors = numAnchors,
@@ -246,29 +229,24 @@ class PoseEstimator(
             origHeight = origHeight
         )
 
-        // 検出結果を取り出し
         val boxes = rawDetections.map { it.box }
         val keypointsList = rawDetections.map { it.keypoints }
 
-        // アノテーション用ビットマップ生成
 //        val annotatedImage = drawPoseOnBitmap(bitmap, keypointsList, boxes)
 
         val fpsDouble: Double = if (t4 > 0) (1.0 / t4) else 0.0
-        // YOLOResultに詰めて返す
+        // Pack into YOLOResult and return
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(bitmap.height, bitmap.width),
             boxes = boxes,
             keypointsList = keypointsList,
 //            annotatedImage = annotatedImage,
-            speed = t2,   // ミリ秒等の測定値はBasePredictor側の実装次第
+            speed = t2,   // Measurement values in milliseconds etc. depend on BasePredictor implementation
             fps = fpsDouble,
             names = labels
         )
     }
 
-    /**
-     * 後処理: Confidence閾値で除外、NMSで抑制、座標変換、Keypoints処理
-     */
     private fun postProcessPose(
         features: Array<FloatArray>,
         numAnchors: Int,
@@ -280,13 +258,12 @@ class PoseEstimator(
 
         val detections = mutableListOf<PoseDetection>()
 
-        // 例えば modelInputSize = (640, 640) と仮定
+        // Assume modelInputSize = (640, 640) for example
         val (modelW, modelH) = modelInputSize
         val scaleX = origWidth.toFloat() / modelW
         val scaleY = origHeight.toFloat() / modelH
 
         for (j in 0 until numAnchors) {
-            // 例: features[0][j] ~ features[3][j] は 0～1 の正規化値
             val rawX = features[0][j]       // 0..1
             val rawY = features[1][j]       // 0..1
             val rawW = features[2][j]       // 0..1
@@ -295,13 +272,11 @@ class PoseEstimator(
 
             if (conf < confidenceThreshold) continue
 
-            // (A) まず正規化をモデル入力解像度に拡大 (640等) する
             val xScaled = rawX * modelW
             val yScaled = rawY * modelH
             val wScaled = rawW * modelW
             val hScaled = rawH * modelH
 
-            // [x-w/2, y-h/2, x+w/2, y+h/2] は modelInputSize スケール
             val left   = xScaled - wScaled / 2f
             val top    = yScaled - hScaled / 2f
             val right  = xScaled + wScaled / 2f
@@ -310,7 +285,6 @@ class PoseEstimator(
             // modelInputSize スケールでの RectF
             val normBox = RectF(left / modelW, top / modelH, right / modelW, bottom / modelH)
 
-            // (B) 今度は実際の元画像スケールへ拡大
             val rectF = RectF(
                 left   * scaleX,
                 top    * scaleY,
@@ -318,7 +292,6 @@ class PoseEstimator(
                 bottom * scaleY
             )
 
-            // キーポイント (5..55) も同様にモデル解像度 → 実画像スケールに変換
             val kpArray = mutableListOf<Pair<Float, Float>>()
             val kpConfArray = mutableListOf<Float>()
             for (k in 0 until KEYPOINTS_COUNT) {
@@ -333,13 +306,11 @@ class PoseEstimator(
                 val finalKy: Float
                 
                 if (isNormalized) {
-                    // 正規化された座標の場合（0-1）
                     val kxScaled = rawKx * modelW
                     val kyScaled = rawKy * modelH
                     finalKx = kxScaled * scaleX
                     finalKy = kyScaled * scaleY
                 } else {
-                    // すでにモデル入力解像度のピクセル座標の場合
                     finalKx = rawKx * scaleX
                     finalKy = rawKy * scaleY
                 }
@@ -348,27 +319,19 @@ class PoseEstimator(
                 kpConfArray.add(kpC)
             }
 
-            // プールからオブジェクトを取得して再利用
             val boxObj = boxPool.acquire()
             val keypointsObj = keypointsPool.acquire()
             
-            // xynリストを準備
             val xynList = kpArray.map { (fx, fy) ->
                 (fx / origWidth) to (fy / origHeight)
             }
             
-            // オブジェクトプーリングの正しい使用方法：
-            // 新しく作成する代わりにプールされたオブジェクトを更新して再利用する
-
-            // Boxを更新
             boxObj.index = 0
             boxObj.cls = "person"
             boxObj.conf = conf
             boxObj.xywh.set(rectF)
             boxObj.xywhn.set(normBox)
             
-            // 以下のようにKeypointsを更新するメソッドを作成し、既存のKeypointsオブジェクトを更新する
-            // ここでは簡単のために新しいオブジェクトを使用
             val keypoints = Keypoints(
                 xyn = xynList,
                 xy = kpArray,
@@ -382,34 +345,25 @@ class PoseEstimator(
                 )
             )
             
-            // keypointsObjは使用しなかったのでリリース
             keypointsPool.release(keypointsObj)
         }
 
-        // 以降は NMS 処理 (単一クラス想定) は変わらず
         val finalDetections = nmsPoseDetections(detections, iouThreshold)
         return finalDetections
     }
 
 
-    /**
-     * NMSを単一クラス想定で実行 (拡張したい場合はクラス別に分割してNMS)
-     * 最適化: スコアが低いボックスを事前に除外し、NMS処理を高速化
-     */
     private fun nmsPoseDetections(
         detections: List<PoseDetection>,
         iouThreshold: Float
     ): List<PoseDetection> {
-        // 十分に高い信頼度のボックスのみを選択（早期枝刈り）
-        val confidenceThreshold = 0.25f  // 設定可能な閾値
+        val confidenceThreshold = 0.25f  // Configurable threshold
         val filteredDetections = detections.filter { it.box.conf >= confidenceThreshold }
         
-        // 残りのボックスが少ない場合、早期リターン
         if (filteredDetections.size <= 1) {
             return filteredDetections
         }
         
-        // 信頼度で降順ソート
         val sorted = filteredDetections.sortedByDescending { it.box.conf }
         val picked = mutableListOf<PoseDetection>()
         val used = BooleanArray(sorted.size)
@@ -420,7 +374,6 @@ class PoseEstimator(
             val d1 = sorted[i]
             picked.add(d1)
 
-            // 内側のループでの比較回数を減らすためのベクトル化アプローチを使用
             for (j in i + 1 until sorted.size) {
                 if (used[j]) continue
                 val d2 = sorted[j]
@@ -432,9 +385,6 @@ class PoseEstimator(
         return picked
     }
 
-    /**
-     * IoU計算
-     */
     private fun iou(a: RectF, b: RectF): Float {
         val interLeft = max(a.left, b.left)
         val interTop = max(a.top, b.top)
@@ -447,9 +397,7 @@ class PoseEstimator(
         return if (unionArea <= 0f) 0f else (interArea / unionArea)
     }
 
-    /**
-     * キーポイントを描画したビットマップを返す
-     */
+
     private fun drawPoseOnBitmap(
         bitmap: Bitmap,
         keypointsList: List<Keypoints>,
@@ -462,34 +410,25 @@ class PoseEstimator(
             color = Color.GREEN
             strokeWidth = 5f
         }
-        // バウンディングボックス描画用
         val boxPaint = Paint().apply {
             style = Paint.Style.STROKE
             color = Color.RED
             strokeWidth = 3f
         }
 
-        // 各Personについて描画
         for ((index, person) in keypointsList.withIndex()) {
-            // バウンディングボックスの描画
             val boxRect = boxes[index].xywh
             canvas.drawRect(boxRect, boxPaint)
 
-            // キーポイントの描画
             for ((i, kp) in person.xy.withIndex()) {
-                // confが一定以上のみ可視化したければ適宜判定
                 if (person.conf[i] > 0.25f) {
                     canvas.drawCircle(kp.first, kp.second, 8f, paint)
                 }
             }
-            // 必要に応じてスケルトン(骨格線)描画を追加
         }
         return output
     }
 
-    /**
-     * PoseDetection データクラス
-     */
     private data class PoseDetection(
         val box: Box,
         val keypoints: Keypoints

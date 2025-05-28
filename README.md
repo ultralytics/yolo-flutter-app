@@ -186,8 +186,8 @@ class YoloDemo extends StatefulWidget {
 }
 
 class _YoloDemoState extends State<YoloDemo> {
-  // Create a controller to interact with the YoloView
-  final controller = YoloViewController();
+  // Create a controller to interact with the YOLOView
+  final controller = YOLOViewController();
   double _confidenceValue = 0.5;
   double _currentZoom = 1.0;
   YOLOTask _currentTask = YOLOTask.detect;
@@ -279,9 +279,9 @@ class _YoloDemoState extends State<YoloDemo> {
             ),
           ),
 
-          // YoloView with controller
+          // YOLOView with controller
           Expanded(
-            child: YoloView(
+            child: YOLOView(
               controller: controller,
               task: _currentTask,
               modelPath: _currentModel,
@@ -306,7 +306,7 @@ class _YoloDemoState extends State<YoloDemo> {
 
 ### Object Detection with Camera Feed
 
-There are three ways to control YoloView's detection parameters:
+There are three ways to control YOLOView's detection parameters:
 
 #### Camera Zoom Control
 
@@ -336,10 +336,10 @@ controller.setZoomLevel(2.5);  // Set to 2.5x zoom
 
 ```dart
 // Create a controller outside build method
-final controller = YoloViewController();
+final controller = YOLOViewController();
 
 // In your build method:
-YoloView(
+YOLOView(
   controller: controller,  // Provide the controller
   task: YOLOTask.detect,
   modelPath: 'yolo11n',  // Just the model name - most reliable approach
@@ -364,11 +364,11 @@ controller.setThresholds(
 #### Method 2: Using GlobalKey Direct Access (Simpler)
 
 ```dart
-// Create a GlobalKey to access the YoloView
-final yoloViewKey = GlobalKey<YoloViewState>();
+// Create a GlobalKey to access the YOLOView
+final yoloViewKey = GlobalKey<YOLOViewState>();
 
 // In your build method:
-YoloView(
+YOLOView(
   key: yoloViewKey,  // Important: Provide the key
   task: YOLOTask.detect,
   modelPath: 'yolo11n',  // Just the model name without extension
@@ -394,7 +394,7 @@ yoloViewKey.currentState?.setThresholds(
 
 ```dart
 // No controller needed - just create the view
-YoloView(
+YOLOView(
   task: YOLOTask.detect,
   modelPath: 'yolo11n',  // Simple model name works best across platforms
   onResult: (results) {
@@ -462,13 +462,13 @@ YOLO({
 });
 ```
 
-#### YoloViewController
+#### YOLOViewController
 
-Controller for interacting with a YoloView, managing settings like thresholds.
+Controller for interacting with a YOLOView, managing settings like thresholds.
 
 ```dart
 // Create a controller
-final controller = YoloViewController();
+final controller = YOLOViewController();
 
 // Get current values
 double confidence = controller.confidenceThreshold;
@@ -501,7 +501,7 @@ await controller.setZoomLevel(2.0);
 await controller.switchModel('yolo11s', YOLOTask.detect);
 ```
 
-#### YoloView
+#### YOLOView
 
 Flutter widget to display YOLO detection results.
 
@@ -509,7 +509,7 @@ Flutter widget to display YOLO detection results.
 
 ```dart
 // Only two required parameters!
-YoloView(
+YOLOView(
   modelPath: 'yolo11n',      // Required
   task: YOLOTask.detect,     // Required
 )
@@ -518,10 +518,10 @@ YoloView(
 ##### Full Constructor
 
 ```dart
-YoloView({
+YOLOView({
   required String modelPath,                            // Model name or path
   required YOLOTask task,                              // Task type (detect, segment, etc.)
-  YoloViewController? controller,                       // Optional: Control thresholds and camera
+  YOLOViewController? controller,                       // Optional: Control thresholds and camera
   String cameraResolution = '720p',                    // Optional: Camera resolution
   Function(List<YOLOResult>)? onResult,               // Optional: Detection results callback
   Function(Map<String, double>)? onPerformanceMetrics, // Optional: FPS and timing metrics

@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'yolo_platform_interface.dart';
 
-/// An implementation of [YoloPlatform] that uses method channels.
+/// An implementation of [YOLOPlatform] that uses method channels.
 ///
 /// This class provides the default implementation for communicating
 /// with platform-specific YOLO implementations through Flutter's
@@ -14,7 +14,7 @@ import 'yolo_platform_interface.dart';
 ///
 /// This implementation is automatically registered as the default
 /// platform interface and should not be instantiated directly.
-class MethodChannelYolo extends YoloPlatform {
+class YOLOMethodChannel extends YOLOPlatform {
   /// The method channel used to interact with the native platform.
   ///
   /// This channel is used for single image predictions and other

@@ -17,19 +17,19 @@ import java.util.ArrayList
 import java.util.HashMap
 
 /**
- * YoloPlatformView - Native view bridge from Flutter
+ * YOLOPlatformView - Native view bridge from Flutter
  */
-class YoloPlatformView(
+class YOLOPlatformView(
     private val context: Context,
     private val viewId: Int,
     creationParams: Map<String?, Any?>?,
     private val streamHandler: EventChannel.StreamHandler,
     private val methodChannel: MethodChannel?,
-    private val factory: YoloPlatformViewFactory // Added factory reference
+    private val factory: YOLOPlatformViewFactory // Added factory reference
 ) : PlatformView, MethodChannel.MethodCallHandler {
 
-    private val yoloView: YoloView = YoloView(context)
-    private val TAG = "YoloPlatformView"
+    private val yoloView: YOLOView = YOLOView(context)
+    private val TAG = "YOLOPlatformView"
     
     // Initialization flag
     private var initialized = false
@@ -43,9 +43,9 @@ class YoloPlatformView(
     init {
         val dartViewIdParam = creationParams?.get("viewId")
         viewUniqueId = dartViewIdParam as? String ?: viewId.toString().also {
-            Log.w(TAG, "YoloPlatformView[$viewId init]: Using platform int viewId '$it' as fallback for viewUniqueId because Dart 'viewId' was null or not a String.")
+            Log.w(TAG, "YOLOPlatformView[$viewId init]: Using platform int viewId '$it' as fallback for viewUniqueId because Dart 'viewId' was null or not a String.")
         }
-        Log.d(TAG, "YoloPlatformView[$viewId init]: Initialized with creationParams: $creationParams. Resolved viewUniqueId for channels: $viewUniqueId")
+        Log.d(TAG, "YOLOPlatformView[$viewId init]: Initialized with creationParams: $creationParams. Resolved viewUniqueId for channels: $viewUniqueId")
 
         // Parse model path and task from creation params
         var modelPath = creationParams?.get("modelPath") as? String ?: "yolo11n"
@@ -58,24 +58,24 @@ class YoloPlatformView(
         // Set up the method channel handler
         methodChannel?.setMethodCallHandler(this)
 
-        // Set initial thresholds on YoloView instance from creationParams or defaults.
-        // YoloView.setModel will use these when creating the predictor.
-        Log.d(TAG, "Setting initial thresholds on YoloView: conf=$confidenceParam, iou=$iouParam")
+        // Set initial thresholds on YOLOView instance from creationParams or defaults.
+        // YOLOView.setModel will use these when creating the predictor.
+        Log.d(TAG, "Setting initial thresholds on YOLOView: conf=$confidenceParam, iou=$iouParam")
         yoloView.setConfidenceThreshold(confidenceParam)
         yoloView.setIouThreshold(iouParam)
-        // numItemsThreshold defaults within YoloView.kt
+        // numItemsThreshold defaults within YOLOView.kt
 
         // Attempt to initialize camera as soon as the view is created.
-        // YoloView.initCamera() handles permissions and starts the camera preview.
-        Log.d(TAG, "Attempting early camera initialization for YoloView.")
+        // YOLOView.initCamera() handles permissions and starts the camera preview.
+        Log.d(TAG, "Attempting early camera initialization for YOLOView.")
         yoloView.initCamera() // This will attempt to start camera or request permissions
 
-        // If context is already a LifecycleOwner, inform YoloView immediately
+        // If context is already a LifecycleOwner, inform YOLOView immediately
         if (context is LifecycleOwner) {
-            Log.d(TAG, "Initial context is a LifecycleOwner (${context.javaClass.simpleName}), notifying YoloView.")
+            Log.d(TAG, "Initial context is a LifecycleOwner (${context.javaClass.simpleName}), notifying YOLOView.")
             yoloView.onLifecycleOwnerAvailable(context)
         } else {
-            Log.w(TAG, "Initial context (${context.javaClass.simpleName}) is NOT a LifecycleOwner. YoloView will wait for one to be provided via notifyLifecycleOwnerAvailable.")
+            Log.w(TAG, "Initial context (${context.javaClass.simpleName}) is NOT a LifecycleOwner. YOLOView will wait for one to be provided via notifyLifecycleOwnerAvailable.")
         }
         
         try {
@@ -85,7 +85,7 @@ class YoloPlatformView(
             // Convert task string to enum
             val task = YOLOTask.valueOf(taskString.uppercase())
             
-            Log.d(TAG, "Initializing YoloPlatformView with model: $modelPath, task: $task, viewId: $viewId")
+            Log.d(TAG, "Initializing YOLOPlatformView with model: $modelPath, task: $task, viewId: $viewId")
             
             // Set up callback for model loading result
             yoloView.setOnModelLoadCallback { success ->
@@ -186,7 +186,7 @@ class YoloPlatformView(
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "Error initializing YoloPlatformView", e)
+            Log.e(TAG, "Error initializing YOLOPlatformView", e)
         }
     }
     
@@ -347,14 +347,14 @@ class YoloPlatformView(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT
             )
-            Log.d(TAG, "Set layout params for YoloView")
+            Log.d(TAG, "Set layout params for YOLOView")
         }
         
         return yoloView
     }
 
     override fun dispose() {
-        Log.d(TAG, "Disposing YoloPlatformView for viewId: $viewId")
+        Log.d(TAG, "Disposing YOLOPlatformView for viewId: $viewId")
         // Clean up resources
         methodChannel?.setMethodCallHandler(null)
         // Notify the factory that this view is disposed
@@ -362,21 +362,21 @@ class YoloPlatformView(
     }
 
     /**
-     * Called by YoloPlatformViewFactory when the Activity (which is a LifecycleOwner)
+     * Called by YOLOPlatformViewFactory when the Activity (which is a LifecycleOwner)
      * becomes available or changes.
      */
     fun notifyLifecycleOwnerAvailable(owner: LifecycleOwner) {
-        Log.d(TAG, "LifecycleOwner (${owner.javaClass.simpleName}) is now available for viewId: $viewId. Notifying YoloView.")
+        Log.d(TAG, "LifecycleOwner (${owner.javaClass.simpleName}) is now available for viewId: $viewId. Notifying YOLOView.")
         yoloView.onLifecycleOwnerAvailable(owner)
     }
         
-        // Called by YoloPlugin to delegate permission results
+        // Called by YOLOPlugin to delegate permission results
         fun passRequestPermissionsResult(
             requestCode: Int,
             permissions: Array<String>, 
             grantResults: IntArray
         ) {
-            Log.d(TAG, "passRequestPermissionsResult called in YoloPlatformView for viewId $viewId, delegating to yoloView")
+            Log.d(TAG, "passRequestPermissionsResult called in YOLOPlatformView for viewId $viewId, delegating to yoloView")
             yoloView.onRequestPermissionsResult(requestCode, permissions, grantResults)
         }
         
@@ -399,7 +399,7 @@ class YoloPlatformView(
      */
     private fun resolveModelPath(context: Context, modelPath: String): String {
         // If it's already an absolute path, return it
-        if (YoloUtils.isAbsolutePath(modelPath)) {
+        if (YOLOUtils.isAbsolutePath(modelPath)) {
             return modelPath
         }
         

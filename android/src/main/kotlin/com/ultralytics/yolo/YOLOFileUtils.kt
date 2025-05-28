@@ -16,8 +16,8 @@ import java.nio.charset.StandardCharsets
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
-object YoloFileUtils {
-    private const val TAG = "YoloFileUtils📁📁"
+object YOLOFileUtils {
+    private const val TAG = "YOLOFileUtils📁📁"
 
     fun loadLabelsFromAppendedZip(context: Context, modelPath: String): List<String>? {
         val assetManager = context.assets
@@ -25,7 +25,7 @@ object YoloFileUtils {
 
         // Try with .tflite extension first, then original path as fallback
         val pathsToTry = listOf(
-            YoloUtils.ensureTFLiteExtension(modelPath), // Path with .tflite (if not already present)
+            YOLOUtils.ensureTFLiteExtension(modelPath), // Path with .tflite (if not already present)
             modelPath                                  // Original path
         ).distinct() // Avoid trying the same path twice if modelPath already ends with .tflite
 

@@ -33,8 +33,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   double _currentZoomLevel = 1.0;
   bool _isFrontCamera = false;
 
-  final _yoloController = YoloViewController();
-  final _yoloViewKey = GlobalKey<YoloViewState>();
+  final _yoloController = YOLOViewController();
+  final _yoloViewKey = GlobalKey<YOLOViewState>();
   final bool _useController = true;
 
   late final ModelManager _modelManager;
@@ -119,7 +119,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         children: [
           // YOLO View: must be at back
           if (_modelPath != null && !_isModelLoading)
-            YoloView(
+            YOLOView(
               key: _useController
                   ? const ValueKey('yolo_view_static')
                   : _yoloViewKey, // Use static key to prevent recreation

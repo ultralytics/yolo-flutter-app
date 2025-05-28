@@ -24,7 +24,6 @@ import java.nio.ByteOrder
 class Classifier(
     context: Context,
     modelPath: String,
-    // fallback 用にコンストラクタ引数からもラベルを受け取れるようにしておく
     override var labels: List<String> = emptyList(),
     private val useGpu: Boolean = true
 ) : BasePredictor() {
@@ -38,20 +37,17 @@ class Classifier(
                 Log.e(TAG, "GPU delegate error: ${e.message}")
             }
         }
-        // 必要ならスレッド数指定など
         setNumThreads(4)
     }
 
     var numClass: Int = 0
 
-    // 画像の前処理をまとめて行うためのパイプライン
     private lateinit var imageProcessorCamera: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
 
     init {
-        val modelBuffer = YoloUtils.loadModelFile(context, modelPath)
+        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
-        // ===== メタデータから labels を読み込み (存在すれば) =====
         try {
             val metadataExtractor = MetadataExtractor(modelBuffer)
             val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
@@ -59,7 +55,6 @@ class Classifier(
                 Log.d(TAG, "Model metadata retrieved successfully.")
             }
 
-            // メタデータに関連付けられたファイル一覧を取得
             val associatedFiles = metadataExtractor.associatedFileNames
             if (!associatedFiles.isNullOrEmpty()) {
                 for (fileName in associatedFiles) {
@@ -70,7 +65,6 @@ class Classifier(
                         val fileString = fileContent.toString(Charsets.UTF_8)
                         Log.d(TAG, "Associated file contents:\n$fileString")
 
-                        // YAML をパースして "names" があればラベルとして取得
                         try {
                             val yaml = Yaml()
                             @Suppress("UNCHECKED_CAST")
@@ -94,43 +88,38 @@ class Classifier(
             Log.e(TAG, "Failed to extract metadata: ${e.message}")
         }
 
-        // Interpreter の生成
         interpreter = Interpreter(modelBuffer, interpreterOptions)
 
-        // 入力テンソル形状 [1, height, width, 3] を取得
         val inputShape = interpreter.getInputTensor(0).shape()
-        // 例えば inputShape = [1, 224, 224, 3]
-        val inBatch = inputShape[0]   // 通常 1
+        val inBatch = inputShape[0]
         val inHeight = inputShape[1]
         val inWidth = inputShape[2]
         val inChannels = inputShape[3]
         require(inBatch == 1 && inChannels == 3) {
             "Unexpected input tensor shape. Expect [1,H,W,3], but got ${inputShape.joinToString()}"
         }
-        // BasePredictor 側の変数に記憶
+
         inputSize = Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
         Log.d(TAG, "Model input size = $inWidth x $inHeight")
 
-        // 出力テンソル形状 [1, numClass] を想定
         val outputShape = interpreter.getOutputTensor(0).shape()
-        // 例えば outputShape = [1, 1000]
+        // e.g. outputShape = [1, 1000]
         numClass = outputShape[1]
         Log.d(TAG, "Model output shape = [1, $numClass]")
 
-        // ===== 画像前処理パイプラインの用意 =====
         // For camera feed (with rotation)
         imageProcessorCamera = ImageProcessor.Builder()
-            .add(Rot90Op(3))  // 必要に応じて回転
+            .add(Rot90Op(3))  // Rotate as needed
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(INPUT_MEAN, INPUT_STD))  // [0,1]にスケーリング
+            .add(NormalizeOp(INPUT_MEAN, INPUT_STD))
             .add(CastOp(DataType.FLOAT32))
             .build()
             
         // For single images (no rotation)
         imageProcessorSingleImage = ImageProcessor.Builder()
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(INPUT_MEAN, INPUT_STD))  // [0,1]にスケーリング
+            .add(NormalizeOp(INPUT_MEAN, INPUT_STD))
             .add(CastOp(DataType.FLOAT32))
             .build()
 
@@ -138,13 +127,10 @@ class Classifier(
     }
 
     override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
-        // 計測開始
         t0 = System.nanoTime()
 
-        // ======== 前処理 ========
-        // TFLite Support Library を使う流れ
         val tensorImage = TensorImage(DataType.FLOAT32)
-        tensorImage.load(bitmap)              // Bitmap を読み込み
+        tensorImage.load(bitmap)
         
         // Choose appropriate processor based on input source
         val processedImage = if (rotateForCamera) {
@@ -156,15 +142,11 @@ class Classifier(
         }
         val inputBuffer = processedImage.buffer
 
-        // ======== 推論 ========
-        // 出力 shape = [1, numClass]
         val outputArray = Array(1) { FloatArray(numClass) }
         interpreter.run(inputBuffer, outputArray)
 
-        // 計測終了
-        updateTiming()   // 内部で t2(ms), t4(sec) などが更新される想定
+        updateTiming()
 
-        // ======== 後処理: スコア順に並べて top1, top5 を取得 ========
         val scores = outputArray[0]   // FloatArray(numClass)
         val indexedScores = scores.mapIndexed { index, score -> index to score }
         val sorted = indexedScores.sortedByDescending { it.second }
@@ -181,7 +163,6 @@ class Classifier(
         val top5Labels = top5.map { (idx, _) -> labels.getOrElse(idx) { "Unknown" } }
         val top5Scores = top5.map { it.second }
 
-        // YOLOResult の Probs に詰める
         val probs = Probs(
             top1 = top1Label,
             top5 = top5Labels,
@@ -190,13 +171,12 @@ class Classifier(
             top1Index = top1Index
         )
 
-        // fps は if(t4>0) 1.0/t4 else 0.0 など。BasePredictor 側の実装に合わせて
         val fpsVal = if (t4 > 0) 1.0 / t4 else 0.0
 
         return YOLOResult(
-            origShape = Size(bitmap.width, bitmap.height), // 元画像サイズ
+            origShape = Size(bitmap.width, bitmap.height),
             probs = probs,
-            speed = t2,               // ミリ秒
+            speed = t2,
             fps = fpsVal,
             names = labels
         )
@@ -205,7 +185,6 @@ class Classifier(
     companion object {
         private const val TAG = "Classifier"
 
-        // ObjectDetector 同様の前処理用定数
         private const val INPUT_MEAN = 0f
         private const val INPUT_STD = 255f
     }

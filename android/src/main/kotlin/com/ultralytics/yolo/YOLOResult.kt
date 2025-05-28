@@ -24,13 +24,13 @@ data class Box(
     var index: Int,
     var cls: String,
     var conf: Float,
-    val xywh: RectF,    // 実画像座標
-    val xywhn: RectF    // 正規化座標（0～1）
+    val xywh: RectF,    // Real image coordinates
+    val xywhn: RectF    // Normalized coordinates (0~1)
 )
 
 data class Masks(
-    val masks: List<List<List<Float>>>, // 個々の確率マップ（行列リスト）
-    val combinedMask: Bitmap?           // 合成済みマスク画像
+    val masks: List<List<List<Float>>>, // Individual probability maps (matrix list)
+    val combinedMask: Bitmap?           // Combined mask image
 )
 
 data class Probs(

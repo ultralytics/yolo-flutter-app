@@ -34,7 +34,6 @@ abstract class BasePredictor : Predictor {
     protected lateinit var modelInputSize: Pair<Int, Int>
     protected fun isInterpreterInitialized() = this::interpreter.isInitialized
 
-    // 時間計測用（nanosecond 単位など）
     protected var t0: Long = 0L
     protected var t2: Double = 0.0
     protected var t3: Long = System.nanoTime()
@@ -45,7 +44,6 @@ abstract class BasePredictor : Predictor {
     var transformationMatrix: Matrix? = null
     var pendingBitmapFrame: Bitmap? = null
 
-    /** 推論後の時間更新（平滑化） */
     protected fun updateTiming() {
         val now = System.nanoTime()
         val dt = (now - t0) / 1e9

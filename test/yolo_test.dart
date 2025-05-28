@@ -9,7 +9,7 @@ import 'package:ultralytics_yolo/yolo_method_channel.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:flutter/services.dart';
 
-class MockYoloPlatform with MockPlatformInterfaceMixin implements YoloPlatform {
+class MockYOLOPlatform with MockPlatformInterfaceMixin implements YOLOPlatform {
   @override
   Future<String?> getPlatformVersion() => Future.value('42');
 
@@ -60,10 +60,10 @@ void main() {
   });
 
   // Start the tests
-  final YoloPlatform initialPlatform = YoloPlatform.instance;
+  final YOLOPlatform initialPlatform = YOLOPlatform.instance;
 
-  test('$MethodChannelYolo is the default instance', () {
-    expect(initialPlatform, isInstanceOf<MethodChannelYolo>());
+  test('$YOLOMethodChannel is the default instance', () {
+    expect(initialPlatform, isInstanceOf<YOLOMethodChannel>());
   });
 
   group('YOLO Model Loading', () {

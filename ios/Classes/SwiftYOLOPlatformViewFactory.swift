@@ -4,7 +4,7 @@ import Flutter
 import UIKit
 
 @MainActor
-public class SwiftYoloPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
+public class SwiftYOLOPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
   private var messenger: FlutterBinaryMessenger
   static var yoloViews: [Int: YOLOView] = [:]
 
@@ -13,7 +13,7 @@ public class SwiftYoloPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
     super.init()
   }
 
-  static func getYoloView(for viewId: Int) -> YOLOView? {
+  static func getYOLOView(for viewId: Int) -> YOLOView? {
     return yoloViews[viewId]
   }
 
@@ -26,8 +26,6 @@ public class SwiftYoloPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
   }
 
   public func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
-    // Dart 側で `creationParamsCodec: const StandardMessageCodec()` を指定しているので
-    // こちらでも FlutterStandardMessageCodec.sharedInstance() を使う
     return FlutterStandardMessageCodec.sharedInstance()
   }
 
@@ -36,7 +34,7 @@ public class SwiftYoloPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
     viewIdentifier viewId: Int64,
     arguments args: Any?
   ) -> FlutterPlatformView {
-    return SwiftYoloPlatformView(
+    return SwiftYOLOPlatformView(
       frame: frame,
       viewId: viewId,
       args: args,

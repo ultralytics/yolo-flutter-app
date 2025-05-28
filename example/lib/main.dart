@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo_example/presentation/screens/camera_inference_screen.dart';
 
 void main() {
-  runApp(const YoloExampleApp());
+  runApp(const YOLOExampleApp());
 }
 
-class YoloExampleApp extends StatelessWidget {
-  const YoloExampleApp({super.key});
+class YOLOExampleApp extends StatelessWidget {
+  const YOLOExampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(title: 'Yolo Plugin Example', home: HomeScreen());
+    return const MaterialApp(title: 'YOLO Plugin Example', home: HomeScreen());
   }
 }
 
