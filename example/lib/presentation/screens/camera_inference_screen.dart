@@ -47,6 +47,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   String? _modelPath;
   String _loadingMessage = '';
   double _downloadProgress = 0.0;
+  double _currentZoomLevel = 1.0;
+  bool _isFrontCamera = false;
 
   final _yoloController = YoloViewController();
   final _yoloViewKey = GlobalKey<YoloViewState>();
@@ -111,9 +113,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           // YOLO View: must be at back
           if (_modelPath != null && !_isModelLoading)
             YoloView(
-              key: const ValueKey(
-                'yolo_view_static',
-              ), // Use static key to prevent recreation
+              key: _useController ? const ValueKey('yolo_view_static') : _yoloViewKey, // Use static key to prevent recreation
               controller: _useController ? _yoloController : null,
               modelPath: _modelPath!,
               task: _selectedModel.task,
@@ -124,6 +124,13 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                     if (metrics['fps'] != null) {
                       _currentFps = metrics['fps']!;
                     }
+                  });
+                }
+              },
+              onZoomChanged: (zoomLevel) {
+                if (mounted) {
+                  setState(() {
+                    _currentZoomLevel = zoomLevel;
                   });
                 }
               },
@@ -260,13 +267,24 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             right: 16,
             child: Column(
               children: [
-                _buildCircleButton(
-                  '1.0',
-                  onPressed: () {
-                    // TODO: Implement zoom logic
-                  },
-                ),
-                const SizedBox(height: 12),
+                if (!_isFrontCamera) ...[
+                  _buildCircleButton(
+                    '${_currentZoomLevel.toStringAsFixed(1)}x',
+                    onPressed: () {
+                      // Cycle through zoom levels: 0.5x -> 1.0x -> 3.0x -> 0.5x
+                      double nextZoom;
+                      if (_currentZoomLevel < 0.75) {
+                        nextZoom = 1.0;
+                      } else if (_currentZoomLevel < 2.0) {
+                        nextZoom = 3.0;
+                      } else {
+                        nextZoom = 0.5;
+                      }
+                      _setZoomLevel(nextZoom);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _buildIconButton(Icons.layers, () {
                   _toggleSlider(SliderType.numItems);
                 }),
@@ -327,6 +345,13 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               child: IconButton(
                 icon: const Icon(Icons.flip_camera_ios, color: Colors.white),
                 onPressed: () {
+                  setState(() {
+                    _isFrontCamera = !_isFrontCamera;
+                    // Reset zoom level when switching to front camera
+                    if (_isFrontCamera) {
+                      _currentZoomLevel = 1.0;
+                    }
+                  });
                   if (_useController) {
                     _yoloController.switchCamera();
                   } else {
@@ -457,6 +482,17 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         break;
       default:
         break;
+    }
+  }
+
+  void _setZoomLevel(double zoomLevel) {
+    setState(() {
+      _currentZoomLevel = zoomLevel;
+    });
+    if (_useController) {
+      _yoloController.setZoomLevel(zoomLevel);
+    } else {
+      _yoloViewKey.currentState?.setZoomLevel(zoomLevel);
     }
   }
 

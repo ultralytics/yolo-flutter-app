@@ -282,6 +282,33 @@ class YoloViewController {
     }
   }
 
+  /// Sets the camera zoom level to a specific value.
+  ///
+  /// The zoom level must be within the supported range of the camera.
+  /// Typical values are 0.5x, 1.0x, 2.0x, 3.0x, etc.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Set zoom to 2x
+  /// await controller.setZoomLevel(2.0);
+  /// ```
+  Future<void> setZoomLevel(double zoomLevel) async {
+    if (_methodChannel == null) {
+      debugPrint(
+        'YoloViewController: Warning - Cannot set zoom level, view not yet created',
+      );
+      return;
+    }
+    try {
+      await _methodChannel!.invokeMethod('setZoomLevel', {
+        'zoomLevel': zoomLevel,
+      });
+      debugPrint('YoloViewController: Zoom level set to $zoomLevel');
+    } catch (e) {
+      debugPrint('YoloViewController: Error setting zoom level: $e');
+    }
+  }
+
   /// Switches the YOLO model on the existing view.
   ///
   /// This method allows changing the model without recreating the entire view.
@@ -396,6 +423,11 @@ class YoloView extends StatefulWidget {
   /// such as bounding boxes and labels drawn natively.
   final bool showNativeUI;
 
+  /// Callback invoked when the camera zoom level changes.
+  ///
+  /// Provides the current zoom level as a double value (e.g., 1.0, 2.0, 3.5).
+  final Function(double zoomLevel)? onZoomChanged;
+
   const YoloView({
     super.key,
     required this.modelPath,
@@ -405,6 +437,7 @@ class YoloView extends StatefulWidget {
     this.onResult,
     this.onPerformanceMetrics,
     this.showNativeUI = false,
+    this.onZoomChanged,
   });
 
   @override
@@ -766,6 +799,13 @@ class YoloViewState extends State<YoloView> {
             }
           });
           return null;
+        case 'onZoomChanged':
+          final zoomLevel = call.arguments as double?;
+          if (zoomLevel != null && widget.onZoomChanged != null) {
+            debugPrint('YoloView: Zoom level changed to $zoomLevel');
+            widget.onZoomChanged!(zoomLevel);
+          }
+          return null;
         default:
           debugPrint('YoloView: Unknown method call: ${call.method}');
           return null;
@@ -822,5 +862,15 @@ class YoloViewState extends State<YoloView> {
   /// Returns a [Future] that completes when the camera has been switched.
   Future<void> switchCamera() {
     return _effectiveController.switchCamera();
+  }
+
+  /// Sets the camera zoom level to a specific value.
+  ///
+  /// The zoom level must be within the supported range of the camera.
+  /// Typical values are 0.5x, 1.0x, 2.0x, 3.0x, etc.
+  /// It delegates to the effective controller's setZoomLevel method.
+  /// Returns a [Future] that completes when the zoom level has been set.
+  Future<void> setZoomLevel(double zoomLevel) {
+    return _effectiveController.setZoomLevel(zoomLevel);
   }
 }

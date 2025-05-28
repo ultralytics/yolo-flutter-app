@@ -12,7 +12,9 @@ import android.util.Log
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.Toast
+import android.view.ScaleGestureDetector
 import androidx.camera.core.*
+import androidx.camera.core.Camera
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
@@ -161,6 +163,14 @@ class YoloView @JvmOverloads constructor(
     // Camera config
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
+    private var camera: Camera? = null
+    
+    // Zoom related
+    private var currentZoomRatio = 1.0f
+    private val minZoomRatio = 1.0f
+    private val maxZoomRatio = 10.0f
+    private lateinit var scaleGestureDetector: ScaleGestureDetector
+    var onZoomChanged: ((Float) -> Unit)? = null
 
     // detection thresholds (can be changed externally via setters)
     private var confidenceThreshold = 0.25  // initial value
@@ -198,6 +208,25 @@ class YoloView @JvmOverloads constructor(
         overlayView.elevation = 100f
         overlayView.translationZ = 100f
         previewContainer.elevation = 1f
+        
+        // Initialize scale gesture detector for pinch-to-zoom
+        scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                val scale = detector.scaleFactor
+                val newZoomRatio = currentZoomRatio * scale
+                
+                // Clamp zoom ratio between min and max
+                val clampedZoomRatio = newZoomRatio.coerceIn(minZoomRatio, camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: maxZoomRatio)
+                
+                camera?.cameraControl?.setZoomRatio(clampedZoomRatio)
+                currentZoomRatio = clampedZoomRatio
+                
+                // Notify zoom change
+                onZoomChanged?.invoke(currentZoomRatio)
+                
+                return true
+            }
+        })
 
         Log.d(TAG, "YoloView init: forced TextureView usage for camera preview + overlay on top.")
     }
@@ -218,8 +247,27 @@ class YoloView @JvmOverloads constructor(
         numItemsThreshold = n
         (predictor as? ObjectDetector)?.setNumItemsThreshold(n)
     }
+    
+    fun setZoomLevel(zoomLevel: Float) {
+        camera?.let { cam: Camera ->
+            // Clamp zoom level between min and max
+            val clampedZoomRatio = zoomLevel.coerceIn(minZoomRatio, cam.cameraInfo.zoomState.value?.maxZoomRatio ?: maxZoomRatio)
+            
+            cam.cameraControl.setZoomRatio(clampedZoomRatio)
+            currentZoomRatio = clampedZoomRatio
+            
+            // Notify zoom change
+            onZoomChanged?.invoke(currentZoomRatio)
+        }
+    }
 
     // endregion
+    
+    // Handle touch events for pinch-to-zoom
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        scaleGestureDetector.onTouchEvent(event)
+        return true
+    }
 
     // region Model / Task
 
@@ -370,12 +418,16 @@ class YoloView @JvmOverloads constructor(
                         }
 
                         Log.d(TAG, "Binding camera use cases to lifecycle")
-                        cameraProvider.bindToLifecycle(
+                        camera = cameraProvider.bindToLifecycle(
                             owner,
                             cameraSelector,
                             preview,
                             imageAnalysis
                         )
+                        
+                        // Reset zoom to 1.0x when camera starts
+                        currentZoomRatio = 1.0f
+                        onZoomChanged?.invoke(currentZoomRatio)
 
                         Log.d(TAG, "Setting surface provider to previewView")
                         preview.setSurfaceProvider(previewView.surfaceProvider)

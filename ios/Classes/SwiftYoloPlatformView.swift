@@ -96,7 +96,12 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       // Setup method channel handler
       setupMethodChannel()
-
+      
+      // Setup zoom callback
+      yoloView?.onZoomChanged = { [weak self] zoomLevel in
+        self?.methodChannel.invokeMethod("onZoomChanged", arguments: Double(zoomLevel))
+      }
+      
       // Register this view with the factory
       if let yoloView = yoloView {
         SwiftYoloPlatformViewFactory.register(yoloView, for: Int(viewId))
@@ -319,6 +324,19 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
         print("SwiftYoloPlatformView: Received switchCamera call")
         self.yoloView?.switchCameraTapped()
         result(nil)  // Success
+
+      case "setZoomLevel":
+        if let args = call.arguments as? [String: Any],
+          let zoomLevel = args["zoomLevel"] as? Double
+        {
+          print("SwiftYoloPlatformView: Received setZoomLevel call with value: \(zoomLevel)")
+          self.yoloView?.setZoomLevel(CGFloat(zoomLevel))
+          result(nil)  // Success
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for setZoomLevel", details: nil))
+        }
 
       // Additional methods can be added here in the future
 
