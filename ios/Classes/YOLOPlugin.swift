@@ -71,11 +71,11 @@ class SingleImageYOLO {
 
   // モデルパスを解決するヘルパーメソッド
   private func resolveModelPath(_ modelPath: String) -> String {
-    print("YoloPlugin Debug: Resolving model path: \(modelPath)")
+    print("YOLOPlugin Debug: Resolving model path: \(modelPath)")
 
     // 既に絶対パスの場合はそのまま返す
     if modelPath.hasPrefix("/") {
-      print("YoloPlugin Debug: Using absolute path: \(modelPath)")
+      print("YOLOPlugin Debug: Using absolute path: \(modelPath)")
       return modelPath
     }
 
@@ -98,14 +98,14 @@ class SingleImageYOLO {
 
       // 各検索パスでファイルを探す
       for searchPath in searchPaths {
-        print("YoloPlugin Debug: Searching in path: \(searchPath)")
+        print("YOLOPlugin Debug: Searching in path: \(searchPath)")
 
         // 完全な名前で検索
         if !searchPath.isEmpty,
           let assetPath = Bundle.main.path(
             forResource: fileName, ofType: nil, inDirectory: searchPath)
         {
-          print("YoloPlugin Debug: Found at: \(assetPath)")
+          print("YOLOPlugin Debug: Found at: \(assetPath)")
           return assetPath
         }
 
@@ -119,7 +119,7 @@ class SingleImageYOLO {
             let assetPath = Bundle.main.path(
               forResource: name, ofType: ext, inDirectory: searchPath)
           {
-            print("YoloPlugin Debug: Found with ext at: \(assetPath)")
+            print("YOLOPlugin Debug: Found with ext at: \(assetPath)")
             return assetPath
           }
         }
@@ -129,7 +129,7 @@ class SingleImageYOLO {
           let assetPath = Bundle.main.path(
             forResource: fileNameWithoutExt, ofType: nil, inDirectory: searchPath)
         {
-          print("YoloPlugin Debug: Found by filename only at: \(assetPath)")
+          print("YOLOPlugin Debug: Found by filename only at: \(assetPath)")
           return assetPath
         }
       }
@@ -137,11 +137,11 @@ class SingleImageYOLO {
       // 全バンドル内を検索
       for bundle in Bundle.allBundles {
         let bundleID = bundle.bundleIdentifier ?? "unknown"
-        print("YoloPlugin Debug: Searching in bundle: \(bundleID)")
+        print("YOLOPlugin Debug: Searching in bundle: \(bundleID)")
 
         // 完全な名前で検索
         if let assetPath = bundle.path(forResource: fileName, ofType: nil) {
-          print("YoloPlugin Debug: Found in bundle \(bundleID) at: \(assetPath)")
+          print("YOLOPlugin Debug: Found in bundle \(bundleID) at: \(assetPath)")
           return assetPath
         }
 
@@ -204,13 +204,13 @@ class SingleImageYOLO {
       if let path = Bundle.main.path(
         forResource: modelPath, ofType: nil, inDirectory: "flutter_assets")
       {
-        print("YoloPlugin Debug: Found in flutter_assets at: \(path)")
+        print("YOLOPlugin Debug: Found in flutter_assets at: \(path)")
         return path
       }
     }
 
     // ファイルが見つからなかった場合、元のパスをそのまま返す
-    print("YoloPlugin Debug: Using original path: \(modelPath)")
+    print("YOLOPlugin Debug: Using original path: \(modelPath)")
     return modelPath
   }
 

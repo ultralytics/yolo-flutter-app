@@ -71,7 +71,7 @@ class Segmenter(
 
     init {
         // Load model file (automatic extension appending)
-        val modelBuffer = YoloUtils.loadModelFile(context, modelPath)
+        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
         // ===== Load label information from metadata =====
         try {

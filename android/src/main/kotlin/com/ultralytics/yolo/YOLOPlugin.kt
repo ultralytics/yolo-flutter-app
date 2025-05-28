@@ -102,7 +102,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
    */
   private fun resolveModelPath(modelPath: String): String {
     // If it's already an absolute path, return it
-    if (YoloUtils.isAbsolutePath(modelPath)) {
+    if (YOLOUtils.isAbsolutePath(modelPath)) {
       return modelPath
     }
     
@@ -262,7 +262,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           val originalPath = args?.get("modelPath") as? String ?: ""
           val modelPath = resolveModelPath(originalPath)
           
-          val checkResult = YoloUtils.checkModelExistence(applicationContext, modelPath)
+          val checkResult = YOLOUtils.checkModelExistence(applicationContext, modelPath)
           result.success(checkResult)
         } catch (e: Exception) {
           result.error("check_error", "Failed to check model: ${e.message}", null)

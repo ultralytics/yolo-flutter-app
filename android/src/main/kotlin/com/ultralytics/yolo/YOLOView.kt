@@ -291,7 +291,7 @@ class YOLOView @JvmOverloads constructor(
 
     private fun loadLabels(modelPath: String): List<String> {
         // Try to load labels from model metadata first
-        val loadedLabels = YoloFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         if (loadedLabels != null) {
             Log.d(TAG, "Labels loaded from model metadata: ${loadedLabels.size} classes")
             return loadedLabels

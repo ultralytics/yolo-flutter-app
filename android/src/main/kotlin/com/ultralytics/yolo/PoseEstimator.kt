@@ -116,7 +116,7 @@ class PoseEstimator(
 
     init {
         // (1) TFLiteモデルをロード (拡張子自動付与)
-        val modelBuffer = YoloUtils.loadModelFile(context, modelPath)
+        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
         // ===== メタデータ読み込み（必要に応じて） =====
         try {

@@ -68,7 +68,7 @@ class ObbDetector(
 
     init {
         // 1) TFLiteモデルをロード (拡張子自動付与)
-        val modelBuffer = YoloUtils.loadModelFile(context, modelPath)
+        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
         // 2) メタデータ読み込み（必要であれば）
         try {

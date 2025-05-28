@@ -49,7 +49,7 @@ class Classifier(
     private lateinit var imageProcessorSingleImage: ImageProcessor
 
     init {
-        val modelBuffer = YoloUtils.loadModelFile(context, modelPath)
+        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
         // ===== メタデータから labels を読み込み (存在すれば) =====
         try {

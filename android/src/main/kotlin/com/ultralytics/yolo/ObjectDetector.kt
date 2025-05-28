@@ -93,10 +93,10 @@ class ObjectDetector(
     // Otherwise, keep it in this class as usual
     init {
         val assetManager = context.assets
-        val modelBuffer  = YoloUtils.loadModelFile(context, modelPath)
+        val modelBuffer  = YOLOUtils.loadModelFile(context, modelPath)
 
         /* --- Get labels from metadata (try Appended ZIP → FlatBuffers in order) --- */
-        var loadedLabels = YoloFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         var labelsWereLoaded = loadedLabels != null
 
         if (labelsWereLoaded) {
@@ -179,7 +179,7 @@ class ObjectDetector(
     /* =================================================================== */
 
     // Old ZIP loading methods (readWholeModel, findPKHeader, loadLabelsFromEmbeddedZip)
-    // have been removed as their functionality is replaced by YoloFileUtils.loadLabelsFromAppendedZip
+    // have been removed as their functionality is replaced by YOLOFileUtils.loadLabelsFromAppendedZip
 
     /**
      * ────────────────────────────────────────────────────────────────

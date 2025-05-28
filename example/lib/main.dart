@@ -13,15 +13,15 @@ import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:image_picker/image_picker.dart';
 
 void main() {
-  runApp(const YoloExampleApp());
+  runApp(const YOLOExampleApp());
 }
 
-class YoloExampleApp extends StatelessWidget {
-  const YoloExampleApp({super.key});
+class YOLOExampleApp extends StatelessWidget {
+  const YOLOExampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(title: 'Yolo Plugin Example', home: HomeScreen());
+    return const MaterialApp(title: 'YOLO Plugin Example', home: HomeScreen());
   }
 }
 
@@ -299,8 +299,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               child: YOLOView(
                 key: _useController ? null : _yoloViewKey,
                 controller: _useController ? _yoloController : null,
-                modelPath: 'yolo11n', // Default model for camera view
-                task: YOLOTask.detect,
+                modelPath: 'yolo11n-seg', // Default model for camera view
+                task: YOLOTask.segment,
                 onResult: _onDetectionResults,
                 onPerformanceMetrics: (metrics) {
                   if (mounted) {
@@ -336,15 +336,15 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   Uint8List? _annotatedImage;
 
   late YOLO _yolo;
-  String _modelPathForYolo =
-      'yolo11n'; // Default asset path for non-iOS or if local copy fails
+  String _modelPathForYOLO =
+      'yolo11n-seg'; // Default asset path for non-iOS or if local copy fails
   bool _isModelReady = false;
 
   // Name of the .mlpackage directory in local storage (after unzipping)
-  final String _mlPackageDirName = 'yolo11n.mlpackage'; // Changed to yolo11n
+  final String _mlPackageDirName = 'yolo11n-seg.mlpackage'; // Changed to yolo11n
   // Name of the zip file in assets (e.g., assets/models/yolo11n.mlpackage.zip)
   final String _mlPackageZipAssetName =
-      'yolo11n.mlpackage.zip'; // Changed to yolo11n
+      'yolo11n-seg.mlpackage.zip'; // Changed to yolo11n
 
   @override
   void initState() {
@@ -357,8 +357,8 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       try {
         final localPath = await _copyMlPackageFromAssets();
         if (localPath != null) {
-          _modelPathForYolo = localPath;
-          debugPrint('iOS: Using local .mlpackage path: $_modelPathForYolo');
+          _modelPathForYOLO = localPath;
+          debugPrint('iOS: Using local .mlpackage path: $_modelPathForYOLO');
         } else {
           debugPrint(
             'iOS: Failed to copy .mlpackage, using default asset path.',
@@ -369,7 +369,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       }
     }
 
-    _yolo = YOLO(modelPath: _modelPathForYolo, task: YOLOTask.detect);
+    _yolo = YOLO(modelPath: _modelPathForYOLO, task: YOLOTask.segment);
 
     try {
       await _yolo.loadModel();
@@ -379,7 +379,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
         });
       }
       debugPrint(
-        'YOLO model initialized. Path: $_modelPathForYolo, Ready: $_isModelReady',
+        'YOLO model initialized. Path: $_modelPathForYOLO, Ready: $_isModelReady',
       );
     } catch (e) {
       debugPrint('Error loading YOLO model: $e');
