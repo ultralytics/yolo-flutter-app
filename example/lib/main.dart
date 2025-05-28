@@ -349,10 +349,10 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeYolo();
+    _initializeYOLO();
   }
 
-  Future<void> _initializeYolo() async {
+  Future<void> _initializeYOLO() async {
     if (Platform.isIOS) {
       try {
         final localPath = await _copyMlPackageFromAssets();
