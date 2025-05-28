@@ -17,7 +17,6 @@ import androidx.camera.core.*
 import androidx.camera.core.Camera
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.camera.core.Camera
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -27,7 +26,6 @@ import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
-import android.view.ScaleGestureDetector
 import android.widget.TextView
 import android.view.Gravity
 
@@ -172,8 +170,8 @@ class YoloView @JvmOverloads constructor(
     
     // Zoom related
     private var currentZoomRatio = 1.0f
-    private val minZoomRatio = 1.0f
-    private val maxZoomRatio = 10.0f
+    private var minZoomRatio = 1.0f
+    private var maxZoomRatio = 10.0f
     private lateinit var scaleGestureDetector: ScaleGestureDetector
     var onZoomChanged: ((Float) -> Unit)? = null
 
@@ -181,6 +179,7 @@ class YoloView @JvmOverloads constructor(
     private var confidenceThreshold = 0.25  // initial value
     private var iouThreshold = 0.45
     private var numItemsThreshold = 30
+    private lateinit var zoomLabel: TextView
 
     init {
         // Clear any existing children
@@ -213,6 +212,23 @@ class YoloView @JvmOverloads constructor(
         overlayView.elevation = 100f
         overlayView.translationZ = 100f
         previewContainer.elevation = 1f
+        
+        // Add zoom label
+        zoomLabel = TextView(context).apply {
+            layoutParams = LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER
+            }
+            text = "1.0x"
+            textSize = 24f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.argb(128, 0, 0, 0))
+            setPadding(16, 8, 16, 8)
+            visibility = View.GONE
+        }
+        addView(zoomLabel)
         
         // Initialize scale gesture detector for pinch-to-zoom
         scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -267,12 +283,6 @@ class YoloView @JvmOverloads constructor(
     }
 
     // endregion
-    
-    // Handle touch events for pinch-to-zoom
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        scaleGestureDetector.onTouchEvent(event)
-        return true
-    }
 
     // region Model / Task
 
@@ -954,12 +964,6 @@ class YoloView @JvmOverloads constructor(
         }
     }
     
-    // Touch event handling for pinch-to-zoom
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        scaleGestureDetector.onTouchEvent(event)
-        return true
-    }
-    
     // Scale listener for pinch-to-zoom
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
@@ -991,5 +995,11 @@ class YoloView @JvmOverloads constructor(
                 zoomLabel.visibility = View.GONE
             }, 2000)
         }
+    }
+    
+    // Touch event handling for pinch-to-zoom
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        scaleGestureDetector.onTouchEvent(event)
+        return true
     }
 }
