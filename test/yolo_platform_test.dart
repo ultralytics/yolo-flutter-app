@@ -7,6 +7,10 @@ import 'package:ultralytics_yolo/yolo_platform_interface.dart';
 class MockYoloPlatform with MockPlatformInterfaceMixin implements YoloPlatform {
   @override
   Future<String?> getPlatformVersion() => Future.value('42');
+
+  @override
+  Future<void> setModel(int viewId, String modelPath, String task) =>
+      Future.value();
 }
 
 void main() {
