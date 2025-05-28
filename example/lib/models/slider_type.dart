@@ -15,5 +15,5 @@ enum SliderType {
   confidence,
 
   /// Slider for IoU (Intersection over Union) threshold
-  iou
+  iou,
 }

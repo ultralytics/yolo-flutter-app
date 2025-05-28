@@ -88,7 +88,8 @@ class YOLOViewController {
   Future<void> _applyThresholds() async {
     if (_methodChannel == null) {
       logInfo(
-          'YOLOViewController: Warning - Cannot apply thresholds, view not yet created');
+        'YOLOViewController: Warning - Cannot apply thresholds, view not yet created',
+      );
       return;
     }
     try {
@@ -98,17 +99,20 @@ class YOLOViewController {
         'numItemsThreshold': _numItemsThreshold,
       });
       logInfo(
-          'YOLOViewController: Applied thresholds - confidence: $_confidenceThreshold, IoU: $_iouThreshold, numItems: $_numItemsThreshold');
+        'YOLOViewController: Applied thresholds - confidence: $_confidenceThreshold, IoU: $_iouThreshold, numItems: $_numItemsThreshold',
+      );
     } catch (e) {
       logInfo('YOLOViewController: Error applying combined thresholds: $e');
       try {
         logInfo(
-            'YOLOViewController: Trying individual threshold methods as fallback');
+          'YOLOViewController: Trying individual threshold methods as fallback',
+        );
         await _methodChannel!.invokeMethod('setConfidenceThreshold', {
           'threshold': _confidenceThreshold,
         });
         logInfo(
-            'YOLOViewController: Applied confidence threshold: $_confidenceThreshold');
+          'YOLOViewController: Applied confidence threshold: $_confidenceThreshold',
+        );
         await _methodChannel!.invokeMethod('setIoUThreshold', {
           'threshold': _iouThreshold,
         });
@@ -117,10 +121,12 @@ class YOLOViewController {
           'numItems': _numItemsThreshold,
         });
         logInfo(
-            'YOLOViewController: Applied numItems threshold: $_numItemsThreshold');
+          'YOLOViewController: Applied numItems threshold: $_numItemsThreshold',
+        );
       } catch (e2) {
         logInfo(
-            'YOLOViewController: Error applying individual thresholds: $e2');
+          'YOLOViewController: Error applying individual thresholds: $e2',
+        );
       }
     }
   }
@@ -140,7 +146,8 @@ class YOLOViewController {
     _confidenceThreshold = clampedThreshold;
     if (_methodChannel == null) {
       logInfo(
-          'YOLOViewController: Warning - Cannot apply confidence threshold, view not yet created');
+        'YOLOViewController: Warning - Cannot apply confidence threshold, view not yet created',
+      );
       return;
     }
     try {
@@ -148,7 +155,8 @@ class YOLOViewController {
         'threshold': clampedThreshold,
       });
       logInfo(
-          'YOLOViewController: Applied confidence threshold: $_confidenceThreshold');
+        'YOLOViewController: Applied confidence threshold: $_confidenceThreshold',
+      );
     } catch (e) {
       logInfo('YOLOViewController: Error applying confidence threshold: $e');
       return _applyThresholds();
@@ -171,7 +179,8 @@ class YOLOViewController {
     _iouThreshold = clampedThreshold;
     if (_methodChannel == null) {
       logInfo(
-          'YOLOViewController: Warning - Cannot apply IoU threshold, view not yet created');
+        'YOLOViewController: Warning - Cannot apply IoU threshold, view not yet created',
+      );
       return;
     }
     try {
@@ -201,7 +210,8 @@ class YOLOViewController {
     _numItemsThreshold = clampedValue;
     if (_methodChannel == null) {
       logInfo(
-          'YOLOViewController: Warning - Cannot apply numItems threshold, view not yet created');
+        'YOLOViewController: Warning - Cannot apply numItems threshold, view not yet created',
+      );
       return;
     }
     try {
@@ -209,7 +219,8 @@ class YOLOViewController {
         'numItems': clampedValue,
       });
       logInfo(
-          'YOLOViewController: Applied numItems threshold: $_numItemsThreshold');
+        'YOLOViewController: Applied numItems threshold: $_numItemsThreshold',
+      );
       return _applyThresholds();
     } catch (e) {
       logInfo('YOLOViewController: Error applying numItems threshold: $e');
@@ -262,7 +273,8 @@ class YOLOViewController {
   Future<void> switchCamera() async {
     if (_methodChannel == null) {
       logInfo(
-          'YOLOViewController: Warning - Cannot switch camera, view not yet created');
+        'YOLOViewController: Warning - Cannot switch camera, view not yet created',
+      );
       return;
     }
     try {
@@ -286,7 +298,8 @@ class YOLOViewController {
   Future<void> setZoomLevel(double zoomLevel) async {
     if (_methodChannel == null) {
       logInfo(
-          'YoloViewController: Warning - Cannot set zoom level, view not yet created');
+        'YoloViewController: Warning - Cannot set zoom level, view not yet created',
+      );
       return;
     }
     try {
@@ -321,7 +334,8 @@ class YOLOViewController {
   Future<void> switchModel(String modelPath, YOLOTask task) async {
     if (_methodChannel == null || _viewId == null) {
       logInfo(
-          'YoloViewController: Warning - Cannot switch model, view not yet created');
+        'YoloViewController: Warning - Cannot switch model, view not yet created',
+      );
       return;
     }
     try {
@@ -334,7 +348,8 @@ class YOLOViewController {
       );
 
       logInfo(
-          'YoloViewController: Model switched successfully to $modelPath with task ${task.name}');
+        'YoloViewController: Model switched successfully to $modelPath with task ${task.name}',
+      );
     } catch (e) {
       logInfo('YoloViewController: Error switching model: $e');
       rethrow;
@@ -507,8 +522,8 @@ class YOLOViewState extends State<YOLOView> {
       _effectiveController
           .switchModel(widget.modelPath, widget.task)
           .catchError((e) {
-        logInfo('YoloView: Error switching model in didUpdateWidget: $e');
-      });
+            logInfo('YoloView: Error switching model in didUpdateWidget: $e');
+          });
     }
   }
 
@@ -535,7 +550,8 @@ class YOLOViewState extends State<YOLOView> {
     switch (call.method) {
       case 'recreateEventChannel':
         logInfo(
-            'YOLOView: Platform requested recreation of event channel for $_viewId');
+          'YOLOView: Platform requested recreation of event channel for $_viewId',
+        );
         _cancelResultSubscription();
         Future.delayed(const Duration(milliseconds: 100), () {
           if (mounted &&
@@ -563,7 +579,8 @@ class YOLOViewState extends State<YOLOView> {
     _cancelResultSubscription();
 
     logInfo(
-        'YOLOView: Setting up event stream listener for channel: ${_resultEventChannel.name}');
+      'YOLOView: Setting up event stream listener for channel: ${_resultEventChannel.name}',
+    );
 
     _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
       (dynamic event) {
@@ -586,7 +603,8 @@ class YOLOViewState extends State<YOLOView> {
                 final className = detection['className'] ?? 'unknown';
                 final confidence = detection['confidence'] ?? 0.0;
                 logInfo(
-                    'YOLOView: Detection $i - $className (${(confidence * 100).toStringAsFixed(1)}%)');
+                  'YOLOView: Detection $i - $className (${(confidence * 100).toStringAsFixed(1)}%)',
+                );
               }
 
               final results = _parseDetectionResults(event);
@@ -597,14 +615,17 @@ class YOLOViewState extends State<YOLOView> {
               logInfo('Error parsing detection results: $e');
               logInfo('Stack trace for detection error: $s');
               logInfo(
-                  'YOLOView: Event keys for detection error: ${event.keys.toList()}');
+                'YOLOView: Event keys for detection error: ${event.keys.toList()}',
+              );
               if (event.containsKey('detections')) {
                 final detections = event['detections'];
                 logInfo(
-                    'YOLOView: Detections type for error: ${detections.runtimeType}');
+                  'YOLOView: Detections type for error: ${detections.runtimeType}',
+                );
                 if (detections is List && detections.isNotEmpty) {
                   logInfo(
-                      'YOLOView: First detection keys for error: ${detections.first?.keys?.toList()}');
+                    'YOLOView: First detection keys for error: ${detections.first?.keys?.toList()}',
+                  );
                 }
               }
             }
@@ -623,18 +644,21 @@ class YOLOViewState extends State<YOLOView> {
                   'fps': fps,
                 });
                 logInfo(
-                    'YOLOView: Called onPerformanceMetrics callback with: processingTimeMs=$processingTimeMs, fps=$fps');
+                  'YOLOView: Called onPerformanceMetrics callback with: processingTimeMs=$processingTimeMs, fps=$fps',
+                );
               }
             } catch (e, s) {
               logInfo('Error parsing performance metrics: $e');
               logInfo('Stack trace for metrics error: $s');
               logInfo(
-                  'YOLOView: Event keys for metrics error: ${event.keys.toList()}');
+                'YOLOView: Event keys for metrics error: ${event.keys.toList()}',
+              );
             }
           }
         } else {
           logInfo(
-              'YOLOView: Received invalid event format or no relevant callbacks are set. Event type: ${event.runtimeType}');
+            'YOLOView: Received invalid event format or no relevant callbacks are set. Event type: ${event.runtimeType}',
+          );
         }
       },
       onError: (dynamic error, StackTrace stackTrace) {
@@ -687,7 +711,8 @@ class YOLOViewState extends State<YOLOView> {
     if (detectionsData.isNotEmpty) {
       final first = detectionsData.first;
       logInfo(
-          'YOLOView: First detection structure: ${first.runtimeType} with keys: ${first is Map ? first.keys.toList() : "not a map"}');
+        'YOLOView: First detection structure: ${first.runtimeType} with keys: ${first is Map ? first.keys.toList() : "not a map"}',
+      );
 
       if (first is Map) {
         logInfo('YOLOView: ClassIndex: ${first["classIndex"]}');

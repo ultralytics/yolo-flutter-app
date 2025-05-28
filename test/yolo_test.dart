@@ -32,32 +32,34 @@ void main() {
     // Configure mock response for the channel
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      log.add(methodCall);
+          log.add(methodCall);
 
-      if (methodCall.method == 'loadModel') {
-        modelLoaded = true;
-        return true;
-      } else if (methodCall.method == 'predictSingleImage') {
-        if (!modelLoaded) {
-          throw PlatformException(
-              code: 'MODEL_NOT_LOADED', message: 'Model not loaded');
-        }
-        return {
-          'boxes': [
-            {
-              'class': 'person',
-              'confidence': 0.95,
-              'x': 10,
-              'y': 10,
-              'width': 100,
-              'height': 200,
-            },
-          ],
-          'annotatedImage': Uint8List.fromList(List.filled(100, 0)),
-        };
-      }
-      return null;
-    });
+          if (methodCall.method == 'loadModel') {
+            modelLoaded = true;
+            return true;
+          } else if (methodCall.method == 'predictSingleImage') {
+            if (!modelLoaded) {
+              throw PlatformException(
+                code: 'MODEL_NOT_LOADED',
+                message: 'Model not loaded',
+              );
+            }
+            return {
+              'boxes': [
+                {
+                  'class': 'person',
+                  'confidence': 0.95,
+                  'x': 10,
+                  'y': 10,
+                  'width': 100,
+                  'height': 200,
+                },
+              ],
+              'annotatedImage': Uint8List.fromList(List.filled(100, 0)),
+            };
+          }
+          return null;
+        });
   });
 
   tearDown(() {
@@ -183,10 +185,11 @@ void main() {
     expect(state.parseDetectionResults({}), isEmpty);
     expect(state.parseDetectionResults({'detections': null}), isEmpty);
     expect(
-        state.parseDetectionResults({
-          'detections': [{}]
-        }),
-        isEmpty);
+      state.parseDetectionResults({
+        'detections': [{}],
+      }),
+      isEmpty,
+    );
   });
 
   testWidgets('YOLOView calls all callbacks and handles nulls', (tester) async {
@@ -244,8 +247,10 @@ void main() {
 
   test('switchModel throws when viewId is not set', () {
     final yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
-    expect(() => yolo.switchModel('other_model.tflite', YOLOTask.detect),
-        throwsA(isA<StateError>()));
+    expect(
+      () => yolo.switchModel('other_model.tflite', YOLOTask.detect),
+      throwsA(isA<StateError>()),
+    );
   });
 
   test('YOLO.predict returns parsed detection results', () async {

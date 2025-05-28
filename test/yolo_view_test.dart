@@ -13,19 +13,19 @@ void main() {
   setUpAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
-      (MethodCall methodCall) async {
-        return null;
-      },
-    );
+          const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
+          (MethodCall methodCall) async {
+            return null;
+          },
+        );
   });
 
   tearDownAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
-      null,
-    );
+          const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
+          null,
+        );
   });
 
   tearDown(() async {
@@ -396,18 +396,19 @@ void main() {
 
   test('fallback path in _applyThresholds is hit on error', () async {
     final controller = YOLOViewController();
-    const methodChannel =
-        MethodChannel('com.ultralytics.yolo/controlChannel_test');
+    const methodChannel = MethodChannel(
+      'com.ultralytics.yolo/controlChannel_test',
+    );
     controller.init(methodChannel, 1);
 
     // simulate failure on setThresholds
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(methodChannel, (MethodCall methodCall) async {
-      if (methodCall.method == 'setThresholds') {
-        throw PlatformException(code: 'fail');
-      }
-      return null;
-    });
+          if (methodCall.method == 'setThresholds') {
+            throw PlatformException(code: 'fail');
+          }
+          return null;
+        });
 
     await controller.setThresholds(confidenceThreshold: 0.7);
     expect(controller.confidenceThreshold, 0.7);
@@ -419,10 +420,10 @@ void main() {
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(modelChannel, (methodCall) async {
-      expect(methodCall.method, 'setModel');
-      expect(methodCall.arguments['modelPath'], 'my_model.tflite');
-      return null;
-    });
+          expect(methodCall.method, 'setModel');
+          expect(methodCall.arguments['modelPath'], 'my_model.tflite');
+          return null;
+        });
 
     controller.init(const MethodChannel('dummy'), 42);
     await controller.switchModel('my_model.tflite', YOLOTask.detect);
@@ -481,10 +482,7 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
-        home: YOLOView(
-          modelPath: 'model.tflite',
-          task: YOLOTask.detect,
-        ),
+        home: YOLOView(modelPath: 'model.tflite', task: YOLOTask.detect),
       ),
     );
 
@@ -535,8 +533,9 @@ void main() {
     expect(find.byType(YOLOView), findsOneWidget);
   });
 
-  testWidgets('controller is created internally when not provided',
-      (tester) async {
+  testWidgets('controller is created internally when not provided', (
+    tester,
+  ) async {
     final key = GlobalKey<YOLOViewState>();
     await tester.pumpWidget(
       MaterialApp(

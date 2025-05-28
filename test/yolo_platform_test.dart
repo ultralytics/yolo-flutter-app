@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:ultralytics_yolo/yolo_platform_interface.dart';
@@ -35,8 +37,10 @@ void main() {
 
     test('default getPlatformVersion throws UnimplementedError', () {
       final platform = _UnimplementedYOLOPlatform();
-      expect(() => platform.callPlatformVersion(),
-          throwsA(isA<UnimplementedError>()));
+      expect(
+        () => platform.callPlatformVersion(),
+        throwsA(isA<UnimplementedError>()),
+      );
     });
 
     test('default setModel throws UnimplementedError', () {
