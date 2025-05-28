@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
@@ -24,8 +25,7 @@ enum ModelType {
   segment('yolo11n-seg', YOLOTask.segment),
   classify('yolo11n-cls', YOLOTask.classify),
   pose('yolo11n-pose', YOLOTask.pose),
-  obb('yolo11n-obb', YOLOTask.obb),
-  test('best', YOLOTask.detect); // Test model available in assets
+  obb('yolo11n-obb', YOLOTask.obb);
 
   final String modelName;
   final YOLOTask task;
@@ -579,22 +579,15 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               title: const Text('Model Not Found'),
               content: Text(
                 Platform.isIOS
-                    ? 'The ${_selectedModel.modelName} model is not available for iOS. iOS models need to be bundled with the app or downloaded separately.\n\nFor testing, you can use the TEST model on Android.'
-                    : 'The ${_selectedModel.modelName} model is not bundled. Try using the TEST model which is available in assets.',
+                    ? 'The ${_selectedModel.modelName} model is not available for iOS. iOS models need to be bundled with the app or downloaded separately.'
+                    : 'The ${_selectedModel.modelName} model needs to be downloaded. Please check your internet connection and try again.',
               ),
               actions: [
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    if (Platform.isAndroid &&
-                        _selectedModel != ModelType.test) {
-                      setState(() {
-                        _selectedModel = ModelType.test;
-                      });
-                      _loadModelForPlatform();
-                    }
                   },
-                  child: Text(Platform.isAndroid ? 'Use Test Model' : 'OK'),
+                  child: const Text('OK'),
                 ),
               ],
             ),
@@ -777,15 +770,18 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
     // First check if model exists in assets (bundled)
     final bundledModelName = '${_selectedModel.modelName}.tflite';
-
-    // Only test model is bundled
-    if (_selectedModel == ModelType.test) {
-      // Test model is known to be bundled
+    
+    try {
+      // Try to load from assets
+      await rootBundle.load('assets/models/$bundledModelName');
       debugPrint('Using bundled Android model: $bundledModelName');
       return bundledModelName;
+    } catch (e) {
+      // Model not in assets, continue to check local storage
+      debugPrint('Model not found in assets, checking local storage...');
     }
 
-    // For all other models (including detect), try to download them
+    // Check if model exists in local storage (previously downloaded)
     final documentsDir = await getApplicationDocumentsDirectory();
     final modelFile = File(
       '${documentsDir.path}/${_selectedModel.modelName}.tflite',
@@ -841,7 +837,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       debugPrint('Failed to download Android model: $e');
     }
 
-    // If download failed, try bundled model as fallback
-    return bundledModelName;
+    // If download failed, return null
+    return null;
   }
 }
