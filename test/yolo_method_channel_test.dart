@@ -13,11 +13,11 @@ void main() {
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'getPlatformVersion') {
-            return '42';
-          }
-          return null;
-        });
+      if (methodCall.method == 'getPlatformVersion') {
+        return '42';
+      }
+      return null;
+    });
   });
 
   tearDown(() {
@@ -27,5 +27,29 @@ void main() {
 
   test('getPlatformVersion', () async {
     expect(await platform.getPlatformVersion(), '42');
+  });
+
+  test('setModel calls method channel with correct arguments', () async {
+    var called = false;
+    late MethodCall capturedCall;
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+      if (methodCall.method == 'setModel') {
+        called = true;
+        capturedCall = methodCall;
+      }
+      return null;
+    });
+
+    await platform.setModel(1, 'model.tflite', 'detect');
+
+    expect(called, isTrue);
+    expect(capturedCall.method, 'setModel');
+    expect(capturedCall.arguments, {
+      'viewId': 1,
+      'modelPath': 'model.tflite',
+      'task': 'detect',
+    });
   });
 }
