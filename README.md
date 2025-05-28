@@ -164,6 +164,7 @@ class MinimalExample extends StatelessWidget {
 ```
 
 That's it! The YoloView will:
+
 - Automatically create an internal controller with default settings
 - Use default confidence threshold (0.5) and IoU threshold (0.45)
 - Display the camera feed with real-time object detection
@@ -505,6 +506,7 @@ await controller.switchModel('yolo11s', YOLOTask.detect);
 Flutter widget to display YOLO detection results.
 
 ##### Minimal Usage
+
 ```dart
 // Only two required parameters!
 YoloView(
@@ -514,6 +516,7 @@ YoloView(
 ```
 
 ##### Full Constructor
+
 ```dart
 YoloView({
   required String modelPath,                            // Model name or path
