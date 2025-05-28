@@ -148,8 +148,8 @@ import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 
 class YoloDemo extends StatelessWidget {
-  // Create a controller to interact with the YoloView
-  final controller = YoloViewController();
+  // Create a controller to interact with the YOLOView
+  final controller = YOLOViewController();
 
   @override
   Widget build(BuildContext context) {
@@ -176,9 +176,9 @@ class YoloDemo extends StatelessWidget {
             ),
           ),
 
-          // YoloView with controller
+          // YOLOView with controller
           Expanded(
-            child: YoloView(
+            child: YOLOView(
               controller: controller,
               task: YOLOTask.detect,
               // Use model name only - recommended approach for cross-platform compatibility
@@ -209,16 +209,16 @@ class YoloDemo extends StatelessWidget {
 
 ### Object Detection with Camera Feed
 
-There are three ways to control YoloView's detection parameters:
+There are three ways to control YOLOView's detection parameters:
 
 #### Method 1: Using a Controller (Recommended)
 
 ```dart
 // Create a controller outside build method
-final controller = YoloViewController();
+final controller = YOLOViewController();
 
 // In your build method:
-YoloView(
+YOLOView(
   controller: controller,  // Provide the controller
   task: YOLOTask.detect,
   modelPath: 'yolo11n',  // Just the model name - most reliable approach
@@ -243,11 +243,11 @@ controller.setThresholds(
 #### Method 2: Using GlobalKey Direct Access (Simpler)
 
 ```dart
-// Create a GlobalKey to access the YoloView
-final yoloViewKey = GlobalKey<YoloViewState>();
+// Create a GlobalKey to access the YOLOView
+final yoloViewKey = GlobalKey<YOLOViewState>();
 
 // In your build method:
-YoloView(
+YOLOView(
   key: yoloViewKey,  // Important: Provide the key
   task: YOLOTask.detect,
   modelPath: 'yolo11n',  // Just the model name without extension
@@ -273,7 +273,7 @@ yoloViewKey.currentState?.setThresholds(
 
 ```dart
 // No controller needed - just create the view
-YoloView(
+YOLOView(
   task: YOLOTask.detect,
   modelPath: 'yolo11n',  // Simple model name works best across platforms
   onResult: (results) {
@@ -315,13 +315,13 @@ YOLO({
 });
 ```
 
-#### YoloViewController
+#### YOLOViewController
 
-Controller for interacting with a YoloView, managing settings like thresholds.
+Controller for interacting with a YOLOView, managing settings like thresholds.
 
 ```dart
 // Create a controller
-final controller = YoloViewController();
+final controller = YOLOViewController();
 
 // Get current values
 double confidence = controller.confidenceThreshold;
@@ -348,15 +348,15 @@ await controller.setThresholds(
 await controller.switchCamera();
 ```
 
-#### YoloView
+#### YOLOView
 
 Flutter widget to display YOLO detection results.
 
 ```dart
-YoloView({
+YOLOView({
   required YOLOTask task,
   required String modelPath,
-  YoloViewController? controller,  // Optional: Controller for managing view settings
+  YOLOViewController? controller,  // Optional: Controller for managing view settings
   Function(List<YOLOResult>)? onResult,
 });
 ```

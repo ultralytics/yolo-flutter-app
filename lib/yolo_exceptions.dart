@@ -4,22 +4,22 @@
 ///
 /// This is the parent class for all exceptions that can be thrown by the YOLO plugin.
 /// Applications can catch this exception type to handle all YOLO-related errors in one place.
-class YoloException implements Exception {
+class YOLOException implements Exception {
   /// A human-readable error message
   final String message;
 
-  /// Creates a new YoloException with the given error message
-  YoloException(this.message);
+  /// Creates a new YOLOException with the given error message
+  YOLOException(this.message);
 
   @override
-  String toString() => 'YoloException: $message';
+  String toString() => 'YOLOException: $message';
 }
 
 /// Exception thrown when a model fails to load.
 ///
 /// This exception is thrown by [YOLO.loadModel] when the model file cannot be found,
 /// is in an invalid format, or is otherwise incompatible.
-class ModelLoadingException extends YoloException {
+class ModelLoadingException extends YOLOException {
   ModelLoadingException(super.message);
 
   @override
@@ -30,7 +30,7 @@ class ModelLoadingException extends YoloException {
 ///
 /// This exception is thrown by [YOLO.predict] when the model has not been loaded
 /// or was not loaded successfully.
-class ModelNotLoadedException extends YoloException {
+class ModelNotLoadedException extends YOLOException {
   ModelNotLoadedException(super.message);
 
   @override
@@ -41,7 +41,7 @@ class ModelNotLoadedException extends YoloException {
 ///
 /// This exception is thrown when inputs such as image data are invalid,
 /// corrupted, or in an unsupported format.
-class InvalidInputException extends YoloException {
+class InvalidInputException extends YOLOException {
   InvalidInputException(super.message);
 
   @override
@@ -52,7 +52,7 @@ class InvalidInputException extends YoloException {
 ///
 /// This exception is thrown by [YOLO.predict] when the model encounters an error
 /// during the inference process.
-class InferenceException extends YoloException {
+class InferenceException extends YOLOException {
   InferenceException(super.message);
 
   @override

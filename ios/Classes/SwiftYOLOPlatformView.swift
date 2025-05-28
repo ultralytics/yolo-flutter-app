@@ -11,7 +11,7 @@ extension Float {
 }
 
 @MainActor
-public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStreamHandler {
+public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStreamHandler {
   private let frame: CGRect
   private let viewId: Int64
   private let messenger: FlutterBinaryMessenger
@@ -40,21 +40,21 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
     let flutterViewId: String
     if let dict = args as? [String: Any], let viewIdStr = dict["viewId"] as? String {
       flutterViewId = viewIdStr
-      print("SwiftYoloPlatformView: Using Flutter-provided viewId: \(flutterViewId)")
+      print("SwiftYOLOPlatformView: Using Flutter-provided viewId: \(flutterViewId)")
     } else {
       // Fallback: Convert numeric viewId to string
       flutterViewId = "\(viewId)"
-      print("SwiftYoloPlatformView: Using fallback numeric viewId: \(flutterViewId)")
+      print("SwiftYOLOPlatformView: Using fallback numeric viewId: \(flutterViewId)")
     }
 
     // Setup event channel - create unique channel name using view ID
     let eventChannelName = "com.ultralytics.yolo/detectionResults_\(flutterViewId)"
-    print("SwiftYoloPlatformView: Creating event channel with name: \(eventChannelName)")
+    print("SwiftYOLOPlatformView: Creating event channel with name: \(eventChannelName)")
     self.eventChannel = FlutterEventChannel(name: eventChannelName, binaryMessenger: messenger)
 
     // Setup method channel - create unique channel name using view ID
     let methodChannelName = "com.ultralytics.yolo/controlChannel_\(flutterViewId)"
-    print("SwiftYoloPlatformView: Creating method channel with name: \(methodChannelName)")
+    print("SwiftYOLOPlatformView: Creating method channel with name: \(methodChannelName)")
     self.methodChannel = FlutterMethodChannel(name: methodChannelName, binaryMessenger: messenger)
 
     super.init()
@@ -78,7 +78,7 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       // Determine which thresholds to use (prioritize new parameters)
       print(
-        "SwiftYoloPlatformView: Received thresholds - confidence: \(confidenceThreshold), IoU: \(iouThreshold), old: \(oldThreshold)"
+        "SwiftYOLOPlatformView: Received thresholds - confidence: \(confidenceThreshold), IoU: \(iouThreshold), old: \(oldThreshold)"
       )
 
       // Create YOLOView
@@ -110,36 +110,36 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
     // Debug information
     print(
-      "SwiftYoloPlatformView: setupYOLOView - Setting up detection callback with confidenceThreshold: \(confidenceThreshold), iouThreshold: \(iouThreshold)"
+      "SwiftYOLOPlatformView: setupYOLOView - Setting up detection callback with confidenceThreshold: \(confidenceThreshold), iouThreshold: \(iouThreshold)"
     )
 
     // Setup detection result callback
     yoloView.onDetection = { [weak self] result in
       print(
-        "SwiftYoloPlatformView: onDetection callback triggered with \(result.boxes.count) detections"
+        "SwiftYOLOPlatformView: onDetection callback triggered with \(result.boxes.count) detections"
       )
 
       guard let self = self else {
-        print("SwiftYoloPlatformView: self is nil in onDetection callback")
+        print("SwiftYOLOPlatformView: self is nil in onDetection callback")
         return
       }
 
       guard let eventSink = self.eventSink else {
-        print("SwiftYoloPlatformView: eventSink is nil - no listener for events")
+        print("SwiftYOLOPlatformView: eventSink is nil - no listener for events")
         return
       }
 
       // Convert detection results to Flutter-compatible map
       let resultMap = self.convertYOLOResultToMap(result)
       if let detections = resultMap["detections"] as? [[String: Any]] {
-        print("SwiftYoloPlatformView: Converted result to map with \(detections.count) detections")
+        print("SwiftYOLOPlatformView: Converted result to map with \(detections.count) detections")
       } else {
-        print("SwiftYoloPlatformView: Converted result but no valid detections found")
+        print("SwiftYOLOPlatformView: Converted result but no valid detections found")
       }
 
       // Send event on main thread
       DispatchQueue.main.async {
-        print("SwiftYoloPlatformView: Sending event to Flutter via eventSink")
+        print("SwiftYOLOPlatformView: Sending event to Flutter via eventSink")
         eventSink(resultMap)
       }
     }
@@ -206,7 +206,7 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let threshold = args["threshold"] as? Double
         {
-          print("SwiftYoloPlatformView: Received setThreshold call with threshold: \(threshold)")
+          print("SwiftYOLOPlatformView: Received setThreshold call with threshold: \(threshold)")
           self.updateThreshold(threshold: threshold)
           result(nil)  // Success
         } else {
@@ -240,7 +240,7 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let threshold = args["threshold"] as? Double
         {
-          print("SwiftYoloPlatformView: Received setIoUThreshold call with value: \(threshold)")
+          print("SwiftYOLOPlatformView: Received setIoUThreshold call with value: \(threshold)")
           self.updateThresholds(
             confidenceThreshold: Double(self.yoloView?.sliderConf.value ?? 0.5),
             iouThreshold: threshold,
@@ -258,7 +258,7 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let numItems = args["numItems"] as? Int
         {
-          print("SwiftYoloPlatformView: Received setNumItemsThreshold call with value: \(numItems)")
+          print("SwiftYOLOPlatformView: Received setNumItemsThreshold call with value: \(numItems)")
           // Keep current confidence and IoU thresholds
           self.updateThresholds(
             numItemsThreshold: numItems
@@ -300,7 +300,7 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let show = args["show"] as? Bool
         {
-          print("SwiftYoloPlatformView: Setting UI controls visibility to \(show)")
+          print("SwiftYOLOPlatformView: Setting UI controls visibility to \(show)")
           yoloView?.showUIControls = show
           result(nil)  // Success
         } else {
@@ -374,14 +374,14 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
   public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink)
     -> FlutterError?
   {
-    print("SwiftYoloPlatformView: onListen called - Stream handler connected")
+    print("SwiftYOLOPlatformView: onListen called - Stream handler connected")
     self.eventSink = events
-    print("SwiftYoloPlatformView: eventSink set successfully")
+    print("SwiftYOLOPlatformView: eventSink set successfully")
     return nil
   }
 
   public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-    print("SwiftYoloPlatformView: onCancel called - Stream handler disconnected")
+    print("SwiftYOLOPlatformView: onCancel called - Stream handler disconnected")
     self.eventSink = nil
     return nil
   }

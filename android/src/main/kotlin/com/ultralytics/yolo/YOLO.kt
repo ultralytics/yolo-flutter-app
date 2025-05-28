@@ -156,7 +156,7 @@ class YOLO(
         if (rotateForCamera) {
             // Camera feed: rotate 90 degrees as before
             val matrix = Matrix().apply {
-                // 90度右回転
+                // Rotate 90 degrees clockwise
                 postRotate(90f)
             }
             val rotatedBitmap = Bitmap.createBitmap(
@@ -169,7 +169,7 @@ class YOLO(
                 true
             )
 
-            // 回転したビットマップに描画
+            // Draw on rotated bitmap
             output = rotatedBitmap.copy(Bitmap.Config.ARGB_8888, true)
             canvas = Canvas(output)
         } else {
@@ -189,25 +189,25 @@ class YOLO(
             textSize = calculatedTextSize.coerceAtLeast(40f) // Minimum 40f
         }
 
-        // 座標変換用のヘルパー関数
-        // 元の座標から回転後の座標に変換（必要な場合のみ）
+        // Helper function for coordinate transformation
+        // Transform from original coordinates to rotated coordinates (only when needed)
         fun transformRect(rect: RectF): RectF {
             if (!rotateForCamera) {
-                // 回転しない場合はそのまま返す
+                // Return as-is if no rotation
                 return rect
             }
             
-            // 元画像と回転後の画像の寸法を取得
+            // Get dimensions of original and rotated images
             val originalWidth = bitmap.width.toFloat()
             val originalHeight = bitmap.height.toFloat()
 
-            // 90度回転後の座標変換
+            // Coordinate transformation after 90-degree rotation
             // x' = y, y' = width - x
             return RectF(
-                rect.top,                    // 新しいleft = 元のtop
-                originalWidth - rect.right,  // 新しいtop = 元の右端からの距離
-                rect.bottom,                 // 新しいright = 元のbottom
-                originalWidth - rect.left    // 新しいbottom = 元の左端からの距離
+                rect.top,                    // new left = original top
+                originalWidth - rect.right,  // new top = distance from original right edge
+                rect.bottom,                 // new right = original bottom
+                originalWidth - rect.left    // new bottom = distance from original left edge
             )
         }
 
@@ -217,7 +217,7 @@ class YOLO(
                 for ((i, box) in result.boxes.withIndex()) {
                     paint.color = ultralyticsColors[box.index % ultralyticsColors.size]
 
-                    // 座標を変換
+                    // Transform coordinates
                     val transformedRect = transformRect(box.xywh)
                     canvas.drawRect(box.xywh, paint)
 
@@ -237,7 +237,7 @@ class YOLO(
                 for ((i, box) in result.boxes.withIndex()) {
                     paint.color = ultralyticsColors[box.index % ultralyticsColors.size]
 
-                    // 座標を変換
+                    // Transform coordinates
                     val transformedRect = transformRect(box.xywh)
                     canvas.drawRect(transformedRect, paint)
 
@@ -256,7 +256,7 @@ class YOLO(
                     val maskToUse: Bitmap
                     
                     if (rotateForCamera) {
-                        // マスクも回転する必要がある (camera feed)
+                        // Mask also needs to be rotated (camera feed)
                         val maskMatrix = Matrix().apply {
                             postRotate(90f)
                         }
@@ -321,7 +321,7 @@ class YOLO(
                 for ((i, box) in result.boxes.withIndex()) {
                     paint.color = ultralyticsColors[box.index % ultralyticsColors.size]
 
-                    // 座標を変換
+                    // Transform coordinates
                     val transformedRect = transformRect(box.xywh)
                     canvas.drawRect(transformedRect, paint)
 
@@ -339,7 +339,7 @@ class YOLO(
                 for (keypoints in result.keypointsList) {
                     paint.style = Paint.Style.FILL
 
-                    // キーポイントの座標を変換して描画 (必要な場合のみ)
+                    // Transform and draw keypoint coordinates (only when needed)
                     val transformedPoints = keypoints.xy.map { (x, y) ->
                         if (rotateForCamera) {
                             // x' = y, y' = width - x (camera feed rotation)
@@ -470,14 +470,14 @@ class YOLO(
                 for (obbResult in result.obb) {
                     paint.color = ultralyticsColors[obbResult.index % ultralyticsColors.size]
 
-                    // OBBの多角形頂点を変換 (必要な場合のみ)
+                    // Transform OBB polygon vertices (only when needed)
                     val poly = obbResult.box.toPolygon().map {
-                        // 元の座標を画像サイズに合わせてスケール
+                        // Scale original coordinates to image size
                         val x = it.x * bitmap.width
                         val y = it.y * bitmap.height
 
                         if (rotateForCamera) {
-                            // 回転変換 (camera feed)
+                            // Rotation transformation (camera feed)
                             val originalWidth = bitmap.width.toFloat()
                             PointF(y, originalWidth - x)
                         } else {

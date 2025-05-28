@@ -9,16 +9,16 @@ data class OBB(
     val cy: Float,
     val w: Float,
     val h: Float,
-    val angle: Float   // ラジアン
+    val angle: Float   // radians
 ) {
-    /** 面積 (w × h) */
+    /** Area (w × h) */
     val area: Float get() = w * h
 
-    /** この OBB を4頂点（PointF のリスト）に変換 */
+    /** Convert this OBB to 4 vertices (list of PointF) */
     fun toPolygon(): List<PointF> {
         val halfW = w / 2
         val halfH = h / 2
-        // ローカル座標系での4点（左上、右上、右下、左下）
+        // 4 points in local coordinate system (top-left, top-right, bottom-right, bottom-left)
         val localCorners = listOf(
             PointF(-halfW, -halfH),
             PointF(halfW, -halfH),
