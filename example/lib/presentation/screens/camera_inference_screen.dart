@@ -36,13 +36,13 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   final _yoloController = YoloViewController();
   final _yoloViewKey = GlobalKey<YoloViewState>();
   final bool _useController = true;
-  
+
   late final ModelManager _modelManager;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize ModelManager
     _modelManager = ModelManager(
       onDownloadProgress: (progress) {
@@ -60,10 +60,10 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         }
       },
     );
-    
+
     // Load initial model
     _loadModelForPlatform();
-    
+
     // Set initial thresholds after frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_useController) {
