@@ -8,6 +8,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 
+/// A screen that demonstrates YOLO inference on a single image.
+///
+/// This screen allows users to:
+/// - Pick an image from the gallery
+/// - Run YOLO inference on the selected image
+/// - View detection results and annotated image
 class SingleImageScreen extends StatefulWidget {
   const SingleImageScreen({super.key});
 
@@ -38,6 +44,13 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
     _initializeYolo();
   }
 
+  /// Initializes the YOLO model for inference
+  ///
+  /// For iOS:
+  /// - Copies the .mlpackage from assets to local storage
+  /// - Uses the local path for model loading
+  /// For other platforms:
+  /// - Uses the default asset path
   Future<void> _initializeYolo() async {
     if (Platform.isIOS) {
       try {
@@ -77,6 +90,11 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
     }
   }
 
+  /// Copies the .mlpackage from assets to local storage
+  ///
+  /// This is required for iOS to properly load the model.
+  /// Returns the path to the local .mlpackage directory if successful,
+  /// null otherwise.
   Future<String?> _copyMlPackageFromAssets() async {
     try {
       final Directory appDocDir = await getApplicationDocumentsDirectory();
@@ -191,6 +209,12 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
     }
   }
 
+  /// Picks an image from the gallery and runs inference
+  ///
+  /// This method:
+  /// - Opens the image picker
+  /// - Runs YOLO inference on the selected image
+  /// - Updates the UI with detection results and annotated image
   Future<void> _pickAndPredict() async {
     if (!_isModelReady) {
       debugPrint('Model not ready yet for inference.');

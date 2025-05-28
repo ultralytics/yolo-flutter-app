@@ -42,11 +42,10 @@ linter:
 analyzer:
   errors:
     missing_required_param: warning
-    # Treat missing returns as a warning (not a hint)
     missing_return: warning
     todo: ignore
     avoid_print: warning
-    public_member_api_docs: warning
+    public_member_api_docs: true
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"

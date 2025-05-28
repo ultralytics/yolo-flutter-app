@@ -225,9 +225,8 @@ class YOLOViewController {
 
   /// Sets multiple thresholds at once.
   ///
-  /// This is more efficient than calling individual threshold setters
-  /// when you need to update multiple values. Only non-null parameters
-  /// will be updated.
+  /// This method allows updating multiple thresholds in a single call,
+  /// which is more efficient than setting them individually.
   ///
   /// Example:
   /// ```dart
@@ -309,7 +308,7 @@ class YOLOViewController {
     }
   }
 
-  /// Switches the YOLO model on the existing view.
+  /// Switches to a different YOLO model.
   ///
   /// This method allows changing the model without recreating the entire view.
   /// The view must be created before calling this method.
@@ -325,6 +324,9 @@ class YOLOViewController {
   ///   YOLOTask.segment,
   /// );
   /// ```
+  ///
+  /// @param modelPath The path to the new model file
+  /// @param task The task type for the new model
   Future<void> switchModel(String modelPath, YOLOTask task) async {
     if (_methodChannel == null || _viewId == null) {
       debugPrint(
@@ -527,10 +529,10 @@ class YOLOViewState extends State<YOLOView> {
       _effectiveController
           .switchModel(widget.modelPath, widget.task)
           .catchError((e) {
-            debugPrint(
-              'YoloView: Error switching model in didUpdateWidget: $e',
-            );
-          });
+        debugPrint(
+          'YoloView: Error switching model in didUpdateWidget: $e',
+        );
+      });
     }
   }
 

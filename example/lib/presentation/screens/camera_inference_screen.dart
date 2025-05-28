@@ -8,6 +8,14 @@ import '../../models/model_type.dart';
 import '../../models/slider_type.dart';
 import '../../services/model_manager.dart';
 
+/// A screen that demonstrates real-time YOLO inference using the device camera.
+///
+/// This screen provides:
+/// - Live camera feed with YOLO object detection
+/// - Model selection (detect, segment, classify, pose, obb)
+/// - Adjustable thresholds (confidence, IoU, max detections)
+/// - Camera controls (flip, zoom)
+/// - Performance metrics (FPS)
 class CameraInferenceScreen extends StatefulWidget {
   const CameraInferenceScreen({super.key});
 
@@ -82,6 +90,12 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     });
   }
 
+  /// Called when new detection results are available
+  ///
+  /// Updates the UI with:
+  /// - Number of detections
+  /// - FPS calculation
+  /// - Debug information for first few detections
   void _onDetectionResults(List<YOLOResult> results) {
     if (!mounted) return;
 
@@ -157,7 +171,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                         'assets/logo.png',
                         width: 120,
                         height: 120,
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                       ),
                       const SizedBox(height: 32),
                       // Loading message
@@ -263,7 +277,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                     heightFactor: 0.5,
                     child: Image.asset(
                       'assets/logo.png',
-                      color: Colors.white.withOpacity(0.4),
+                      color: Colors.white.withValues(alpha: 0.4),
                     ),
                   ),
                 ),
@@ -321,13 +335,13 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                   horizontal: 24,
                   vertical: 12,
                 ),
-                color: Colors.black.withOpacity(0.8),
+                color: Colors.black.withValues(alpha: 0.8),
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     activeTrackColor: Colors.yellow,
-                    inactiveTrackColor: Colors.white.withOpacity(0.3),
+                    inactiveTrackColor: Colors.white.withValues(alpha: 0.3),
                     thumbColor: Colors.yellow,
-                    overlayColor: Colors.yellow.withOpacity(0.2),
+                    overlayColor: Colors.yellow.withValues(alpha: 0.2),
                   ),
                   child: Slider(
                     value: _getSliderValue(),
@@ -350,7 +364,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             left: 16,
             child: CircleAvatar(
               radius: 24,
-              backgroundColor: Colors.black.withOpacity(0.5),
+              backgroundColor: Colors.black.withValues(alpha: 0.5),
               child: IconButton(
                 icon: const Icon(Icons.flip_camera_ios, color: Colors.white),
                 onPressed: () {
@@ -375,10 +389,14 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     );
   }
 
+  /// Builds a circular button with an icon or image
+  ///
+  /// [iconOrAsset] can be either an IconData or an asset path string
+  /// [onPressed] is called when the button is tapped
   Widget _buildIconButton(dynamic iconOrAsset, VoidCallback onPressed) {
     return CircleAvatar(
       radius: 24,
-      backgroundColor: Colors.black.withOpacity(0.2),
+      backgroundColor: Colors.black.withValues(alpha: 0.2),
       child: IconButton(
         icon: iconOrAsset is IconData
             ? Icon(iconOrAsset, color: Colors.white)
@@ -393,11 +411,14 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     );
   }
 
-  // Zoom circle button
+  /// Builds a circular button with text
+  ///
+  /// [label] is the text to display in the button
+  /// [onPressed] is called when the button is tapped
   Widget _buildCircleButton(String label, {required VoidCallback onPressed}) {
     return CircleAvatar(
       radius: 24,
-      backgroundColor: Colors.black.withOpacity(0.2),
+      backgroundColor: Colors.black.withValues(alpha: 0.2),
       child: TextButton(
         onPressed: onPressed,
         child: Text(label, style: const TextStyle(color: Colors.white)),
@@ -405,18 +426,24 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     );
   }
 
-  // Toggle slider state
+  /// Toggles the active slider type
+  ///
+  /// If the same slider type is selected again, it will be hidden.
+  /// Otherwise, the new slider type will be shown.
   void _toggleSlider(SliderType type) {
     setState(() {
       _activeSlider = (_activeSlider == type) ? SliderType.none : type;
     });
   }
 
+  /// Builds a pill-shaped container with text
+  ///
+  /// [label] is the text to display in the pill
   Widget _buildTopPill(String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
+        color: Colors.black.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Text(
@@ -429,7 +456,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     );
   }
 
-  // Slider value helpers
+  /// Gets the current value for the active slider
   double _getSliderValue() {
     switch (_activeSlider) {
       case SliderType.numItems:
@@ -443,12 +470,16 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     }
   }
 
+  /// Gets the minimum value for the active slider
   double _getSliderMin() => _activeSlider == SliderType.numItems ? 5 : 0.1;
 
+  /// Gets the maximum value for the active slider
   double _getSliderMax() => _activeSlider == SliderType.numItems ? 50 : 0.9;
 
+  /// Gets the number of divisions for the active slider
   int _getSliderDivisions() => _activeSlider == SliderType.numItems ? 9 : 8;
 
+  /// Gets the label text for the active slider
   String _getSliderLabel() {
     switch (_activeSlider) {
       case SliderType.numItems:
@@ -462,7 +493,10 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     }
   }
 
-  // 🧠 Slider value update logic
+  /// Updates the value of the active slider
+  ///
+  /// This method updates both the UI state and the YOLO view controller
+  /// with the new threshold value.
   void _updateSliderValue(double value) {
     switch (_activeSlider) {
       case SliderType.numItems:
@@ -494,6 +528,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     }
   }
 
+  /// Sets the camera zoom level
+  ///
+  /// Updates both the UI state and the YOLO view controller with the new zoom level.
   void _setZoomLevel(double zoomLevel) {
     setState(() {
       _currentZoomLevel = zoomLevel;
@@ -505,12 +542,16 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     }
   }
 
+  /// Builds the model selector widget
+  ///
+  /// Creates a row of buttons for selecting different YOLO model types.
+  /// Each button shows the model type name and highlights the selected model.
   Widget _buildModelSelector() {
     return Container(
       height: 36,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
+        color: Colors.black.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
