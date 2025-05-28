@@ -341,7 +341,8 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   bool _isModelReady = false;
 
   // Name of the .mlpackage directory in local storage (after unzipping)
-  final String _mlPackageDirName = 'yolo11n-seg.mlpackage'; // Changed to yolo11n
+  final String _mlPackageDirName =
+      'yolo11n-seg.mlpackage'; // Changed to yolo11n
   // Name of the zip file in assets (e.g., assets/models/yolo11n.mlpackage.zip)
   final String _mlPackageZipAssetName =
       'yolo11n-seg.mlpackage.zip'; // Changed to yolo11n
