@@ -111,7 +111,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           // YOLO View: must be at back
           if (_modelPath != null && !_isModelLoading)
             YoloView(
-              key: const ValueKey('yolo_view_static'), // Use static key to prevent recreation
+              key: const ValueKey(
+                'yolo_view_static',
+              ), // Use static key to prevent recreation
               controller: _useController ? _yoloController : null,
               modelPath: _modelPath!,
               task: _selectedModel.task,

@@ -96,7 +96,7 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       // Setup method channel handler
       setupMethodChannel()
-      
+
       // Register this view with the factory
       if let yoloView = yoloView {
         SwiftYoloPlatformViewFactory.register(yoloView, for: Int(viewId))

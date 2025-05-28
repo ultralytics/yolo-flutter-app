@@ -307,15 +307,16 @@ class YoloViewController {
     }
     try {
       debugPrint('YoloViewController: Switching model with viewId: $_viewId');
-      
+
       // Call the platform method to switch model
-      await MethodChannel('yolo_single_image_channel').invokeMethod('setModel', {
-        'viewId': _viewId,
-        'modelPath': modelPath,
-        'task': task.name,
-      });
-      
-      debugPrint('YoloViewController: Model switched successfully to $modelPath with task ${task.name}');
+      await MethodChannel('yolo_single_image_channel').invokeMethod(
+        'setModel',
+        {'viewId': _viewId, 'modelPath': modelPath, 'task': task.name},
+      );
+
+      debugPrint(
+        'YoloViewController: Model switched successfully to $modelPath with task ${task.name}',
+      );
     } catch (e) {
       debugPrint('YoloViewController: Error switching model: $e');
       rethrow;
@@ -486,12 +487,17 @@ class YoloViewState extends State<YoloView> {
     }
 
     // Handle model or task changes
-    if (_platformViewId != null && 
-        (oldWidget.modelPath != widget.modelPath || oldWidget.task != widget.task)) {
+    if (_platformViewId != null &&
+        (oldWidget.modelPath != widget.modelPath ||
+            oldWidget.task != widget.task)) {
       debugPrint('YoloView: Model or task changed, switching model');
-      _effectiveController.switchModel(widget.modelPath, widget.task).catchError((e) {
-        debugPrint('YoloView: Error switching model in didUpdateWidget: $e');
-      });
+      _effectiveController
+          .switchModel(widget.modelPath, widget.task)
+          .catchError((e) {
+            debugPrint(
+              'YoloView: Error switching model in didUpdateWidget: $e',
+            );
+          });
     }
   }
 

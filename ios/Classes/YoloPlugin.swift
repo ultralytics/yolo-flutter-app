@@ -468,7 +468,7 @@ public class YoloPlugin: NSObject, FlutterPlugin {
         }
 
         let task = YOLOTask.fromString(taskString)
-        
+
         // Get the YoloView instance from the factory
         if let yoloView = SwiftYoloPlatformViewFactory.getYoloView(for: viewId) {
           yoloView.setModel(modelPathOrName: modelPath, task: task) { modelResult in
@@ -478,8 +478,8 @@ public class YoloPlugin: NSObject, FlutterPlugin {
             case .failure(let error):
               result(
                 FlutterError(
-                  code: "MODEL_NOT_FOUND", 
-                  message: "Failed to load model: \(modelPath) - \(error.localizedDescription)", 
+                  code: "MODEL_NOT_FOUND",
+                  message: "Failed to load model: \(modelPath) - \(error.localizedDescription)",
                   details: nil
                 )
               )
@@ -488,8 +488,8 @@ public class YoloPlugin: NSObject, FlutterPlugin {
         } else {
           result(
             FlutterError(
-              code: "VIEW_NOT_FOUND", 
-              message: "YoloView with id \(viewId) not found", 
+              code: "VIEW_NOT_FOUND",
+              message: "YoloView with id \(viewId) not found",
               details: nil
             )
           )
