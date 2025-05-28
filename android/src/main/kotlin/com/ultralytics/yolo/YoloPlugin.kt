@@ -284,6 +284,44 @@ class YoloPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
         }
       }
       
+      "setModel" -> {
+        try {
+          val args = call.arguments as? Map<*, *>
+          val viewId = args?.get("viewId") as? Int
+          val modelPath = args?.get("modelPath") as? String
+          val taskString = args?.get("task") as? String
+          
+          if (viewId == null || modelPath == null || taskString == null) {
+            result.error("bad_args", "Missing required arguments for setModel", null)
+            return
+          }
+          
+          // Get the YoloView instance from the factory
+          val yoloView = viewFactory.activeViews[viewId]
+          if (yoloView != null) {
+            // Resolve the model path
+            val resolvedPath = resolveModelPath(modelPath)
+            
+            // Convert task string to enum
+            val task = YOLOTask.valueOf(taskString.uppercase())
+            
+            // Call setModel on the YoloView
+            yoloView.setModel(resolvedPath, task) { success ->
+              if (success) {
+                result.success(null)
+              } else {
+                result.error("MODEL_NOT_FOUND", "Failed to load model: $modelPath", null)
+              }
+            }
+          } else {
+            result.error("VIEW_NOT_FOUND", "YoloView with id $viewId not found", null)
+          }
+        } catch (e: Exception) {
+          Log.e(TAG, "Error setting model", e)
+          result.error("set_model_error", "Error setting model: ${e.message}", null)
+        }
+      }
+      
       else -> result.notImplemented()
     }
   }

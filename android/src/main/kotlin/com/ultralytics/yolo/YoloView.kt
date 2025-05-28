@@ -223,7 +223,7 @@ class YoloView @JvmOverloads constructor(
 
     // region Model / Task
 
-    fun setModel(modelPath: String, task: YOLOTask, context: Context) {
+    fun setModel(modelPath: String, task: YOLOTask, callback: ((Boolean) -> Unit)? = null) {
         Executors.newSingleThreadExecutor().execute {
             try {
                 val newPredictor = when (task) {
@@ -243,12 +243,14 @@ class YoloView @JvmOverloads constructor(
                     this.predictor = newPredictor
                     this.modelName = modelPath.substringAfterLast("/")
                     modelLoadCallback?.invoke(true)
+                    callback?.invoke(true)
                     Log.d(TAG, "Model loaded successfully: $modelPath")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load model: $modelPath", e)
                 post {
                     modelLoadCallback?.invoke(false)
+                    callback?.invoke(false)
                 }
             }
         }

@@ -51,6 +51,7 @@ import 'package:ultralytics_yolo/yolo_task.dart';
 /// ```
 class YoloViewController {
   MethodChannel? _methodChannel;
+  int? _viewId;
 
   double _confidenceThreshold = 0.5;
   double _iouThreshold = 0.45;
@@ -74,8 +75,9 @@ class YoloViewController {
   /// performance. Default is 30.
   int get numItemsThreshold => _numItemsThreshold;
 
-  void _init(MethodChannel methodChannel) {
+  void _init(MethodChannel methodChannel, int viewId) {
     _methodChannel = methodChannel;
+    _viewId = viewId;
     _applyThresholds();
   }
 
@@ -279,6 +281,46 @@ class YoloViewController {
       debugPrint('YoloViewController: Error switching camera: $e');
     }
   }
+
+  /// Switches the YOLO model on the existing view.
+  ///
+  /// This method allows changing the model without recreating the entire view.
+  /// The view must be created before calling this method.
+  ///
+  /// Parameters:
+  /// - [modelPath]: Path to the new model file
+  /// - [task]: The YOLO task type for the new model
+  ///
+  /// Example:
+  /// ```dart
+  /// await controller.switchModel(
+  ///   'assets/models/yolov8s.mlmodel',
+  ///   YOLOTask.segment,
+  /// );
+  /// ```
+  Future<void> switchModel(String modelPath, YOLOTask task) async {
+    if (_methodChannel == null || _viewId == null) {
+      debugPrint(
+        'YoloViewController: Warning - Cannot switch model, view not yet created',
+      );
+      return;
+    }
+    try {
+      debugPrint('YoloViewController: Switching model with viewId: $_viewId');
+      
+      // Call the platform method to switch model
+      await MethodChannel('yolo_single_image_channel').invokeMethod('setModel', {
+        'viewId': _viewId,
+        'modelPath': modelPath,
+        'task': task.name,
+      });
+      
+      debugPrint('YoloViewController: Model switched successfully to $modelPath with task ${task.name}');
+    } catch (e) {
+      debugPrint('YoloViewController: Error switching model: $e');
+      rethrow;
+    }
+  }
 }
 
 /// A Flutter widget that displays a real-time camera preview with YOLO object detection.
@@ -380,6 +422,7 @@ class YoloViewState extends State<YoloView> {
   late YoloViewController _effectiveController;
 
   final String _viewId = UniqueKey().toString();
+  int? _platformViewId;
 
   @override
   void initState() {
@@ -414,7 +457,8 @@ class YoloViewState extends State<YoloView> {
     } else {
       _effectiveController = YoloViewController();
     }
-    _effectiveController._init(_methodChannel);
+    // Don't initialize here since we don't have the platform view ID yet
+    // It will be initialized in _onPlatformViewCreated
   }
 
   @override
@@ -438,6 +482,15 @@ class YoloViewState extends State<YoloView> {
     if (oldWidget.showNativeUI != widget.showNativeUI) {
       _methodChannel.invokeMethod('setShowUIControls', {
         'show': widget.showNativeUI,
+      });
+    }
+
+    // Handle model or task changes
+    if (_platformViewId != null && 
+        (oldWidget.modelPath != widget.modelPath || oldWidget.task != widget.task)) {
+      debugPrint('YoloView: Model or task changed, switching model');
+      _effectiveController.switchModel(widget.modelPath, widget.task).catchError((e) {
+        debugPrint('YoloView: Error switching model in didUpdateWidget: $e');
       });
     }
   }
@@ -666,6 +719,8 @@ class YoloViewState extends State<YoloView> {
       'YoloView: Platform view created with system id: $id, our viewId: $_viewId',
     );
 
+    _platformViewId = id;
+
     // _cancelResultSubscription(); // Already called in _subscribeToResults if needed
 
     if (widget.onResult != null || widget.onPerformanceMetrics != null) {
@@ -675,8 +730,10 @@ class YoloViewState extends State<YoloView> {
       _subscribeToResults();
     }
 
+    debugPrint('YoloView: Initializing controller with platform view ID: $id');
     _effectiveController._init(
       _methodChannel,
+      id,
     ); // Re-init controller with the now valid method channel
 
     _methodChannel.invokeMethod('setShowUIControls', {

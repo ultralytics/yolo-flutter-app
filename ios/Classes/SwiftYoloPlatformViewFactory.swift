@@ -6,10 +6,23 @@ import UIKit
 @MainActor
 public class SwiftYoloPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
   private var messenger: FlutterBinaryMessenger
+  static var yoloViews: [Int: YOLOView] = [:]
 
   init(messenger: FlutterBinaryMessenger) {
     self.messenger = messenger
     super.init()
+  }
+
+  static func getYoloView(for viewId: Int) -> YOLOView? {
+    return yoloViews[viewId]
+  }
+
+  static func register(_ yoloView: YOLOView, for viewId: Int) {
+    yoloViews[viewId] = yoloView
+  }
+
+  static func unregister(for viewId: Int) {
+    yoloViews.removeValue(forKey: viewId)
   }
 
   public func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {

@@ -45,11 +45,56 @@ class YOLO {
   /// The type of task this YOLO model will perform (detection, segmentation, etc.)
   final YOLOTask task;
 
+  /// The view ID of the associated YoloView (used for model switching)
+  int? _viewId;
+
   /// Creates a new YOLO instance with the specified model path and task.
   ///
   /// The [modelPath] can refer to a model in assets, internal storage, or absolute path.
   /// The [task] specifies what type of inference will be performed.
   YOLO({required this.modelPath, required this.task});
+
+  /// Sets the view ID for this controller (called internally by YoloView)
+  void setViewId(int viewId) {
+    _viewId = viewId;
+  }
+
+  /// Switches the model on the associated YoloView.
+  ///
+  /// This method allows switching to a different model without recreating the view.
+  /// The view must be initialized (have a viewId) before calling this method.
+  ///
+  /// @param newModelPath The path to the new model
+  /// @param newTask The task type for the new model
+  /// @throws [StateError] if the view is not initialized
+  /// @throws [ModelLoadingException] if the model switch fails
+  Future<void> switchModel(String newModelPath, YOLOTask newTask) async {
+    if (_viewId == null) {
+      throw StateError('Cannot switch model: view not initialized');
+    }
+
+    try {
+      await _channel.invokeMethod('setModel', {
+        'viewId': _viewId,
+        'modelPath': newModelPath,
+        'task': newTask.name,
+      });
+    } on PlatformException catch (e) {
+      if (e.code == 'MODEL_NOT_FOUND') {
+        throw ModelLoadingException('Model file not found: $newModelPath');
+      } else if (e.code == 'INVALID_MODEL') {
+        throw ModelLoadingException('Invalid model format: $newModelPath');
+      } else if (e.code == 'UNSUPPORTED_TASK') {
+        throw ModelLoadingException(
+          'Unsupported task type: ${newTask.name} for model: $newModelPath',
+        );
+      } else {
+        throw ModelLoadingException('Failed to switch model: ${e.message}');
+      }
+    } catch (e) {
+      throw ModelLoadingException('Unknown error switching model: $e');
+    }
+  }
 
   /// Loads the YOLO model for inference.
   ///

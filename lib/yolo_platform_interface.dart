@@ -52,4 +52,21 @@ abstract class YoloPlatform extends PlatformInterface {
   Future<String?> getPlatformVersion() {
     throw UnimplementedError('platformVersion() has not been implemented.');
   }
+
+  /// Sets the model for an existing YOLO view.
+  ///
+  /// This method allows switching the model on an existing YOLO view instance
+  /// without recreating the entire view.
+  ///
+  /// Parameters:
+  /// - [viewId]: The unique identifier of the YOLO view
+  /// - [modelPath]: The path to the new model file
+  /// - [task]: The YOLO task type for the new model
+  ///
+  /// Throws:
+  /// - [UnimplementedError] if not implemented by the platform
+  /// - Platform-specific exceptions if the model switch fails
+  Future<void> setModel(int viewId, String modelPath, String task) {
+    throw UnimplementedError('setModel() has not been implemented.');
+  }
 }

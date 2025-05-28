@@ -96,6 +96,11 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       // Setup method channel handler
       setupMethodChannel()
+      
+      // Register this view with the factory
+      if let yoloView = yoloView {
+        SwiftYoloPlatformViewFactory.register(yoloView, for: Int(viewId))
+      }
     }
   }
 
@@ -400,6 +405,12 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
     // Clean up method channel
     methodChannel.setMethodCallHandler(nil)
+
+    // Unregister from factory using Task
+    let capturedViewId = Int(viewId)
+    Task { @MainActor in
+      SwiftYoloPlatformViewFactory.unregister(for: capturedViewId)
+    }
 
     // Clean up YOLOView
     // Only set to nil because MainActor-isolated methods can't be called directly

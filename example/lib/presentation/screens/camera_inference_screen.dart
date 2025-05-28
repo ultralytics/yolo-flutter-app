@@ -111,7 +111,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           // YOLO View: must be at back
           if (_modelPath != null && !_isModelLoading)
             YoloView(
-              key: ValueKey('yolo_view_${_modelPath}_${_selectedModel.task}'),
+              key: const ValueKey('yolo_view_static'), // Use static key to prevent recreation
               controller: _useController ? _yoloController : null,
               modelPath: _modelPath!,
               task: _selectedModel.task,
@@ -740,17 +740,14 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     // First check if model exists in assets (bundled)
     final bundledModelName = '${_selectedModel.modelName}.tflite';
 
-    // Try to use bundled model first
-    // Note: We can't easily check if asset exists, so we'll try to use it
-    // The plugin will handle the asset loading
-    if (_selectedModel == ModelType.detect ||
-        _selectedModel == ModelType.test) {
-      // These models are known to be bundled
+    // Only test model is bundled
+    if (_selectedModel == ModelType.test) {
+      // Test model is known to be bundled
       debugPrint('Using bundled Android model: $bundledModelName');
       return bundledModelName;
     }
 
-    // For other models, try to download them
+    // For all other models (including detect), try to download them
     final documentsDir = await getApplicationDocumentsDirectory();
     final modelFile = File(
       '${documentsDir.path}/${_selectedModel.modelName}.tflite',

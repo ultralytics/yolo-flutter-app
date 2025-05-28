@@ -178,7 +178,7 @@ class YoloPlatformView(
             }
             
             // Load model with the specified path and task
-            yoloView.setModel(modelPath, task, context)
+            yoloView.setModel(modelPath, task)
             
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing YoloPlatformView", e)
@@ -363,6 +363,17 @@ class YoloPlatformView(
         ) {
             Log.d(TAG, "passRequestPermissionsResult called in YoloPlatformView for viewId $viewId, delegating to yoloView")
             yoloView.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        }
+        
+        /**
+         * Sets a new model on the YoloView
+         * @param modelPath Path to the new model
+         * @param task The YOLO task type
+         * @param callback Callback to report success/failure
+         */
+        fun setModel(modelPath: String, task: YOLOTask, callback: ((Boolean) -> Unit)? = null) {
+            Log.d(TAG, "setModel called for viewId $viewId with model: $modelPath, task: $task")
+            yoloView.setModel(modelPath, task, callback)
         }
     
     /**
