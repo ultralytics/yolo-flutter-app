@@ -12,7 +12,7 @@ import kotlin.math.max
 object ImageUtils {
 
     /**
-     * ImageProxy を NV21(BYTE配列) に変換し、[YuvImage] -> [Bitmap] へ変換するサンプル
+     * Sample to convert ImageProxy to NV21 (BYTE array), then [YuvImage] -> [Bitmap]
      */
     @JvmStatic
     fun toBitmap(imageProxy: ImageProxy): Bitmap? {
@@ -83,7 +83,7 @@ object ImageUtils {
     }
 
     /**
-     * [YuvImage] を [Bitmap] に変換するサンプル
+     * Sample to convert [YuvImage] to [Bitmap]
      */
     private fun yuvImageToBitmap(yuvImage: YuvImage): Bitmap? {
         val out = ByteArrayOutputStream()
@@ -98,7 +98,7 @@ object ImageUtils {
     }
 
     /**
-     * [ImageProxy] を NV21 (byte配列) に変換する。
+     * Convert [ImageProxy] to NV21 (byte array).
      */
     private fun yuv420888ToNv21(imageProxy: ImageProxy): ByteArray {
         val cropRect = imageProxy.cropRect
@@ -110,7 +110,7 @@ object ImageUtils {
     }
 
     /**
-     * [ImageProxy] の各 Plane(Y/U/V) から画素を読み取って、NV21 バイト列 ([outputBuffer]) に書き込む。
+     * Read pixels from each Plane (Y/U/V) of [ImageProxy] and write to NV21 byte array ([outputBuffer]).
      */
     private fun imageToByteBuffer(
         imageProxy: ImageProxy,
@@ -137,8 +137,8 @@ object ImageUtils {
             val rowStride = plane.rowStride
             val pixelStride = plane.pixelStride
 
-            // Y plane は cropRect をそのまま利用
-            // U / V plane は cropRect を 1/2 に縮小
+            // Y plane uses cropRect as is
+            // U / V plane shrinks cropRect to 1/2
             val planeCrop = if (planeIndex == 0) {
                 imageCrop
             } else {
@@ -156,7 +156,7 @@ object ImageUtils {
             val rowBuffer = ByteArray(rowStride)
             var outputOffset = startOffset
 
-            // 1ピクセルずつ読み出してもよいが、pixelStrideやoutputStrideが1の場合はまとめて読める
+            // Can read pixel by pixel, but if pixelStride and outputStride are 1, can read in bulk
             val rowLength = if (pixelStride == 1 && outputStride == 1) {
                 planeWidth
             } else {
@@ -164,18 +164,18 @@ object ImageUtils {
             }
 
             for (row in 0 until planeHeight) {
-                // 現在の行の先頭位置まで ByteBuffer を進める
+                // Advance ByteBuffer to the start position of current row
                 planeBuffer.position(
                     (row + planeCrop.top) * rowStride +
                             planeCrop.left * pixelStride
                 )
 
                 if (pixelStride == 1 && outputStride == 1) {
-                    // まとめてコピーできる場合
+                    // Can copy in bulk
                     planeBuffer.get(outputBuffer, outputOffset, rowLength)
                     outputOffset += rowLength
                 } else {
-                    // 1ピクセルごとにコピーが必要
+                    // Need to copy pixel by pixel
                     planeBuffer.get(rowBuffer, 0, rowLength)
                     for (col in 0 until planeWidth) {
                         outputBuffer[outputOffset] = rowBuffer[col * pixelStride]

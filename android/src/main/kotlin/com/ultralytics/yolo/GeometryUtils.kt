@@ -8,7 +8,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-/** Sutherland–Hodgman アルゴリズムによる多角形の交差 */
+/** Polygon intersection using Sutherland–Hodgman algorithm */
 fun polygonIntersection(subject: List<PointF>, clip: List<PointF>): List<PointF> {
     var outputList = subject.toMutableList()
     val clipEdgeCount = clip.size
@@ -34,21 +34,21 @@ fun polygonIntersection(subject: List<PointF>, clip: List<PointF>): List<PointF>
                     computeIntersection(current, next, clipStart, clipEnd)?.let { outputList.add(it) }
                     outputList.add(next)
                 }
-                // 両方外なら何もしない
+                // Do nothing if both are outside
             }
         }
     }
     return outputList
 }
 
-/** 点が、エッジ（clipStart→clipEnd）の内側にあるか判定 */
+/** Determine if a point is inside the edge (clipStart→clipEnd) */
 fun isInside(point: PointF, edgeStart: PointF, edgeEnd: PointF): Boolean {
     val cross = (edgeEnd.x - edgeStart.x) * (point.y - edgeStart.y) -
             (edgeEnd.y - edgeStart.y) * (point.x - edgeStart.x)
     return cross >= 0
 }
 
-/** 2点 p1→p2 と clipStart→clipEnd の交点を計算 */
+/** Calculate intersection of two lines p1→p2 and clipStart→clipEnd */
 fun computeIntersection(p1: PointF, p2: PointF, clipStart: PointF, clipEnd: PointF): PointF? {
     val x1 = p1.x; val y1 = p1.y
     val x2 = p2.x; val y2 = p2.y
@@ -62,7 +62,7 @@ fun computeIntersection(p1: PointF, p2: PointF, clipStart: PointF, clipEnd: Poin
     return PointF(ix, iy)
 }
 
-/** 多角形の面積を計算 */
+/** Calculate polygon area */
 fun polygonArea(poly: List<PointF>): Float {
     if (poly.size < 3) return 0f
     var area = 0f
@@ -73,7 +73,7 @@ fun polygonArea(poly: List<PointF>): Float {
     return abs(area) * 0.5f
 }
 
-/** 2つの回転矩形（OBB）の IoU を計算 */
+/** Calculate IoU of two oriented bounding boxes (OBB) */
 fun obbIoU(box1: OBB, box2: OBB): Float {
     val poly1 = box1.toPolygon()
     val poly2 = box2.toPolygon()
@@ -85,7 +85,7 @@ fun obbIoU(box1: OBB, box2: OBB): Float {
     return if (unionArea <= 0f) 0f else interArea / unionArea
 }
 
-/** 検出用バウンディングボックスに対する非最大抑制（NMS） */
+/** Non-maximum suppression (NMS) for detection bounding boxes */
 fun nonMaxSuppression(boxes: List<RectF>, scores: List<Float>, iouThreshold: Float): List<Int> {
     val sortedIndices = scores.indices.sortedByDescending { scores[it] }
     val selected = mutableListOf<Int>()
@@ -107,7 +107,7 @@ fun nonMaxSuppression(boxes: List<RectF>, scores: List<Float>, iouThreshold: Flo
     return selected
 }
 
-/** 2つの RectF の IoU を計算 */
+/** Calculate IoU of two RectF */
 fun computeIoU(a: RectF, b: RectF): Float {
     val interLeft = max(a.left, b.left)
     val interTop = max(a.top, b.top)
@@ -118,7 +118,7 @@ fun computeIoU(a: RectF, b: RectF): Float {
     return if (unionArea > 0) interArea / unionArea else 0f
 }
 
-/** OBB 用の非最大抑制（NMS） */
+/** Non-maximum suppression (NMS) for OBB */
 fun nonMaxSuppressionOBB(boxes: List<OBB>, scores: List<Float>, iouThreshold: Float): List<Int> {
     val sortedIndices = scores.indices.sortedByDescending { scores[it] }
     val selected = mutableListOf<Int>()

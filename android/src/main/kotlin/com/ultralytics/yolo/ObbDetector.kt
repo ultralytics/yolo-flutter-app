@@ -48,7 +48,7 @@ class ObbDetector(
         }
     }
 
-    // PoseEstimator と同様に、ImageProcessor を使う - one for camera and one for single images
+    // Similar to PoseEstimator, use ImageProcessor - one for camera and one for single images
     private lateinit var imageProcessorCamera: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
     
@@ -67,10 +67,8 @@ class ObbDetector(
     private var outAnchors = 0
 
     init {
-        // 1) TFLiteモデルをロード (拡張子自動付与)
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
-        // 2) メタデータ読み込み（必要であれば）
         try {
             val metadataExtractor = MetadataExtractor(modelBuffer)
             val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
@@ -107,55 +105,48 @@ class ObbDetector(
             Log.e("ObbDetector", "Failed to extract metadata: ${e.message}")
         }
 
-        // 3) Interpreter生成
         interpreter = Interpreter(modelBuffer, interpreterOptions)
         // Call allocateTensors() once during initialization, not in the inference loop
         interpreter.allocateTensors()
         Log.d("ObbDetector", "TFLite model loaded and tensors allocated")
 
-        // 4) 入力テンソル形状を取得 (例: [1, height, width, 3])
         val inputShape = interpreter.getInputTensor(0).shape()
         val inHeight = inputShape[1]
         val inWidth = inputShape[2]
         inputSize = Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
         
-        // 出力テンソル形状を取得して初期化
-        val outShape = interpreter.getOutputTensor(0).shape() // 例: [1, outChannels, outAnchors]
-        outBatch = outShape[0]       // 通常1
+        val outShape = interpreter.getOutputTensor(0).shape() // e.g.: [1, outChannels, outAnchors]
+        outBatch = outShape[0]       // Usually 1
         outChannels = outShape[1]    // (4 + numClasses + 1)
-        outAnchors = outShape[2]     // アンカー総数
+        outAnchors = outShape[2]     // Total number of anchors
         
-        // 出力バッファを一度だけ初期化
         rawOutput = Array(outBatch) {
             Array(outChannels) { FloatArray(outAnchors) }
         }
         
-        // 転置配列も事前に初期化
         transposedOutput = Array(outAnchors) {
             FloatArray(outChannels)
         }
         
-        // 入力バッファの初期化 (直接確保)
-        val inputBytes = 1 * inHeight * inWidth * 3 * 4 // FLOAT32 は4バイト
+        val inputBytes = 1 * inHeight * inWidth * 3 * 4 // FLOAT32 is 4 bytes
         inputBuffer = ByteBuffer.allocateDirect(inputBytes).apply {
             order(ByteOrder.nativeOrder())
         }
 
-        // 5) imageProcessor の初期化 - both with and without rotation
         
         // For camera feed (with rotation)
         imageProcessorCamera = ImageProcessor.Builder()
-            .add(Rot90Op(3))  // 必要に応じて回転させる場合は 1~3等を設定
+            .add(Rot90Op(3))
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))  // 0~1 に正規化
+            .add(NormalizeOp(0f, 255f))  // Normalize to 0~1
             .add(CastOp(DataType.FLOAT32))
             .build()
             
         // For single images (no rotation)
         imageProcessorSingleImage = ImageProcessor.Builder()
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))  // 0~1 に正規化
+            .add(NormalizeOp(0f, 255f))  // Normalize to 0~1
             .add(CastOp(DataType.FLOAT32))
             .build()
     }
@@ -163,7 +154,6 @@ class ObbDetector(
     override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
         t0 = System.nanoTime()
 
-        // === (1) 前処理: TensorImageへロード & ImageProcessorで処理 ===
         val tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bitmap)
         
@@ -176,31 +166,25 @@ class ObbDetector(
             imageProcessorSingleImage.process(tensorImage)
         }
         
-        // 再利用可能なバッファへ入力をコピー
         inputBuffer.clear()
         inputBuffer.put(processedImage.buffer)
         inputBuffer.rewind()
 
-        // === (3) 推論実行 (出力バッファは初期化時に確保済み) ===
         interpreter.run(inputBuffer, rawOutput)
         updateTiming()
 
-        // === (4) shape 転置して後処理 ===
-        // 事前確保済みの配列を再利用
         for (i in 0 until outAnchors) {
             for (c in 0 until outChannels) {
                 transposedOutput[i][c] = rawOutput[0][c][i]
             }
         }
 
-        // ここで (i番目) = [cx, cy, w, h, classScores..., angle]
         val obbDetections = postProcessOBB(
             detections2D = transposedOutput,
             confidenceThreshold = CONFIDENCE_THRESHOLD,
             iouThreshold = IOU_THRESHOLD
         )
 
-        // アノテーション用に描画
         val annotatedImage = drawOBBsOnBitmap(bitmap, obbDetections)
 
         return YOLOResult(
@@ -213,9 +197,7 @@ class ObbDetector(
         )
     }
 
-    /**
-     * 後処理: [anchorCount][channels] 配列から OBB を取り出し、NMS
-     */
+
     private fun postProcessOBB(
         detections2D: Array<FloatArray>,
         confidenceThreshold: Float,
@@ -233,7 +215,7 @@ class ObbDetector(
             val w  = data[2]
             val h  = data[3]
 
-            // クラススコアを確認
+            // Check class scores
             var bestScore = 0f
             var bestClass = 0
             for (c in 0 until numClasses) {
@@ -244,11 +226,9 @@ class ObbDetector(
                 }
             }
 
-            // 最後が angle
             val angleIndex = 4 + numClasses
             val angle = data[angleIndex]
 
-            // 閾値チェック
             if (bestScore >= confidenceThreshold) {
                 val obb = OBB(cx, cy, w, h, angle)
                 detections.add(Detection(obb, bestScore, bestClass))
@@ -273,9 +253,6 @@ class ObbDetector(
 
     data class Detection(val obb: OBB, val score: Float, val cls: Int)
 
-    /**
-     * アノテーション描画 (OBB ポリゴン + ラベル)
-     */
     private fun drawOBBsOnBitmap(bitmap: Bitmap, obbDetections: List<OBBResult>): Bitmap {
         val output = bitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(output)
@@ -313,9 +290,6 @@ class ObbDetector(
         return output
     }
 
-    // ===============================================================
-    // NMSやポリゴン関連のヘルパーは従来通り
-    // ===============================================================
 
     private fun nonMaxSuppressionOBB(
         boxes: List<OBB>,
@@ -458,7 +432,7 @@ class ObbDetector(
     }
 }
 
-/** OBB の Axis-Aligned Bounding Box (AABB) を取得する拡張 */
+/** Extension to get Axis-Aligned Bounding Box (AABB) of OBB */
 fun OBB.toAABB(): RectF {
     val poly = toPolygon()
     var minX = Float.POSITIVE_INFINITY
