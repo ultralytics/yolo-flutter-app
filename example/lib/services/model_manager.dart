@@ -5,7 +5,6 @@ import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import '../models/model_type.dart';
 
@@ -38,7 +37,6 @@ class ModelManager {
     _updateStatus('Checking for ${modelType.modelName} model...');
 
     // Check if model exists in app bundle
-    final bundledPath = '${modelType.modelName}.mlpackage';
 
     // For iOS, we need to check in the app's document directory
     final documentsDir = await getApplicationDocumentsDirectory();

@@ -336,7 +336,7 @@ class YoloViewController {
       debugPrint('YoloViewController: Switching model with viewId: $_viewId');
 
       // Call the platform method to switch model
-      await MethodChannel('yolo_single_image_channel').invokeMethod(
+      await const MethodChannel('yolo_single_image_channel').invokeMethod(
         'setModel',
         {'viewId': _viewId, 'modelPath': modelPath, 'task': task.name},
       );
