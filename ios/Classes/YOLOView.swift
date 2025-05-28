@@ -127,7 +127,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   private let minimumZoom: CGFloat = 1.0
   private let maximumZoom: CGFloat = 10.0
   private var lastZoomFactor: CGFloat = 1.0
-  
+
   /// Callback for zoom level changes
   public var onZoomChanged: ((CGFloat) -> Void)?
 
@@ -1062,18 +1062,18 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     default: break
     }
   }
-  
+
   /// Set the camera zoom level programmatically
   public func setZoomLevel(_ zoomLevel: CGFloat) {
     guard let device = videoCapture.captureDevice else { return }
-    
+
     // Return zoom value between the minimum and maximum zoom values
     func minMaxZoom(_ factor: CGFloat) -> CGFloat {
       return min(min(max(factor, minimumZoom), maximumZoom), device.activeFormat.videoMaxZoomFactor)
     }
-    
+
     let newZoomFactor = minMaxZoom(zoomLevel)
-    
+
     do {
       try device.lockForConfiguration()
       defer {
@@ -1081,10 +1081,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
       device.videoZoomFactor = newZoomFactor
       lastZoomFactor = newZoomFactor
-      
+
       // Update zoom label
       self.labelZoom.text = String(format: "%.1fx", newZoomFactor)
-      
+
       // Notify zoom change
       onZoomChanged?(newZoomFactor)
     } catch {

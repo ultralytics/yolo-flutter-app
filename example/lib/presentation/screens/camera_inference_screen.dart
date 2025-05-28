@@ -113,7 +113,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           // YOLO View: must be at back
           if (_modelPath != null && !_isModelLoading)
             YoloView(
-              key: _useController ? const ValueKey('yolo_view_static') : _yoloViewKey, // Use static key to prevent recreation
+              key: _useController
+                  ? const ValueKey('yolo_view_static')
+                  : _yoloViewKey, // Use static key to prevent recreation
               controller: _useController ? _yoloController : null,
               modelPath: _modelPath!,
               task: _selectedModel.task,
@@ -770,7 +772,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
     // First check if model exists in assets (bundled)
     final bundledModelName = '${_selectedModel.modelName}.tflite';
-    
+
     try {
       // Try to load from assets
       await rootBundle.load('assets/models/$bundledModelName');

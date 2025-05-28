@@ -96,12 +96,12 @@ public class SwiftYoloPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       // Setup method channel handler
       setupMethodChannel()
-      
+
       // Setup zoom callback
       yoloView?.onZoomChanged = { [weak self] zoomLevel in
         self?.methodChannel.invokeMethod("onZoomChanged", arguments: Double(zoomLevel))
       }
-      
+
       // Register this view with the factory
       if let yoloView = yoloView {
         SwiftYoloPlatformViewFactory.register(yoloView, for: Int(viewId))
