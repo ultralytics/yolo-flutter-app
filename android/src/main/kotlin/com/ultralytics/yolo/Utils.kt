@@ -33,8 +33,8 @@ val ultralyticsColors: List<Int> = listOf(
 /**
  * Utility functions for YOLO operations
  */
-object YoloUtils {
-    private const val TAG = "YoloUtils"
+object YOLOUtils {
+    private const val TAG = "YOLOUtils"
     
     /**
      * Checks if the provided path is an absolute file path

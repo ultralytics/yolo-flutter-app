@@ -4,7 +4,7 @@ import Flutter
 import UIKit
 
 @MainActor
-public class SwiftYoloPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
+public class SwiftYOLOPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
   private var messenger: FlutterBinaryMessenger
 
   init(messenger: FlutterBinaryMessenger) {
@@ -23,7 +23,7 @@ public class SwiftYoloPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
     viewIdentifier viewId: Int64,
     arguments args: Any?
   ) -> FlutterPlatformView {
-    return SwiftYoloPlatformView(
+    return SwiftYOLOPlatformView(
       frame: frame,
       viewId: viewId,
       args: args,

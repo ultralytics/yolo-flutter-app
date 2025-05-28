@@ -29,7 +29,7 @@ import android.view.ScaleGestureDetector
 import android.widget.TextView
 import android.view.Gravity
 
-class YoloView @JvmOverloads constructor(
+class YOLOView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : FrameLayout(context, attrs), DefaultLifecycleObserver {
@@ -41,7 +41,7 @@ class YoloView @JvmOverloads constructor(
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
 
-        private const val TAG = "YoloView"
+        private const val TAG = "YOLOView"
 
         // Line thickness and corner radius
         private const val BOX_LINE_WIDTH = 8f

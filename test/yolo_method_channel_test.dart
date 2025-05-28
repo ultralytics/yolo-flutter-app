@@ -7,7 +7,7 @@ import 'package:ultralytics_yolo/yolo_method_channel.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  final MethodChannelYolo platform = MethodChannelYolo();
+  final YOLOMethodChannel platform = YOLOMethodChannel();
   const MethodChannel channel = MethodChannel('yolo_single_image_channel');
 
   setUp(() {

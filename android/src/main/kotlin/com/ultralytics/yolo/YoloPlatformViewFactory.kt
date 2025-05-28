@@ -131,19 +131,19 @@ class CustomStreamHandler(private val viewId: Int) : EventChannel.StreamHandler 
 }
 
 /**
- * Factory for creating YoloPlatformView instances
+ * Factory for creating YOLOPlatformView instances
  */
-class YoloPlatformViewFactory(
+class YOLOPlatformViewFactory(
     private val messenger: BinaryMessenger
 ) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
     private var activity: Activity? = null
-    private val TAG = "YoloPlatformViewFactory"
+    private val TAG = "YOLOPlatformViewFactory"
     // Map to store active views, accessible by YoloPlugin
-    internal val activeViews = mutableMapOf<Int, YoloPlatformView>()
+    internal val activeViews = mutableMapOf<Int, YOLOPlatformView>()
     // Map to store event channel handlers, keyed by viewId
     private val eventChannelHandlers = mutableMapOf<Int, EventChannel.StreamHandler>()
     
-    // Store activity reference to pass to the YoloPlatformView
+    // Store activity reference to pass to the YOLOPlatformView
     fun setActivity(activity: Activity?) {
         this.activity = activity
         Log.d(TAG, "Activity set: ${activity?.javaClass?.simpleName}")
@@ -178,7 +178,7 @@ class YoloPlatformViewFactory(
         
         // Use activity if available, otherwise use the provided context
         val effectiveContext = activity ?: context
-        Log.d(TAG, "Creating YoloPlatformView with context: ${effectiveContext.javaClass.simpleName}, platform int viewId: $viewId")
+        Log.d(TAG, "Creating YOLOPlatformView with context: ${effectiveContext.javaClass.simpleName}, platform int viewId: $viewId")
         Log.d(TAG, "Raw creationParams from Dart: $args")
 
         // Get the unique ID for this view
@@ -209,7 +209,7 @@ class YoloPlatformViewFactory(
         eventChannelHandlers[viewId] = eventHandler
         
         // Create the platform view with stream handler, not just the sink
-        val platformView = YoloPlatformView(
+        val platformView = YOLOPlatformView(
             effectiveContext,
             viewId,
             creationParams,
@@ -218,21 +218,21 @@ class YoloPlatformViewFactory(
             this // Pass the factory itself for disposal callback
         )
         activeViews[viewId] = platformView
-        Log.d(TAG, "Created and stored YoloPlatformView for viewId: $viewId")
+        Log.d(TAG, "Created and stored YOLOPlatformView for viewId: $viewId")
         return platformView
     }
     
-    // Called by YoloPlatformView when it's disposed
+    // Called by YOLOPlatformView when it's disposed
     internal fun onPlatformViewDisposed(viewId: Int) {
         activeViews.remove(viewId)
         eventChannelHandlers.remove(viewId) // Assuming CustomStreamHandler doesn't need explicit cancel on its EventChannel
-        Log.d(TAG, "YoloPlatformView for viewId $viewId disposed and removed from factory.")
+        Log.d(TAG, "YOLOPlatformView for viewId $viewId disposed and removed from factory.")
     }
     
     fun dispose() { // Called when the FlutterEngine is detached
         // Clean up event channels when the plugin is disposed
         eventChannelHandlers.clear()
         activeViews.clear()
-        Log.d(TAG, "YoloPlatformViewFactory disposed, all views and handlers cleared.")
+        Log.d(TAG, "YOLOPlatformViewFactory disposed, all views and handlers cleared.")
     }
 }

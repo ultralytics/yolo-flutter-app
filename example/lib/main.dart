@@ -82,8 +82,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   double _currentProcessingTimeMs = 0.0;
   double _currentFps = 0.0;
 
-  final _yoloController = YoloViewController();
-  final _yoloViewKey = GlobalKey<YoloViewState>();
+  final _yoloController = YOLOViewController();
+  final _yoloViewKey = GlobalKey<YOLOViewState>();
   bool _useController = true;
 
   void _onDetectionResults(List<YOLOResult> results) {
@@ -296,7 +296,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           Expanded(
             child: Container(
               color: Colors.black12,
-              child: YoloView(
+              child: YOLOView(
                 key: _useController ? null : _yoloViewKey,
                 controller: _useController ? _yoloController : null,
                 modelPath: 'yolo11n', // Default model for camera view

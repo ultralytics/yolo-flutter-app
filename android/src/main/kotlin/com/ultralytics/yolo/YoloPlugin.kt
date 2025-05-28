@@ -16,26 +16,26 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry // Added for RequestPermissionsResultListener
 import java.io.ByteArrayOutputStream
 
-class YoloPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler, PluginRegistry.RequestPermissionsResultListener {
+class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler, PluginRegistry.RequestPermissionsResultListener {
 
   private lateinit var methodChannel: MethodChannel
   private var yolo: YOLO? = null
   private lateinit var applicationContext: android.content.Context
   private var activity: Activity? = null
   private var activityBinding: ActivityPluginBinding? = null // Added to store the binding
-  private val TAG = "YoloPlugin"
-  private lateinit var viewFactory: YoloPlatformViewFactory
+  private val TAG = "YOLOPlugin"
+  private lateinit var viewFactory: YOLOPlatformViewFactory
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     // Store application context for later use
     applicationContext = flutterPluginBinding.applicationContext
 
     // Create and store the view factory for later activity updates
-    viewFactory = YoloPlatformViewFactory(flutterPluginBinding.binaryMessenger)
+    viewFactory = YOLOPlatformViewFactory(flutterPluginBinding.binaryMessenger)
     
     // Register platform view
     flutterPluginBinding.platformViewRegistry.registerViewFactory(
-      "com.ultralytics.yolo/YoloPlatformView",
+      "com.ultralytics.yolo/YOLOPlatformView",
       viewFactory
     )
 
@@ -46,7 +46,7 @@ class YoloPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
     )
     methodChannel.setMethodCallHandler(this)
     
-    Log.d(TAG, "YoloPlugin attached to engine")
+    Log.d(TAG, "YOLOPlugin attached to engine")
   }
   
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
@@ -54,11 +54,11 @@ class YoloPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
     activityBinding = binding // Store the binding
     viewFactory.setActivity(activity)
     activityBinding?.addRequestPermissionsResultListener(this)
-    Log.d(TAG, "YoloPlugin attached to activity: ${activity?.javaClass?.simpleName}, stored binding, and added RequestPermissionsResultListener")
+    Log.d(TAG, "YOLOPlugin attached to activity: ${activity?.javaClass?.simpleName}, stored binding, and added RequestPermissionsResultListener")
   }
 
   override fun onDetachedFromActivityForConfigChanges() {
-    Log.d(TAG, "YoloPlugin detached from activity for config changes. Listener will be removed in onDetachedFromActivity.")
+    Log.d(TAG, "YOLOPlugin detached from activity for config changes. Listener will be removed in onDetachedFromActivity.")
     // activity and viewFactory.setActivity(null) will be handled by onDetachedFromActivity
     // activityBinding will also be cleared in onDetachedFromActivity
   }
@@ -68,11 +68,11 @@ class YoloPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
     activityBinding = binding // Store the new binding
     viewFactory.setActivity(activity)
     activityBinding?.addRequestPermissionsResultListener(this) // Add listener with new binding
-    Log.d(TAG, "YoloPlugin reattached to activity: ${activity?.javaClass?.simpleName}, stored new binding, and re-added RequestPermissionsResultListener")
+    Log.d(TAG, "YOLOPlugin reattached to activity: ${activity?.javaClass?.simpleName}, stored new binding, and re-added RequestPermissionsResultListener")
   }
 
   override fun onDetachedFromActivity() {
-    Log.d(TAG, "YoloPlugin detached from activity")
+    Log.d(TAG, "YOLOPlugin detached from activity")
     activityBinding?.removeRequestPermissionsResultListener(this)
     activityBinding = null
     activity = null

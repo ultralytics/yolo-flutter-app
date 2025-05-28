@@ -152,14 +152,14 @@ class SingleImageYOLO {
           let ext = fileComponents.last ?? ""
 
           if let assetPath = bundle.path(forResource: name, ofType: ext) {
-            print("YoloPlugin Debug: Found with ext in bundle \(bundleID) at: \(assetPath)")
+            print("YOLOPlugin Debug: Found with ext in bundle \(bundleID) at: \(assetPath)")
             return assetPath
           }
         }
 
         // ファイル名だけで検索
         if let assetPath = bundle.path(forResource: fileNameWithoutExt, ofType: nil) {
-          print("YoloPlugin Debug: Found by filename only in bundle \(bundleID) at: \(assetPath)")
+          print("YOLOPlugin Debug: Found by filename only in bundle \(bundleID) at: \(assetPath)")
           return assetPath
         }
       }
@@ -172,7 +172,7 @@ class SingleImageYOLO {
 
       for path in possiblePaths {
         if fileManager.fileExists(atPath: path) {
-          print("YoloPlugin Debug: Found in file system at: \(path)")
+          print("YOLOPlugin Debug: Found in file system at: \(path)")
           return path
         }
       }
@@ -183,7 +183,7 @@ class SingleImageYOLO {
         let bundleID = bundle.bundleIdentifier ?? "unknown"
 
         if let path = bundle.path(forResource: modelPath, ofType: nil) {
-          print("YoloPlugin Debug: Found filename in bundle \(bundleID) at: \(path)")
+          print("YOLOPlugin Debug: Found filename in bundle \(bundleID) at: \(path)")
           return path
         }
 
@@ -194,7 +194,7 @@ class SingleImageYOLO {
           let ext = fileComponents.last ?? ""
 
           if let path = bundle.path(forResource: name, ofType: ext) {
-            print("YoloPlugin Debug: Found with ext in bundle \(bundleID) at: \(path)")
+            print("YOLOPlugin Debug: Found with ext in bundle \(bundleID) at: \(path)")
             return path
           }
         }
@@ -272,18 +272,18 @@ class SingleImageYOLO {
 }
 
 @MainActor
-public class YoloPlugin: NSObject, FlutterPlugin {
+public class YOLOPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
     // 1) Register the platform view
-    let factory = SwiftYoloPlatformViewFactory(messenger: registrar.messenger())
-    registrar.register(factory, withId: "com.ultralytics.yolo/YoloPlatformView")
+    let factory = SwiftYOLOPlatformViewFactory(messenger: registrar.messenger())
+    registrar.register(factory, withId: "com.ultralytics.yolo/YOLOPlatformView")
 
     // 2) Register the method channel for single-image inference
     let channel = FlutterMethodChannel(
       name: "yolo_single_image_channel",
       binaryMessenger: registrar.messenger()
     )
-    let instance = YoloPlugin()
+    let instance = YOLOPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
 
