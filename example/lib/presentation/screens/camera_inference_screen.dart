@@ -2,34 +2,17 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
-import 'package:ultralytics_yolo/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
-import 'package:archive/archive.dart';
-import 'package:path/path.dart' as path;
+import '../../models/model_type.dart';
+import '../../models/slider_type.dart';
+import '../../services/model_manager.dart';
 
 class CameraInferenceScreen extends StatefulWidget {
   const CameraInferenceScreen({super.key});
 
   @override
   State<CameraInferenceScreen> createState() => _CameraInferenceScreenState();
-}
-
-enum SliderType { none, numItems, confidence, iou }
-
-enum ModelType {
-  detect('yolo11n', YOLOTask.detect),
-  segment('yolo11n-seg', YOLOTask.segment),
-  classify('yolo11n-cls', YOLOTask.classify),
-  pose('yolo11n-pose', YOLOTask.pose),
-  obb('yolo11n-obb', YOLOTask.obb);
-
-  final String modelName;
-  final YOLOTask task;
-  const ModelType(this.modelName, this.task);
 }
 
 class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
@@ -53,6 +36,51 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   final _yoloController = YoloViewController();
   final _yoloViewKey = GlobalKey<YoloViewState>();
   final bool _useController = true;
+  
+  late final ModelManager _modelManager;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Initialize ModelManager
+    _modelManager = ModelManager(
+      onDownloadProgress: (progress) {
+        if (mounted) {
+          setState(() {
+            _downloadProgress = progress;
+          });
+        }
+      },
+      onStatusUpdate: (message) {
+        if (mounted) {
+          setState(() {
+            _loadingMessage = message;
+          });
+        }
+      },
+    );
+    
+    // Load initial model
+    _loadModelForPlatform();
+    
+    // Set initial thresholds after frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_useController) {
+        _yoloController.setThresholds(
+          confidenceThreshold: _confidenceThreshold,
+          iouThreshold: _iouThreshold,
+          numItemsThreshold: _numItemsThreshold,
+        );
+      } else {
+        _yoloViewKey.currentState?.setThresholds(
+          confidenceThreshold: _confidenceThreshold,
+          iouThreshold: _iouThreshold,
+          numItemsThreshold: _numItemsThreshold,
+        );
+      }
+    });
+  }
 
   void _onDetectionResults(List<YOLOResult> results) {
     if (!mounted) return;
@@ -82,27 +110,6 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         'Detection $i: ${r.className} (${(r.confidence * 100).toStringAsFixed(1)}%) at ${r.boundingBox}',
       );
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadModelForPlatform();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_useController) {
-        _yoloController.setThresholds(
-          confidenceThreshold: _confidenceThreshold,
-          iouThreshold: _iouThreshold,
-          numItemsThreshold: _numItemsThreshold,
-        );
-      } else {
-        _yoloViewKey.currentState?.setThresholds(
-          confidenceThreshold: _confidenceThreshold,
-          iouThreshold: _iouThreshold,
-          numItemsThreshold: _numItemsThreshold,
-        );
-      }
-    });
   }
 
   @override
@@ -553,17 +560,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     });
 
     try {
-      String? modelPath;
-
-      if (Platform.isIOS) {
-        // Try local bundle first
-        // If not found, download and extract mlpackage.zip
-        modelPath = await _getIOSModelPath();
-      } else if (Platform.isAndroid) {
-        // Try local bundle first (model name without extension)
-        // If not found, download tflite
-        modelPath = await _getAndroidModelPath();
-      }
+      // Use ModelManager to get the model path
+      final modelPath = await _modelManager.getModelPath(_selectedModel);
 
       if (mounted) {
         setState(() {
@@ -622,224 +620,5 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         );
       }
     }
-  }
-
-  Future<String?> _getIOSModelPath() async {
-    // Update message for checking
-    if (mounted) {
-      setState(() {
-        _loadingMessage = 'Loading ${_selectedModel.modelName} model...';
-      });
-    }
-
-    // Update message for checking
-    if (mounted) {
-      setState(() {
-        _loadingMessage = 'Checking for ${_selectedModel.modelName} model...';
-      });
-    }
-
-    // For iOS, we need to return the full path to the mlpackage directory
-    // Models are stored in the documents directory after download/extraction
-    final documentsDir = await getApplicationDocumentsDirectory();
-    final modelDir = Directory(
-      '${documentsDir.path}/${_selectedModel.modelName}.mlpackage',
-    );
-
-    if (await modelDir.exists()) {
-      debugPrint('Found existing iOS model at: ${modelDir.path}');
-      return modelDir.path;
-    }
-
-    // Update message for downloading
-    if (mounted) {
-      setState(() {
-        _loadingMessage = 'Downloading ${_selectedModel.modelName} model...';
-      });
-    }
-
-    // Download model from GitHub
-    final url =
-        'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/${_selectedModel.modelName}.mlpackage.zip';
-
-    try {
-      final request = await http.Client().send(
-        http.Request('GET', Uri.parse(url)),
-      );
-      final contentLength = request.contentLength ?? 0;
-
-      // Download with progress tracking
-      final bytes = <int>[];
-      int downloadedBytes = 0;
-
-      await for (final chunk in request.stream) {
-        bytes.addAll(chunk);
-        downloadedBytes += chunk.length;
-
-        if (contentLength > 0 && mounted) {
-          setState(() {
-            _downloadProgress = downloadedBytes / contentLength;
-          });
-        }
-      }
-
-      if (request.statusCode == 200) {
-        if (mounted) {
-          setState(() {
-            _loadingMessage = 'Extracting ${_selectedModel.modelName} model...';
-            _downloadProgress = 1.0;
-          });
-        }
-
-        // Save zip file temporarily
-        final zipFile = File(
-          '${documentsDir.path}/${_selectedModel.modelName}.mlpackage.zip',
-        );
-        await zipFile.writeAsBytes(bytes);
-
-        // Extract zip
-        try {
-          final archive = ZipDecoder().decodeBytes(bytes);
-
-          // Create the mlpackage directory
-          await modelDir.create(recursive: true);
-
-          // Extract files with prefix handling
-          for (final file in archive) {
-            if (file.isFile) {
-              // Handle various zip structure patterns
-              String targetPath = file.name;
-
-              // Remove common prefixes that might exist in the zip
-              final prefixes = [
-                '${_selectedModel.modelName}.mlpackage/',
-                '${_selectedModel.modelName}/',
-                'mlpackage/',
-              ];
-
-              for (final prefix in prefixes) {
-                if (targetPath.startsWith(prefix)) {
-                  targetPath = targetPath.substring(prefix.length);
-                  break;
-                }
-              }
-
-              // Create the full path within the mlpackage directory
-              final fullPath = path.join(modelDir.path, targetPath);
-              final outFile = File(fullPath);
-
-              // Create parent directories if needed
-              await outFile.parent.create(recursive: true);
-              await outFile.writeAsBytes(file.content as List<int>);
-            }
-          }
-
-          // Delete the zip file after extraction
-          await zipFile.delete();
-
-          // Verify the mlpackage directory exists
-          if (await modelDir.exists()) {
-            return modelDir.path;
-          } else {
-            debugPrint('Error: mlpackage directory not found after extraction');
-          }
-        } catch (e) {
-          debugPrint('Failed to extract mlpackage: $e');
-          if (await zipFile.exists()) {
-            await zipFile.delete();
-          }
-          // Clean up the model directory if extraction failed
-          if (await modelDir.exists()) {
-            await modelDir.delete(recursive: true);
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Failed to download iOS model: $e');
-    }
-
-    // Return null if download/extraction failed
-    return null;
-  }
-
-  Future<String?> _getAndroidModelPath() async {
-    // Update message for checking
-    if (mounted) {
-      setState(() {
-        _loadingMessage = 'Checking for ${_selectedModel.modelName} model...';
-      });
-    }
-
-    // First check if model exists in assets (bundled)
-    final bundledModelName = '${_selectedModel.modelName}.tflite';
-
-    try {
-      // Try to load from assets
-      await rootBundle.load('assets/models/$bundledModelName');
-      debugPrint('Using bundled Android model: $bundledModelName');
-      return bundledModelName;
-    } catch (e) {
-      // Model not in assets, continue to check local storage
-      debugPrint('Model not found in assets, checking local storage...');
-    }
-
-    // Check if model exists in local storage (previously downloaded)
-    final documentsDir = await getApplicationDocumentsDirectory();
-    final modelFile = File(
-      '${documentsDir.path}/${_selectedModel.modelName}.tflite',
-    );
-
-    if (await modelFile.exists()) {
-      debugPrint('Found existing Android model at: ${modelFile.path}');
-      return modelFile.path;
-    }
-
-    // Update message for downloading
-    if (mounted) {
-      setState(() {
-        _loadingMessage = 'Downloading ${_selectedModel.modelName} model...';
-      });
-    }
-
-    // Download model from GitHub
-    final url =
-        'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/${_selectedModel.modelName}.tflite';
-
-    try {
-      final client = http.Client();
-      final request = await client.send(http.Request('GET', Uri.parse(url)));
-      final contentLength = request.contentLength ?? 0;
-
-      // Download with progress tracking
-      final bytes = <int>[];
-      int downloadedBytes = 0;
-
-      await for (final chunk in request.stream) {
-        bytes.addAll(chunk);
-        downloadedBytes += chunk.length;
-
-        if (contentLength > 0 && mounted) {
-          setState(() {
-            _downloadProgress = downloadedBytes / contentLength;
-          });
-        }
-      }
-
-      if (request.statusCode == 200) {
-        if (mounted) {
-          setState(() {
-            _loadingMessage = 'Saving ${_selectedModel.modelName} model...';
-          });
-        }
-
-        await modelFile.writeAsBytes(bytes);
-        return modelFile.path;
-      }
-    } catch (e) {
-      debugPrint('Failed to download Android model: $e');
-    }
-
-    // If download failed, return null
-    return null;
   }
 }
