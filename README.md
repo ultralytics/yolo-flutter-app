@@ -141,7 +141,37 @@ export_and_zip_yolo_models()
 
 ## 👨‍💻 Usage
 
-### Basic Example
+### Minimal Example
+
+The simplest way to use YoloView requires only two parameters:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
+
+class MinimalExample extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Minimal YOLO Example')),
+      body: YoloView(
+        modelPath: 'yolo11n',     // Required: model name
+        task: YOLOTask.detect,    // Required: task type
+      ),
+    );
+  }
+}
+```
+
+That's it! The YoloView will:
+- Automatically create an internal controller with default settings
+- Use default confidence threshold (0.5) and IoU threshold (0.45)
+- Display the camera feed with real-time object detection
+- Handle all camera permissions and lifecycle management
+
+### Full-Featured Example
+
+For more control and features, you can use all the optional parameters:
 
 ```dart
 import 'package:flutter/material.dart';
@@ -474,16 +504,27 @@ await controller.switchModel('yolo11s', YOLOTask.detect);
 
 Flutter widget to display YOLO detection results.
 
+##### Minimal Usage
+```dart
+// Only two required parameters!
+YoloView(
+  modelPath: 'yolo11n',      // Required
+  task: YOLOTask.detect,     // Required
+)
+```
+
+##### Full Constructor
 ```dart
 YoloView({
-  required YOLOTask task,
-  required String modelPath,
-  YoloViewController? controller,  // Optional: Controller for managing view settings
-  Function(List<YOLOResult>)? onResult,
-  Function(Map<String, double>)? onPerformanceMetrics,  // Optional: Performance tracking
-  Function(double)? onZoomChanged,  // Optional: Zoom level callback
-  bool showNativeUI = false,  // Optional: Show native UI controls
-});
+  required String modelPath,                            // Model name or path
+  required YOLOTask task,                              // Task type (detect, segment, etc.)
+  YoloViewController? controller,                       // Optional: Control thresholds and camera
+  String cameraResolution = '720p',                    // Optional: Camera resolution
+  Function(List<YOLOResult>)? onResult,               // Optional: Detection results callback
+  Function(Map<String, double>)? onPerformanceMetrics, // Optional: FPS and timing metrics
+  Function(double)? onZoomChanged,                     // Optional: Zoom level changes
+  bool showNativeUI = false,                           // Optional: Show native UI overlays
+})
 ```
 
 #### YOLOResult
