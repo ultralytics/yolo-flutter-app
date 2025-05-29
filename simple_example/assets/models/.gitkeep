@@ -1,0 +1,3 @@
+# Place your YOLO models here
+# Android: yolo11n.tflite
+# iOS: Add yolo11n.mlpackage to Xcode project
