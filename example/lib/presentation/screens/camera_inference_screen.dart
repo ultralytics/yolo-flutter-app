@@ -1,6 +1,5 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
@@ -171,7 +170,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                         'assets/logo.png',
                         width: 120,
                         height: 120,
-                        color: Colors.white.withValues(alpha: 0.8),
+                        color: Colors.white.withOpacity(0.8),
                       ),
                       const SizedBox(height: 32),
                       // Loading message
@@ -277,7 +276,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                     heightFactor: 0.5,
                     child: Image.asset(
                       'assets/logo.png',
-                      color: Colors.white.withValues(alpha: 0.4),
+                      color: Colors.white.withOpacity(0.4),
                     ),
                   ),
                 ),
@@ -335,13 +334,13 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                   horizontal: 24,
                   vertical: 12,
                 ),
-                color: Colors.black.withValues(alpha: 0.8),
+                color: Colors.black.withOpacity(0.8),
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     activeTrackColor: Colors.yellow,
-                    inactiveTrackColor: Colors.white.withValues(alpha: 0.3),
+                    inactiveTrackColor: Colors.white.withOpacity(0.3),
                     thumbColor: Colors.yellow,
-                    overlayColor: Colors.yellow.withValues(alpha: 0.2),
+                    overlayColor: Colors.yellow.withOpacity(0.2),
                   ),
                   child: Slider(
                     value: _getSliderValue(),
@@ -364,7 +363,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             left: 16,
             child: CircleAvatar(
               radius: 24,
-              backgroundColor: Colors.black.withValues(alpha: 0.5),
+              backgroundColor: Colors.black.withOpacity(0.5),
               child: IconButton(
                 icon: const Icon(Icons.flip_camera_ios, color: Colors.white),
                 onPressed: () {
@@ -396,7 +395,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   Widget _buildIconButton(dynamic iconOrAsset, VoidCallback onPressed) {
     return CircleAvatar(
       radius: 24,
-      backgroundColor: Colors.black.withValues(alpha: 0.2),
+      backgroundColor: Colors.black.withOpacity(0.2),
       child: IconButton(
         icon: iconOrAsset is IconData
             ? Icon(iconOrAsset, color: Colors.white)
@@ -418,7 +417,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   Widget _buildCircleButton(String label, {required VoidCallback onPressed}) {
     return CircleAvatar(
       radius: 24,
-      backgroundColor: Colors.black.withValues(alpha: 0.2),
+      backgroundColor: Colors.black.withOpacity(0.2),
       child: TextButton(
         onPressed: onPressed,
         child: Text(label, style: const TextStyle(color: Colors.white)),
@@ -443,7 +442,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
+        color: Colors.black.withOpacity(0.6),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Text(
@@ -551,7 +550,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       height: 36,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
+        color: Colors.black.withOpacity(0.6),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
