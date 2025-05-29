@@ -122,7 +122,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             YOLOView(
               key: _useController
                   ? const ValueKey('yolo_view_static')
-                  : _yoloViewKey, // Use static key to prevent recreation
+                  : _yoloViewKey,
               controller: _useController ? _yoloController : null,
               modelPath: _modelPath!,
               task: _selectedModel.task,
@@ -561,6 +561,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
     try {
       // Use ModelManager to get the model path
+      // This will automatically download if not found locally
       final modelPath = await _modelManager.getModelPath(_selectedModel);
 
       if (mounted) {
@@ -570,23 +571,21 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           _loadingMessage = '';
           _downloadProgress = 0.0;
         });
-
-        // If modelPath is null, show error
-        if (modelPath == null) {
+        
+        if (modelPath != null) {
+          debugPrint('CameraInferenceScreen: Model path set to: $modelPath');
+        } else {
+          // Model loading failed
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Model Not Found'),
+              title: const Text('Model Not Available'),
               content: Text(
-                Platform.isIOS
-                    ? 'The ${_selectedModel.modelName} model is not available for iOS. iOS models need to be bundled with the app or downloaded separately.'
-                    : 'The ${_selectedModel.modelName} model needs to be downloaded. Please check your internet connection and try again.',
+                'Failed to load ${_selectedModel.modelName} model. Please check your internet connection and try again.',
               ),
               actions: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                  onPressed: () => Navigator.pop(context),
                   child: const Text('OK'),
                 ),
               ],
@@ -608,7 +607,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           builder: (context) => AlertDialog(
             title: const Text('Model Loading Error'),
             content: Text(
-              'Failed to load ${_selectedModel.modelName} model. Please try again.',
+              'Failed to load ${_selectedModel.modelName} model: ${e.toString()}',
             ),
             actions: [
               TextButton(

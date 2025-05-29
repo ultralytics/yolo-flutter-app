@@ -23,16 +23,24 @@ public class YOLO {
   public init(
     _ modelPathOrName: String, task: YOLOTask, completion: ((Result<YOLO, Error>) -> Void)? = nil
   ) {
+    print("YOLO.init: Received modelPath: \(modelPathOrName)")
+    
     var modelURL: URL?
 
     let lowercasedPath = modelPathOrName.lowercased()
     let fileManager = FileManager.default
 
-    // 絶対パスのチェック - これは既に実装済み
+    // 絶対パスのチェック - mlpackageディレクトリも処理
     if lowercasedPath.hasSuffix(".mlmodel") || lowercasedPath.hasSuffix(".mlpackage") {
       let possibleURL = URL(fileURLWithPath: modelPathOrName)
-      if fileManager.fileExists(atPath: possibleURL.path) {
-        modelURL = possibleURL
+      var isDirectory: ObjCBool = false
+      if fileManager.fileExists(atPath: possibleURL.path, isDirectory: &isDirectory) {
+        // mlpackageはディレクトリ、mlmodelはファイル
+        if lowercasedPath.hasSuffix(".mlpackage") && isDirectory.boolValue {
+          modelURL = possibleURL
+        } else if lowercasedPath.hasSuffix(".mlmodel") && !isDirectory.boolValue {
+          modelURL = possibleURL
+        }
       }
     } else {
       // バンドル内のコンパイル済みモデルをチェック - これは既に実装済み
@@ -50,9 +58,10 @@ public class YOLO {
     if modelURL == nil {
       print("YOLO Debug: Searching for model at path: \(modelPathOrName)")
 
-      // 絶対パスの場合はそのまま使用
-      if fileManager.fileExists(atPath: modelPathOrName) {
-        print("YOLO Debug: Found model at absolute path: \(modelPathOrName)")
+      // 絶対パスの場合はそのまま使用（ディレクトリもチェック）
+      var isDirectory: ObjCBool = false
+      if fileManager.fileExists(atPath: modelPathOrName, isDirectory: &isDirectory) {
+        print("YOLO Debug: Found model at absolute path: \(modelPathOrName) (isDirectory: \(isDirectory.boolValue))")
         modelURL = URL(fileURLWithPath: modelPathOrName)
       }
 
@@ -171,6 +180,22 @@ public class YOLO {
 
     guard let unwrappedModelURL = modelURL else {
       print("YOLO Error: Model not found at path: \(modelPathOrName)")
+      print("YOLO Debug: Original model path: \(modelPathOrName)")
+      print("YOLO Debug: Lowercased path: \(lowercasedPath)")
+      
+      // Check if the path exists as directory
+      var isDirectory: ObjCBool = false
+      if fileManager.fileExists(atPath: modelPathOrName, isDirectory: &isDirectory) {
+        print("YOLO Debug: Path exists. Is directory: \(isDirectory.boolValue)")
+        
+        // If it's a directory and ends with .mlpackage, it should have been found
+        if isDirectory.boolValue && lowercasedPath.hasSuffix(".mlpackage") {
+          print("YOLO Error: mlpackage directory exists but was not properly recognized")
+        }
+      } else {
+        print("YOLO Debug: Path does not exist")
+      }
+      
       // 利用可能なバンドルと資産の一覧を表示
       print("YOLO Debug: Available bundles:")
       for bundle in Bundle.allBundles {

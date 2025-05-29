@@ -68,6 +68,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       let taskRaw = dict["task"] as? String
     {
       let task = YOLOTask.fromString(taskRaw)
+      
+      print("SwiftYOLOPlatformView: Received modelPath: \(modelName)")
 
       // Get new threshold parameters
       let confidenceThreshold = dict["confidenceThreshold"] as? Double ?? 0.5

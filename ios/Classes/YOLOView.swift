@@ -176,6 +176,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     task: YOLOTask,
     completion: ((Result<Void, Error>) -> Void)? = nil
   ) {
+    print("YOLOView.setModel: Received modelPath: \(modelPathOrName)")
+    
     activityIndicator.startAnimating()
     boundingBoxViews.forEach { box in
       box.hide()
@@ -194,8 +196,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       || lowercasedPath.hasSuffix(".mlmodelc")
     {
       let possibleURL = URL(fileURLWithPath: modelPathOrName)
-      if fileManager.fileExists(atPath: possibleURL.path) {
+      var isDirectory: ObjCBool = false
+      if fileManager.fileExists(atPath: possibleURL.path, isDirectory: &isDirectory) {
         modelURL = possibleURL
+        print("YOLOView: Found model at: \(possibleURL.path) (isDirectory: \(isDirectory.boolValue))")
       }
     } else {
       if let compiledURL = Bundle.main.url(forResource: modelPathOrName, withExtension: "mlmodelc")
