@@ -1,6 +1,8 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 name: simple_yolo_example
 description: "Simple examples for Ultralytics YOLO Flutter plugin"
-publish_to: 'none'
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
@@ -20,7 +22,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
+
   assets:
     - assets/
     - assets/models/

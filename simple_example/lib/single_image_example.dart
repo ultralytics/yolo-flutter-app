@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,7 +19,7 @@ class _SingleImageExampleState extends State<SingleImageExample> {
   // - iOS: Must be bundled in Xcode project (e.g., 'yolo11n')
   // - Android: Can use Flutter assets (e.g., 'assets/models/yolo11n.tflite')
   static const String modelPath = 'assets/models/yolo11n.tflite';
-  
+
   final ImagePicker _picker = ImagePicker();
   late YOLO _yolo;
   Uint8List? _imageBytes;
@@ -32,7 +34,7 @@ class _SingleImageExampleState extends State<SingleImageExample> {
 
   Future<void> _initializeModel() async {
     _yolo = YOLO(modelPath: modelPath, task: YOLOTask.detect);
-    
+
     try {
       await _yolo.loadModel();
       setState(() => _isModelLoaded = true);
@@ -50,7 +52,7 @@ class _SingleImageExampleState extends State<SingleImageExample> {
 
     // Run inference
     final result = await _yolo.predict(bytes);
-    
+
     // Display results
     setState(() {
       if (result['boxes'] != null) {
@@ -78,8 +80,7 @@ class _SingleImageExampleState extends State<SingleImageExample> {
                 child: const Text('Pick Image'),
               ),
             const SizedBox(height: 20),
-            if (_imageBytes != null)
-              Image.memory(_imageBytes!, height: 300),
+            if (_imageBytes != null) Image.memory(_imageBytes!, height: 300),
             const SizedBox(height: 20),
             Text(_results),
           ],

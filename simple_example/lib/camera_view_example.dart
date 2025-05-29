@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
@@ -15,7 +17,7 @@ class _CameraViewExampleState extends State<CameraViewExample> {
   // - iOS: Must be bundled in Xcode project (e.g., 'yolo11n')
   // - Android: Can use Flutter assets (e.g., 'assets/models/yolo11n.tflite')
   static const String modelPath = 'assets/models/yolo11n.tflite';
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
