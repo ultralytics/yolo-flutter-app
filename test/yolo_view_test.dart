@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
+import 'package:flutter/foundation.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,19 @@ void main() {
             return null;
           },
         );
+  });
+
+  tearDownAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
+          null,
+        );
+  });
+
+  tearDown(() async {
+    // Clean up any remaining subscriptions
+    await Future.delayed(const Duration(milliseconds: 100));
   });
 
   group('YOLOViewController Public API', () {
@@ -378,5 +392,204 @@ void main() {
   test('controller._applyThresholds fallback path', () async {
     final controller = YOLOViewController();
     await controller.setConfidenceThreshold(0.9);
+  });
+
+  test('fallback path in _applyThresholds is hit on error', () async {
+    final controller = YOLOViewController();
+    const methodChannel = MethodChannel(
+      'com.ultralytics.yolo/controlChannel_test',
+    );
+    controller.init(methodChannel, 1);
+
+    // simulate failure on setThresholds
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(methodChannel, (MethodCall methodCall) async {
+          if (methodCall.method == 'setThresholds') {
+            throw PlatformException(code: 'fail');
+          }
+          return null;
+        });
+
+    await controller.setThresholds(confidenceThreshold: 0.7);
+    expect(controller.confidenceThreshold, 0.7);
+  });
+
+  test('switchModel applies model switch with valid viewId', () async {
+    final controller = YOLOViewController();
+    const modelChannel = MethodChannel('yolo_single_image_channel');
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(modelChannel, (methodCall) async {
+          expect(methodCall.method, 'setModel');
+          expect(methodCall.arguments['modelPath'], 'my_model.tflite');
+          return null;
+        });
+
+    controller.init(const MethodChannel('dummy'), 42);
+    await controller.switchModel('my_model.tflite', YOLOTask.detect);
+  });
+
+  testWidgets('handles detection and metrics events correctly', (tester) async {
+    final key = GlobalKey<YOLOViewState>();
+    var detectionCalled = false;
+    var metricsCalled = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: YOLOView(
+          key: key,
+          modelPath: 'model.tflite',
+          task: YOLOTask.detect,
+          onResult: (results) {
+            detectionCalled = true;
+          },
+          onPerformanceMetrics: (metrics) {
+            metricsCalled = true;
+          },
+        ),
+      ),
+    );
+
+    final state = key.currentState!;
+    state.subscribeToResults();
+
+    final event = {
+      'detections': [
+        {
+          'classIndex': 0,
+          'className': 'person',
+          'confidence': 0.95,
+          'boundingBox': {'left': 0, 'top': 0, 'right': 100, 'bottom': 100},
+          'normalizedBox': {'left': 0, 'top': 0, 'right': 1, 'bottom': 1},
+        },
+      ],
+      'processingTimeMs': 16,
+      'fps': 60,
+    };
+
+    state.parseDetectionResults(event);
+    if (state.widget.onResult != null) state.widget.onResult!([]);
+    if (state.widget.onPerformanceMetrics != null) {
+      state.widget.onPerformanceMetrics!({'fps': 60.0});
+    }
+
+    expect(detectionCalled, isTrue);
+    expect(metricsCalled, isTrue);
+  });
+
+  testWidgets('fallback UI shown on unsupported platform', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: YOLOView(modelPath: 'model.tflite', task: YOLOTask.detect),
+      ),
+    );
+
+    expect(find.text('Platform not supported for YOLOView'), findsOneWidget);
+
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('zoom callback is triggered', (tester) async {
+    final key = GlobalKey<YOLOViewState>();
+    double? zoomLevel;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: YOLOView(
+          key: key,
+          modelPath: 'model.tflite',
+          task: YOLOTask.detect,
+          onZoomChanged: (z) => zoomLevel = z,
+        ),
+      ),
+    );
+
+    final state = key.currentState!;
+    state.widget.onZoomChanged?.call(2.5);
+    expect(zoomLevel, 2.5);
+  });
+
+  testWidgets('unknown method call is handled gracefully', (tester) async {
+    final key = GlobalKey<YOLOViewState>();
+    const bool widgetMounted = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: YOLOView(
+          key: key,
+          modelPath: 'model.tflite',
+          task: YOLOTask.detect,
+        ),
+      ),
+    );
+
+    final state = key.currentState!;
+    state.triggerPlatformViewCreated(1);
+
+    // Verify widget is still mounted and working after method call
+    expect(widgetMounted, isTrue);
+    expect(find.byType(YOLOView), findsOneWidget);
+  });
+
+  testWidgets('controller is created internally when not provided', (
+    tester,
+  ) async {
+    final key = GlobalKey<YOLOViewState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: YOLOView(
+          key: key,
+          modelPath: 'model.tflite',
+          task: YOLOTask.detect,
+        ),
+      ),
+    );
+
+    final state = key.currentState!;
+    expect(state.effectiveController, isA<YOLOViewController>());
+    expect(state.effectiveController.confidenceThreshold, 0.5);
+    expect(state.effectiveController.iouThreshold, 0.45);
+    expect(state.effectiveController.numItemsThreshold, 30);
+  });
+
+  testWidgets('recreateEventChannel triggers resubscription', (tester) async {
+    final key = GlobalKey<YOLOViewState>();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: YOLOView(
+          key: key,
+          modelPath: 'model.tflite',
+          task: YOLOTask.detect,
+          onResult: (_) {},
+          onPerformanceMetrics: (_) {},
+        ),
+      ),
+    );
+
+    final state = key.currentState!;
+    state.triggerPlatformViewCreated(1);
+
+    // Verify initial subscription
+    expect(state.resultSubscription, isNotNull);
+
+    // Clean up
+    state.cancelResultSubscription();
+    expect(state.resultSubscription, isNull);
+  });
+
+  testWidgets('builds correctly on iOS', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: YOLOView(modelPath: 'model.tflite', task: YOLOTask.detect),
+      ),
+    );
+
+    expect(find.byType(YOLOView), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
   });
 }

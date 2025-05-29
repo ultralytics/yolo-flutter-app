@@ -4,7 +4,7 @@
 
 import 'dart:async';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_exceptions.dart';
 
@@ -245,10 +245,10 @@ class YOLO {
 
       return {'exists': false, 'path': modelPath, 'location': 'unknown'};
     } on PlatformException catch (e) {
-      debugPrint('Failed to check model existence: ${e.message}');
+      logInfo('Failed to check model existence: ${e.message}');
       return {'exists': false, 'path': modelPath, 'error': e.message};
     } catch (e) {
-      debugPrint('Error checking model existence: $e');
+      logInfo('Error checking model existence: $e');
       return {'exists': false, 'path': modelPath, 'error': e.toString()};
     }
   }
@@ -276,10 +276,10 @@ class YOLO {
 
       return {};
     } on PlatformException catch (e) {
-      debugPrint('Failed to get storage paths: ${e.message}');
+      logInfo('Failed to get storage paths: ${e.message}');
       return {};
     } catch (e) {
-      debugPrint('Error getting storage paths: $e');
+      logInfo('Error getting storage paths: $e');
       return {};
     }
   }

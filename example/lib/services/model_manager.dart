@@ -9,26 +9,42 @@ import 'package:path_provider/path_provider.dart';
 import '../models/model_type.dart';
 
 /// Manages YOLO model loading, downloading, and caching.
+///
+/// This class handles:
+/// - Checking for existing models in the app bundle
+/// - Downloading models from the Ultralytics GitHub releases
+/// - Extracting and caching models locally
+/// - Platform-specific model path management
 class ModelManager {
+  /// Base URL for downloading model files from GitHub releases
   static const String _modelDownloadBaseUrl =
       'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0';
   
   static const MethodChannel _channel = MethodChannel('yolo_single_image_channel');
 
-  /// Callback for download progress updates (0.0 to 1.0).
+  /// Callback for download progress updates (0.0 to 1.0)
   final void Function(double progress)? onDownloadProgress;
 
-  /// Callback for status message updates.
+  /// Callback for status message updates
   final void Function(String message)? onStatusUpdate;
 
+  /// Creates a new ModelManager instance
+  ///
+  /// [onDownloadProgress] is called with progress updates during model downloads
+  /// [onStatusUpdate] is called with status messages during model operations
   ModelManager({
     this.onDownloadProgress, 
     this.onStatusUpdate,
   });
 
-  /// Get the appropriate model path for the current platform and model type.
+  /// Gets the appropriate model path for the current platform and model type.
   /// For iOS: Always downloads model if not found locally to avoid crashes
   /// For Android: Checks bundled assets first, then downloaded models.
+  ///
+  /// Returns the path to the model file if it exists locally, or null if the model
+  /// needs to be downloaded. The path format depends on the platform:
+  /// - iOS: Path to .mlpackage directory
+  /// - Android: Path to .tflite file
   Future<String?> getModelPath(ModelType modelType) async {
     if (Platform.isIOS) {
       return _getIOSModelPath(modelType);
@@ -76,11 +92,14 @@ class ModelManager {
     return null;
   }
 
-  /// Get iOS model path (.mlpackage format).
+  /// Gets the iOS model path (.mlpackage format).
   /// This method checks in the following order:
   /// 1. Bundle models (if exists, returns model name)
   /// 2. Downloaded models (returns full path)
   /// 3. Downloads the model if not found
+  ///
+  /// Checks for the model in the app's documents directory and downloads it if needed.
+  /// Returns the path to the .mlpackage directory if successful, null otherwise.
   Future<String?> _getIOSModelPath(ModelType modelType) async {
     _updateStatus('Checking for ${modelType.modelName} model...');
 
@@ -265,7 +284,10 @@ class ModelManager {
     return null;
   }
 
-  /// Get Android model path (.tflite format).
+  /// Gets the Android model path (.tflite format)
+  ///
+  /// Checks for the model in the app's assets and local storage, and downloads it if needed.
+  /// Returns the path to the .tflite file if successful, null otherwise.
   Future<String?> _getAndroidModelPath(ModelType modelType) async {
     _updateStatus('Checking for ${modelType.modelName} model...');
 
@@ -330,7 +352,10 @@ class ModelManager {
     return null;
   }
 
-  /// Clear all downloaded models from local storage.
+  /// Clears all downloaded models from local storage
+  ///
+  /// This removes both iOS (.mlpackage) and Android (.tflite) models
+  /// from the app's documents directory.
   Future<void> clearCache() async {
     _updateStatus('Clearing model cache...');
     final documentsDir = await getApplicationDocumentsDirectory();
@@ -424,12 +449,15 @@ class ModelManager {
     return null;
   }
 
-  /// Check if a model is available locally (either bundled or downloaded).
+  /// Checks if a model is available locally (either bundled or downloaded)
+  ///
+  /// Returns true if the model exists and is ready to use, false otherwise.
   Future<bool> isModelAvailable(ModelType modelType) async {
     final path = await getModelPath(modelType);
     return path != null;
   }
 
+  /// Updates the status message and logs it
   void _updateStatus(String message) {
     debugPrint('ModelManager: $message');
     onStatusUpdate?.call(message);
