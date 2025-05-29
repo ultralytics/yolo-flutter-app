@@ -19,8 +19,10 @@ class ModelManager {
   /// Base URL for downloading model files from GitHub releases
   static const String _modelDownloadBaseUrl =
       'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0';
-  
-  static const MethodChannel _channel = MethodChannel('yolo_single_image_channel');
+
+  static const MethodChannel _channel = MethodChannel(
+    'yolo_single_image_channel',
+  );
 
   /// Callback for download progress updates (0.0 to 1.0)
   final void Function(double progress)? onDownloadProgress;
@@ -32,10 +34,7 @@ class ModelManager {
   ///
   /// [onDownloadProgress] is called with progress updates during model downloads
   /// [onStatusUpdate] is called with status messages during model operations
-  ModelManager({
-    this.onDownloadProgress, 
-    this.onStatusUpdate,
-  });
+  ModelManager({this.onDownloadProgress, this.onStatusUpdate});
 
   /// Gets the appropriate model path for the current platform and model type.
   /// For iOS: Always downloads model if not found locally to avoid crashes
@@ -53,18 +52,18 @@ class ModelManager {
     }
     return null;
   }
-  
+
   /// Check if a model exists in the iOS bundle (Xcode project).
   /// This is useful to verify if a model is bundled before using it.
   Future<bool> isModelBundled(ModelType modelType) async {
     if (!Platform.isIOS) {
       return false;
     }
-    
+
     final bundleCheck = await _checkModelExistsInBundle(modelType.modelName);
     return bundleCheck['exists'] == true;
   }
-  
+
   /// Check if a model exists locally (downloaded).
   Future<bool> isModelDownloaded(ModelType modelType) async {
     if (Platform.isIOS) {
@@ -82,7 +81,7 @@ class ModelManager {
     }
     return false;
   }
-  
+
   /// Download model if not available locally.
   Future<String?> downloadModelIfNeeded(ModelType modelType) async {
     if (Platform.isIOS) {
@@ -107,7 +106,9 @@ class ModelManager {
     try {
       final bundleCheck = await _checkModelExistsInBundle(modelType.modelName);
       if (bundleCheck['exists'] == true) {
-        debugPrint('Found bundled iOS model: ${modelType.modelName} at ${bundleCheck['location']}');
+        debugPrint(
+          'Found bundled iOS model: ${modelType.modelName} at ${bundleCheck['location']}',
+        );
         // For bundled models, return just the model name
         // The native code will resolve the actual path
         return modelType.modelName;
@@ -129,23 +130,27 @@ class ModelManager {
         debugPrint('Found downloaded iOS model at: ${modelDir.path}');
         return modelDir.path;
       } else {
-        debugPrint('Invalid mlpackage directory (missing Manifest.json), removing...');
+        debugPrint(
+          'Invalid mlpackage directory (missing Manifest.json), removing...',
+        );
         await modelDir.delete(recursive: true);
       }
     }
-    
+
     // Step 3: Model not found anywhere, download it
     debugPrint('Model not found locally or in bundle, downloading...');
     _updateStatus('Downloading ${modelType.modelName} model...');
     return _downloadIOSModel(modelType);
   }
-  
+
   /// Check if a model exists in the iOS bundle
-  Future<Map<String, dynamic>> _checkModelExistsInBundle(String modelName) async {
+  Future<Map<String, dynamic>> _checkModelExistsInBundle(
+    String modelName,
+  ) async {
     if (!Platform.isIOS) {
       return {'exists': false};
     }
-    
+
     try {
       final result = await _channel.invokeMethod('checkModelExists', {
         'modelPath': modelName,
@@ -156,19 +161,19 @@ class ModelManager {
       return {'exists': false};
     }
   }
-  
+
   /// Download iOS model (.mlpackage format).
   Future<String?> _downloadIOSModel(ModelType modelType) async {
     final documentsDir = await getApplicationDocumentsDirectory();
     final modelDir = Directory(
       '${documentsDir.path}/${modelType.modelName}.mlpackage',
     );
-    
+
     // If already exists, return it
     if (await modelDir.exists()) {
       return modelDir.path;
     }
-    
+
     _updateStatus('Downloading ${modelType.modelName} model...');
 
     final zipFile = File(
@@ -206,7 +211,7 @@ class ModelManager {
       // This happens when the mlpackage directory itself was zipped
       bool hasRedundantDirectory = false;
       String? redundantDirPrefix;
-      
+
       // Check if all files start with the same directory name
       if (archive.files.isNotEmpty) {
         final firstPath = archive.files.first.name;
@@ -215,8 +220,8 @@ class ModelManager {
           // Check if it's a redundant mlpackage directory
           if (topDir.endsWith('.mlpackage')) {
             // Check if ALL files start with this directory
-            hasRedundantDirectory = archive.files.every((f) => 
-              f.name.startsWith('$topDir/') || f.name == topDir
+            hasRedundantDirectory = archive.files.every(
+              (f) => f.name.startsWith('$topDir/') || f.name == topDir,
             );
             if (hasRedundantDirectory) {
               redundantDirPrefix = '$topDir/';
@@ -232,7 +237,7 @@ class ModelManager {
 
       for (final file in archive) {
         String filename = file.name;
-        
+
         // Remove redundant directory prefix if present
         if (hasRedundantDirectory && redundantDirPrefix != null) {
           if (filename.startsWith(redundantDirPrefix)) {
@@ -242,10 +247,10 @@ class ModelManager {
             continue;
           }
         }
-        
+
         // Skip empty filenames
         if (filename.isEmpty) continue;
-        
+
         if (file.isFile) {
           final data = file.content as List<int>;
           // Extract files into the mlpackage directory
@@ -368,7 +373,9 @@ class ModelManager {
       );
       if (await tfliteFile.exists()) {
         await tfliteFile.delete();
-        debugPrint('Deleted cached Android model: ${modelType.modelName}.tflite');
+        debugPrint(
+          'Deleted cached Android model: ${modelType.modelName}.tflite',
+        );
       }
 
       // iOS models
@@ -377,18 +384,20 @@ class ModelManager {
       );
       if (await mlPackageDir.exists()) {
         await mlPackageDir.delete(recursive: true);
-        debugPrint('Deleted cached iOS model: ${modelType.modelName}.mlpackage');
+        debugPrint(
+          'Deleted cached iOS model: ${modelType.modelName}.mlpackage',
+        );
       }
     }
-    
+
     debugPrint('Model cache cleared successfully');
     _updateStatus('Cache cleared');
   }
-  
+
   /// Force re-download a specific model (useful for debugging).
   Future<String?> forceDownloadModel(ModelType modelType) async {
     _updateStatus('Force downloading ${modelType.modelName} model...');
-    
+
     if (Platform.isIOS) {
       // Delete existing model if any
       final documentsDir = await getApplicationDocumentsDirectory();
@@ -399,7 +408,7 @@ class ModelManager {
         await modelDir.delete(recursive: true);
         debugPrint('Deleted existing model before re-download');
       }
-      
+
       return _downloadIOSModel(modelType);
     } else if (Platform.isAndroid) {
       // Delete existing model if any
@@ -411,11 +420,11 @@ class ModelManager {
         await modelFile.delete();
         debugPrint('Deleted existing model before re-download');
       }
-      
+
       // Re-download by calling the existing download logic
       _updateStatus('Downloading ${modelType.modelName} model...');
       final url = '$_modelDownloadBaseUrl/${modelType.modelName}.tflite';
-      
+
       try {
         final client = http.Client();
         final request = await client.send(http.Request('GET', Uri.parse(url)));
@@ -445,7 +454,7 @@ class ModelManager {
         debugPrint('Failed to download Android model: $e');
       }
     }
-    
+
     return null;
   }
 
