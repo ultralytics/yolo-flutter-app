@@ -20,7 +20,6 @@ jobs:
     permissions:
       contents: write
     outputs:
-      increment: ${{ steps.get_version.outputs.increment }}
       current_tag: ${{ steps.get_version.outputs.current_tag }}
     steps:
       - uses: actions/checkout@v4
@@ -28,8 +27,7 @@ jobs:
         run: |
           VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
           echo "current_tag=v$VERSION" >> $GITHUB_OUTPUT
-          echo "increment=True" >> $GITHUB_OUTPUT
-      - name: Tag and Release
+      - name: Create Tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CURRENT_TAG: ${{ steps.get_version.outputs.current_tag }}
@@ -45,12 +43,13 @@ jobs:
 
   build:
     needs: check
-    if: needs.check.outputs.increment == 'True'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.current_tag }}
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.29.3"
@@ -65,7 +64,6 @@ jobs:
 
   publish:
     needs: [check, build]
-    if: needs.check.outputs.increment == 'True'
     runs-on: ubuntu-latest
     environment: # for GitHub Deployments tab
       name: Release - pub.dev
@@ -87,7 +85,7 @@ jobs:
 
   notify:
     needs: [check, publish]
-    if: always() && needs.check.outputs.increment == 'True'
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: read
