@@ -1,5 +1,3 @@
-// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-
 /// An example app demonstrating how to use the `ultralytics_yolo` plugin.
 ///
 /// This app launches a simple Flutter screen (`CameraInferenceScreen`)
