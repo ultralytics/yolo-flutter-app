@@ -1,0 +1,37 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# Tag creation workflow for pub.dev publishing
+
+name: Create Tag for pub.dev Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  create_tag:
+    if: github.repository == 'ultralytics/yolo-flutter-app' && (github.actor == 'glenn-jocher' || github.actor == 'asabri97' || github.actor == 'john-rocky')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get version from pubspec.yaml
+        id: get_version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          echo "current_tag=v$VERSION" >> $GITHUB_OUTPUT
+      - name: Create Tag if Needed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_TAG: ${{ steps.get_version.outputs.current_tag }}
+        run: |
+          git config --global user.name "UltralyticsAssistant"
+          git config --global user.email "web@ultralytics.com"
+          # Check if tag exists
+          if git ls-remote --tags origin "$CURRENT_TAG" | grep -q "$CURRENT_TAG"; then
+            echo "Tag $CURRENT_TAG already exists, skipping tag creation"
+          else
+            git tag -a "$CURRENT_TAG" -m "Release $CURRENT_TAG"
+            git push origin "$CURRENT_TAG"
+          fi
