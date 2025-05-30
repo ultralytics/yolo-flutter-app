@@ -46,7 +46,7 @@ jobs:
       - name: Tag and Release
         if: steps.check_pubdev.outputs.increment == 'True'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN }}
           CURRENT_TAG: ${{ steps.check_pubdev.outputs.current_tag }}
           PREVIOUS_TAG: ${{ steps.check_pubdev.outputs.previous_tag }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
