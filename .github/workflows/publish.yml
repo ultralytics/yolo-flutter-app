@@ -6,7 +6,8 @@ name: Publish to pub.dev
 
 on:
   push:
-    branches: [main]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+' # Matches tags like v0.1.9, v1.0.0, etc.
   workflow_dispatch:
     inputs:
       pubdev:
@@ -14,56 +15,13 @@ on:
         description: Publish to pub.dev
 
 jobs:
-  check:
-    if: github.repository == 'ultralytics/yolo-flutter-app' && (github.actor == 'glenn-jocher' || github.actor == 'asabri97' || github.actor == 'john-rocky')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      current_tag: ${{ steps.get_version.outputs.current_tag }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: get_version
-        run: |
-          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
-          echo "current_tag=v$VERSION" >> $GITHUB_OUTPUT
-      - name: Create Tag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CURRENT_TAG: ${{ steps.get_version.outputs.current_tag }}
-        run: |
-          git config --global user.name "UltralyticsAssistant"
-          git config --global user.email "web@ultralytics.com"
-          # Check if tag exists
-          if git ls-remote --tags origin "$CURRENT_TAG" | grep -q "$CURRENT_TAG"; then
-            echo "Tag $CURRENT_TAG already exists, skipping tag creation"
-          else
-            git tag -a "$CURRENT_TAG" -m "$(git log -1 --pretty=%B)"
-            git push origin "$CURRENT_TAG"
-          fi
-          # Always create/update release
-          if gh release view "$CURRENT_TAG" &>/dev/null; then
-            echo "Release $CURRENT_TAG exists, updating..."
-            gh release edit "$CURRENT_TAG" \
-              --title "Release $CURRENT_TAG" \
-              --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
-          else
-            echo "Creating new release $CURRENT_TAG..."
-            gh release create "$CURRENT_TAG" \
-              --title "Release $CURRENT_TAG" \
-              --generate-notes \
-              --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
-          fi
-
   build:
-    needs: check
+    if: github.repository == 'ultralytics/yolo-flutter-app' && (github.actor == 'glenn-jocher' || github.actor == 'asabri97' || github.actor == 'john-rocky' || github.event_name == 'push')
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.check.outputs.current_tag }}
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.29.3"
@@ -77,7 +35,7 @@ jobs:
           path: .
 
   publish:
-    needs: [check, build]
+    needs: build
     runs-on: ubuntu-latest
     environment: # for GitHub Deployments tab
       name: Release - pub.dev
@@ -98,30 +56,23 @@ jobs:
       - run: dart pub publish --force
 
   notify:
-    needs: [check, publish]
+    needs: publish
     if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Extract PR Details
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_JSON=$(gh pr list --search "${GITHUB_SHA}" --state merged --json number,title --jq '.[0]')
-          PR_NUMBER=$(echo "${PR_JSON}" | jq -r '.number')
-          PR_TITLE=$(echo "${PR_JSON}" | jq -r '.title')
-          echo "PR_NUMBER=${PR_NUMBER}" >> "${GITHUB_ENV}"
-          echo "PR_TITLE=${PR_TITLE}" >> "${GITHUB_ENV}"
+      - name: Get Tag Name
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> "${GITHUB_ENV}"
       - name: Notify Success
-        if: needs.publish.result == 'success' && github.event_name == 'push'
+        if: needs.publish.result == 'success'
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook-type: incoming-webhook
           webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUB }}
           payload: |
-            text: "<!channel> GitHub Actions success for ${{ github.workflow }} ✅\n\n\n*Repository:* https://github.com/${{ github.repository }}\n*Action:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Author:* ${{ github.actor }}\n*Event:* NEW `ultralytics_yolo ${{ needs.check.outputs.current_tag }}` pub.dev package published 🎉\n*Job Status:* ${{ job.status }}\n*Pull Request:* <https://github.com/${{ github.repository }}/pull/${{ env.PR_NUMBER }}> ${{ env.PR_TITLE }}\n"
+            text: "<!channel> GitHub Actions success for ${{ github.workflow }} ✅\n\n\n*Repository:* https://github.com/${{ github.repository }}\n*Action:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Author:* ${{ github.actor }}\n*Event:* NEW `ultralytics_yolo ${{ env.TAG_NAME }}` pub.dev package published 🎉\n*Job Status:* ${{ job.status }}"
       - name: Notify Failure
         if: needs.publish.result != 'success'
         uses: slackapi/slack-github-action@v2.0.0
@@ -129,4 +80,4 @@ jobs:
           webhook-type: incoming-webhook
           webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUB }}
           payload: |
-            text: "<!channel> GitHub Actions error for ${{ github.workflow }} ❌\n\n\n*Repository:* https://github.com/${{ github.repository }}\n*Action:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Author:* ${{ github.actor }}\n*Event:* ${{ github.event_name }}\n*Job Status:* ${{ job.status }}\n*Pull Request:* <https://github.com/${{ github.repository }}/pull/${{ env.PR_NUMBER }}> ${{ env.PR_TITLE }}\n"
+            text: "<!channel> GitHub Actions error for ${{ github.workflow }} ❌\n\n\n*Repository:* https://github.com/${{ github.repository }}\n*Action:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Author:* ${{ github.actor }}\n*Event:* ${{ github.event_name }}\n*Job Status:* ${{ job.status }}"

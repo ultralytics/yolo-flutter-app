@@ -1,0 +1,69 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# Create tag when version is updated in pubspec.yaml
+
+name: Create Tag
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pubspec.yaml'
+
+jobs:
+  create-tag:
+    if: github.repository == 'ultralytics/yolo-flutter-app' && (github.actor == 'glenn-jocher' || github.actor == 'asabri97' || github.actor == 'john-rocky')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Need previous commit to check for version changes
+      
+      - name: Check Version Change
+        id: version_check
+        run: |
+          # Get current version
+          CURRENT_VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Get previous version
+          git checkout HEAD~1 pubspec.yaml
+          PREVIOUS_VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //' || echo "0.0.0")
+          git checkout HEAD pubspec.yaml
+          echo "Previous version: $PREVIOUS_VERSION"
+          
+          # Check if version changed
+          if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+            echo "Version changed from $PREVIOUS_VERSION to $CURRENT_VERSION"
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+            echo "current_tag=v$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "Version unchanged"
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create Tag and Release
+        if: steps.version_check.outputs.version_changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_TAG: ${{ steps.version_check.outputs.current_tag }}
+        run: |
+          git config --global user.name "UltralyticsAssistant"
+          git config --global user.email "web@ultralytics.com"
+          
+          # Check if tag already exists
+          if git ls-remote --tags origin "$CURRENT_TAG" | grep -q "$CURRENT_TAG"; then
+            echo "Tag $CURRENT_TAG already exists"
+          else
+            echo "Creating tag $CURRENT_TAG"
+            git tag -a "$CURRENT_TAG" -m "Release $CURRENT_TAG"
+            git push origin "$CURRENT_TAG"
+            
+            # Create GitHub release
+            gh release create "$CURRENT_TAG" \
+              --title "Release $CURRENT_TAG" \
+              --generate-notes \
+              --notes "🎉 New release of ultralytics_yolo package"
+          fi
