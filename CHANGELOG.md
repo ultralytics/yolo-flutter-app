@@ -1,6 +1,6 @@
-## 0.1.11
+## 0.1.12
 
-- Added `example/example.dart` for better pub.dev scoring and usage demonstration.
+- Added `example/main.dart` for usage demonstration.
 - Created `shared_main.dart` to eliminate duplication between `example.dart` and `main.dart`.
 - Resolved pub.dev warning: “No example found.”
 - Improved `pubspec.yaml` to explicitly point to the example file.
