@@ -34,12 +34,26 @@ jobs:
         run: |
           git config --global user.name "UltralyticsAssistant"
           git config --global user.email "web@ultralytics.com"
-          git tag -a "$CURRENT_TAG" -m "$(git log -1 --pretty=%B)"
-          git push origin "$CURRENT_TAG"
-          gh release create "$CURRENT_TAG" \
-            --title "Release $CURRENT_TAG" \
-            --generate-notes \
-            --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
+          # Check if tag exists
+          if git ls-remote --tags origin "$CURRENT_TAG" | grep -q "$CURRENT_TAG"; then
+            echo "Tag $CURRENT_TAG already exists, skipping tag creation"
+          else
+            git tag -a "$CURRENT_TAG" -m "$(git log -1 --pretty=%B)"
+            git push origin "$CURRENT_TAG"
+          fi
+          # Always create/update release
+          if gh release view "$CURRENT_TAG" &>/dev/null; then
+            echo "Release $CURRENT_TAG exists, updating..."
+            gh release edit "$CURRENT_TAG" \
+              --title "Release $CURRENT_TAG" \
+              --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
+          else
+            echo "Creating new release $CURRENT_TAG..."
+            gh release create "$CURRENT_TAG" \
+              --title "Release $CURRENT_TAG" \
+              --generate-notes \
+              --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
+          fi
 
   build:
     needs: check
