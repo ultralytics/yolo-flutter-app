@@ -102,7 +102,7 @@ jobs:
       - run: dart pub publish --force
 
   notify:
-    needs: [check, publish]
+    needs: [check, build]
     if: always() && needs.check.outputs.increment == 'True'
     runs-on: ubuntu-latest
     permissions:
