@@ -1,6 +1,11 @@
+## 0.1.6
+
+- Fixed CI/CD pipeline issues for pub.dev publishing
+
 ## 0.1.5
 
-- Major UI revamp with improved design and user experience
+- Updated package validation and documentation
+- Improved error handling and logging
 - Added support for multiple model types:
   - Object Detection (YOLOv11)
   - Pose Estimation
@@ -11,7 +16,6 @@
   - Camera flipping between front and back cameras
   - Camera zooming with pinch gestures
   - Improved camera preview quality
-- Fixed CI/CD pipeline issues for pub.dev publishing
 - Updated package validation and documentation
 - Improved error handling and logging
 - Added comprehensive example app showcasing all features
