@@ -1,0 +1,23 @@
+name: Publish to pub.dev on Tag
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.3"
+          channel: "stable"
+          cache: true
+      - uses: dart-lang/setup-dart@v1
+      - run: flutter pub get
+      - run: dart pub publish --force
