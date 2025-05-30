@@ -616,6 +616,7 @@ If you're interested in using YOLO models directly in iOS applications with Swif
 👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - A native iOS application demonstrating real-time object detection, segmentation, classification, and pose estimation using Ultralytics YOLO models.
 
 This repository provides:
+
 - Pure Swift implementation for iOS
 - Direct Core ML integration
 - Native iOS UI components
