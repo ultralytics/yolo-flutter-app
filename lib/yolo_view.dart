@@ -534,13 +534,13 @@ class YOLOViewState extends State<YOLOView> {
     // _effectiveController.stop().catchError((e) {
     //   logInfo('YOLOView: Error stopping camera during dispose: $e');
     // });
-    
+
     // Cancel event subscriptions
     _cancelResultSubscription();
-    
+
     // Clean up method channel handler
     _methodChannel.setMethodCallHandler(null);
-    
+
     super.dispose();
   }
 
