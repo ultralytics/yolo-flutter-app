@@ -20,35 +20,19 @@ jobs:
     permissions:
       contents: write
     outputs:
-      increment: ${{ steps.check_pubdev.outputs.increment }}
-      current_tag: ${{ steps.check_pubdev.outputs.current_tag }}
-      previous_tag: ${{ steps.check_pubdev.outputs.previous_tag }}
+      increment: ${{ steps.get_version.outputs.increment }}
+      current_tag: ${{ steps.get_version.outputs.current_tag }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: false
-      - run: uv pip install --system --no-cache ultralytics-actions
-      - id: check_pubdev
-        shell: python
+      - id: get_version
         run: |
-          import os
-          from actions.utils import check_pubdev_version
-          local_version, online_version, publish = check_pubdev_version()
-          os.system(f'echo "increment={publish}" >> $GITHUB_OUTPUT')
-          os.system(f'echo "current_tag=v{local_version}" >> $GITHUB_OUTPUT')
-          os.system(f'echo "previous_tag=v{online_version}" >> $GITHUB_OUTPUT')
-          if publish:
-              print('Ready to publish new version to pub.dev ✅.')
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
+          echo "current_tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "increment=True" >> $GITHUB_OUTPUT
       - name: Tag and Release
-        if: steps.check_pubdev.outputs.increment == 'True'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CURRENT_TAG: ${{ steps.check_pubdev.outputs.current_tag }}
-          PREVIOUS_TAG: ${{ steps.check_pubdev.outputs.previous_tag }}
+          CURRENT_TAG: ${{ steps.get_version.outputs.current_tag }}
         run: |
           git config --global user.name "UltralyticsAssistant"
           git config --global user.email "web@ultralytics.com"
@@ -58,7 +42,6 @@ jobs:
             --title "Release $CURRENT_TAG" \
             --generate-notes \
             --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
-          uv cache prune --ci
 
   build:
     needs: check
