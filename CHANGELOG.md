@@ -1,3 +1,10 @@
+## 0.1.11
+
+- Added `example/example.dart` for better pub.dev scoring and usage demonstration.
+- Created `shared_main.dart` to eliminate duplication between `example.dart` and `main.dart`.
+- Resolved pub.dev warning: “No example found.”
+- Improved `pubspec.yaml` to explicitly point to the example file.
+
 ## 0.1.9
 
 - Simplified package publishing workflow
