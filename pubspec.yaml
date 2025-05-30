@@ -2,7 +2,7 @@
 
 name: ultralytics_yolo
 description: Flutter plugin for Ultralytics YOLO computer vision models.
-version: 0.1.6
+version: 0.1.7
 homepage: https://github.com/ultralytics/yolo-flutter-app
 repository: https://github.com/ultralytics/yolo-flutter-app
 
@@ -11,9 +11,7 @@ topics:
   - object-detection
   - yolo
   - machine-learning
-  - ai
   - flutter-plugin
-  - mobile
 
 # screenshots:
 #  - description: "Real-time object detection"
