@@ -462,6 +462,47 @@ YOLO({
 });
 ```
 
+##### Methods
+
+###### loadModel()
+Loads the YOLO model for inference. Must be called before `predict()`.
+
+```dart
+final yolo = YOLO(modelPath: 'yolo11n', task: YOLOTask.detect);
+await yolo.loadModel();
+```
+
+###### predict()
+Runs inference on a single image with optional threshold parameters. The thresholds are only applied for this specific prediction and do not affect subsequent predictions.
+
+```dart
+// Basic usage with default thresholds
+final results = await yolo.predict(imageBytes);
+
+// Usage with custom thresholds (only for this prediction)
+final results = await yolo.predict(
+  imageBytes,
+  confidenceThreshold: 0.6,  // Optional: 0.0-1.0, defaults to 0.25
+  iouThreshold: 0.5,         // Optional: 0.0-1.0, defaults to 0.4
+);
+
+// Process results
+final boxes = results['boxes'] as List<Map<String, dynamic>>;
+for (var box in boxes) {
+  print('Class: ${box['class']}, Confidence: ${box['confidence']}');
+}
+```
+
+###### Static Methods
+
+```dart
+// Check if a model exists at the specified path
+final exists = await YOLO.checkModelExists('yolo11n');
+
+// Get available storage paths
+final paths = await YOLO.getStoragePaths();
+```
+
 #### YOLOViewController
 
 Controller for interacting with a YOLOView, managing settings like thresholds.
