@@ -15,25 +15,25 @@ void main() {
       log.clear();
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-            log.add(methodCall);
+        log.add(methodCall);
 
-            switch (methodCall.method) {
-              case 'checkModelExists':
-                return {
-                  'exists': true,
-                  'path': methodCall.arguments['modelPath'],
-                  'location': 'assets',
-                };
-              case 'getStoragePaths':
-                return {
-                  'internal': '/data/internal',
-                  'cache': '/data/cache',
-                  'external': '/storage/external',
-                };
-              default:
-                return null;
-            }
-          });
+        switch (methodCall.method) {
+          case 'checkModelExists':
+            return {
+              'exists': true,
+              'path': methodCall.arguments['modelPath'],
+              'location': 'assets',
+            };
+          case 'getStoragePaths':
+            return {
+              'internal': '/data/internal',
+              'cache': '/data/cache',
+              'external': '/storage/external',
+            };
+          default:
+            return null;
+        }
+      });
     });
 
     tearDown(() {
@@ -63,8 +63,8 @@ void main() {
     test('checkModelExists handles platform exceptions gracefully', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-            throw PlatformException(code: 'ERROR', message: 'Test error');
-          });
+        throw PlatformException(code: 'ERROR', message: 'Test error');
+      });
 
       final result = await YOLO.checkModelExists('test_model.tflite');
 
@@ -75,8 +75,8 @@ void main() {
     test('getStoragePaths handles platform exceptions gracefully', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-            throw PlatformException(code: 'ERROR', message: 'Storage error');
-          });
+        throw PlatformException(code: 'ERROR', message: 'Storage error');
+      });
 
       final paths = await YOLO.getStoragePaths();
 
@@ -102,11 +102,11 @@ void main() {
       () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-              throw PlatformException(
-                code: 'MODEL_NOT_FOUND',
-                message: 'Model file not found',
-              );
-            });
+          throw PlatformException(
+            code: 'MODEL_NOT_FOUND',
+            message: 'Model file not found',
+          );
+        });
 
         final yolo = YOLO(
           modelPath: 'missing_model.tflite',
@@ -120,11 +120,11 @@ void main() {
     test('loadModel throws ModelLoadingException for INVALID_MODEL', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-            throw PlatformException(
-              code: 'INVALID_MODEL',
-              message: 'Invalid model format',
-            );
-          });
+        throw PlatformException(
+          code: 'INVALID_MODEL',
+          message: 'Invalid model format',
+        );
+      });
 
       final yolo = YOLO(
         modelPath: 'invalid_model.tflite',
@@ -149,11 +149,11 @@ void main() {
       () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-              throw PlatformException(
-                code: 'MODEL_NOT_LOADED',
-                message: 'Model not loaded',
-              );
-            });
+          throw PlatformException(
+            code: 'MODEL_NOT_LOADED',
+            message: 'Model not loaded',
+          );
+        });
 
         final yolo = YOLO(
           modelPath: 'test_model.tflite',
@@ -171,11 +171,11 @@ void main() {
     test('predict throws InvalidInputException for INVALID_IMAGE', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-            throw PlatformException(
-              code: 'INVALID_IMAGE',
-              message: 'Invalid image format',
-            );
-          });
+        throw PlatformException(
+          code: 'INVALID_IMAGE',
+          message: 'Invalid image format',
+        );
+      });
 
       final yolo = YOLO(modelPath: 'test_model.tflite', task: YOLOTask.detect);
       final image = Uint8List.fromList([1, 2, 3, 4]);
@@ -186,11 +186,11 @@ void main() {
     test('predict throws InferenceException for INFERENCE_ERROR', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-            throw PlatformException(
-              code: 'INFERENCE_ERROR',
-              message: 'Inference failed',
-            );
-          });
+        throw PlatformException(
+          code: 'INFERENCE_ERROR',
+          message: 'Inference failed',
+        );
+      });
 
       final yolo = YOLO(modelPath: 'test_model.tflite', task: YOLOTask.detect);
       final image = Uint8List.fromList([1, 2, 3, 4]);
@@ -201,8 +201,8 @@ void main() {
     test('predict handles invalid result format', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-            return 'invalid_result_format';
-          });
+        return 'invalid_result_format';
+      });
 
       final yolo = YOLO(modelPath: 'test_model.tflite', task: YOLOTask.detect);
       final image = Uint8List.fromList([1, 2, 3, 4]);

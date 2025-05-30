@@ -13,19 +13,19 @@ void main() {
   setUpAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-          const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
-          (MethodCall methodCall) async {
-            return null;
-          },
-        );
+      const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
+      (MethodCall methodCall) async {
+        return null;
+      },
+    );
   });
 
   tearDownAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-          const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
-          null,
-        );
+      const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
+      null,
+    );
   });
 
   tearDown(() async {
@@ -404,11 +404,11 @@ void main() {
     // simulate failure on setThresholds
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(methodChannel, (MethodCall methodCall) async {
-          if (methodCall.method == 'setThresholds') {
-            throw PlatformException(code: 'fail');
-          }
-          return null;
-        });
+      if (methodCall.method == 'setThresholds') {
+        throw PlatformException(code: 'fail');
+      }
+      return null;
+    });
 
     await controller.setThresholds(confidenceThreshold: 0.7);
     expect(controller.confidenceThreshold, 0.7);
@@ -420,10 +420,10 @@ void main() {
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(modelChannel, (methodCall) async {
-          expect(methodCall.method, 'setModel');
-          expect(methodCall.arguments['modelPath'], 'my_model.tflite');
-          return null;
-        });
+      expect(methodCall.method, 'setModel');
+      expect(methodCall.arguments['modelPath'], 'my_model.tflite');
+      return null;
+    });
 
     controller.init(const MethodChannel('dummy'), 42);
     await controller.switchModel('my_model.tflite', YOLOTask.detect);

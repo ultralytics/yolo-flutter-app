@@ -263,8 +263,8 @@ class YOLODetectionResults {
     final detectionsData = map['detections'] as List<dynamic>?;
     final detections = detectionsData != null
         ? detectionsData
-              .map((detection) => YOLOResult.fromMap(detection))
-              .toList()
+            .map((detection) => YOLOResult.fromMap(detection))
+            .toList()
         : <YOLOResult>[];
 
     // Parse annotated image if available
