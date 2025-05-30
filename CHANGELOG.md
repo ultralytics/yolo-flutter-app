@@ -1,3 +1,10 @@
+## 0.1.9
+
+- Simplified package publishing workflow
+- Removed Python-based version check in favor of direct pubspec.yaml version reading
+- Improved GitHub Actions workflow reliability
+- Fixed tag management and release process
+
 ## 0.1.8
 
 - Add optional confidence and IoU thresholds for single image inference
