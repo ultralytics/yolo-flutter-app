@@ -24,7 +24,11 @@ jobs:
       current_tag: ${{ steps.check_pubdev.outputs.current_tag }}
       previous_tag: ${{ steps.check_pubdev.outputs.previous_tag }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets._GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
