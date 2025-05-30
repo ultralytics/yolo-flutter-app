@@ -533,6 +533,7 @@ YOLOView({
 ##### Resource Management
 
 YOLOView automatically handles cleanup when the widget is disposed. The dispose method:
+
 - Cancels event subscriptions to prevent memory leaks
 - Cleans up method channel handlers
 - Prepares for future camera stop functionality (currently commented out, pending implementation)
@@ -557,7 +558,7 @@ class _MyScreenState extends State<MyScreen> {
       },
     );
   }
-  
+
   // When this screen is popped or the widget is removed,
   // YOLOView automatically cleans up its resources
 }
