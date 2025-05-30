@@ -7,10 +7,10 @@ name: Publish on tag
 on:
   push:
     tags:
-    - "v*" # tag-pattern on pub.dev: 'v{{version}}'
+      - "v*"
 
 jobs:
   publish:
     permissions:
       id-token: write # Required for authentication using OIDC
-    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@main
