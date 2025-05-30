@@ -9,4 +9,6 @@ library;
 
 /// Entry point for the example.
 /// This simply delegates to the shared app logic.
-void main() => main();
+import 'lib/main.dart' as example;
+
+void main() => example.main();

@@ -2,4 +2,6 @@
 
 // example/lib/main.dart
 
-void main() => main();
+import 'package:ultralytics_yolo_example/main.dart' as example;
+
+void main() => example.main();
