@@ -46,7 +46,7 @@ jobs:
       - name: Tag and Release
         if: steps.check_pubdev.outputs.increment == 'True'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN }}
           CURRENT_TAG: ${{ steps.check_pubdev.outputs.current_tag }}
           PREVIOUS_TAG: ${{ steps.check_pubdev.outputs.previous_tag }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -102,7 +102,7 @@ jobs:
       - run: dart pub publish --force
 
   notify:
-    needs: [check, publish]
+    needs: [check, build]
     if: always() && needs.check.outputs.increment == 'True'
     runs-on: ubuntu-latest
     permissions:
@@ -123,7 +123,7 @@ jobs:
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook-type: incoming-webhook
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUB }}
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUBWEB }}
           payload: |
             text: "<!channel> GitHub Actions success for ${{ github.workflow }} ✅\n\n\n*Repository:* https://github.com/${{ github.repository }}\n*Action:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Author:* ${{ github.actor }}\n*Event:* NEW `ultralytics_yolo ${{ needs.check.outputs.current_tag }}` pub.dev package published 🎉\n*Job Status:* ${{ job.status }}\n*Pull Request:* <https://github.com/${{ github.repository }}/pull/${{ env.PR_NUMBER }}> ${{ env.PR_TITLE }}\n"
       - name: Notify Failure
@@ -131,6 +131,6 @@ jobs:
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook-type: incoming-webhook
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUB }}
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUBWEB }}
           payload: |
             text: "<!channel> GitHub Actions error for ${{ github.workflow }} ❌\n\n\n*Repository:* https://github.com/${{ github.repository }}\n*Action:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Author:* ${{ github.actor }}\n*Event:* ${{ github.event_name }}\n*Job Status:* ${{ job.status }}\n*Pull Request:* <https://github.com/${{ github.repository }}/pull/${{ env.PR_NUMBER }}> ${{ env.PR_TITLE }}\n"
