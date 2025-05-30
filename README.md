@@ -530,6 +530,39 @@ YOLOView({
 })
 ```
 
+##### Resource Management
+
+YOLOView automatically handles cleanup when the widget is disposed. The dispose method:
+- Cancels event subscriptions to prevent memory leaks
+- Cleans up method channel handlers
+- Prepares for future camera stop functionality (currently commented out, pending implementation)
+
+```dart
+// YOLOView automatically cleans up resources when removed from the widget tree
+// No manual disposal is required - just remove the widget normally:
+
+class MyScreen extends StatefulWidget {
+  @override
+  _MyScreenState createState() => _MyScreenState();
+}
+
+class _MyScreenState extends State<MyScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return YOLOView(
+      modelPath: 'yolo11n',
+      task: YOLOTask.detect,
+      onResult: (results) {
+        // Handle results
+      },
+    );
+  }
+  
+  // When this screen is popped or the widget is removed,
+  // YOLOView automatically cleans up its resources
+}
+```
+
 #### YOLOResult
 
 Contains detection results.
