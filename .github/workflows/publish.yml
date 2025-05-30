@@ -7,6 +7,8 @@ name: Publish to pub.dev
 on:
   push:
     branches: [main]
+    tags:
+      - "v*"
   workflow_dispatch:
     inputs:
       pubdev:
