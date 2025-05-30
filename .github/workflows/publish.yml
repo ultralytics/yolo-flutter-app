@@ -80,6 +80,7 @@ jobs:
 
   publish:
     needs: [check, build]
+    # Disable this step as pub.dev requires tag events in a separate workflow YAML
     if: needs.check.outputs.increment == 'True' && false
     runs-on: ubuntu-latest
     environment: # for GitHub Deployments tab
