@@ -23,36 +23,36 @@ void main() {
     test('complete workflow: load model and predict', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        log.add(methodCall);
+            log.add(methodCall);
 
-        if (methodCall.method == 'loadModel') {
-          return true;
-        } else if (methodCall.method == 'predictSingleImage') {
-          return {
-            'boxes': [
-              {
-                'classIndex': 0,
-                'className': 'person',
-                'confidence': 0.95,
-                'boundingBox': {
-                  'left': 10.0,
-                  'top': 10.0,
-                  'right': 110.0,
-                  'bottom': 210.0,
-                },
-                'normalizedBox': {
-                  'left': 0.1,
-                  'top': 0.1,
-                  'right': 0.5,
-                  'bottom': 0.9,
-                },
-              },
-            ],
-            'processingTimeMs': 25.5,
-          };
-        }
-        return null;
-      });
+            if (methodCall.method == 'loadModel') {
+              return true;
+            } else if (methodCall.method == 'predictSingleImage') {
+              return {
+                'boxes': [
+                  {
+                    'classIndex': 0,
+                    'className': 'person',
+                    'confidence': 0.95,
+                    'boundingBox': {
+                      'left': 10.0,
+                      'top': 10.0,
+                      'right': 110.0,
+                      'bottom': 210.0,
+                    },
+                    'normalizedBox': {
+                      'left': 0.1,
+                      'top': 0.1,
+                      'right': 0.5,
+                      'bottom': 0.9,
+                    },
+                  },
+                ],
+                'processingTimeMs': 25.5,
+              };
+            }
+            return null;
+          });
 
       final yolo = YOLO(modelPath: 'yolo11n.tflite', task: YOLOTask.detect);
 
@@ -82,9 +82,9 @@ void main() {
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        log.add(methodCall);
-        return methodCall.method == 'loadModel' ? true : {};
-      });
+            log.add(methodCall);
+            return methodCall.method == 'loadModel' ? true : {};
+          });
 
       for (final path in modelPaths) {
         log.clear();
@@ -98,16 +98,16 @@ void main() {
     test('all task types can be loaded and used', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        log.add(methodCall);
+            log.add(methodCall);
 
-        if (methodCall.method == 'loadModel') {
-          return true;
-        } else if (methodCall.method == 'predictSingleImage') {
-          final task = methodCall.arguments['task'] ?? 'detect';
-          return _getMockResultForTask(task);
-        }
-        return null;
-      });
+            if (methodCall.method == 'loadModel') {
+              return true;
+            } else if (methodCall.method == 'predictSingleImage') {
+              final task = methodCall.arguments['task'] ?? 'detect';
+              return _getMockResultForTask(task);
+            }
+            return null;
+          });
 
       for (final task in YOLOTask.values) {
         log.clear();
@@ -134,14 +134,14 @@ void main() {
     test('handles very large image data', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        if (methodCall.method == 'loadModel') return true;
-        if (methodCall.method == 'predictSingleImage') {
-          final imageData = methodCall.arguments['image'] as Uint8List;
-          expect(imageData.length, greaterThan(1000000)); // > 1MB
-          return {'boxes': []};
-        }
-        return null;
-      });
+            if (methodCall.method == 'loadModel') return true;
+            if (methodCall.method == 'predictSingleImage') {
+              final imageData = methodCall.arguments['image'] as Uint8List;
+              expect(imageData.length, greaterThan(1000000)); // > 1MB
+              return {'boxes': []};
+            }
+            return null;
+          });
 
       final yolo = YOLO(modelPath: 'test_model.tflite', task: YOLOTask.detect);
       await yolo.loadModel();
@@ -157,19 +157,19 @@ void main() {
       var callCount = 0;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        if (methodCall.method == 'loadModel') return true;
-        if (methodCall.method == 'predictSingleImage') {
-          callCount++;
-          if (callCount == 1) {
-            throw PlatformException(
-              code: 'NETWORK_ERROR',
-              message: 'Connection lost',
-            );
-          }
-          return {'boxes': []};
-        }
-        return null;
-      });
+            if (methodCall.method == 'loadModel') return true;
+            if (methodCall.method == 'predictSingleImage') {
+              callCount++;
+              if (callCount == 1) {
+                throw PlatformException(
+                  code: 'NETWORK_ERROR',
+                  message: 'Connection lost',
+                );
+              }
+              return {'boxes': []};
+            }
+            return null;
+          });
 
       final yolo = YOLO(modelPath: 'test_model.tflite', task: YOLOTask.detect);
       await yolo.loadModel();
@@ -187,14 +187,14 @@ void main() {
     test('model path with special characters', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        if (methodCall.method == 'loadModel') {
-          final path = methodCall.arguments['modelPath'] as String;
-          expect(path, contains('特殊字符'));
-          expect(path, contains('émojï'));
-          return true;
-        }
-        return null;
-      });
+            if (methodCall.method == 'loadModel') {
+              final path = methodCall.arguments['modelPath'] as String;
+              expect(path, contains('特殊字符'));
+              expect(path, contains('émojï'));
+              return true;
+            }
+            return null;
+          });
 
       final yolo = YOLO(
         modelPath: 'models/特殊字符_émojï_🤖_model.tflite',
@@ -207,14 +207,14 @@ void main() {
     test('predict with minimal valid image', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        if (methodCall.method == 'loadModel') return true;
-        if (methodCall.method == 'predictSingleImage') {
-          final imageData = methodCall.arguments['image'] as Uint8List;
-          expect(imageData.length, 1);
-          return {'boxes': []};
-        }
-        return null;
-      });
+            if (methodCall.method == 'loadModel') return true;
+            if (methodCall.method == 'predictSingleImage') {
+              final imageData = methodCall.arguments['image'] as Uint8List;
+              expect(imageData.length, 1);
+              return {'boxes': []};
+            }
+            return null;
+          });
 
       final yolo = YOLO(modelPath: 'test_model.tflite', task: YOLOTask.detect);
       await yolo.loadModel();
