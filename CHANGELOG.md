@@ -1,3 +1,22 @@
+## 0.1.5
+
+- Major UI revamp with improved design and user experience
+- Added support for multiple model types:
+  - Object Detection (YOLOv11)
+  - Pose Estimation
+  - Image Segmentation
+  - Oriented Bounding Box (OBB) Detection
+  - Image Classification
+- Enhanced camera functionality:
+  - Camera flipping between front and back cameras
+  - Camera zooming with pinch gestures
+  - Improved camera preview quality
+- Fixed CI/CD pipeline issues for pub.dev publishing
+- Updated package validation and documentation
+- Improved error handling and logging
+- Added comprehensive example app showcasing all features
+- Enhanced documentation with detailed usage examples
+
 ## 0.1.4
 
 - Fixed front camera orientation issue on Android where detection results were displayed upside down.
