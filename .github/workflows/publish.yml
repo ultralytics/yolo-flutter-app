@@ -27,33 +27,6 @@ jobs:
         run: |
           VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //')
           echo "current_tag=v$VERSION" >> $GITHUB_OUTPUT
-      - name: Create Tag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CURRENT_TAG: ${{ steps.get_version.outputs.current_tag }}
-        run: |
-          git config --global user.name "UltralyticsAssistant"
-          git config --global user.email "web@ultralytics.com"
-          # Check if tag exists
-          if git ls-remote --tags origin "$CURRENT_TAG" | grep -q "$CURRENT_TAG"; then
-            echo "Tag $CURRENT_TAG already exists, skipping tag creation"
-          else
-            git tag -a "$CURRENT_TAG" -m "$(git log -1 --pretty=%B)"
-            git push origin "$CURRENT_TAG"
-          fi
-          # Always create/update release
-          if gh release view "$CURRENT_TAG" &>/dev/null; then
-            echo "Release $CURRENT_TAG exists, updating..."
-            gh release edit "$CURRENT_TAG" \
-              --title "Release $CURRENT_TAG" \
-              --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
-          else
-            echo "Creating new release $CURRENT_TAG..."
-            gh release create "$CURRENT_TAG" \
-              --title "Release $CURRENT_TAG" \
-              --generate-notes \
-              --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
-          fi
 
   build:
     needs: check
@@ -62,8 +35,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.check.outputs.current_tag }}
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.29.3"
@@ -97,8 +68,43 @@ jobs:
       - uses: dart-lang/setup-dart@v1
       - run: dart pub publish --force
 
-  notify:
+  tag_and_release:
     needs: [check, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Tag and Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_TAG: ${{ needs.check.outputs.current_tag }}
+        run: |
+          git config --global user.name "UltralyticsAssistant"
+          git config --global user.email "web@ultralytics.com"
+          # Check if tag exists
+          if git ls-remote --tags origin "$CURRENT_TAG" | grep -q "$CURRENT_TAG"; then
+            echo "Tag $CURRENT_TAG already exists, skipping tag creation"
+          else
+            git tag -a "$CURRENT_TAG" -m "$(git log -1 --pretty=%B)"
+            git push origin "$CURRENT_TAG"
+          fi
+          # Always create/update release
+          if gh release view "$CURRENT_TAG" &>/dev/null; then
+            echo "Release $CURRENT_TAG exists, updating..."
+            gh release edit "$CURRENT_TAG" \
+              --title "Release $CURRENT_TAG" \
+              --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
+          else
+            echo "Creating new release $CURRENT_TAG..."
+            gh release create "$CURRENT_TAG" \
+              --title "Release $CURRENT_TAG" \
+              --generate-notes \
+              --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
+          fi
+
+  notify:
+    needs: [check, publish, tag_and_release]
     if: always()
     runs-on: ubuntu-latest
     permissions:
