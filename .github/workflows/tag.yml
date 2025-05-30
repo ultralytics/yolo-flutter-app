@@ -25,7 +25,7 @@ on:
 
 jobs:
   tag-and-release:
-    if: github.repository == 'ultralytics/yolo-flutter-app' && github.actor == 'glenn-jocher'
+    if: github.repository == 'ultralytics/yolo-flutter-app' && (github.actor == 'glenn-jocher' || github.actor == 'asabri97' || github.actor == 'john-rocky')
     name: Tag and Release
     runs-on: ubuntu-latest
     steps:
