@@ -256,12 +256,12 @@ class YOLOView @JvmOverloads constructor(
 
     fun setConfidenceThreshold(conf: Double) {
         confidenceThreshold = conf
-        (predictor as? ObjectDetector)?.setConfidenceThreshold(conf.toFloat())
+        (predictor as? ObjectDetector)?.setConfidenceThreshold(conf)
     }
 
     fun setIouThreshold(iou: Double) {
         iouThreshold = iou
-        (predictor as? ObjectDetector)?.setIouThreshold(iou.toFloat())
+        (predictor as? ObjectDetector)?.setIouThreshold(iou)
     }
 
     fun setNumItemsThreshold(n: Int) {
@@ -291,8 +291,8 @@ class YOLOView @JvmOverloads constructor(
             try {
                 val newPredictor = when (task) {
                     YOLOTask.DETECT -> ObjectDetector(context, modelPath, loadLabels(modelPath), useGpu = true).apply {
-                        setConfidenceThreshold(confidenceThreshold.toFloat())
-                        setIouThreshold(iouThreshold.toFloat())
+                        setConfidenceThreshold(confidenceThreshold)
+                        setIouThreshold(iouThreshold)
                         setNumItemsThreshold(numItemsThreshold)
                     }
                     YOLOTask.SEGMENT -> Segmenter(context, modelPath, loadLabels(modelPath), useGpu = true)

@@ -176,12 +176,30 @@ class SingleImageYOLO {
     return modelPath
   }
 
-  func predict(imageData: Data) -> [String: Any]? {
+  func predict(imageData: Data, confidenceThreshold: Double? = nil, iouThreshold: Double? = nil)
+    -> [String: Any]?
+  {
     guard let yolo = self.yolo, let uiImage = UIImage(data: imageData) else {
       return nil
     }
 
+    // Store original thresholds
+    let originalConfThreshold = yolo.confidenceThreshold
+    let originalIouThreshold = yolo.iouThreshold
+
+    // Apply custom thresholds if provided
+    if let confThreshold = confidenceThreshold {
+      yolo.confidenceThreshold = confThreshold
+    }
+    if let iouThreshold = iouThreshold {
+      yolo.iouThreshold = iouThreshold
+    }
+
     let result = yolo(uiImage)
+
+    // Restore original thresholds
+    yolo.confidenceThreshold = originalConfThreshold
+    yolo.iouThreshold = originalIouThreshold
 
     return convertToFlutterFormat(result: result)
   }
@@ -388,7 +406,15 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           return
         }
 
-        if let resultDict = SingleImageYOLO.shared.predict(imageData: data.data) {
+        // Extract optional threshold parameters
+        let confidenceThreshold = args["confidenceThreshold"] as? Double
+        let iouThreshold = args["iouThreshold"] as? Double
+
+        if let resultDict = SingleImageYOLO.shared.predict(
+          imageData: data.data,
+          confidenceThreshold: confidenceThreshold,
+          iouThreshold: iouThreshold
+        ) {
           result(resultDict)
         } else {
           result(

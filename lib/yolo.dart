@@ -152,7 +152,16 @@ class YOLO {
   ///
   /// Example:
   /// ```dart
+  /// // Basic usage with default thresholds
   /// final results = await yolo.predict(imageBytes);
+  ///
+  /// // Usage with custom thresholds
+  /// final results = await yolo.predict(
+  ///   imageBytes,
+  ///   confidenceThreshold: 0.6,
+  ///   iouThreshold: 0.5,
+  /// );
+  ///
   /// final boxes = results['boxes'] as List<Map<String, dynamic>>;
   /// for (var box in boxes) {
   ///   print('Class: ${box['class']}, Confidence: ${box['confidence']}');
@@ -162,19 +171,47 @@ class YOLO {
   /// Returns a map containing the inference results. If inference fails, throws an exception.
   ///
   /// @param imageBytes The raw image data as a Uint8List
+  /// @param confidenceThreshold Optional confidence threshold (0.0-1.0). Defaults to 0.25 if not specified.
+  /// @param iouThreshold Optional IoU threshold for NMS (0.0-1.0). Defaults to 0.4 if not specified.
   /// @return A map containing the inference results
   /// @throws [ModelNotLoadedException] if the model has not been loaded
   /// @throws [InferenceException] if there's an error during inference
   /// @throws [PlatformException] if there's an issue with the platform-specific code
-  Future<Map<String, dynamic>> predict(Uint8List imageBytes) async {
+  Future<Map<String, dynamic>> predict(
+    Uint8List imageBytes, {
+    double? confidenceThreshold,
+    double? iouThreshold,
+  }) async {
     if (imageBytes.isEmpty) {
       throw InvalidInputException('Image data is empty');
     }
 
+    // Validate threshold values if provided
+    if (confidenceThreshold != null &&
+        (confidenceThreshold < 0.0 || confidenceThreshold > 1.0)) {
+      throw InvalidInputException(
+        'Confidence threshold must be between 0.0 and 1.0',
+      );
+    }
+    if (iouThreshold != null && (iouThreshold < 0.0 || iouThreshold > 1.0)) {
+      throw InvalidInputException('IoU threshold must be between 0.0 and 1.0');
+    }
+
     try {
-      final result = await _channel.invokeMethod('predictSingleImage', {
-        'image': imageBytes,
-      });
+      final Map<String, dynamic> arguments = {'image': imageBytes};
+
+      // Add optional thresholds if provided
+      if (confidenceThreshold != null) {
+        arguments['confidenceThreshold'] = confidenceThreshold;
+      }
+      if (iouThreshold != null) {
+        arguments['iouThreshold'] = iouThreshold;
+      }
+
+      final result = await _channel.invokeMethod(
+        'predictSingleImage',
+        arguments,
+      );
 
       if (result is Map) {
         // Convert Map<Object?, Object?> to Map<String, dynamic>

@@ -1,3 +1,10 @@
+## 0.1.8
+
+- Add optional confidence and IoU thresholds for single image inference
+  - Thresholds can be passed to `predict()` method for temporary use
+  - Does not affect subsequent predictions or camera inference
+  - Useful for fine-tuning detection sensitivity per image
+
 ## 0.1.7
 
 - Updated package topics to comply with pub.dev requirements
