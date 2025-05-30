@@ -8,6 +8,7 @@ on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+' # Matches tags like v0.1.9, v1.0.0, etc.
+
   workflow_dispatch:
     inputs:
       pubdev:
@@ -56,7 +57,7 @@ jobs:
       - run: dart pub publish --force
 
   notify:
-    needs: publish
+    needs: publish    needs: [che
     if: always()
     runs-on: ubuntu-latest
     permissions:
