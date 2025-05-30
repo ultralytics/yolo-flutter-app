@@ -128,6 +128,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   private let maximumZoom: CGFloat = 10.0
   private var lastZoomFactor: CGFloat = 1.0
 
+  /// Callback for zoom level changes
+  public var onZoomChanged: ((CGFloat) -> Void)?
+
   public var capturedImage: UIImage?
   private var photoCaptureCompletion: ((UIImage?) -> Void)?
 
@@ -173,6 +176,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     task: YOLOTask,
     completion: ((Result<Void, Error>) -> Void)? = nil
   ) {
+    print("YOLOView.setModel: Received modelPath: \(modelPathOrName)")
+
     activityIndicator.startAnimating()
     boundingBoxViews.forEach { box in
       box.hide()
@@ -191,8 +196,11 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       || lowercasedPath.hasSuffix(".mlmodelc")
     {
       let possibleURL = URL(fileURLWithPath: modelPathOrName)
-      if fileManager.fileExists(atPath: possibleURL.path) {
+      var isDirectory: ObjCBool = false
+      if fileManager.fileExists(atPath: possibleURL.path, isDirectory: &isDirectory) {
         modelURL = possibleURL
+        print(
+          "YOLOView: Found model at: \(possibleURL.path) (isDirectory: \(isDirectory.boolValue))")
       }
     } else {
       if let compiledURL = Bundle.main.url(forResource: modelPathOrName, withExtension: "mlmodelc")
@@ -780,7 +788,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       labelSliderNumItems, sliderNumItems,
       labelSliderConf, sliderConf,
       labelSliderIoU, sliderIoU,
-      labelName, labelFPS,
+      labelName, labelFPS, labelZoom,
       toolbar, playButton, pauseButton, switchCameraButton,
     ]
 
@@ -1048,11 +1056,44 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       update(scale: newScaleFactor)
       self.labelZoom.text = String(format: "%.2fx", newScaleFactor)
       self.labelZoom.font = UIFont.preferredFont(forTextStyle: .title2)
+      // Notify zoom change
+      onZoomChanged?(newScaleFactor)
     case .ended:
       lastZoomFactor = minMaxZoom(newScaleFactor)
       update(scale: lastZoomFactor)
       self.labelZoom.font = UIFont.preferredFont(forTextStyle: .body)
+      // Notify final zoom level
+      onZoomChanged?(lastZoomFactor)
     default: break
+    }
+  }
+
+  /// Set the camera zoom level programmatically
+  public func setZoomLevel(_ zoomLevel: CGFloat) {
+    guard let device = videoCapture.captureDevice else { return }
+
+    // Return zoom value between the minimum and maximum zoom values
+    func minMaxZoom(_ factor: CGFloat) -> CGFloat {
+      return min(min(max(factor, minimumZoom), maximumZoom), device.activeFormat.videoMaxZoomFactor)
+    }
+
+    let newZoomFactor = minMaxZoom(zoomLevel)
+
+    do {
+      try device.lockForConfiguration()
+      defer {
+        device.unlockForConfiguration()
+      }
+      device.videoZoomFactor = newZoomFactor
+      lastZoomFactor = newZoomFactor
+
+      // Update zoom label
+      self.labelZoom.text = String(format: "%.1fx", newZoomFactor)
+
+      // Notify zoom change
+      onZoomChanged?(newZoomFactor)
+    } catch {
+      print("Failed to set zoom level: \(error.localizedDescription)")
     }
   }
 

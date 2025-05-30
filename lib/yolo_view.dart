@@ -3,10 +3,10 @@
 // lib/yolo_view.dart
 
 import 'dart:async';
-import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, debugPrint; // Explicitly import debugPrint
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 
@@ -51,6 +51,7 @@ import 'package:ultralytics_yolo/yolo_task.dart';
 /// ```
 class YOLOViewController {
   MethodChannel? _methodChannel;
+  int? _viewId;
 
   double _confidenceThreshold = 0.5;
   double _iouThreshold = 0.45;
@@ -74,14 +75,19 @@ class YOLOViewController {
   /// performance. Default is 30.
   int get numItemsThreshold => _numItemsThreshold;
 
-  void _init(MethodChannel methodChannel) {
+  @visibleForTesting
+  void init(MethodChannel methodChannel, int viewId) =>
+      _init(methodChannel, viewId);
+
+  void _init(MethodChannel methodChannel, int viewId) {
     _methodChannel = methodChannel;
+    _viewId = viewId;
     _applyThresholds();
   }
 
   Future<void> _applyThresholds() async {
     if (_methodChannel == null) {
-      debugPrint(
+      logInfo(
         'YOLOViewController: Warning - Cannot apply thresholds, view not yet created',
       );
       return;
@@ -92,33 +98,33 @@ class YOLOViewController {
         'iouThreshold': _iouThreshold,
         'numItemsThreshold': _numItemsThreshold,
       });
-      debugPrint(
+      logInfo(
         'YOLOViewController: Applied thresholds - confidence: $_confidenceThreshold, IoU: $_iouThreshold, numItems: $_numItemsThreshold',
       );
     } catch (e) {
-      debugPrint('YOLOViewController: Error applying combined thresholds: $e');
+      logInfo('YOLOViewController: Error applying combined thresholds: $e');
       try {
-        debugPrint(
+        logInfo(
           'YOLOViewController: Trying individual threshold methods as fallback',
         );
         await _methodChannel!.invokeMethod('setConfidenceThreshold', {
           'threshold': _confidenceThreshold,
         });
-        debugPrint(
+        logInfo(
           'YOLOViewController: Applied confidence threshold: $_confidenceThreshold',
         );
         await _methodChannel!.invokeMethod('setIoUThreshold', {
           'threshold': _iouThreshold,
         });
-        debugPrint('YOLOViewController: Applied IoU threshold: $_iouThreshold');
+        logInfo('YOLOViewController: Applied IoU threshold: $_iouThreshold');
         await _methodChannel!.invokeMethod('setNumItemsThreshold', {
           'numItems': _numItemsThreshold,
         });
-        debugPrint(
+        logInfo(
           'YOLOViewController: Applied numItems threshold: $_numItemsThreshold',
         );
       } catch (e2) {
-        debugPrint(
+        logInfo(
           'YOLOViewController: Error applying individual thresholds: $e2',
         );
       }
@@ -139,7 +145,7 @@ class YOLOViewController {
     final clampedThreshold = threshold.clamp(0.0, 1.0);
     _confidenceThreshold = clampedThreshold;
     if (_methodChannel == null) {
-      debugPrint(
+      logInfo(
         'YOLOViewController: Warning - Cannot apply confidence threshold, view not yet created',
       );
       return;
@@ -148,11 +154,11 @@ class YOLOViewController {
       await _methodChannel!.invokeMethod('setConfidenceThreshold', {
         'threshold': clampedThreshold,
       });
-      debugPrint(
+      logInfo(
         'YOLOViewController: Applied confidence threshold: $_confidenceThreshold',
       );
     } catch (e) {
-      debugPrint('YOLOViewController: Error applying confidence threshold: $e');
+      logInfo('YOLOViewController: Error applying confidence threshold: $e');
       return _applyThresholds();
     }
   }
@@ -172,7 +178,7 @@ class YOLOViewController {
     final clampedThreshold = threshold.clamp(0.0, 1.0);
     _iouThreshold = clampedThreshold;
     if (_methodChannel == null) {
-      debugPrint(
+      logInfo(
         'YOLOViewController: Warning - Cannot apply IoU threshold, view not yet created',
       );
       return;
@@ -181,9 +187,9 @@ class YOLOViewController {
       await _methodChannel!.invokeMethod('setIoUThreshold', {
         'threshold': clampedThreshold,
       });
-      debugPrint('YOLOViewController: Applied IoU threshold: $_iouThreshold');
+      logInfo('YOLOViewController: Applied IoU threshold: $_iouThreshold');
     } catch (e) {
-      debugPrint('YOLOViewController: Error applying IoU threshold: $e');
+      logInfo('YOLOViewController: Error applying IoU threshold: $e');
       return _applyThresholds();
     }
   }
@@ -203,7 +209,7 @@ class YOLOViewController {
     final clampedValue = numItems.clamp(1, 100);
     _numItemsThreshold = clampedValue;
     if (_methodChannel == null) {
-      debugPrint(
+      logInfo(
         'YOLOViewController: Warning - Cannot apply numItems threshold, view not yet created',
       );
       return;
@@ -212,20 +218,19 @@ class YOLOViewController {
       await _methodChannel!.invokeMethod('setNumItemsThreshold', {
         'numItems': clampedValue,
       });
-      debugPrint(
+      logInfo(
         'YOLOViewController: Applied numItems threshold: $_numItemsThreshold',
       );
-    } catch (e) {
-      debugPrint('YOLOViewController: Error applying numItems threshold: $e');
       return _applyThresholds();
+    } catch (e) {
+      logInfo('YOLOViewController: Error applying numItems threshold: $e');
     }
   }
 
   /// Sets multiple thresholds at once.
   ///
-  /// This is more efficient than calling individual threshold setters
-  /// when you need to update multiple values. Only non-null parameters
-  /// will be updated.
+  /// This method allows updating multiple thresholds in a single call,
+  /// which is more efficient than setting them individually.
   ///
   /// Example:
   /// ```dart
@@ -267,16 +272,87 @@ class YOLOViewController {
   /// ```
   Future<void> switchCamera() async {
     if (_methodChannel == null) {
-      debugPrint(
+      logInfo(
         'YOLOViewController: Warning - Cannot switch camera, view not yet created',
       );
       return;
     }
     try {
       await _methodChannel!.invokeMethod('switchCamera');
-      debugPrint('YOLOViewController: Camera switched successfully');
+      logInfo('YOLOViewController: Camera switched successfully');
     } catch (e) {
-      debugPrint('YOLOViewController: Error switching camera: $e');
+      logInfo('YOLOViewController: Error switching camera: $e');
+    }
+  }
+
+  /// Sets the camera zoom level to a specific value.
+  ///
+  /// The zoom level must be within the supported range of the camera.
+  /// Typical values are 0.5x, 1.0x, 2.0x, 3.0x, etc.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Set zoom to 2x
+  /// await controller.setZoomLevel(2.0);
+  /// ```
+  Future<void> setZoomLevel(double zoomLevel) async {
+    if (_methodChannel == null) {
+      logInfo(
+        'YoloViewController: Warning - Cannot set zoom level, view not yet created',
+      );
+      return;
+    }
+    try {
+      await _methodChannel!.invokeMethod('setZoomLevel', {
+        'zoomLevel': zoomLevel,
+      });
+      logInfo('YoloViewController: Zoom level set to $zoomLevel');
+    } catch (e) {
+      logInfo('YoloViewController: Error setting zoom level: $e');
+    }
+  }
+
+  /// Switches to a different YOLO model.
+  ///
+  /// This method allows changing the model without recreating the entire view.
+  /// The view must be created before calling this method.
+  ///
+  /// Parameters:
+  /// - [modelPath]: Path to the new model file
+  /// - [task]: The YOLO task type for the new model
+  ///
+  /// Example:
+  /// ```dart
+  /// await controller.switchModel(
+  ///   'assets/models/yolov8s.mlmodel',
+  ///   YOLOTask.segment,
+  /// );
+  /// ```
+  ///
+  /// @param modelPath The path to the new model file
+  /// @param task The task type for the new model
+  Future<void> switchModel(String modelPath, YOLOTask task) async {
+    if (_methodChannel == null || _viewId == null) {
+      logInfo(
+        'YoloViewController: Warning - Cannot switch model, view not yet created',
+      );
+      return;
+    }
+    try {
+      logInfo('YoloViewController: Switching model with viewId: $_viewId');
+
+      // Call the platform method to switch model
+      await const MethodChannel('yolo_single_image_channel').invokeMethod(
+        'setModel',
+        {'viewId': _viewId, 'modelPath': modelPath, 'task': task.name},
+      );
+
+      logInfo(
+        'YoloViewController: Model switched successfully to $modelPath with task ${task.name}',
+      );
+    } catch (e) {
+      logInfo('YoloViewController: Error switching model: $e');
+      rethrow;
     }
   }
 }
@@ -353,6 +429,11 @@ class YOLOView extends StatefulWidget {
   /// such as bounding boxes and labels drawn natively.
   final bool showNativeUI;
 
+  /// Callback invoked when the camera zoom level changes.
+  ///
+  /// Provides the current zoom level as a double value (e.g., 1.0, 2.0, 3.5).
+  final Function(double zoomLevel)? onZoomChanged;
+
   const YOLOView({
     super.key,
     required this.modelPath,
@@ -362,6 +443,7 @@ class YOLOView extends StatefulWidget {
     this.onResult,
     this.onPerformanceMetrics,
     this.showNativeUI = false,
+    this.onZoomChanged,
   });
 
   @override
@@ -380,26 +462,17 @@ class YOLOViewState extends State<YOLOView> {
   late YOLOViewController _effectiveController;
 
   final String _viewId = UniqueKey().toString();
+  int? _platformViewId;
 
   @override
   void initState() {
     super.initState();
 
-    debugPrint(
-      'YOLOView (Dart initState): Creating channels with _viewId: $_viewId',
-    );
-
     final resultChannelName = 'com.ultralytics.yolo/detectionResults_$_viewId';
     _resultEventChannel = EventChannel(resultChannelName);
-    debugPrint(
-      'YOLOView (Dart initState): Result EventChannel created: $resultChannelName',
-    );
 
     final controlChannelName = 'com.ultralytics.yolo/controlChannel_$_viewId';
     _methodChannel = MethodChannel(controlChannelName);
-    debugPrint(
-      'YOLOView (Dart initState): Control MethodChannel created: $controlChannelName',
-    );
 
     _setupController();
 
@@ -414,7 +487,8 @@ class YOLOViewState extends State<YOLOView> {
     } else {
       _effectiveController = YOLOViewController();
     }
-    _effectiveController._init(_methodChannel);
+    // Don't initialize here since we don't have the platform view ID yet
+    // It will be initialized in _onPlatformViewCreated
   }
 
   @override
@@ -440,27 +514,91 @@ class YOLOViewState extends State<YOLOView> {
         'show': widget.showNativeUI,
       });
     }
+
+    // Handle model or task changes
+    if (_platformViewId != null &&
+        (oldWidget.modelPath != widget.modelPath ||
+            oldWidget.task != widget.task)) {
+      _effectiveController
+          .switchModel(widget.modelPath, widget.task)
+          .catchError((e) {
+            logInfo('YoloView: Error switching model in didUpdateWidget: $e');
+          });
+    }
   }
 
   @override
   void dispose() {
+    // TODO: Uncomment when stop() method is available
+    // Stop camera and inference before disposing
+    // _effectiveController.stop().catchError((e) {
+    //   logInfo('YOLOView: Error stopping camera during dispose: $e');
+    // });
+
+    // Cancel event subscriptions
     _cancelResultSubscription();
+
+    // Clean up method channel handler
+    _methodChannel.setMethodCallHandler(null);
+
     super.dispose();
+  }
+
+  @visibleForTesting
+  void subscribeToResults() => _subscribeToResults();
+
+  @visibleForTesting
+  StreamSubscription<dynamic>? get resultSubscription => _resultSubscription;
+
+  @visibleForTesting
+  MethodChannel get methodChannel => _methodChannel;
+
+  @visibleForTesting
+  YOLOViewController get effectiveController => _effectiveController;
+
+  @visibleForTesting
+  Future<dynamic> handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'recreateEventChannel':
+        logInfo(
+          'YOLOView: Platform requested recreation of event channel for $_viewId',
+        );
+        _cancelResultSubscription();
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted &&
+              (widget.onResult != null ||
+                  widget.onPerformanceMetrics != null)) {
+            _subscribeToResults();
+            logInfo('YOLOView: Event channel recreated for $_viewId');
+          }
+        });
+        return null;
+      case 'onZoomChanged':
+        final zoomLevel = call.arguments as double?;
+        if (zoomLevel != null && widget.onZoomChanged != null) {
+          logInfo('YoloView: Zoom level changed to $zoomLevel');
+          widget.onZoomChanged!(zoomLevel);
+        }
+        return null;
+      default:
+        logInfo('YOLOView: Unknown method call: ${call.method}');
+        return null;
+    }
   }
 
   void _subscribeToResults() {
     _cancelResultSubscription();
 
-    debugPrint(
+    logInfo(
       'YOLOView: Setting up event stream listener for channel: ${_resultEventChannel.name}',
     );
 
     _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
       (dynamic event) {
-        debugPrint('YOLOView: Received event from native platform: $event');
+        logInfo('YOLOView: Received event from native platform: $event');
 
         if (event is Map && event.containsKey('test')) {
-          debugPrint('YOLOView: Received test message: ${event['test']}');
+          logInfo('YOLOView: Received test message: ${event['test']}');
           return;
         }
 
@@ -469,34 +607,34 @@ class YOLOViewState extends State<YOLOView> {
           if (widget.onResult != null && event.containsKey('detections')) {
             try {
               final List<dynamic> detections = event['detections'] ?? [];
-              debugPrint('YOLOView: Received ${detections.length} detections');
+              logInfo('YOLOView: Received ${detections.length} detections');
 
               for (var i = 0; i < detections.length && i < 3; i++) {
                 final detection = detections[i];
                 final className = detection['className'] ?? 'unknown';
                 final confidence = detection['confidence'] ?? 0.0;
-                debugPrint(
+                logInfo(
                   'YOLOView: Detection $i - $className (${(confidence * 100).toStringAsFixed(1)}%)',
                 );
               }
 
               final results = _parseDetectionResults(event);
-              debugPrint('YOLOView: Parsed results count: ${results.length}');
+              logInfo('YOLOView: Parsed results count: ${results.length}');
               widget.onResult!(results);
-              debugPrint('YOLOView: Called onResult callback with results');
+              logInfo('YOLOView: Called onResult callback with results');
             } catch (e, s) {
-              debugPrint('Error parsing detection results: $e');
-              debugPrint('Stack trace for detection error: $s');
-              debugPrint(
+              logInfo('Error parsing detection results: $e');
+              logInfo('Stack trace for detection error: $s');
+              logInfo(
                 'YOLOView: Event keys for detection error: ${event.keys.toList()}',
               );
               if (event.containsKey('detections')) {
                 final detections = event['detections'];
-                debugPrint(
+                logInfo(
                   'YOLOView: Detections type for error: ${detections.runtimeType}',
                 );
                 if (detections is List && detections.isNotEmpty) {
-                  debugPrint(
+                  logInfo(
                     'YOLOView: First detection keys for error: ${detections.first?.keys?.toList()}',
                   );
                 }
@@ -516,75 +654,83 @@ class YOLOViewState extends State<YOLOView> {
                   'processingTimeMs': processingTimeMs,
                   'fps': fps,
                 });
-                debugPrint(
+                logInfo(
                   'YOLOView: Called onPerformanceMetrics callback with: processingTimeMs=$processingTimeMs, fps=$fps',
                 );
               }
             } catch (e, s) {
-              debugPrint('Error parsing performance metrics: $e');
-              debugPrint('Stack trace for metrics error: $s');
-              debugPrint(
+              logInfo('Error parsing performance metrics: $e');
+              logInfo('Stack trace for metrics error: $s');
+              logInfo(
                 'YOLOView: Event keys for metrics error: ${event.keys.toList()}',
               );
             }
           }
         } else {
-          debugPrint(
+          logInfo(
             'YOLOView: Received invalid event format or no relevant callbacks are set. Event type: ${event.runtimeType}',
           );
         }
       },
       onError: (dynamic error, StackTrace stackTrace) {
         // Added StackTrace
-        debugPrint('Error from detection results stream: $error');
-        debugPrint('Stack trace from stream error: $stackTrace');
+        logInfo('Error from detection results stream: $error');
+        logInfo('Stack trace from stream error: $stackTrace');
 
         Future.delayed(const Duration(seconds: 2), () {
           if (_resultSubscription != null && mounted) {
             // Check mounted before resubscribing
-            debugPrint('YOLOView: Attempting to resubscribe after error');
+            logInfo('YOLOView: Attempting to resubscribe after error');
             _subscribeToResults();
           } else {
-            debugPrint(
+            logInfo(
               'YOLOView: Not resubscribing (stream already null or widget disposed)',
             );
           }
         });
       },
       onDone: () {
-        debugPrint('YOLOView: Event stream closed for $_viewId');
+        logInfo('YOLOView: Event stream closed for $_viewId');
         _resultSubscription = null;
       },
     );
-    debugPrint('YOLOView: Event stream listener setup complete for $_viewId');
+    logInfo('YOLOView: Event stream listener setup complete for $_viewId');
+  }
+
+  @visibleForTesting
+  void cancelResultSubscription() {
+    _cancelResultSubscription();
   }
 
   void _cancelResultSubscription() {
     if (_resultSubscription != null) {
-      debugPrint(
-        'YOLOView: Cancelling existing result subscription for $_viewId',
-      );
+      logInfo('YOLOView: Cancelling existing result subscription for $_viewId');
       _resultSubscription!.cancel();
       _resultSubscription = null;
     }
   }
 
+  @visibleForTesting
+  List<YOLOResult> parseDetectionResults(Map<dynamic, dynamic> event) {
+    return _parseDetectionResults(event);
+  }
+
   List<YOLOResult> _parseDetectionResults(Map<dynamic, dynamic> event) {
     final List<dynamic> detectionsData = event['detections'] ?? [];
-    debugPrint('YOLOView: Parsing ${detectionsData.length} detections');
+    logInfo('YOLOView: Parsing ${detectionsData.length} detections');
 
     if (detectionsData.isNotEmpty) {
       final first = detectionsData.first;
-      debugPrint(
+      logInfo(
         'YOLOView: First detection structure: ${first.runtimeType} with keys: ${first is Map ? first.keys.toList() : "not a map"}',
       );
 
       if (first is Map) {
-        debugPrint('YOLOView: ClassIndex: ${first["classIndex"]}');
-        debugPrint('YOLOView: ClassName: ${first["className"]}');
-        debugPrint('YOLOView: Confidence: ${first["confidence"]}');
-        debugPrint('YOLOView: BoundingBox: ${first["boundingBox"]}');
-        debugPrint('YOLOView: NormalizedBox: ${first["normalizedBox"]}');
+        logInfo('YOLOView: ClassIndex: ${first["classIndex"]}');
+        logInfo('YOLOView: ClassName: ${first["className"]}');
+        logInfo('YOLOView: Confidence: ${first["confidence"]}');
+        logInfo('YOLOView: BoundingBox: ${first["boundingBox"]}');
+        logInfo('YOLOView: NormalizedBox: ${first["normalizedBox"]}');
       }
     }
 
@@ -593,16 +739,16 @@ class YOLOViewState extends State<YOLOView> {
         try {
           return YOLOResult.fromMap(detection);
         } catch (e) {
-          debugPrint('YOLOView: Error parsing single detection: $e');
-          debugPrint('YOLOView: Problem detection data: $detection');
+          logInfo('YOLOView: Error parsing single detection: $e');
+          logInfo('YOLOView: Problem detection data: $detection');
           rethrow;
         }
       }).toList();
 
-      debugPrint('YOLOView: Successfully parsed ${results.length} results');
+      logInfo('YOLOView: Successfully parsed ${results.length} results');
       return results;
     } catch (e) {
-      debugPrint('YOLOView: Error parsing detections list: $e');
+      logInfo('YOLOView: Error parsing detections list: $e');
       return [];
     }
   }
@@ -651,53 +797,36 @@ class YOLOViewState extends State<YOLOView> {
     return platformView;
   }
 
+  @visibleForTesting
+  void triggerPlatformViewCreated(int id) => _onPlatformViewCreated(id);
+
   void _onPlatformViewCreated(int id) {
-    debugPrint(
+    logInfo(
       'YOLOView: Platform view created with system id: $id, our viewId: $_viewId',
     );
+
+    _platformViewId = id;
 
     // _cancelResultSubscription(); // Already called in _subscribeToResults if needed
 
     if (widget.onResult != null || widget.onPerformanceMetrics != null) {
-      debugPrint(
+      logInfo(
         'YOLOView: Re-subscribing to results after platform view creation for $_viewId',
       );
       _subscribeToResults();
     }
 
+    logInfo('YoloView: Initializing controller with platform view ID: $id');
     _effectiveController._init(
       _methodChannel,
+      id,
     ); // Re-init controller with the now valid method channel
 
     _methodChannel.invokeMethod('setShowUIControls', {
       'show': widget.showNativeUI,
     });
 
-    _methodChannel.setMethodCallHandler((call) async {
-      debugPrint(
-        'YOLOView: Received method call from platform: ${call.method} for $_viewId',
-      );
-
-      switch (call.method) {
-        case 'recreateEventChannel':
-          debugPrint(
-            'YOLOView: Platform requested recreation of event channel for $_viewId',
-          );
-          _cancelResultSubscription();
-          Future.delayed(const Duration(milliseconds: 100), () {
-            if (mounted &&
-                (widget.onResult != null ||
-                    widget.onPerformanceMetrics != null)) {
-              _subscribeToResults();
-              debugPrint('YOLOView: Event channel recreated for $_viewId');
-            }
-          });
-          return null;
-        default:
-          debugPrint('YOLOView: Unknown method call: ${call.method}');
-          return null;
-      }
-    });
+    _methodChannel.setMethodCallHandler(handleMethodCall);
   }
 
   // Methods to be called via GlobalKey
@@ -749,5 +878,15 @@ class YOLOViewState extends State<YOLOView> {
   /// Returns a [Future] that completes when the camera has been switched.
   Future<void> switchCamera() {
     return _effectiveController.switchCamera();
+  }
+
+  /// Sets the camera zoom level to a specific value.
+  ///
+  /// The zoom level must be within the supported range of the camera.
+  /// Typical values are 0.5x, 1.0x, 2.0x, 3.0x, etc.
+  /// It delegates to the effective controller's setZoomLevel method.
+  /// Returns a [Future] that completes when the zoom level has been set.
+  Future<void> setZoomLevel(double zoomLevel) {
+    return _effectiveController.setZoomLevel(zoomLevel);
   }
 }

@@ -64,10 +64,8 @@ class SingleImageYOLO {
   }
 
   private func resolveModelPath(_ modelPath: String) -> String {
-    print("YOLOPlugin Debug: Resolving model path: \(modelPath)")
-
+    // 既に絶対パスの場合はそのまま返す
     if modelPath.hasPrefix("/") {
-      print("YOLOPlugin Debug: Using absolute path: \(modelPath)")
       return modelPath
     }
 
@@ -87,13 +85,11 @@ class SingleImageYOLO {
       ]
 
       for searchPath in searchPaths {
-        print("YOLOPlugin Debug: Searching in path: \(searchPath)")
-
+        // 完全な名前で検索
         if !searchPath.isEmpty,
           let assetPath = Bundle.main.path(
             forResource: fileName, ofType: nil, inDirectory: searchPath)
         {
-          print("YOLOPlugin Debug: Found at: \(assetPath)")
           return assetPath
         }
 
@@ -106,7 +102,6 @@ class SingleImageYOLO {
             let assetPath = Bundle.main.path(
               forResource: name, ofType: ext, inDirectory: searchPath)
           {
-            print("YOLOPlugin Debug: Found with ext at: \(assetPath)")
             return assetPath
           }
         }
@@ -115,17 +110,14 @@ class SingleImageYOLO {
           let assetPath = Bundle.main.path(
             forResource: fileNameWithoutExt, ofType: nil, inDirectory: searchPath)
         {
-          print("YOLOPlugin Debug: Found by filename only at: \(assetPath)")
           return assetPath
         }
       }
 
       for bundle in Bundle.allBundles {
         let bundleID = bundle.bundleIdentifier ?? "unknown"
-        print("YOLOPlugin Debug: Searching in bundle: \(bundleID)")
 
         if let assetPath = bundle.path(forResource: fileName, ofType: nil) {
-          print("YOLOPlugin Debug: Found in bundle \(bundleID) at: \(assetPath)")
           return assetPath
         }
 
@@ -135,13 +127,11 @@ class SingleImageYOLO {
           let ext = fileComponents.last ?? ""
 
           if let assetPath = bundle.path(forResource: name, ofType: ext) {
-            print("YOLOPlugin Debug: Found with ext in bundle \(bundleID) at: \(assetPath)")
             return assetPath
           }
         }
 
         if let assetPath = bundle.path(forResource: fileNameWithoutExt, ofType: nil) {
-          print("YOLOPlugin Debug: Found by filename only in bundle \(bundleID) at: \(assetPath)")
           return assetPath
         }
       }
@@ -153,7 +143,6 @@ class SingleImageYOLO {
 
       for path in possiblePaths {
         if fileManager.fileExists(atPath: path) {
-          print("YOLOPlugin Debug: Found in file system at: \(path)")
           return path
         }
       }
@@ -162,7 +151,6 @@ class SingleImageYOLO {
         let bundleID = bundle.bundleIdentifier ?? "unknown"
 
         if let path = bundle.path(forResource: modelPath, ofType: nil) {
-          print("YOLOPlugin Debug: Found filename in bundle \(bundleID) at: \(path)")
           return path
         }
 
@@ -172,7 +160,6 @@ class SingleImageYOLO {
           let ext = fileComponents.last ?? ""
 
           if let path = bundle.path(forResource: name, ofType: ext) {
-            print("YOLOPlugin Debug: Found with ext in bundle \(bundleID) at: \(path)")
             return path
           }
         }
@@ -181,12 +168,11 @@ class SingleImageYOLO {
       if let path = Bundle.main.path(
         forResource: modelPath, ofType: nil, inDirectory: "flutter_assets")
       {
-        print("YOLOPlugin Debug: Found in flutter_assets at: \(path)")
         return path
       }
     }
 
-    print("YOLOPlugin Debug: Using original path: \(modelPath)")
+    // ファイルが見つからなかった場合、元のパスをそのまま返す
     return modelPath
   }
 
@@ -425,6 +411,46 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
       case "getStoragePaths":
         let paths = getStoragePaths()
         result(paths)
+
+      case "setModel":
+        guard let args = call.arguments as? [String: Any],
+          let viewId = args["viewId"] as? Int,
+          let modelPath = args["modelPath"] as? String,
+          let taskString = args["task"] as? String
+        else {
+          result(
+            FlutterError(code: "bad_args", message: "Invalid arguments for setModel", details: nil)
+          )
+          return
+        }
+
+        let task = YOLOTask.fromString(taskString)
+
+        // Get the YOLOView instance from the factory
+        if let yoloView = SwiftYOLOPlatformViewFactory.getYOLOView(for: viewId) {
+          yoloView.setModel(modelPathOrName: modelPath, task: task) { modelResult in
+            switch modelResult {
+            case .success:
+              result(nil)  // Success
+            case .failure(let error):
+              result(
+                FlutterError(
+                  code: "MODEL_NOT_FOUND",
+                  message: "Failed to load model: \(modelPath) - \(error.localizedDescription)",
+                  details: nil
+                )
+              )
+            }
+          }
+        } else {
+          result(
+            FlutterError(
+              code: "VIEW_NOT_FOUND",
+              message: "YOLOView with id \(viewId) not found",
+              details: nil
+            )
+          )
+        }
 
       default:
         result(FlutterMethodNotImplemented)

@@ -29,4 +29,13 @@ class YOLOMethodChannel extends YOLOPlatform {
     );
     return version;
   }
+
+  @override
+  Future<void> setModel(int viewId, String modelPath, String task) async {
+    await methodChannel.invokeMethod<void>('setModel', {
+      'viewId': viewId,
+      'modelPath': modelPath,
+      'task': task,
+    });
+  }
 }

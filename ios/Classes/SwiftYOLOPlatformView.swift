@@ -69,6 +69,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     {
       let task = YOLOTask.fromString(taskRaw)
 
+      print("SwiftYOLOPlatformView: Received modelPath: \(modelName)")
+
       // Get new threshold parameters
       let confidenceThreshold = dict["confidenceThreshold"] as? Double ?? 0.5
       let iouThreshold = dict["iouThreshold"] as? Double ?? 0.45
@@ -96,6 +98,16 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       // Setup method channel handler
       setupMethodChannel()
+
+      // Setup zoom callback
+      yoloView?.onZoomChanged = { [weak self] zoomLevel in
+        self?.methodChannel.invokeMethod("onZoomChanged", arguments: Double(zoomLevel))
+      }
+
+      // Register this view with the factory
+      if let yoloView = yoloView {
+        SwiftYOLOPlatformViewFactory.register(yoloView, for: Int(viewId))
+      }
     }
   }
 
@@ -310,6 +322,24 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
             ))
         }
 
+      case "switchCamera":
+        print("SwiftYoloPlatformView: Received switchCamera call")
+        self.yoloView?.switchCameraTapped()
+        result(nil)  // Success
+
+      case "setZoomLevel":
+        if let args = call.arguments as? [String: Any],
+          let zoomLevel = args["zoomLevel"] as? Double
+        {
+          print("SwiftYoloPlatformView: Received setZoomLevel call with value: \(zoomLevel)")
+          self.yoloView?.setZoomLevel(CGFloat(zoomLevel))
+          result(nil)  // Success
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for setZoomLevel", details: nil))
+        }
+
       // Additional methods can be added here in the future
 
       default:
@@ -395,6 +425,12 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
     // Clean up method channel
     methodChannel.setMethodCallHandler(nil)
+
+    // Unregister from factory using Task
+    let capturedViewId = Int(viewId)
+    Task { @MainActor in
+      SwiftYOLOPlatformViewFactory.unregister(for: capturedViewId)
+    }
 
     // Clean up YOLOView
     // Only set to nil because MainActor-isolated methods can't be called directly

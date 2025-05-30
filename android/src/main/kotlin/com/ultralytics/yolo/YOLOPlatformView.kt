@@ -178,7 +178,12 @@ class YOLOPlatformView(
             }
             
             // Load model with the specified path and task
-            yoloView.setModel(modelPath, task, context)
+            yoloView.setModel(modelPath, task)
+            
+            // Setup zoom callback
+            yoloView.onZoomChanged = { zoomLevel ->
+                methodChannel?.invokeMethod("onZoomChanged", zoomLevel.toDouble())
+            }
             
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing YOLOPlatformView", e)
@@ -245,6 +250,16 @@ class YOLOPlatformView(
                     // Android doesn't have UI controls like iOS, so we just acknowledge the call
                     Log.d(TAG, "setShowUIControls called, but not applicable for Android")
                     result.success(null)
+                }
+                "setZoomLevel" -> {
+                    val zoomLevel = call.argument<Double>("zoomLevel")
+                    if (zoomLevel != null) {
+                        Log.d(TAG, "Setting zoom level to $zoomLevel")
+                        yoloView.setZoomLevel(zoomLevel.toFloat())
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "Zoom level is required", null)
+                    }
                 }
                 else -> {
                     Log.w(TAG, "Method not implemented: ${call.method}")
@@ -363,6 +378,17 @@ class YOLOPlatformView(
         ) {
             Log.d(TAG, "passRequestPermissionsResult called in YOLOPlatformView for viewId $viewId, delegating to yoloView")
             yoloView.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        }
+        
+        /**
+         * Sets a new model on the YoloView
+         * @param modelPath Path to the new model
+         * @param task The YOLO task type
+         * @param callback Callback to report success/failure
+         */
+        fun setModel(modelPath: String, task: YOLOTask, callback: ((Boolean) -> Unit)? = null) {
+            Log.d(TAG, "setModel called for viewId $viewId with model: $modelPath, task: $task")
+            yoloView.setModel(modelPath, task, callback)
         }
     
     /**

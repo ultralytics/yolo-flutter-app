@@ -12,10 +12,11 @@ import android.util.Log
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.Toast
+import android.view.ScaleGestureDetector
 import androidx.camera.core.*
+import androidx.camera.core.Camera
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.camera.core.Camera
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -25,7 +26,6 @@ import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
-import android.view.ScaleGestureDetector
 import android.widget.TextView
 import android.view.Gravity
 
@@ -168,17 +168,18 @@ class YOLOView @JvmOverloads constructor(
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
     private var camera: Camera? = null
     
-    // Zoom variables
+    // Zoom related
     private var currentZoomRatio = 1.0f
     private var minZoomRatio = 1.0f
-    private var maxZoomRatio = 1.0f
+    private var maxZoomRatio = 10.0f
     private lateinit var scaleGestureDetector: ScaleGestureDetector
-    private lateinit var zoomLabel: TextView
+    var onZoomChanged: ((Float) -> Unit)? = null
 
     // detection thresholds (can be changed externally via setters)
     private var confidenceThreshold = 0.25  // initial value
     private var iouThreshold = 0.45
     private var numItemsThreshold = 30
+    private lateinit var zoomLabel: TextView
 
     init {
         // Clear any existing children
@@ -212,27 +213,41 @@ class YOLOView @JvmOverloads constructor(
         overlayView.translationZ = 100f
         previewContainer.elevation = 1f
         
-        // 5) Add zoom label
+        // Add zoom label
         zoomLabel = TextView(context).apply {
+            layoutParams = LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER
+            }
             text = "1.0x"
-            textSize = 16f
+            textSize = 24f
             setTextColor(Color.WHITE)
             setBackgroundColor(Color.argb(128, 0, 0, 0))
             setPadding(16, 8, 16, 8)
             visibility = View.GONE
         }
+        addView(zoomLabel)
         
-        val zoomLabelParams = LayoutParams(
-            LayoutParams.WRAP_CONTENT,
-            LayoutParams.WRAP_CONTENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            topMargin = 32
-        }
-        addView(zoomLabel, zoomLabelParams)
-        
-        // Initialize pinch-to-zoom
-        scaleGestureDetector = ScaleGestureDetector(context, ScaleListener())
+        // Initialize scale gesture detector for pinch-to-zoom
+        scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                val scale = detector.scaleFactor
+                val newZoomRatio = currentZoomRatio * scale
+                
+                // Clamp zoom ratio between min and max
+                val clampedZoomRatio = newZoomRatio.coerceIn(minZoomRatio, camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: maxZoomRatio)
+                
+                camera?.cameraControl?.setZoomRatio(clampedZoomRatio)
+                currentZoomRatio = clampedZoomRatio
+                
+                // Notify zoom change
+                onZoomChanged?.invoke(currentZoomRatio)
+                
+                return true
+            }
+        })
 
         Log.d(TAG, "YoloView init: forced TextureView usage for camera preview + overlay on top.")
     }
@@ -253,12 +268,25 @@ class YOLOView @JvmOverloads constructor(
         numItemsThreshold = n
         (predictor as? ObjectDetector)?.setNumItemsThreshold(n)
     }
+    
+    fun setZoomLevel(zoomLevel: Float) {
+        camera?.let { cam: Camera ->
+            // Clamp zoom level between min and max
+            val clampedZoomRatio = zoomLevel.coerceIn(minZoomRatio, cam.cameraInfo.zoomState.value?.maxZoomRatio ?: maxZoomRatio)
+            
+            cam.cameraControl.setZoomRatio(clampedZoomRatio)
+            currentZoomRatio = clampedZoomRatio
+            
+            // Notify zoom change
+            onZoomChanged?.invoke(currentZoomRatio)
+        }
+    }
 
     // endregion
 
     // region Model / Task
 
-    fun setModel(modelPath: String, task: YOLOTask, context: Context) {
+    fun setModel(modelPath: String, task: YOLOTask, callback: ((Boolean) -> Unit)? = null) {
         Executors.newSingleThreadExecutor().execute {
             try {
                 val newPredictor = when (task) {
@@ -278,12 +306,14 @@ class YOLOView @JvmOverloads constructor(
                     this.predictor = newPredictor
                     this.modelName = modelPath.substringAfterLast("/")
                     modelLoadCallback?.invoke(true)
+                    callback?.invoke(true)
                     Log.d(TAG, "Model loaded successfully: $modelPath")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load model: $modelPath", e)
                 post {
                     modelLoadCallback?.invoke(false)
+                    callback?.invoke(false)
                 }
             }
         }
@@ -409,6 +439,10 @@ class YOLOView @JvmOverloads constructor(
                             preview,
                             imageAnalysis
                         )
+                        
+                        // Reset zoom to 1.0x when camera starts
+                        currentZoomRatio = 1.0f
+                        onZoomChanged?.invoke(currentZoomRatio)
 
                         Log.d(TAG, "Setting surface provider to previewView")
                         preview.setSurfaceProvider(previewView.surfaceProvider)
@@ -514,6 +548,10 @@ class YOLOView @JvmOverloads constructor(
             translationZ = 1000f
 
             setWillNotDraw(false)
+
+            // Make overlay not intercept touch events
+            isClickable = false
+            isFocusable = false
 
             Log.d(TAG, "OverlayView initialized with enhanced Z-order + hardware acceleration")
         }
@@ -919,12 +957,11 @@ class YOLOView @JvmOverloads constructor(
                 }
             }
         }
-    }
-    
-    // Touch event handling for pinch-to-zoom
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        scaleGestureDetector.onTouchEvent(event)
-        return true
+        
+        override fun onTouchEvent(event: MotionEvent?): Boolean {
+            // Pass through all touch events
+            return false
+        }
     }
     
     // Scale listener for pinch-to-zoom
@@ -958,5 +995,11 @@ class YOLOView @JvmOverloads constructor(
                 zoomLabel.visibility = View.GONE
             }, 2000)
         }
+    }
+    
+    // Touch event handling for pinch-to-zoom
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        scaleGestureDetector.onTouchEvent(event)
+        return true
     }
 }
