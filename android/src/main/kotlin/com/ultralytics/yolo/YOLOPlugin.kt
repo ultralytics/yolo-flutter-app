@@ -154,6 +154,8 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
         try {
           val args = call.arguments as? Map<*, *>
           val imageData = args?.get("image") as? ByteArray
+          val confidenceThreshold = args?.get("confidenceThreshold") as? Double
+          val iouThreshold = args?.get("iouThreshold") as? Double
 
           if (imageData == null) {
             result.error("bad_args", "No image data", null)
@@ -172,8 +174,38 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             return
           }
           
+          // Store original thresholds to restore after prediction
+          var originalConfThreshold: Double? = null
+          var originalIouThreshold: Double? = null
+          
+          // Apply thresholds if provided
+          if (confidenceThreshold != null) {
+            // Store original before changing
+            originalConfThreshold = when (yolo!!.task) {
+              YOLOTask.DETECT -> 0.25
+              YOLOTask.SEGMENT -> 0.25
+              YOLOTask.POSE -> 0.25
+              YOLOTask.OBB -> 0.25
+              else -> 0.25
+            }
+            yolo!!.setConfidenceThreshold(confidenceThreshold)
+          }
+          if (iouThreshold != null) {
+            // Store original before changing
+            originalIouThreshold = 0.4
+            yolo!!.setIouThreshold(iouThreshold)
+          }
+          
           // Run inference with new YOLO implementation
           val yoloResult = yolo!!.predict(bitmap, rotateForCamera = false)
+          
+          // Restore original thresholds if they were changed
+          if (originalConfThreshold != null) {
+            yolo!!.setConfidenceThreshold(originalConfThreshold)
+          }
+          if (originalIouThreshold != null) {
+            yolo!!.setIouThreshold(originalIouThreshold)
+          }
           
           // Create response
           val response = HashMap<String, Any>()

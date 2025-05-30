@@ -20,6 +20,26 @@ import UIKit
 public class YOLO {
   var predictor: Predictor!
 
+  /// Confidence threshold for filtering predictions (0.0-1.0)
+  public var confidenceThreshold: Double = 0.25 {
+    didSet {
+      // Apply to predictor if it has been loaded
+      if let basePredictor = predictor as? BasePredictor {
+        basePredictor.setConfidenceThreshold(confidence: confidenceThreshold)
+      }
+    }
+  }
+
+  /// IoU threshold for non-maximum suppression (0.0-1.0)
+  public var iouThreshold: Double = 0.4 {
+    didSet {
+      // Apply to predictor if it has been loaded
+      if let basePredictor = predictor as? BasePredictor {
+        basePredictor.setIouThreshold(iou: iouThreshold)
+      }
+    }
+  }
+
   public init(
     _ modelPathOrName: String, task: YOLOTask, completion: ((Result<YOLO, Error>) -> Void)? = nil
   ) {
