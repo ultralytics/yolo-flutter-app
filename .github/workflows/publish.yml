@@ -49,16 +49,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CURRENT_TAG: ${{ steps.check_pubdev.outputs.current_tag }}
           PREVIOUS_TAG: ${{ steps.check_pubdev.outputs.previous_tag }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           git config --global user.name "UltralyticsAssistant"
           git config --global user.email "web@ultralytics.com"
           git tag -a "$CURRENT_TAG" -m "$(git log -1 --pretty=%B)"
           git push origin "$CURRENT_TAG"
-          gh release create "$CURRENT_TAG" \
-            --title "Release $CURRENT_TAG" \
-            --generate-notes \
-            --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
+          ultralytics-actions-summarize-release
           uv cache prune --ci
+
   build:
     needs: check
     if: needs.check.outputs.increment == 'True'
