@@ -2,7 +2,7 @@
 
 # Publish package to pub.dev https://pub.dev/packages/ultralytics_yolo on tag changes
 
-name: Publish on tag
+name: Publish to pub.dev on Tag
 
 on:
   push:
@@ -10,7 +10,18 @@ on:
       - "v*"
 
 jobs:
-  publish:
+  build-and-publish:
+    runs-on: ubuntu-latest
     permissions:
-      id-token: write # Required for authentication using OIDC
-    uses: dart-lang/setup-dart/.github/workflows/publish.yml@main
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.3"
+          channel: "stable"
+          cache: true
+      - uses: dart-lang/setup-dart@v1
+      - run: flutter pub get
+      - run: dart pub publish --force
