@@ -154,14 +154,14 @@ class YOLO {
   /// ```dart
   /// // Basic usage with default thresholds
   /// final results = await yolo.predict(imageBytes);
-  /// 
+  ///
   /// // Usage with custom thresholds
   /// final results = await yolo.predict(
   ///   imageBytes,
   ///   confidenceThreshold: 0.6,
   ///   iouThreshold: 0.5,
   /// );
-  /// 
+  ///
   /// final boxes = results['boxes'] as List<Map<String, dynamic>>;
   /// for (var box in boxes) {
   ///   print('Class: ${box['class']}, Confidence: ${box['confidence']}');
@@ -187,18 +187,19 @@ class YOLO {
     }
 
     // Validate threshold values if provided
-    if (confidenceThreshold != null && (confidenceThreshold < 0.0 || confidenceThreshold > 1.0)) {
-      throw InvalidInputException('Confidence threshold must be between 0.0 and 1.0');
+    if (confidenceThreshold != null &&
+        (confidenceThreshold < 0.0 || confidenceThreshold > 1.0)) {
+      throw InvalidInputException(
+        'Confidence threshold must be between 0.0 and 1.0',
+      );
     }
     if (iouThreshold != null && (iouThreshold < 0.0 || iouThreshold > 1.0)) {
       throw InvalidInputException('IoU threshold must be between 0.0 and 1.0');
     }
 
     try {
-      final Map<String, dynamic> arguments = {
-        'image': imageBytes,
-      };
-      
+      final Map<String, dynamic> arguments = {'image': imageBytes};
+
       // Add optional thresholds if provided
       if (confidenceThreshold != null) {
         arguments['confidenceThreshold'] = confidenceThreshold;
@@ -206,8 +207,11 @@ class YOLO {
       if (iouThreshold != null) {
         arguments['iouThreshold'] = iouThreshold;
       }
-      
-      final result = await _channel.invokeMethod('predictSingleImage', arguments);
+
+      final result = await _channel.invokeMethod(
+        'predictSingleImage',
+        arguments,
+      );
 
       if (result is Map) {
         // Convert Map<Object?, Object?> to Map<String, dynamic>

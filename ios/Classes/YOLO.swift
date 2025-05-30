@@ -19,7 +19,7 @@ import UIKit
 /// The primary interface for working with YOLO models, supporting multiple input types and inference methods.
 public class YOLO {
   var predictor: Predictor!
-  
+
   /// Confidence threshold for filtering predictions (0.0-1.0)
   public var confidenceThreshold: Double = 0.25 {
     didSet {
@@ -29,7 +29,7 @@ public class YOLO {
       }
     }
   }
-  
+
   /// IoU threshold for non-maximum suppression (0.0-1.0)
   public var iouThreshold: Double = 0.4 {
     didSet {

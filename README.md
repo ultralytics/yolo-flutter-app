@@ -465,6 +465,7 @@ YOLO({
 ##### Methods
 
 ###### loadModel()
+
 Loads the YOLO model for inference. Must be called before `predict()`.
 
 ```dart
@@ -473,6 +474,7 @@ await yolo.loadModel();
 ```
 
 ###### predict()
+
 Runs inference on a single image with optional threshold parameters. The thresholds are only applied for this specific prediction and do not affect subsequent predictions.
 
 ```dart
