@@ -1,0 +1,136 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# Publish package to pub.dev https://pub.dev/packages/ultralytics_yolo
+
+name: Publish to pub.dev
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pubdev:
+        type: boolean
+        description: Publish to pub.dev
+
+jobs:
+  check:
+    if: github.repository == 'ultralytics/yolo-flutter-app' && (github.actor == 'glenn-jocher' || github.actor == 'asabri97' || github.actor == 'john-rocky')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      increment: ${{ steps.check_pubdev.outputs.increment }}
+      current_tag: ${{ steps.check_pubdev.outputs.current_tag }}
+      previous_tag: ${{ steps.check_pubdev.outputs.previous_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+      - run: uv pip install --system --no-cache ultralytics-actions
+      - id: check_pubdev
+        shell: python
+        run: |
+          import os
+          from actions.utils import check_pubdev_version
+          local_version, online_version, publish = check_pubdev_version()
+          os.system(f'echo "increment={publish}" >> $GITHUB_OUTPUT')
+          os.system(f'echo "current_tag=v{local_version}" >> $GITHUB_OUTPUT')
+          os.system(f'echo "previous_tag=v{online_version}" >> $GITHUB_OUTPUT')
+          if publish:
+              print('Ready to publish new version to pub.dev ✅.')
+      - name: Tag and Release
+        if: steps.check_pubdev.outputs.increment == 'True'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_TAG: ${{ steps.check_pubdev.outputs.current_tag }}
+          PREVIOUS_TAG: ${{ steps.check_pubdev.outputs.previous_tag }}
+        run: |
+          git config --global user.name "UltralyticsAssistant"
+          git config --global user.email "web@ultralytics.com"
+          git tag -a "$CURRENT_TAG" -m "$(git log -1 --pretty=%B)"
+          git push origin "$CURRENT_TAG"
+          gh release create "$CURRENT_TAG" \
+            --title "Release $CURRENT_TAG" \
+            --generate-notes \
+            --notes "🎉 New release of ultralytics_yolo package published to pub.dev"
+          uv cache prune --ci
+  build:
+    needs: check
+    if: needs.check.outputs.increment == 'True'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.3"
+          channel: "stable"
+          cache: true
+      - run: flutter pub get
+      - run: dart pub publish --dry-run
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: .
+
+  publish:
+    needs: [check, build]
+    if: needs.check.outputs.increment == 'True'
+    runs-on: ubuntu-latest
+    environment: # for GitHub Deployments tab
+      name: Release - pub.dev
+      url: https://pub.dev/packages/ultralytics_yolo
+    permissions:
+      id-token: write # for pub.dev trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: package
+          path: .
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.29.3"
+          channel: "stable"
+          cache: true
+      - uses: dart-lang/setup-dart@v1
+      - run: dart pub publish --force
+
+  notify:
+    needs: [check, publish]
+    if: always() && needs.check.outputs.increment == 'True'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract PR Details
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_JSON=$(gh pr list --search "${GITHUB_SHA}" --state merged --json number,title --jq '.[0]')
+          PR_NUMBER=$(echo "${PR_JSON}" | jq -r '.number')
+          PR_TITLE=$(echo "${PR_JSON}" | jq -r '.title')
+          echo "PR_NUMBER=${PR_NUMBER}" >> "${GITHUB_ENV}"
+          echo "PR_TITLE=${PR_TITLE}" >> "${GITHUB_ENV}"
+      - name: Notify Success
+        if: needs.publish.result == 'success' && github.event_name == 'push'
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook-type: incoming-webhook
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUB }}
+          payload: |
+            text: "<!channel> GitHub Actions success for ${{ github.workflow }} ✅\n\n\n*Repository:* https://github.com/${{ github.repository }}\n*Action:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Author:* ${{ github.actor }}\n*Event:* NEW `ultralytics_yolo ${{ needs.check.outputs.current_tag }}` pub.dev package published 🎉\n*Job Status:* ${{ job.status }}\n*Pull Request:* <https://github.com/${{ github.repository }}/pull/${{ env.PR_NUMBER }}> ${{ env.PR_TITLE }}\n"
+      - name: Notify Failure
+        if: needs.publish.result != 'success'
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook-type: incoming-webhook
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUB }}
+          payload: |
+            text: "<!channel> GitHub Actions error for ${{ github.workflow }} ❌\n\n\n*Repository:* https://github.com/${{ github.repository }}\n*Action:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Author:* ${{ github.actor }}\n*Event:* ${{ github.event_name }}\n*Job Status:* ${{ job.status }}\n*Pull Request:* <https://github.com/${{ github.repository }}/pull/${{ env.PR_NUMBER }}> ${{ env.PR_TITLE }}\n"
