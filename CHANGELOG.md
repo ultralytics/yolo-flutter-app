@@ -1,3 +1,8 @@
+## 0.1.7
+
+- Updated package topics to comply with pub.dev requirements
+- Improved package validation and documentation
+
 ## 0.1.6
 
 - Fixed CI/CD pipeline issues for pub.dev publishing
