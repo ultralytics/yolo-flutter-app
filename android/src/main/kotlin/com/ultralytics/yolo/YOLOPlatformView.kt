@@ -185,6 +185,25 @@ class YOLOPlatformView(
                         result.error("invalid_args", "Zoom level is required", null)
                     }
                 }
+                "setStreamingConfig" -> {
+                    Log.d(TAG, "Received setStreamingConfig call")
+                    val streamConfig = YOLOStreamConfig(
+                        includeDetections = call.argument<Boolean>("includeDetections") ?: true,
+                        includeClassifications = call.argument<Boolean>("includeClassifications") ?: true,
+                        includeProcessingTimeMs = call.argument<Boolean>("includeProcessingTimeMs") ?: true,
+                        includeFps = call.argument<Boolean>("includeFps") ?: true,
+                        includeMasks = call.argument<Boolean>("includeMasks") ?: false,
+                        includePoses = call.argument<Boolean>("includePoses") ?: false,
+                        includeOBB = call.argument<Boolean>("includeOBB") ?: false,
+                        includeAnnotatedImage = call.argument<Boolean>("includeAnnotatedImage") ?: false,
+                        includeOriginalImage = call.argument<Boolean>("includeOriginalImage") ?: false,
+                        maxFPS = call.argument<Int>("maxFPS"),
+                        throttleIntervalMs = call.argument<Int>("throttleInterval")
+                    )
+                    yoloView.setStreamConfig(streamConfig)
+                    Log.d(TAG, "YOLOView streaming config updated: $streamConfig")
+                    result.success(null)
+                }
                 else -> {
                     Log.w(TAG, "Method not implemented: ${call.method}")
                     result.notImplemented()
@@ -230,9 +249,9 @@ class YOLOPlatformView(
                 }
             )
         } else {
-            // Use default balanced configuration for optimal performance/features balance
-            Log.d(TAG, "Using default BALANCED streaming config")
-            YOLOStreamConfig.BALANCED
+            // Use default minimal configuration for optimal performance
+            Log.d(TAG, "Using default streaming config")
+            YOLOStreamConfig.DEFAULT
         }
         
         // Configure YOLOView with the stream config

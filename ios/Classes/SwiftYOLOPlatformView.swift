@@ -318,6 +318,21 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
               code: "invalid_args", message: "Invalid arguments for setZoomLevel", details: nil))
         }
 
+      case "setStreamingConfig":
+        // Method to update streaming configuration
+        if let args = call.arguments as? [String: Any] {
+          print("SwiftYOLOPlatformView: Received setStreamingConfig call")
+          let streamConfig = YOLOStreamConfig.from(dict: args)
+          self.yoloView?.setStreamConfig(streamConfig)
+          print("SwiftYOLOPlatformView: YOLOView streaming config updated")
+          result(nil)  // Success
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for setStreamingConfig", details: nil
+            ))
+        }
+
       // Additional methods can be added here in the future
 
       default:
@@ -338,9 +353,9 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       print("SwiftYOLOPlatformView: Creating YOLOStreamConfig from creation params: \(configDict)")
       streamConfig = YOLOStreamConfig.from(dict: configDict)
     } else {
-      // Use default balanced configuration for optimal performance/features balance
-      print("SwiftYOLOPlatformView: Using default BALANCED streaming config")
-      streamConfig = YOLOStreamConfig.BALANCED
+      // Use default minimal configuration for optimal performance
+      print("SwiftYOLOPlatformView: Using default streaming config")
+      streamConfig = YOLOStreamConfig.DEFAULT
     }
     
     // Configure YOLOView with the stream config

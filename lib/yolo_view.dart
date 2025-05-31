@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
+import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 
 /// Controller for interacting with a [YOLOView] widget.
 ///
@@ -355,6 +356,53 @@ class YOLOViewController {
       rethrow;
     }
   }
+
+  /// Sets the streaming configuration for real-time detection.
+  ///
+  /// This method allows dynamic configuration of what data is included
+  /// in the detection stream, enabling performance optimization based
+  /// on application needs.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Switch to minimal streaming for better performance
+  /// await controller.setStreamingConfig(
+  ///   YOLOStreamingConfig.minimal(),
+  /// );
+  ///
+  /// // Switch to full data streaming
+  /// await controller.setStreamingConfig(
+  ///   YOLOStreamingConfig.full(),
+  /// );
+  /// ```
+  ///
+  /// @param config The streaming configuration to apply
+  Future<void> setStreamingConfig(YOLOStreamingConfig config) async {
+    if (_methodChannel == null) {
+      logInfo(
+        'YOLOViewController: Warning - Cannot set streaming config, view not yet created',
+      );
+      return;
+    }
+    try {
+      await _methodChannel!.invokeMethod('setStreamingConfig', {
+        'includeDetections': config.includeDetections,
+        'includeClassifications': config.includeClassifications,
+        'includeProcessingTimeMs': config.includeProcessingTimeMs,
+        'includeFps': config.includeFps,
+        'includeMasks': config.includeMasks,
+        'includePoses': config.includePoses,
+        'includeOBB': config.includeOBB,
+        'includeAnnotatedImage': config.includeAnnotatedImage,
+        'includeOriginalImage': config.includeOriginalImage,
+        'maxFPS': config.maxFPS,
+        'throttleInterval': config.throttleInterval?.inMilliseconds,
+      });
+      logInfo('YOLOViewController: Streaming config updated');
+    } catch (e) {
+      logInfo('YOLOViewController: Error setting streaming config: $e');
+    }
+  }
 }
 
 /// A Flutter widget that displays a real-time camera preview with YOLO object detection.
@@ -434,6 +482,25 @@ class YOLOView extends StatefulWidget {
   /// Provides the current zoom level as a double value (e.g., 1.0, 2.0, 3.5).
   final Function(double zoomLevel)? onZoomChanged;
 
+  /// Initial streaming configuration for detection results.
+  ///
+  /// Controls what data is included in the streaming results.
+  /// If not specified, uses the default minimal configuration.
+  /// Can be changed dynamically via the controller.
+  final YOLOStreamingConfig? streamingConfig;
+
+  /// Initial confidence threshold for detections.
+  ///
+  /// Only detections with confidence above this value will be returned.
+  /// Range: 0.0 to 1.0. Default is 0.5.
+  final double confidenceThreshold;
+
+  /// Initial IoU (Intersection over Union) threshold.
+  ///
+  /// Used for non-maximum suppression to filter overlapping detections.
+  /// Range: 0.0 to 1.0. Default is 0.45.
+  final double iouThreshold;
+
   const YOLOView({
     super.key,
     required this.modelPath,
@@ -444,6 +511,9 @@ class YOLOView extends StatefulWidget {
     this.onPerformanceMetrics,
     this.showNativeUI = false,
     this.onZoomChanged,
+    this.streamingConfig,
+    this.confidenceThreshold = 0.5,
+    this.iouThreshold = 0.45,
   });
 
   @override
@@ -478,6 +548,13 @@ class YOLOViewState extends State<YOLOView> {
 
     if (widget.onResult != null || widget.onPerformanceMetrics != null) {
       _subscribeToResults();
+    }
+
+    // Apply initial streaming config if provided
+    if (widget.streamingConfig != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _effectiveController.setStreamingConfig(widget.streamingConfig!);
+      });
     }
   }
 
@@ -759,11 +836,28 @@ class YOLOViewState extends State<YOLOView> {
     final creationParams = <String, dynamic>{
       'modelPath': widget.modelPath,
       'task': widget.task.name,
-      'confidenceThreshold': _effectiveController.confidenceThreshold,
-      'iouThreshold': _effectiveController.iouThreshold,
+      'confidenceThreshold': widget.confidenceThreshold,
+      'iouThreshold': widget.iouThreshold,
       'numItemsThreshold': _effectiveController.numItemsThreshold,
       'viewId': _viewId,
     };
+
+    // Add streaming config to creation params if provided
+    if (widget.streamingConfig != null) {
+      creationParams['streamingConfig'] = {
+        'includeDetections': widget.streamingConfig!.includeDetections,
+        'includeClassifications': widget.streamingConfig!.includeClassifications,
+        'includeProcessingTimeMs': widget.streamingConfig!.includeProcessingTimeMs,
+        'includeFps': widget.streamingConfig!.includeFps,
+        'includeMasks': widget.streamingConfig!.includeMasks,
+        'includePoses': widget.streamingConfig!.includePoses,
+        'includeOBB': widget.streamingConfig!.includeOBB,
+        'includeAnnotatedImage': widget.streamingConfig!.includeAnnotatedImage,
+        'includeOriginalImage': widget.streamingConfig!.includeOriginalImage,
+        'maxFPS': widget.streamingConfig!.maxFPS,
+        'throttleInterval': widget.streamingConfig!.throttleInterval?.inMilliseconds,
+      };
+    }
 
     // This was causing issues in initState/didUpdateWidget, better to call once after view created.
     // WidgetsBinding.instance.addPostFrameCallback((_) {
