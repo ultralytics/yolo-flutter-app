@@ -9,6 +9,7 @@
 .history
 .svn/
 .cxx
+CLAUDE.md
 .CLAUDE.md
 migrate_working_dir/
 LICENSE.txt
