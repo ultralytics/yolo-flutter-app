@@ -26,12 +26,15 @@ class ObjectDetectionView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return YOLOView(
-      modelPath: 'yolo11n',  // Model file: assets/models/yolo11n.tflite (Android) or yolo11n.mlmodel (iOS)
+      modelPath:
+          'yolo11n', // Model file: assets/models/yolo11n.tflite (Android) or yolo11n.mlmodel (iOS)
       task: YOLOTask.detect,
       onResult: (List<YOLOResult> results) {
         // Process detection results
         for (final result in results) {
-          debugPrint('Detected ${result.className} with ${(result.confidence * 100).toStringAsFixed(0)}% confidence');
+          debugPrint(
+            'Detected ${result.className} with ${(result.confidence * 100).toStringAsFixed(0)}% confidence',
+          );
         }
       },
     );
