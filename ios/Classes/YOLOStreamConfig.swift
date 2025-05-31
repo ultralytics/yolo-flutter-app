@@ -31,9 +31,9 @@ public struct YOLOStreamConfig {
         includeClassifications: Bool = true,
         includeProcessingTimeMs: Bool = true,
         includeFps: Bool = true,
-        includeMasks: Bool = true,
-        includePoses: Bool = true,
-        includeOBB: Bool = true,
+        includeMasks: Bool = false,
+        includePoses: Bool = false,
+        includeOBB: Bool = false,
         includeOriginalImage: Bool = false,
         maxFPS: Int? = nil,
         throttleIntervalMs: Int? = nil
@@ -50,33 +50,10 @@ public struct YOLOStreamConfig {
         self.throttleIntervalMs = throttleIntervalMs
     }
     
-    /// Preset configurations for common use cases
-    public static let MINIMAL = YOLOStreamConfig(
-        includeDetections: true,
-        includeClassifications: true,
-        includeProcessingTimeMs: true,
-        includeFps: true,
-        includeMasks: false,
-        includePoses: false,
-        includeOBB: false,
-        includeOriginalImage: false,
-        maxFPS: 30
-    )
+    /// Default minimal configuration - optimized for maximum performance
+    public static let DEFAULT = YOLOStreamConfig()  // Uses all default values (minimal data)
     
-    /// Balanced configuration for most applications
-    public static let BALANCED = YOLOStreamConfig(
-        includeDetections: true,
-        includeClassifications: true,
-        includeProcessingTimeMs: true,
-        includeFps: true,
-        includeMasks: true,
-        includePoses: true,
-        includeOBB: true,
-        includeOriginalImage: false,
-        maxFPS: 15
-    )
-    
-    /// Maximum data including original images - lowest performance
+    /// Full features configuration - includes all detection features
     public static let FULL = YOLOStreamConfig(
         includeDetections: true,
         includeClassifications: true,
@@ -85,23 +62,41 @@ public struct YOLOStreamConfig {
         includeMasks: true,
         includePoses: true,
         includeOBB: true,
-        includeOriginalImage: true,
-        maxFPS: 10
+        includeOriginalImage: false,
+        maxFPS: nil  // No limit, but will be slower due to data processing
     )
     
-    /// Performance optimized for low-end devices
-    public static let PERFORMANCE = YOLOStreamConfig(
+    /// Debug configuration - includes everything for development
+    public static let DEBUG = YOLOStreamConfig(
         includeDetections: true,
-        includeClassifications: false,
+        includeClassifications: true,
         includeProcessingTimeMs: true,
         includeFps: true,
-        includeMasks: false,
-        includePoses: false,
-        includeOBB: false,
-        includeOriginalImage: false,
-        maxFPS: 15,
-        throttleIntervalMs: 100
+        includeMasks: true,
+        includePoses: true,
+        includeOBB: true,
+        includeOriginalImage: true,
+        maxFPS: 10  // Limited FPS due to heavy data
     )
+    
+    /// Custom builder for specific needs
+    public static func custom(
+        includeMasks: Bool = false,
+        includePoses: Bool = false,
+        includeOBB: Bool = false,
+        includeOriginalImage: Bool = false,
+        maxFPS: Int? = nil,
+        throttleIntervalMs: Int? = nil
+    ) -> YOLOStreamConfig {
+        return YOLOStreamConfig(
+            includeMasks: includeMasks,
+            includePoses: includePoses,
+            includeOBB: includeOBB,
+            includeOriginalImage: includeOriginalImage,
+            maxFPS: maxFPS,
+            throttleIntervalMs: throttleIntervalMs
+        )
+    }
 }
 
 /// Extension to create YOLOStreamConfig from Dictionary (for Flutter integration)
@@ -112,9 +107,9 @@ extension YOLOStreamConfig {
             includeClassifications: dict["includeClassifications"] as? Bool ?? true,
             includeProcessingTimeMs: dict["includeProcessingTimeMs"] as? Bool ?? true,
             includeFps: dict["includeFps"] as? Bool ?? true,
-            includeMasks: dict["includeMasks"] as? Bool ?? true,
-            includePoses: dict["includePoses"] as? Bool ?? true,
-            includeOBB: dict["includeOBB"] as? Bool ?? true,
+            includeMasks: dict["includeMasks"] as? Bool ?? false,
+            includePoses: dict["includePoses"] as? Bool ?? false,
+            includeOBB: dict["includeOBB"] as? Bool ?? false,
             includeOriginalImage: dict["includeOriginalImage"] as? Bool ?? false,
             maxFPS: {
                 if let maxFPS = dict["maxFPS"] as? Int { return maxFPS }

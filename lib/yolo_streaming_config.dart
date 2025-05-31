@@ -91,32 +91,34 @@ class YOLOStreamingConfig {
   /// Creates a YOLOStreamingConfig with custom settings.
   ///
   /// This constructor allows full customization of streaming behavior.
-  /// All parameters have sensible defaults that maintain backward compatibility.
+  /// Defaults are optimized for high-speed operation with minimal data.
   const YOLOStreamingConfig({
     this.includeDetections = true,
     this.includeClassifications = true,
     this.includeProcessingTimeMs = true,
     this.includeFps = true,
-    this.includeMasks = true,
-    this.includePoses = true,
-    this.includeOBB = true,
-    this.includeAnnotatedImage = true,
+    this.includeMasks = false,  // Changed to false for performance
+    this.includePoses = false,  // Changed to false for performance
+    this.includeOBB = false,    // Changed to false for performance
+    this.includeAnnotatedImage = false,  // Changed to false for performance
     this.includeOriginalImage = false,
     this.maxFPS,
     this.throttleInterval,
   });
 
-  /// Creates a standard configuration that matches current default behavior.
+  /// Creates a minimal configuration optimized for maximum performance.
   ///
-  /// This configuration includes all detection data (masks, poses, OBB when applicable),
-  /// performance metrics (FPS, processing time), and annotated images.
-  /// Original images are excluded to manage memory usage.
+  /// This is the default configuration for YOLOView, providing only essential
+  /// detection data and performance metrics. Heavy data like masks, poses,
+  /// OBB, and images are excluded to maximize FPS.
   ///
-  /// This is the default configuration used when no streamingConfig is specified,
-  /// ensuring backward compatibility with existing applications.
+  /// Ideal for:
+  /// - Real-time applications requiring high frame rates
+  /// - Resource-constrained devices
+  /// - Applications that only need basic bounding box detection
   ///
-  /// Typical performance: 15-25 FPS depending on device and model.
-  const YOLOStreamingConfig.standard()
+  /// Typical performance: 25-35+ FPS depending on device and model.
+  const YOLOStreamingConfig.minimal()
       : includeDetections = true,
         includeClassifications = true,
         includeProcessingTimeMs = true,
@@ -129,18 +131,19 @@ class YOLOStreamingConfig {
         maxFPS = null,
         throttleInterval = null;
 
-  /// Creates a lightweight configuration optimized for high performance.
+  /// Creates a full configuration that includes all detection features.
   ///
-  /// This configuration includes only essential detection data and performance metrics.
-  /// Heavy data like masks, poses, OBB, and images are excluded to maximize FPS.
+  /// This configuration includes all detection data (masks, poses, OBB when applicable),
+  /// performance metrics, and annotated images. Original images are still excluded
+  /// to manage memory usage.
   ///
   /// Ideal for:
-  /// - Real-time applications requiring high frame rates
-  /// - Resource-constrained devices
-  /// - Applications that only need basic bounding box detection
+  /// - Applications needing comprehensive detection features
+  /// - Development and testing
+  /// - When accuracy is more important than speed
   ///
-  /// Typical performance: 25-35 FPS depending on device and model.
-  const YOLOStreamingConfig.lightweight()
+  /// Typical performance: 15-25 FPS depending on device and model.
+  const YOLOStreamingConfig.full()
       : includeDetections = true,
         includeClassifications = true,
         includeProcessingTimeMs = true,
@@ -153,7 +156,7 @@ class YOLOStreamingConfig {
         maxFPS = null,
         throttleInterval = null;
 
-  /// Creates a detailed configuration that includes all available data.
+  /// Creates a debug configuration that includes all available data.
   ///
   /// This configuration includes every type of data: detection results,
   /// task-specific data (masks, poses, OBB), performance metrics,
@@ -162,11 +165,11 @@ class YOLOStreamingConfig {
   /// Ideal for:
   /// - Development and debugging
   /// - Data collection and analysis
-  /// - Applications that need comprehensive detection information
+  /// - Troubleshooting detection issues
   ///
-  /// Note: This configuration is memory-intensive and may impact performance.
+  /// Warning: This configuration is memory-intensive and will impact performance.
   /// Typical performance: 10-20 FPS depending on device and model.
-  const YOLOStreamingConfig.detailed()
+  const YOLOStreamingConfig.debug()
       : includeDetections = true,
         includeClassifications = true,
         includeProcessingTimeMs = true,
@@ -208,10 +211,10 @@ class YOLOStreamingConfig {
         includeClassifications = includeClassifications ?? true,
         includeProcessingTimeMs = includeProcessingTimeMs ?? true,
         includeFps = includeFps ?? true,
-        includeMasks = includeMasks ?? true,
-        includePoses = includePoses ?? true,
-        includeOBB = includeOBB ?? true,
-        includeAnnotatedImage = includeAnnotatedImage ?? true,
+        includeMasks = includeMasks ?? false,
+        includePoses = includePoses ?? false,
+        includeOBB = includeOBB ?? false,
+        includeAnnotatedImage = includeAnnotatedImage ?? false,
         includeOriginalImage = includeOriginalImage ?? false,
         maxFPS = maxFPS,
         throttleInterval = throttleInterval;
@@ -328,10 +331,10 @@ class YOLOStreamingConfig {
       includeClassifications: map['includeClassifications'] as bool? ?? true,
       includeProcessingTimeMs: map['includeProcessingTimeMs'] as bool? ?? true,
       includeFps: map['includeFps'] as bool? ?? true,
-      includeMasks: map['includeMasks'] as bool? ?? true,
-      includePoses: map['includePoses'] as bool? ?? true,
-      includeOBB: map['includeOBB'] as bool? ?? true,
-      includeAnnotatedImage: map['includeAnnotatedImage'] as bool? ?? true,
+      includeMasks: map['includeMasks'] as bool? ?? false,
+      includePoses: map['includePoses'] as bool? ?? false,
+      includeOBB: map['includeOBB'] as bool? ?? false,
+      includeAnnotatedImage: map['includeAnnotatedImage'] as bool? ?? false,
       includeOriginalImage: map['includeOriginalImage'] as bool? ?? false,
       maxFPS: map['maxFPS'] as int?,
       throttleInterval: map['throttleIntervalMs'] != null

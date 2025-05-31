@@ -13,10 +13,10 @@ data class YOLOStreamConfig(
     val includeProcessingTimeMs: Boolean = true,
     val includeFps: Boolean = true,
     
-    // Task-specific advanced data
-    val includeMasks: Boolean = true,
-    val includePoses: Boolean = true,
-    val includeOBB: Boolean = true,
+    // Task-specific advanced data - default to false for performance
+    val includeMasks: Boolean = false,
+    val includePoses: Boolean = false,
+    val includeOBB: Boolean = false,
     
     // Original image data (uses ImageProxy bitmap reuse - no additional conversion needed)
     val includeOriginalImage: Boolean = false,
@@ -33,33 +33,10 @@ data class YOLOStreamConfig(
          * Preset configurations for common use cases
          */
         
-        /** Minimal data for basic object detection - highest performance */
-        val MINIMAL = YOLOStreamConfig(
-            includeDetections = true,
-            includeClassifications = true,
-            includeProcessingTimeMs = true,
-            includeFps = true,
-            includeMasks = false,
-            includePoses = false,
-            includeOBB = false,
-            includeOriginalImage = false,
-            maxFPS = 30
-        )
+        /** Default minimal configuration - optimized for maximum performance */
+        val DEFAULT = YOLOStreamConfig()  // Uses all default values (minimal data)
         
-        /** Balanced configuration for most applications */
-        val BALANCED = YOLOStreamConfig(
-            includeDetections = true,
-            includeClassifications = true,
-            includeProcessingTimeMs = true,
-            includeFps = true,
-            includeMasks = true,
-            includePoses = true,
-            includeOBB = true,
-            includeOriginalImage = false,
-            maxFPS = 15
-        )
-        
-        /** Maximum data including original images - lowest performance */
+        /** Full features configuration - includes all detection features */
         val FULL = YOLOStreamConfig(
             includeDetections = true,
             includeClassifications = true,
@@ -68,22 +45,38 @@ data class YOLOStreamConfig(
             includeMasks = true,
             includePoses = true,
             includeOBB = true,
-            includeOriginalImage = true,
-            maxFPS = 10
+            includeOriginalImage = false,
+            maxFPS = null  // No limit, but will be slower due to data processing
         )
         
-        /** Performance optimized for low-end devices */
-        val PERFORMANCE = YOLOStreamConfig(
+        /** Debug configuration - includes everything for development */
+        val DEBUG = YOLOStreamConfig(
             includeDetections = true,
-            includeClassifications = false,
+            includeClassifications = true,
             includeProcessingTimeMs = true,
             includeFps = true,
-            includeMasks = false,
-            includePoses = false,
-            includeOBB = false,
-            includeOriginalImage = false,
-            maxFPS = 15,
-            throttleIntervalMs = 100
+            includeMasks = true,
+            includePoses = true,
+            includeOBB = true,
+            includeOriginalImage = true,
+            maxFPS = 10  // Limited FPS due to heavy data
+        )
+        
+        /** Custom builder for specific needs */
+        fun custom(
+            includeMasks: Boolean = false,
+            includePoses: Boolean = false,
+            includeOBB: Boolean = false,
+            includeOriginalImage: Boolean = false,
+            maxFPS: Int? = null,
+            throttleIntervalMs: Int? = null
+        ) = YOLOStreamConfig(
+            includeMasks = includeMasks,
+            includePoses = includePoses,
+            includeOBB = includeOBB,
+            includeOriginalImage = includeOriginalImage,
+            maxFPS = maxFPS,
+            throttleIntervalMs = throttleIntervalMs
         )
     }
 }
