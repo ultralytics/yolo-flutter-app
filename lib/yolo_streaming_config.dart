@@ -64,12 +64,6 @@ class YOLOStreamingConfig {
   /// coordinates and angles.
   final bool includeOBB;
 
-  /// Whether to include annotated images with drawn detections.
-  ///
-  /// Annotated images show bounding boxes, labels, and confidence scores
-  /// drawn on the original image. This can be memory-intensive.
-  final bool includeAnnotatedImage;
-
   /// Whether to include original camera frames without annotations.
   ///
   /// Original images are useful for custom post-processing or debugging.
@@ -100,7 +94,6 @@ class YOLOStreamingConfig {
     this.includeMasks = false,  // Changed to false for performance
     this.includePoses = false,  // Changed to false for performance
     this.includeOBB = false,    // Changed to false for performance
-    this.includeAnnotatedImage = false,  // Changed to false for performance
     this.includeOriginalImage = false,
     this.maxFPS,
     this.throttleInterval,
@@ -123,76 +116,23 @@ class YOLOStreamingConfig {
         includeClassifications = true,
         includeProcessingTimeMs = true,
         includeFps = true,
-        includeMasks = true,
-        includePoses = true,
-        includeOBB = true,
-        includeAnnotatedImage = true,
-        includeOriginalImage = false,
-        maxFPS = null,
-        throttleInterval = null;
-
-  /// Creates a full configuration that includes all detection features.
-  ///
-  /// This configuration includes all detection data (masks, poses, OBB when applicable),
-  /// performance metrics, and annotated images. Original images are still excluded
-  /// to manage memory usage.
-  ///
-  /// Ideal for:
-  /// - Applications needing comprehensive detection features
-  /// - Development and testing
-  /// - When accuracy is more important than speed
-  ///
-  /// Typical performance: 15-25 FPS depending on device and model.
-  const YOLOStreamingConfig.full()
-      : includeDetections = true,
-        includeClassifications = true,
-        includeProcessingTimeMs = true,
-        includeFps = true,
         includeMasks = false,
         includePoses = false,
         includeOBB = false,
-        includeAnnotatedImage = false,
         includeOriginalImage = false,
-        maxFPS = null,
-        throttleInterval = null;
-
-  /// Creates a debug configuration that includes all available data.
-  ///
-  /// This configuration includes every type of data: detection results,
-  /// task-specific data (masks, poses, OBB), performance metrics,
-  /// and both annotated and original images.
-  ///
-  /// Ideal for:
-  /// - Development and debugging
-  /// - Data collection and analysis
-  /// - Troubleshooting detection issues
-  ///
-  /// Warning: This configuration is memory-intensive and will impact performance.
-  /// Typical performance: 10-20 FPS depending on device and model.
-  const YOLOStreamingConfig.debug()
-      : includeDetections = true,
-        includeClassifications = true,
-        includeProcessingTimeMs = true,
-        includeFps = true,
-        includeMasks = true,
-        includePoses = true,
-        includeOBB = true,
-        includeAnnotatedImage = true,
-        includeOriginalImage = true,
         maxFPS = null,
         throttleInterval = null;
 
   /// Creates a custom configuration with specified parameters.
   ///
-  /// This named constructor provides a convenient way to create custom
-  /// configurations while maintaining default values for unspecified parameters.
+  /// Any unspecified parameters default to false (except detections,
+  /// classifications, and performance metrics which default to true).
   ///
   /// Example:
   /// ```dart
+  /// // Only include masks, no other extra data
   /// final config = YOLOStreamingConfig.custom(
-  ///   includeOriginalImage: true,
-  ///   maxFPS: 20,
-  ///   includeMasks: false,
+  ///   includeMasks: true,
   /// );
   /// ```
   const YOLOStreamingConfig.custom({
@@ -203,10 +143,9 @@ class YOLOStreamingConfig {
     bool? includeMasks,
     bool? includePoses,
     bool? includeOBB,
-    bool? includeAnnotatedImage,
     bool? includeOriginalImage,
-    int? maxFPS,
-    Duration? throttleInterval,
+    this.maxFPS,
+    this.throttleInterval,
   })  : includeDetections = includeDetections ?? true,
         includeClassifications = includeClassifications ?? true,
         includeProcessingTimeMs = includeProcessingTimeMs ?? true,
@@ -214,184 +153,135 @@ class YOLOStreamingConfig {
         includeMasks = includeMasks ?? false,
         includePoses = includePoses ?? false,
         includeOBB = includeOBB ?? false,
-        includeAnnotatedImage = includeAnnotatedImage ?? false,
-        includeOriginalImage = includeOriginalImage ?? false,
-        maxFPS = maxFPS,
-        throttleInterval = throttleInterval;
+        includeOriginalImage = includeOriginalImage ?? false;
 
-  /// Creates a copy of this configuration with modified parameters.
+  /// Creates a configuration with segmentation masks.
   ///
-  /// This method allows creating variations of existing configurations
-  /// by changing only specific parameters.
+  /// Suitable for segmentation models where you need pixel-level masks.
+  /// May impact performance due to additional data transfer.
+  ///
+  /// Typical performance: 15-25 FPS depending on device and mask resolution.
+  const YOLOStreamingConfig.withMasks()
+      : includeDetections = true,
+        includeClassifications = true,
+        includeProcessingTimeMs = true,
+        includeFps = true,
+        includeMasks = true,
+        includePoses = false,
+        includeOBB = false,
+        includeOriginalImage = false,
+        maxFPS = null,
+        throttleInterval = null;
+
+  /// Creates a configuration with pose keypoints.
+  ///
+  /// Suitable for pose estimation models where you need keypoint data.
+  /// Includes skeleton information for detected human poses.
+  ///
+  /// Typical performance: 20-30 FPS depending on device and number of people.
+  const YOLOStreamingConfig.withPoses()
+      : includeDetections = true,
+        includeClassifications = true,
+        includeProcessingTimeMs = true,
+        includeFps = true,
+        includeMasks = false,
+        includePoses = true,
+        includeOBB = false,
+        includeOriginalImage = false,
+        maxFPS = null,
+        throttleInterval = null;
+
+  /// Creates a full configuration with all data included.
+  ///
+  /// This includes all possible data: detections, masks, poses, OBB,
+  /// and original images. Use with caution as it significantly impacts
+  /// performance and memory usage.
+  ///
+  /// Ideal for:
+  /// - Debugging and development
+  /// - Non-real-time processing
+  /// - When all detection data is needed
+  ///
+  /// Typical performance: 5-15 FPS depending on device and model complexity.
+  const YOLOStreamingConfig.full()
+      : includeDetections = true,
+        includeClassifications = true,
+        includeProcessingTimeMs = true,
+        includeFps = true,
+        includeMasks = true,
+        includePoses = true,
+        includeOBB = true,
+        includeOriginalImage = false,
+        maxFPS = null,
+        throttleInterval = null;
+
+  /// Creates a debug configuration with all data and images.
+  ///
+  /// This includes everything from full() plus original camera frames.
+  /// Extremely resource-intensive and should only be used for debugging.
+  ///
+  /// WARNING: This configuration will significantly impact performance
+  /// and may cause memory issues on lower-end devices.
+  ///
+  /// Typical performance: 2-10 FPS depending on device and image resolution.
+  const YOLOStreamingConfig.debug()
+      : includeDetections = true,
+        includeClassifications = true,
+        includeProcessingTimeMs = true,
+        includeFps = true,
+        includeMasks = true,
+        includePoses = true,
+        includeOBB = true,
+        includeOriginalImage = true,
+        maxFPS = null,
+        throttleInterval = null;
+
+  /// Creates a throttled configuration with specified FPS limit.
+  ///
+  /// This is useful when you want to limit the processing rate to save
+  /// battery or reduce system load.
   ///
   /// Example:
   /// ```dart
-  /// final baseConfig = YOLOStreamingConfig.standard();
-  /// final modifiedConfig = baseConfig.copyWith(
-  ///   includeOriginalImage: true,
-  ///   maxFPS: 15,
-  /// );
+  /// // Limit to 10 FPS for battery saving
+  /// final config = YOLOStreamingConfig.throttled(maxFPS: 10);
   /// ```
-  YOLOStreamingConfig copyWith({
-    bool? includeDetections,
-    bool? includeClassifications,
-    bool? includeProcessingTimeMs,
-    bool? includeFps,
-    bool? includeMasks,
-    bool? includePoses,
-    bool? includeOBB,
-    bool? includeAnnotatedImage,
-    bool? includeOriginalImage,
-    int? maxFPS,
-    Duration? throttleInterval,
+  factory YOLOStreamingConfig.throttled({
+    required int maxFPS,
+    bool includeDetections = true,
+    bool includeClassifications = true,
+    bool includeProcessingTimeMs = true,
+    bool includeFps = true,
+    bool includeMasks = false,
+    bool includePoses = false,
+    bool includeOBB = false,
+    bool includeOriginalImage = false,
   }) {
     return YOLOStreamingConfig(
-      includeDetections: includeDetections ?? this.includeDetections,
-      includeClassifications: includeClassifications ?? this.includeClassifications,
-      includeProcessingTimeMs: includeProcessingTimeMs ?? this.includeProcessingTimeMs,
-      includeFps: includeFps ?? this.includeFps,
-      includeMasks: includeMasks ?? this.includeMasks,
-      includePoses: includePoses ?? this.includePoses,
-      includeOBB: includeOBB ?? this.includeOBB,
-      includeAnnotatedImage: includeAnnotatedImage ?? this.includeAnnotatedImage,
-      includeOriginalImage: includeOriginalImage ?? this.includeOriginalImage,
-      maxFPS: maxFPS ?? this.maxFPS,
-      throttleInterval: throttleInterval ?? this.throttleInterval,
-    );
-  }
-
-  /// Validates the configuration and returns any warnings or errors.
-  ///
-  /// This method checks for potentially problematic combinations of settings
-  /// and returns a list of warning messages. An empty list indicates no issues.
-  ///
-  /// Example warnings:
-  /// - Including original images without FPS limit may cause memory issues
-  /// - Disabling all detection data will result in empty streams
-  /// - Very high FPS limits may not be achievable on all devices
-  List<String> validate() {
-    final warnings = <String>[];
-
-    // Check if all detection data is disabled
-    if (!includeDetections && !includeClassifications) {
-      warnings.add('All detection data is disabled. Results will be empty.');
-    }
-
-    // Check for memory-intensive settings
-    if (includeOriginalImage && maxFPS == null) {
-      warnings.add(
-        'Including original images without FPS limit may cause memory issues. Consider setting maxFPS.',
-      );
-    }
-
-    // Check for very high FPS limits
-    if (maxFPS != null && maxFPS! > 60) {
-      warnings.add(
-        'FPS limit of $maxFPS is very high and may not be achievable on all devices.',
-      );
-    }
-
-    // Check for very restrictive throttling
-    if (throttleInterval != null && throttleInterval!.inMilliseconds > 1000) {
-      warnings.add(
-        'Throttle interval of ${throttleInterval!.inMilliseconds}ms is quite restrictive and may result in very low update rates.',
-      );
-    }
-
-    return warnings;
-  }
-
-  /// Returns a Map representation of this configuration.
-  ///
-  /// This method is useful for serialization and platform communication.
-  /// The returned map contains all configuration parameters as key-value pairs.
-  Map<String, dynamic> toMap() {
-    return {
-      'includeDetections': includeDetections,
-      'includeClassifications': includeClassifications,
-      'includeProcessingTimeMs': includeProcessingTimeMs,
-      'includeFps': includeFps,
-      'includeMasks': includeMasks,
-      'includePoses': includePoses,
-      'includeOBB': includeOBB,
-      'includeAnnotatedImage': includeAnnotatedImage,
-      'includeOriginalImage': includeOriginalImage,
-      'maxFPS': maxFPS,
-      'throttleIntervalMs': throttleInterval?.inMilliseconds,
-    };
-  }
-
-  /// Creates a YOLOStreamingConfig from a Map.
-  ///
-  /// This method is useful for deserialization and platform communication.
-  /// Missing keys will use default values.
-  factory YOLOStreamingConfig.fromMap(Map<String, dynamic> map) {
-    return YOLOStreamingConfig(
-      includeDetections: map['includeDetections'] as bool? ?? true,
-      includeClassifications: map['includeClassifications'] as bool? ?? true,
-      includeProcessingTimeMs: map['includeProcessingTimeMs'] as bool? ?? true,
-      includeFps: map['includeFps'] as bool? ?? true,
-      includeMasks: map['includeMasks'] as bool? ?? false,
-      includePoses: map['includePoses'] as bool? ?? false,
-      includeOBB: map['includeOBB'] as bool? ?? false,
-      includeAnnotatedImage: map['includeAnnotatedImage'] as bool? ?? false,
-      includeOriginalImage: map['includeOriginalImage'] as bool? ?? false,
-      maxFPS: map['maxFPS'] as int?,
-      throttleInterval: map['throttleIntervalMs'] != null
-          ? Duration(milliseconds: map['throttleIntervalMs'] as int)
-          : null,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    
-    return other is YOLOStreamingConfig &&
-        other.includeDetections == includeDetections &&
-        other.includeClassifications == includeClassifications &&
-        other.includeProcessingTimeMs == includeProcessingTimeMs &&
-        other.includeFps == includeFps &&
-        other.includeMasks == includeMasks &&
-        other.includePoses == includePoses &&
-        other.includeOBB == includeOBB &&
-        other.includeAnnotatedImage == includeAnnotatedImage &&
-        other.includeOriginalImage == includeOriginalImage &&
-        other.maxFPS == maxFPS &&
-        other.throttleInterval == throttleInterval;
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(
-      includeDetections,
-      includeClassifications,
-      includeProcessingTimeMs,
-      includeFps,
-      includeMasks,
-      includePoses,
-      includeOBB,
-      includeAnnotatedImage,
-      includeOriginalImage,
-      maxFPS,
-      throttleInterval,
+      includeDetections: includeDetections,
+      includeClassifications: includeClassifications,
+      includeProcessingTimeMs: includeProcessingTimeMs,
+      includeFps: includeFps,
+      includeMasks: includeMasks,
+      includePoses: includePoses,
+      includeOBB: includeOBB,
+      includeOriginalImage: includeOriginalImage,
+      maxFPS: maxFPS,
     );
   }
 
   @override
   String toString() {
     return 'YOLOStreamingConfig('
-        'includeDetections: $includeDetections, '
-        'includeClassifications: $includeClassifications, '
-        'includeProcessingTimeMs: $includeProcessingTimeMs, '
-        'includeFps: $includeFps, '
-        'includeMasks: $includeMasks, '
-        'includePoses: $includePoses, '
-        'includeOBB: $includeOBB, '
-        'includeAnnotatedImage: $includeAnnotatedImage, '
-        'includeOriginalImage: $includeOriginalImage, '
+        'detections: $includeDetections, '
+        'classifications: $includeClassifications, '
+        'processingTime: $includeProcessingTimeMs, '
+        'fps: $includeFps, '
+        'masks: $includeMasks, '
+        'poses: $includePoses, '
+        'obb: $includeOBB, '
+        'originalImage: $includeOriginalImage, '
         'maxFPS: $maxFPS, '
-        'throttleInterval: $throttleInterval'
-        ')';
+        'throttleInterval: ${throttleInterval?.inMilliseconds}ms)';
   }
 }

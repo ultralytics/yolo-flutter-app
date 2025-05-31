@@ -195,7 +195,6 @@ class YOLOPlatformView(
                         includeMasks = call.argument<Boolean>("includeMasks") ?: false,
                         includePoses = call.argument<Boolean>("includePoses") ?: false,
                         includeOBB = call.argument<Boolean>("includeOBB") ?: false,
-                        includeAnnotatedImage = call.argument<Boolean>("includeAnnotatedImage") ?: false,
                         includeOriginalImage = call.argument<Boolean>("includeOriginalImage") ?: false,
                         maxFPS = call.argument<Int>("maxFPS"),
                         throttleIntervalMs = call.argument<Int>("throttleInterval")
