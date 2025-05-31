@@ -134,10 +134,35 @@ class YOLOView @JvmOverloads constructor(
 
     // Callback to notify inference results externally
     private var inferenceCallback: ((YOLOResult) -> Unit)? = null
+    
+    // Streaming functionality
+    private var streamConfig: YOLOStreamConfig? = null
+    private var streamCallback: ((Map<String, Any>) -> Unit)? = null
+    
+    // Frame counter for streaming
+    private var frameNumberCounter: Long = 0
+    
+    // Throttling variables for performance control
+    private var lastInferenceTime: Long = 0
+    private var targetFrameInterval: Long? = null // in nanoseconds
+    private var throttleInterval: Long? = null // in nanoseconds
 
     /** Set the callback */
     fun setOnInferenceCallback(callback: (YOLOResult) -> Unit) {
         this.inferenceCallback = callback
+    }
+    
+    /** Set streaming configuration */
+    fun setStreamConfig(config: YOLOStreamConfig?) {
+        this.streamConfig = config
+        setupThrottlingFromConfig()
+        Log.d(TAG, "Streaming config set: $config")
+    }
+    
+    /** Set streaming callback */
+    fun setStreamCallback(callback: ((Map<String, Any>) -> Unit)?) {
+        this.streamCallback = callback
+        Log.d(TAG, "Streaming callback set: ${callback != null}")
     }
 
     // Callback to notify model load completion
@@ -510,13 +535,40 @@ class YOLOView @JvmOverloads constructor(
             try {
                 // For camera feed, we typically rotate the bitmap
                 val result = p.predict(bitmap, h, w, rotateForCamera = true)
-                inferenceResult = result
+                
+                // Apply originalImage if streaming config requires it
+                val resultWithOriginalImage = if (streamConfig?.includeOriginalImage == true) {
+                    result.copy(originalImage = bitmap)  // Reuse bitmap from ImageProxy conversion
+                } else {
+                    result
+                }
+                
+                inferenceResult = resultWithOriginalImage
 
                 // Log
                 Log.d(TAG, "Inference complete: ${result.boxes.size} boxes detected")
-
+                
                 // Callback
-                inferenceCallback?.invoke(result)
+                inferenceCallback?.invoke(resultWithOriginalImage)
+                
+                // Streaming callback (with throttling)
+                streamCallback?.let { callback ->
+                    if (shouldProcessFrame()) {
+                        updateLastInferenceTime()
+                        
+                        // Convert to stream data and send
+                        val streamData = convertResultToStreamData(resultWithOriginalImage)
+                        // Add timestamp and frame info
+                        val enhancedStreamData = HashMap<String, Any>(streamData)
+                        enhancedStreamData["timestamp"] = System.currentTimeMillis()
+                        enhancedStreamData["frameNumber"] = frameNumberCounter++
+                        
+                        callback.invoke(enhancedStreamData)
+                        Log.d(TAG, "Sent streaming data with ${result.boxes.size} detections")
+                    } else {
+                        Log.d(TAG, "Skipping frame due to throttling")
+                    }
+                }
 
                 // Update overlay
                 post {
@@ -1002,4 +1054,198 @@ class YOLOView @JvmOverloads constructor(
         scaleGestureDetector.onTouchEvent(event)
         return true
     }
+    
+    // region Streaming functionality
+    
+    /**
+     * Setup throttling parameters from streaming configuration
+     */
+    private fun setupThrottlingFromConfig() {
+        streamConfig?.let { config ->
+            // Setup maxFPS throttling
+            config.maxFPS?.let { maxFPS ->
+                if (maxFPS > 0) {
+                    targetFrameInterval = (1_000_000_000L / maxFPS) // Convert to nanoseconds
+                    Log.d(TAG, "maxFPS throttling enabled - target FPS: $maxFPS, interval: ${targetFrameInterval!! / 1_000_000}ms")
+                }
+            } ?: run {
+                targetFrameInterval = null
+                Log.d(TAG, "maxFPS throttling disabled")
+            }
+            
+            // Setup throttleInterval
+            config.throttleIntervalMs?.let { throttleMs ->
+                if (throttleMs > 0) {
+                    throttleInterval = throttleMs * 1_000_000L // Convert ms to nanoseconds
+                    Log.d(TAG, "throttleInterval enabled - interval: ${throttleMs}ms")
+                }
+            } ?: run {
+                throttleInterval = null
+                Log.d(TAG, "throttleInterval disabled")
+            }
+            
+            // Initialize timing
+            lastInferenceTime = System.nanoTime()
+        }
+    }
+    
+    /**
+     * Check if we should process this frame based on throttling settings
+     */
+    private fun shouldProcessFrame(): Boolean {
+        val now = System.nanoTime()
+        
+        // Check maxFPS throttling
+        targetFrameInterval?.let { interval ->
+            if (now - lastInferenceTime < interval) {
+                return false
+            }
+        }
+        
+        // Check throttleInterval
+        throttleInterval?.let { interval ->
+            if (now - lastInferenceTime < interval) {
+                return false
+            }
+        }
+        
+        return true
+    }
+    
+    /**
+     * Update the last inference time (call this when actually processing)
+     */
+    private fun updateLastInferenceTime() {
+        lastInferenceTime = System.nanoTime()
+    }
+    
+    /**
+     * Convert YOLOResult to a Map for streaming (ported from archived YOLOPlatformView)
+     * Uses detection index correctly to avoid class index confusion
+     */
+    private fun convertResultToStreamData(result: YOLOResult): Map<String, Any> {
+        val map = HashMap<String, Any>()
+        val config = streamConfig ?: return emptyMap()
+        
+        // Convert detection results (if enabled)
+        if (config.includeDetections) {
+            val detections = ArrayList<Map<String, Any>>()
+            
+            // Convert detection boxes - CRITICAL: use detectionIndex, not class index
+            for ((detectionIndex, box) in result.boxes.withIndex()) {
+                val detection = HashMap<String, Any>()
+                detection["classIndex"] = box.index
+                detection["className"] = box.cls
+                detection["confidence"] = box.conf.toDouble()
+                
+                // Bounding box in original coordinates
+                val boundingBox = HashMap<String, Any>()
+                boundingBox["left"] = box.xywh.left.toDouble()
+                boundingBox["top"] = box.xywh.top.toDouble()
+                boundingBox["right"] = box.xywh.right.toDouble()
+                boundingBox["bottom"] = box.xywh.bottom.toDouble()
+                detection["boundingBox"] = boundingBox
+                
+                // Normalized bounding box (0-1)
+                val normalizedBox = HashMap<String, Any>()
+                normalizedBox["left"] = box.xywhn.left.toDouble()
+                normalizedBox["top"] = box.xywhn.top.toDouble()
+                normalizedBox["right"] = box.xywhn.right.toDouble()
+                normalizedBox["bottom"] = box.xywhn.bottom.toDouble()
+                detection["normalizedBox"] = normalizedBox
+                
+                // Add mask data for segmentation (if available and enabled)
+                if (config.includeMasks && result.masks != null && detectionIndex < result.masks!!.masks.size) {
+                    val maskData = result.masks!!.masks[detectionIndex] // Get mask for this detection
+                    // Convert List<List<Float>> to List<List<Double>> for Flutter compatibility
+                    val maskDataDouble = maskData.map { row ->
+                        row.map { it.toDouble() }
+                    }
+                    detection["mask"] = maskDataDouble
+                    Log.d(TAG, "✅ Added mask data (${maskData.size}x${maskData.firstOrNull()?.size ?: 0}) for detection $detectionIndex")
+                }
+                
+                // Add pose keypoints (if available and enabled)
+                if (config.includePoses && detectionIndex < result.keypointsList.size) {
+                    val keypoints = result.keypointsList[detectionIndex]
+                    // Convert to flat array [x1, y1, conf1, x2, y2, conf2, ...]
+                    val keypointsFlat = mutableListOf<Double>()
+                    for (i in keypoints.xy.indices) {
+                        keypointsFlat.add(keypoints.xy[i].first.toDouble())
+                        keypointsFlat.add(keypoints.xy[i].second.toDouble())
+                        if (i < keypoints.conf.size) {
+                            keypointsFlat.add(keypoints.conf[i].toDouble())
+                        } else {
+                            keypointsFlat.add(0.0) // Default confidence if missing
+                        }
+                    }
+                    detection["keypoints"] = keypointsFlat
+                    Log.d(TAG, "Added keypoints data (${keypoints.xy.size} points) for detection $detectionIndex")
+                }
+                
+                // Add OBB data (if available and enabled)
+                if (config.includeOBB && detectionIndex < result.obb.size) {
+                    val obbResult = result.obb[detectionIndex]
+                    val obbBox = obbResult.box
+                    
+                    // Convert OBB to 4 corner points
+                    val polygon = obbBox.toPolygon()
+                    val points = polygon.map { point ->
+                        mapOf(
+                            "x" to point.x.toDouble(),
+                            "y" to point.y.toDouble()
+                        )
+                    }
+                    
+                    // Create comprehensive OBB data map
+                    val obbDataMap = mapOf(
+                        "centerX" to obbBox.cx.toDouble(),
+                        "centerY" to obbBox.cy.toDouble(),
+                        "width" to obbBox.w.toDouble(),
+                        "height" to obbBox.h.toDouble(),
+                        "angle" to obbBox.angle.toDouble(), // radians
+                        "angleDegrees" to (obbBox.angle * 180.0 / Math.PI), // degrees for convenience
+                        "area" to obbBox.area.toDouble(),
+                        "points" to points, // 4 corner points
+                        "confidence" to obbResult.confidence.toDouble(),
+                        "className" to obbResult.cls,
+                        "classIndex" to obbResult.index
+                    )
+                    
+                    detection["obb"] = obbDataMap
+                    Log.d(TAG, "✅ Added OBB data: ${obbResult.cls} (${String.format("%.1f", obbBox.angle * 180.0 / Math.PI)}° rotation)")
+                }
+                
+                detections.add(detection)
+            }
+            
+            map["detections"] = detections
+            Log.d(TAG, "Converted ${detections.size} detections to stream data")
+        }
+        
+        // Add performance metrics (if enabled)
+        if (config.includeProcessingTimeMs) {
+            val processingTimeMs = result.speed.toDouble()
+            map["processingTimeMs"] = processingTimeMs
+        }
+        
+        if (config.includeFps) {
+            map["fps"] = result.fps?.toDouble() ?: 0.0
+        }
+        
+        // Add original image (if available and enabled)
+        if (config.includeOriginalImage) {
+            result.originalImage?.let { bitmap ->
+                val outputStream = java.io.ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+                val imageData = outputStream.toByteArray()
+                map["originalImage"] = imageData
+                Log.d(TAG, "✅ Added original image data (${imageData.size} bytes)")
+            }
+        }
+        
+        return map
+    }
+    
+    // endregion
 }

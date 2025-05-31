@@ -93,6 +93,9 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       // Hide native UI controls by default
       yoloView?.showUIControls = false
 
+      // Configure YOLOView streaming functionality
+      setupYOLOViewStreaming(args: dict)
+      
       // Configure YOLOView
       setupYOLOView(confidenceThreshold: confidenceThreshold, iouThreshold: iouThreshold)
 
@@ -125,35 +128,10 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       "SwiftYOLOPlatformView: setupYOLOView - Setting up detection callback with confidenceThreshold: \(confidenceThreshold), iouThreshold: \(iouThreshold)"
     )
 
-    // Setup detection result callback
-    yoloView.onDetection = { [weak self] result in
-      print(
-        "SwiftYOLOPlatformView: onDetection callback triggered with \(result.boxes.count) detections"
-      )
-
-      guard let self = self else {
-        print("SwiftYOLOPlatformView: self is nil in onDetection callback")
-        return
-      }
-
-      guard let eventSink = self.eventSink else {
-        print("SwiftYOLOPlatformView: eventSink is nil - no listener for events")
-        return
-      }
-
-      // Convert detection results to Flutter-compatible map
-      let resultMap = self.convertYOLOResultToMap(result)
-      if let detections = resultMap["detections"] as? [[String: Any]] {
-        print("SwiftYOLOPlatformView: Converted result to map with \(detections.count) detections")
-      } else {
-        print("SwiftYOLOPlatformView: Converted result but no valid detections found")
-      }
-
-      // Send event on main thread
-      DispatchQueue.main.async {
-        print("SwiftYOLOPlatformView: Sending event to Flutter via eventSink")
-        eventSink(resultMap)
-      }
+    // YOLOView streaming is now configured separately
+    // Keep simple detection callback for compatibility
+    yoloView.onDetection = { result in
+      print("SwiftYOLOPlatformView: onDetection callback triggered with \(result.boxes.count) detections")
     }
 
     // Set thresholds
@@ -348,51 +326,48 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     }
   }
 
-  // Helper method to convert YOLOResult to Flutter-compatible map
-  private func convertYOLOResultToMap(_ result: YOLOResult) -> [String: Any] {
-    var resultMap: [String: Any] = [:]
-
-    // Convert detection results
-    var detections: [[String: Any]] = []
-    for box in result.boxes {
-      var detection: [String: Any] = [
-        "classIndex": box.index,
-        "className": box.cls,
-        "confidence": Double(box.conf),
-        "boundingBox": [
-          "left": box.xywh.origin.x,
-          "top": box.xywh.origin.y,
-          "right": box.xywh.origin.x + box.xywh.size.width,
-          "bottom": box.xywh.origin.y + box.xywh.size.height,
-        ],
-        "normalizedBox": [
-          "left": box.xywhn.origin.x,
-          "top": box.xywhn.origin.y,
-          "right": box.xywhn.origin.x + box.xywhn.size.width,
-          "bottom": box.xywhn.origin.y + box.xywhn.size.height,
-        ],
-      ]
-
-      // Extended data for pose detection or segmentation can be added as needed
-      // Currently only basic detection information is sent
-
-      detections.append(detection)
+  /// Configure YOLOView streaming functionality based on creation parameters
+  private func setupYOLOViewStreaming(args: [String: Any]) {
+    guard let yoloView = yoloView else { return }
+    
+    // Parse streaming configuration from args
+    let streamingConfigParam = args["streamingConfig"] as? [String: Any]
+    
+    let streamConfig: YOLOStreamConfig
+    if let configDict = streamingConfigParam {
+      print("SwiftYOLOPlatformView: Creating YOLOStreamConfig from creation params: \(configDict)")
+      streamConfig = YOLOStreamConfig.from(dict: configDict)
+    } else {
+      // Use default balanced configuration for optimal performance/features balance
+      print("SwiftYOLOPlatformView: Using default BALANCED streaming config")
+      streamConfig = YOLOStreamConfig.BALANCED
     }
-
-    resultMap["detections"] = detections
-    resultMap["processingTimeMs"] = result.speed * 1000  // Convert seconds to milliseconds
-    if let fpsValue = result.fps {
-      resultMap["fps"] = fpsValue
+    
+    // Configure YOLOView with the stream config
+    yoloView.setStreamConfig(streamConfig)
+    print("SwiftYOLOPlatformView: YOLOView streaming configured: \(streamConfig)")
+    
+    // Set up streaming callback to forward data to Flutter via event channel
+    yoloView.setStreamCallback { [weak self] streamData in
+      // Forward streaming data from YOLOView to Flutter
+      self?.sendStreamDataToFlutter(streamData)
     }
-
-    // Add annotated image if available (optional)
-    if let annotatedImage = result.annotatedImage,
-      let imageData = annotatedImage.jpegData(compressionQuality: 0.9)
-    {
-      resultMap["annotatedImage"] = FlutterStandardTypedData(bytes: imageData)
+  }
+  
+  /// Send stream data to Flutter via event channel
+  private func sendStreamDataToFlutter(_ streamData: [String: Any]) {
+    print("SwiftYOLOPlatformView: Sending stream data to Flutter: \(streamData.keys.joined(separator: ", "))")
+    
+    guard let eventSink = self.eventSink else {
+      print("SwiftYOLOPlatformView: eventSink is nil - no listener for events")
+      return
     }
-
-    return resultMap
+    
+    // Send event on main thread
+    DispatchQueue.main.async {
+      print("SwiftYOLOPlatformView: Sending stream data to Flutter via eventSink")
+      eventSink(streamData)
+    }
   }
 
   public func view() -> UIView {
