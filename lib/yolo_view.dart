@@ -522,8 +522,8 @@ class YOLOViewState extends State<YOLOView> {
       _effectiveController
           .switchModel(widget.modelPath, widget.task)
           .catchError((e) {
-            logInfo('YoloView: Error switching model in didUpdateWidget: $e');
-          });
+        logInfo('YoloView: Error switching model in didUpdateWidget: $e');
+      });
     }
   }
 
