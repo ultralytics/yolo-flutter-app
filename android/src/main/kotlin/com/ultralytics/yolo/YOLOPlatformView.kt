@@ -197,7 +197,9 @@ class YOLOPlatformView(
                         includeOBB = call.argument<Boolean>("includeOBB") ?: false,
                         includeOriginalImage = call.argument<Boolean>("includeOriginalImage") ?: false,
                         maxFPS = call.argument<Int>("maxFPS"),
-                        throttleIntervalMs = call.argument<Int>("throttleInterval")
+                        throttleIntervalMs = call.argument<Int>("throttleInterval"),
+                        inferenceFrequency = call.argument<Int>("inferenceFrequency"),
+                        skipFrames = call.argument<Int>("skipFrames")
                     )
                     yoloView.setStreamConfig(streamConfig)
                     Log.d(TAG, "YOLOView streaming config updated: $streamConfig")

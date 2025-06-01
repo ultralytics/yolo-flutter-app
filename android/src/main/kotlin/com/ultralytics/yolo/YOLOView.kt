@@ -146,6 +146,11 @@ class YOLOView @JvmOverloads constructor(
     private var lastInferenceTime: Long = 0
     private var targetFrameInterval: Long? = null // in nanoseconds
     private var throttleInterval: Long? = null // in nanoseconds
+    
+    // Inference frequency control variables
+    private var inferenceFrameInterval: Long? = null // Target inference interval in nanoseconds
+    private var frameSkipCount: Int = 0 // Current frame skip counter
+    private var targetSkipFrames: Int = 0 // Number of frames to skip between inferences
 
     /** Set the callback */
     fun setOnInferenceCallback(callback: (YOLOResult) -> Unit) {
@@ -535,6 +540,13 @@ class YOLOView @JvmOverloads constructor(
         }
 
         predictor?.let { p ->
+            // Check if we should run inference on this frame
+            if (!shouldRunInference()) {
+                Log.d(TAG, "Skipping inference due to frequency control")
+                imageProxy.close()
+                return
+            }
+            
             try {
                 // For camera feed, we typically rotate the bitmap
                 val result = p.predict(bitmap, h, w, rotateForCamera = true)
@@ -554,7 +566,7 @@ class YOLOView @JvmOverloads constructor(
                 // Callback
                 inferenceCallback?.invoke(resultWithOriginalImage)
                 
-                // Streaming callback (with throttling)
+                // Streaming callback (with output throttling)
                 streamCallback?.let { callback ->
                     if (shouldProcessFrame()) {
                         updateLastInferenceTime()
@@ -569,7 +581,7 @@ class YOLOView @JvmOverloads constructor(
                         callback.invoke(enhancedStreamData)
                         Log.d(TAG, "Sent streaming data with ${result.boxes.size} detections")
                     } else {
-                        Log.d(TAG, "Skipping frame due to throttling")
+                        Log.d(TAG, "Skipping frame output due to throttling")
                     }
                 }
 
@@ -1065,7 +1077,7 @@ class YOLOView @JvmOverloads constructor(
      */
     private fun setupThrottlingFromConfig() {
         streamConfig?.let { config ->
-            // Setup maxFPS throttling
+            // Setup maxFPS throttling (for result output)
             config.maxFPS?.let { maxFPS ->
                 if (maxFPS > 0) {
                     targetFrameInterval = (1_000_000_000L / maxFPS) // Convert to nanoseconds
@@ -1076,7 +1088,7 @@ class YOLOView @JvmOverloads constructor(
                 Log.d(TAG, "maxFPS throttling disabled")
             }
             
-            // Setup throttleInterval
+            // Setup throttleInterval (for result output)
             config.throttleIntervalMs?.let { throttleMs ->
                 if (throttleMs > 0) {
                     throttleInterval = throttleMs * 1_000_000L // Convert ms to nanoseconds
@@ -1087,13 +1099,66 @@ class YOLOView @JvmOverloads constructor(
                 Log.d(TAG, "throttleInterval disabled")
             }
             
+            // Setup inference frequency control
+            config.inferenceFrequency?.let { inferenceFreq ->
+                if (inferenceFreq > 0) {
+                    inferenceFrameInterval = (1_000_000_000L / inferenceFreq) // Convert to nanoseconds
+                    Log.d(TAG, "Inference frequency control enabled - target inference FPS: $inferenceFreq, interval: ${inferenceFrameInterval!! / 1_000_000}ms")
+                }
+            } ?: run {
+                inferenceFrameInterval = null
+                Log.d(TAG, "Inference frequency control disabled")
+            }
+            
+            // Setup frame skipping
+            config.skipFrames?.let { skipFrames ->
+                if (skipFrames > 0) {
+                    targetSkipFrames = skipFrames
+                    frameSkipCount = 0 // Reset counter
+                    Log.d(TAG, "Frame skipping enabled - skip $skipFrames frames between inferences")
+                }
+            } ?: run {
+                targetSkipFrames = 0
+                frameSkipCount = 0
+                Log.d(TAG, "Frame skipping disabled")
+            }
+            
             // Initialize timing
             lastInferenceTime = System.nanoTime()
         }
     }
     
     /**
-     * Check if we should process this frame based on throttling settings
+     * Check if we should run inference on this frame based on inference frequency control
+     */
+    private fun shouldRunInference(): Boolean {
+        val now = System.nanoTime()
+        
+        // Check frame skipping control first (simpler, more deterministic)
+        if (targetSkipFrames > 0) {
+            frameSkipCount++
+            if (frameSkipCount <= targetSkipFrames) {
+                // Still skipping frames
+                return false
+            } else {
+                // Reset counter and allow inference
+                frameSkipCount = 0
+                return true
+            }
+        }
+        
+        // Check inference frequency control (time-based)
+        inferenceFrameInterval?.let { interval ->
+            if (now - lastInferenceTime < interval) {
+                return false
+            }
+        }
+        
+        return true
+    }
+    
+    /**
+     * Check if we should send results to Flutter based on output throttling settings
      */
     private fun shouldProcessFrame(): Boolean {
         val now = System.nanoTime()
