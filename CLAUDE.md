@@ -75,12 +75,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Drawing stability**: Uses YOLOView's CALayer drawing (iOS) / Canvas drawing (Android)
 - **Memory efficiency**: No unnecessary image conversions, direct CVPixelBuffer/ImageProxy handling
 
-### Current Status: ✅ COMPLETE
+### Additional Optimizations (2025/5/31)
+- ✅ **Performance Optimization**: Changed streaming defaults to false for heavy data (masks, poses, OBB)
+- ✅ **Dynamic Configuration**: Added `setStreamingConfig` method channel for runtime configuration changes
+- ✅ **Stack Overflow Fix**: Resolved Stack Overflow issue in example app caused by circular references
+- ✅ **Configuration Presets**: Simplified to DEFAULT, FULL, DEBUG with custom() builder
+- ✅ **Flutter Integration**: Enhanced YOLOStreamingConfig with factory constructors (.minimal, .withMasks, .withPoses, .full, .debug, .throttled)
+
+### Current Status: ✅ COMPLETE & OPTIMIZED
 **Cross-platform streaming implementation is fully functional with feature parity between iOS and Android**
+**Performance optimized with smart defaults and runtime configuration support**
+
+### Key Changes in Updated Version:
+1. **Smart Defaults**: Heavy data (masks, poses, OBB) now defaults to false for optimal performance
+2. **Runtime Config**: Can change streaming configuration without recreating YOLOView via `setStreamingConfig`
+3. **Stack Overflow Prevention**: Fixed circular reference issues in example app
+4. **Better Documentation**: Enhanced YOLOStreamingConfig with detailed performance notes
+5. **Preset Configurations**: Easy-to-use factory constructors for common use cases
 
 ### Potential Next Steps (if requested)
 - Test real-time streaming performance on actual devices
-- Add streaming configuration UI in Flutter example app
-- Optimize streaming data size for network transmission
+- Add streaming configuration UI in Flutter example app using new runtime configuration
 - Implement streaming analytics and monitoring
 - Add streaming pause/resume functionality
+- Network streaming optimization with data compression
