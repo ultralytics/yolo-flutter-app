@@ -20,17 +20,27 @@ import Vision
 @MainActor
 public class YOLOView: UIView, VideoCaptureDelegate {
   func onInferenceTime(speed: Double, fps: Double) {
+    // Store performance data for streaming
+    self.currentFps = fps
+    self.currentProcessingTime = speed
+    
     DispatchQueue.main.async {
       self.labelFPS.text = String(format: "%.1f FPS - %.1f ms", fps, speed)  // t2 seconds to ms
     }
   }
 
   func onPredict(result: YOLOResult) {
+    
+    // Check if we should process inference result based on frequency control
+    if !shouldRunInference() {
+      print("YOLOView: Skipping inference result due to frequency control")
+      return
+    }
 
     showBoxes(predictions: result)
     onDetection?(result)
     
-    // Streaming callback (with throttling)
+    // Streaming callback (with output throttling)
     if let streamCallback = onStream {
       if shouldProcessFrame() {
         updateLastInferenceTime()
@@ -46,7 +56,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         streamCallback(enhancedStreamData)
         print("YOLOView: Sent streaming data with \(result.boxes.count) detections")
       } else {
-        print("YOLOView: Skipping frame due to throttling")
+        print("YOLOView: Skipping frame output due to throttling")
       }
     }
 
@@ -107,6 +117,15 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   private var lastInferenceTime: TimeInterval = 0
   private var targetFrameInterval: TimeInterval? = nil // in seconds
   private var throttleInterval: TimeInterval? = nil // in seconds
+  
+  // Inference frequency control variables
+  private var inferenceFrameInterval: TimeInterval? = nil // Target inference interval in seconds
+  private var frameSkipCount: Int = 0 // Current frame skip counter
+  private var targetSkipFrames: Int = 0 // Number of frames to skip between inferences
+  
+  // Performance data tracking
+  private var currentFps: Double = 0.0
+  private var currentProcessingTime: Double = 0.0
   
   private var videoCapture: VideoCapture
   private var busy = false
@@ -1275,7 +1294,7 @@ extension YOLOView: @preconcurrency AVCapturePhotoCaptureDelegate {
   private func setupThrottlingFromConfig() {
     guard let config = streamConfig else { return }
     
-    // Setup maxFPS throttling
+    // Setup maxFPS throttling (for result output)
     if let maxFPS = config.maxFPS, maxFPS > 0 {
       targetFrameInterval = 1.0 / Double(maxFPS) // Convert to seconds
       print("YOLOView: maxFPS throttling enabled - target FPS: \(maxFPS), interval: \(targetFrameInterval! * 1000)ms")
@@ -1284,7 +1303,7 @@ extension YOLOView: @preconcurrency AVCapturePhotoCaptureDelegate {
       print("YOLOView: maxFPS throttling disabled")
     }
     
-    // Setup throttleInterval
+    // Setup throttleInterval (for result output)
     if let throttleMs = config.throttleIntervalMs, throttleMs > 0 {
       throttleInterval = Double(throttleMs) / 1000.0 // Convert ms to seconds
       print("YOLOView: throttleInterval enabled - interval: \(throttleMs)ms")
@@ -1293,11 +1312,58 @@ extension YOLOView: @preconcurrency AVCapturePhotoCaptureDelegate {
       print("YOLOView: throttleInterval disabled")
     }
     
+    // Setup inference frequency control
+    if let inferenceFreq = config.inferenceFrequency, inferenceFreq > 0 {
+      inferenceFrameInterval = 1.0 / Double(inferenceFreq) // Convert to seconds
+      print("YOLOView: Inference frequency control enabled - target inference FPS: \(inferenceFreq), interval: \(inferenceFrameInterval! * 1000)ms")
+    } else {
+      inferenceFrameInterval = nil
+      print("YOLOView: Inference frequency control disabled")
+    }
+    
+    // Setup frame skipping
+    if let skipFrames = config.skipFrames, skipFrames > 0 {
+      targetSkipFrames = skipFrames
+      frameSkipCount = 0 // Reset counter
+      print("YOLOView: Frame skipping enabled - skip \(skipFrames) frames between inferences")
+    } else {
+      targetSkipFrames = 0
+      frameSkipCount = 0
+      print("YOLOView: Frame skipping disabled")
+    }
+    
     // Initialize timing
     lastInferenceTime = CACurrentMediaTime()
   }
   
-  /// Check if we should process this frame based on throttling settings
+  /// Check if we should run inference on this frame based on inference frequency control
+  private func shouldRunInference() -> Bool {
+    let now = CACurrentMediaTime()
+    
+    // Check frame skipping control first (simpler, more deterministic)
+    if targetSkipFrames > 0 {
+      frameSkipCount += 1
+      if frameSkipCount <= targetSkipFrames {
+        // Still skipping frames
+        return false
+      } else {
+        // Reset counter and allow inference
+        frameSkipCount = 0
+        return true
+      }
+    }
+    
+    // Check inference frequency control (time-based)
+    if let interval = inferenceFrameInterval {
+      if now - lastInferenceTime < interval {
+        return false
+      }
+    }
+    
+    return true
+  }
+  
+  /// Check if we should send results to Flutter based on output throttling settings
   private func shouldProcessFrame() -> Bool {
     let now = CACurrentMediaTime()
     
@@ -1430,11 +1496,17 @@ extension YOLOView: @preconcurrency AVCapturePhotoCaptureDelegate {
     
     // Add performance metrics (if enabled)
     if config.includeProcessingTimeMs {
-      map["processingTimeMs"] = t2 // inference time in ms
+      map["processingTimeMs"] = currentProcessingTime // inference time in ms
+      print("YOLOView: 📊 Including processingTimeMs: \(currentProcessingTime) ms (includeProcessingTimeMs=\(config.includeProcessingTimeMs))")
+    } else {
+      print("YOLOView: ⚠️ Skipping processingTimeMs (includeProcessingTimeMs=\(config.includeProcessingTimeMs))")
     }
     
     if config.includeFps {
-      map["fps"] = t4 // FPS value
+      map["fps"] = currentFps // FPS value
+      print("YOLOView: 📊 Including fps: \(currentFps) (includeFps=\(config.includeFps))")
+    } else {
+      print("YOLOView: ⚠️ Skipping fps (includeFps=\(config.includeFps))")
     }
     
     // Add original image (if available and enabled)

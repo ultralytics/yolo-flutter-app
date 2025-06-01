@@ -23,6 +23,10 @@ public struct YOLOStreamConfig {
     public let maxFPS: Int?              // Limit inference to max FPS (e.g., 15, 30)
     public let throttleIntervalMs: Int?   // Minimum interval between inferences in milliseconds
     
+    // Inference frequency controls
+    public let inferenceFrequency: Int?  // Target inference frequency in FPS (e.g., 5, 10, 15, 30)
+    public let skipFrames: Int?          // Skip frames between inferences (alternative to inferenceFrequency)
+    
     // Note: annotatedImage is intentionally excluded for YOLOView
     // YOLOView uses CALayer drawing (real-time overlay), not UIImage generation
     
@@ -36,7 +40,9 @@ public struct YOLOStreamConfig {
         includeOBB: Bool = false,
         includeOriginalImage: Bool = false,
         maxFPS: Int? = nil,
-        throttleIntervalMs: Int? = nil
+        throttleIntervalMs: Int? = nil,
+        inferenceFrequency: Int? = nil,
+        skipFrames: Int? = nil
     ) {
         self.includeDetections = includeDetections
         self.includeClassifications = includeClassifications
@@ -48,6 +54,8 @@ public struct YOLOStreamConfig {
         self.includeOriginalImage = includeOriginalImage
         self.maxFPS = maxFPS
         self.throttleIntervalMs = throttleIntervalMs
+        self.inferenceFrequency = inferenceFrequency
+        self.skipFrames = skipFrames
     }
     
     /// Default minimal configuration - optimized for maximum performance
@@ -86,7 +94,9 @@ public struct YOLOStreamConfig {
         includeOBB: Bool = false,
         includeOriginalImage: Bool = false,
         maxFPS: Int? = nil,
-        throttleIntervalMs: Int? = nil
+        throttleIntervalMs: Int? = nil,
+        inferenceFrequency: Int? = nil,
+        skipFrames: Int? = nil
     ) -> YOLOStreamConfig {
         return YOLOStreamConfig(
             includeMasks: includeMasks,
@@ -94,7 +104,9 @@ public struct YOLOStreamConfig {
             includeOBB: includeOBB,
             includeOriginalImage: includeOriginalImage,
             maxFPS: maxFPS,
-            throttleIntervalMs: throttleIntervalMs
+            throttleIntervalMs: throttleIntervalMs,
+            inferenceFrequency: inferenceFrequency,
+            skipFrames: skipFrames
         )
     }
 }
@@ -121,6 +133,18 @@ extension YOLOStreamConfig {
                 if let throttleMs = dict["throttleIntervalMs"] as? Int { return throttleMs }
                 if let throttleMs = dict["throttleIntervalMs"] as? Double { return Int(throttleMs) }
                 if let throttleMs = dict["throttleIntervalMs"] as? String { return Int(throttleMs) }
+                return nil
+            }(),
+            inferenceFrequency: {
+                if let freq = dict["inferenceFrequency"] as? Int { return freq }
+                if let freq = dict["inferenceFrequency"] as? Double { return Int(freq) }
+                if let freq = dict["inferenceFrequency"] as? String { return Int(freq) }
+                return nil
+            }(),
+            skipFrames: {
+                if let skip = dict["skipFrames"] as? Int { return skip }
+                if let skip = dict["skipFrames"] as? Double { return Int(skip) }
+                if let skip = dict["skipFrames"] as? String { return Int(skip) }
                 return nil
             }()
         )
