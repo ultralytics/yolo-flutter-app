@@ -154,9 +154,12 @@ class YOLOView @JvmOverloads constructor(
     
     /** Set streaming configuration */
     fun setStreamConfig(config: YOLOStreamConfig?) {
+        Log.d(TAG, "🔄 Setting new streaming config")
+        Log.d(TAG, "📋 Previous config: $streamConfig")
         this.streamConfig = config
         setupThrottlingFromConfig()
-        Log.d(TAG, "Streaming config set: $config")
+        Log.d(TAG, "✅ New streaming config set: $config")
+        Log.d(TAG, "🎯 Key settings - includeMasks: ${config?.includeMasks}, includeProcessingTimeMs: ${config?.includeProcessingTimeMs}, inferenceFrequency: ${config?.inferenceFrequency}")
     }
     
     /** Set streaming callback */
@@ -1227,6 +1230,9 @@ class YOLOView @JvmOverloads constructor(
         if (config.includeProcessingTimeMs) {
             val processingTimeMs = result.speed.toDouble()
             map["processingTimeMs"] = processingTimeMs
+            Log.d(TAG, "📊 Including processingTimeMs: $processingTimeMs ms (includeProcessingTimeMs=${config.includeProcessingTimeMs})")
+        } else {
+            Log.d(TAG, "⚠️ Skipping processingTimeMs (includeProcessingTimeMs=${config.includeProcessingTimeMs})")
         }
         
         if (config.includeFps) {

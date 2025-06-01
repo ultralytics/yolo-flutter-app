@@ -10,6 +10,7 @@ import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
+import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 
 /// Controller for interacting with a [YOLOView] widget.
 ///
@@ -75,6 +76,12 @@ class YOLOViewController {
   /// Limits the number of detections returned to improve
   /// performance. Default is 30.
   int get numItemsThreshold => _numItemsThreshold;
+
+  /// Whether the controller has been initialized with a platform view.
+  ///
+  /// Returns true if the controller is connected to a native view and
+  /// can receive method calls.
+  bool get isInitialized => _methodChannel != null && _viewId != null;
 
   @visibleForTesting
   void init(MethodChannel methodChannel, int viewId) =>
@@ -396,6 +403,8 @@ class YOLOViewController {
         'includeOriginalImage': config.includeOriginalImage,
         'maxFPS': config.maxFPS,
         'throttleInterval': config.throttleInterval?.inMilliseconds,
+        'inferenceFrequency': config.inferenceFrequency,
+        'skipFrames': config.skipFrames,
       });
       logInfo('YOLOViewController: Streaming config updated');
     } catch (e) {
@@ -459,16 +468,51 @@ class YOLOView extends StatefulWidget {
 
   /// Callback invoked when new detection results are available.
   ///
-  /// This callback is called for each processed frame that contains
-  /// detections. The frequency depends on the device's processing speed.
+  /// This callback provides structured, type-safe detection results as [YOLOResult] objects.
+  /// It's the recommended callback for basic object detection applications.
+  ///
+  /// **Usage:** Basic detection, UI updates, simple statistics
+  /// **Performance:** Lightweight (~1-2KB per frame)
+  /// **Data:** Bounding boxes, class names, confidence scores
+  ///
+  /// Note: If [onStreamingData] is provided, this callback will NOT be called
+  /// to avoid data duplication.
   final Function(List<YOLOResult>)? onResult;
 
   /// Callback invoked with performance metrics.
   ///
-  /// Provides real-time performance data including:
-  /// - 'processingTimeMs': Time to process a single frame
-  /// - 'fps': Current frames per second
-  final Function(Map<String, double> metrics)? onPerformanceMetrics;
+  /// This callback provides structured performance data as [YOLOPerformanceMetrics] objects.
+  /// Use this for monitoring app performance and optimizing detection settings.
+  ///
+  /// **Usage:** Performance monitoring, FPS display, optimization
+  /// **Performance:** Very lightweight (~100 bytes per frame)
+  /// **Data:** FPS, processing time, frame numbers, timestamps
+  ///
+  /// Note: If [onStreamingData] is provided, this callback will NOT be called
+  /// to avoid data duplication.
+  final Function(YOLOPerformanceMetrics)? onPerformanceMetrics;
+
+  /// Callback invoked with comprehensive raw streaming data.
+  ///
+  /// This callback provides access to ALL available YOLO data including advanced
+  /// features like segmentation masks, pose keypoints, oriented bounding boxes,
+  /// and original camera frames.
+  ///
+  /// **Usage:** Advanced AI/ML applications, research, debugging, custom processing
+  /// **Performance:** Heavy (~100KB-10MB per frame depending on configuration)
+  /// **Data:** Everything from [onResult] + [onPerformanceMetrics] + advanced features
+  ///
+  /// **IMPORTANT:** When this callback is provided, [onResult] and [onPerformanceMetrics]
+  /// will NOT be called to prevent data duplication and improve performance.
+  ///
+  /// Available data keys:
+  /// - `detections`: List<Map> - Raw detection data with all features
+  /// - `fps`: double - Current frames per second  
+  /// - `processingTimeMs`: double - Processing time in milliseconds
+  /// - `frameNumber`: int - Sequential frame number
+  /// - `timestamp`: int - Timestamp in milliseconds
+  /// - `originalImage`: Uint8List? - JPEG encoded camera frame (if enabled)
+  final Function(Map<String, dynamic> streamData)? onStreamingData;
 
   /// Whether to show native UI controls on the camera preview.
   ///
@@ -508,6 +552,7 @@ class YOLOView extends StatefulWidget {
     this.cameraResolution = '720p',
     this.onResult,
     this.onPerformanceMetrics,
+    this.onStreamingData,
     this.showNativeUI = false,
     this.onZoomChanged,
     this.streamingConfig,
@@ -545,7 +590,9 @@ class YOLOViewState extends State<YOLOView> {
 
     _setupController();
 
-    if (widget.onResult != null || widget.onPerformanceMetrics != null) {
+    if (widget.onResult != null || 
+        widget.onPerformanceMetrics != null || 
+        widget.onStreamingData != null) {
       _subscribeToResults();
     }
 
@@ -576,8 +623,11 @@ class YOLOViewState extends State<YOLOView> {
     }
 
     if (oldWidget.onResult != widget.onResult ||
-        oldWidget.onPerformanceMetrics != widget.onPerformanceMetrics) {
-      if (widget.onResult == null && widget.onPerformanceMetrics == null) {
+        oldWidget.onPerformanceMetrics != widget.onPerformanceMetrics ||
+        oldWidget.onStreamingData != widget.onStreamingData) {
+      if (widget.onResult == null && 
+          widget.onPerformanceMetrics == null &&
+          widget.onStreamingData == null) {
         _cancelResultSubscription();
       } else {
         // If at least one callback is now non-null, ensure subscription
@@ -679,67 +729,78 @@ class YOLOViewState extends State<YOLOView> {
         }
 
         if (event is Map) {
-          // Handle detection results
-          if (widget.onResult != null && event.containsKey('detections')) {
+          // Priority system: onStreamingData takes precedence
+          if (widget.onStreamingData != null) {
             try {
-              final List<dynamic> detections = event['detections'] ?? [];
-              logInfo('YOLOView: Received ${detections.length} detections');
-
-              for (var i = 0; i < detections.length && i < 3; i++) {
-                final detection = detections[i];
-                final className = detection['className'] ?? 'unknown';
-                final confidence = detection['confidence'] ?? 0.0;
-                logInfo(
-                  'YOLOView: Detection $i - $className (${(confidence * 100).toStringAsFixed(1)}%)',
-                );
-              }
-
-              final results = _parseDetectionResults(event);
-              logInfo('YOLOView: Parsed results count: ${results.length}');
-              widget.onResult!(results);
-              logInfo('YOLOView: Called onResult callback with results');
-            } catch (e, s) {
-              logInfo('Error parsing detection results: $e');
-              logInfo('Stack trace for detection error: $s');
+              // Comprehensive mode: Pass all data via onStreamingData
+              final streamData = Map<String, dynamic>.from(event);
+              widget.onStreamingData!(streamData);
               logInfo(
-                'YOLOView: Event keys for detection error: ${event.keys.toList()}',
+                'YOLOView: Called onStreamingData callback (comprehensive mode) with keys: ${streamData.keys.toList()}',
               );
-              if (event.containsKey('detections')) {
-                final detections = event['detections'];
-                logInfo(
-                  'YOLOView: Detections type for error: ${detections.runtimeType}',
-                );
-                if (detections is List && detections.isNotEmpty) {
+            } catch (e, s) {
+              logInfo('Error processing streaming data: $e');
+              logInfo('Stack trace for streaming error: $s');
+            }
+          } else {
+            // Separated mode: Use individual callbacks
+            logInfo('YOLOView: Using separated callback mode');
+            
+            // Handle detection results
+            if (widget.onResult != null && event.containsKey('detections')) {
+              try {
+                final List<dynamic> detections = event['detections'] ?? [];
+                logInfo('YOLOView: Received ${detections.length} detections');
+
+                for (var i = 0; i < detections.length && i < 3; i++) {
+                  final detection = detections[i];
+                  final className = detection['className'] ?? 'unknown';
+                  final confidence = detection['confidence'] ?? 0.0;
                   logInfo(
-                    'YOLOView: First detection keys for error: ${detections.first?.keys?.toList()}',
+                    'YOLOView: Detection $i - $className (${(confidence * 100).toStringAsFixed(1)}%)',
                   );
+                }
+
+                final results = _parseDetectionResults(event);
+                logInfo('YOLOView: Parsed results count: ${results.length}');
+                widget.onResult!(results);
+                logInfo('YOLOView: Called onResult callback with results');
+              } catch (e, s) {
+                logInfo('Error parsing detection results: $e');
+                logInfo('Stack trace for detection error: $s');
+                logInfo(
+                  'YOLOView: Event keys for detection error: ${event.keys.toList()}',
+                );
+                if (event.containsKey('detections')) {
+                  final detections = event['detections'];
+                  logInfo(
+                    'YOLOView: Detections type for error: ${detections.runtimeType}',
+                  );
+                  if (detections is List && detections.isNotEmpty) {
+                    logInfo(
+                      'YOLOView: First detection keys for error: ${detections.first?.keys?.toList()}',
+                    );
+                  }
                 }
               }
             }
-          }
 
-          // Handle performance metrics
-          if (widget.onPerformanceMetrics != null) {
-            try {
-              final double? processingTimeMs =
-                  (event['processingTimeMs'] as num?)?.toDouble();
-              final double? fps = (event['fps'] as num?)?.toDouble();
-
-              if (processingTimeMs != null && fps != null) {
-                widget.onPerformanceMetrics!({
-                  'processingTimeMs': processingTimeMs,
-                  'fps': fps,
-                });
+            // Handle performance metrics  
+            if (widget.onPerformanceMetrics != null) {
+              try {
+                logInfo('YOLOView: 🔍 Raw event data for performance metrics: $event');
+                final metrics = YOLOPerformanceMetrics.fromMap(Map<String, dynamic>.from(event));
+                widget.onPerformanceMetrics!(metrics);
                 logInfo(
-                  'YOLOView: Called onPerformanceMetrics callback with: processingTimeMs=$processingTimeMs, fps=$fps',
+                  'YOLOView: Called onPerformanceMetrics callback: ${metrics.toString()}',
+                );
+              } catch (e, s) {
+                logInfo('Error parsing performance metrics: $e');
+                logInfo('Stack trace for metrics error: $s');
+                logInfo(
+                  'YOLOView: Event keys for metrics error: ${event.keys.toList()}',
                 );
               }
-            } catch (e, s) {
-              logInfo('Error parsing performance metrics: $e');
-              logInfo('Stack trace for metrics error: $s');
-              logInfo(
-                'YOLOView: Event keys for metrics error: ${event.keys.toList()}',
-              );
             }
           }
         } else {
