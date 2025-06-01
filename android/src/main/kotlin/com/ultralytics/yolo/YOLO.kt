@@ -518,12 +518,40 @@ class YOLO(
     fun setConfidenceThreshold(threshold: Double) {
         predictor.setConfidenceThreshold(threshold)
     }
+    
+    /**
+     * Set confidence threshold for detection (Float overload)
+     */
+    fun setConfidenceThreshold(threshold: Float) {
+        predictor.setConfidenceThreshold(threshold.toDouble())
+    }
+    
+    /**
+     * Get current confidence threshold
+     */
+    fun getConfidenceThreshold(): Float {
+        return predictor.getConfidenceThreshold().toFloat()
+    }
 
     /**
      * Set IoU threshold for non-maximum suppression
      */
     fun setIouThreshold(threshold: Double) {
         predictor.setIouThreshold(threshold)
+    }
+    
+    /**
+     * Set IoU threshold for non-maximum suppression (Float overload)
+     */
+    fun setIouThreshold(threshold: Float) {
+        predictor.setIouThreshold(threshold.toDouble())
+    }
+    
+    /**
+     * Get current IoU threshold
+     */
+    fun getIouThreshold(): Float {
+        return predictor.getIouThreshold().toFloat()
     }
 
     /**

@@ -7,11 +7,13 @@ import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_exceptions.dart';
+import 'package:ultralytics_yolo/yolo_instance_manager.dart';
 
 /// Exports all YOLO-related classes and enums
 export 'yolo_task.dart';
 export 'yolo_exceptions.dart';
 export 'yolo_result.dart';
+export 'yolo_instance_manager.dart';
 
 /// YOLO (You Only Look Once) is a class that provides machine learning inference
 /// capabilities for object detection, segmentation, classification, pose estimation,
@@ -31,8 +33,16 @@ export 'yolo_result.dart';
 /// final results = await yolo.predict(imageBytes);
 /// ```
 class YOLO {
-  // We'll store a method channel for calling native code
-  static const _channel = MethodChannel('yolo_single_image_channel');
+  // Static channel for backward compatibility
+  static const _defaultChannel = MethodChannel('yolo_single_image_channel');
+  
+  // Instance-specific properties
+  late final String _instanceId;
+  late final MethodChannel _channel;
+  bool _isInitialized = false;
+  
+  /// The unique instance ID for this YOLO instance
+  String get instanceId => _instanceId;
 
   /// Path to the YOLO model file. This can be:
   /// - An asset path (e.g., 'assets/models/yolo11n.tflite')
@@ -52,7 +62,32 @@ class YOLO {
   ///
   /// The [modelPath] can refer to a model in assets, internal storage, or absolute path.
   /// The [task] specifies what type of inference will be performed.
-  YOLO({required this.modelPath, required this.task});
+  /// 
+  /// Each YOLO instance automatically gets a unique ID and its own channel.
+  YOLO({required this.modelPath, required this.task}) {
+    // Generate unique instance ID
+    _instanceId = 'yolo_${DateTime.now().millisecondsSinceEpoch}_${this.hashCode}';
+    
+    // Create instance-specific channel
+    final channelName = 'yolo_single_image_channel_$_instanceId';
+    _channel = MethodChannel(channelName);
+    
+    // Register this instance with the manager
+    YOLOInstanceManager.registerInstance(_instanceId, this);
+    
+    // Initialize the instance on the platform side
+    _initializeInstance();
+  }
+  
+  /// Initialize this instance on the platform side
+  Future<void> _initializeInstance() async {
+    try {
+      await _channel.invokeMethod('createInstance', {'instanceId': _instanceId});
+      _isInitialized = true;
+    } catch (e) {
+      throw ModelLoadingException('Failed to initialize YOLO instance: $e');
+    }
+  }
 
   /// Sets the view ID for this controller (called internally by YoloView)
   void setViewId(int viewId) {
@@ -74,11 +109,16 @@ class YOLO {
     }
 
     try {
-      await _channel.invokeMethod('setModel', {
+      final Map<String, dynamic> arguments = {
         'viewId': _viewId,
         'modelPath': newModelPath,
         'task': newTask.name,
-      });
+      };
+      
+      // Always include instanceId
+      arguments['instanceId'] = _instanceId;
+      
+      await _channel.invokeMethod('setModel', arguments);
     } on PlatformException catch (e) {
       if (e.code == 'MODEL_NOT_FOUND') {
         throw ModelLoadingException('Model file not found: $newModelPath');
@@ -114,11 +154,18 @@ class YOLO {
   /// @throws [ModelLoadingException] if the model file cannot be found
   /// @throws [PlatformException] if there's an issue with the platform-specific code
   Future<bool> loadModel() async {
+    if (!_isInitialized) {
+      await _initializeInstance();
+    }
+    
     try {
-      final result = await _channel.invokeMethod('loadModel', {
+      final Map<String, dynamic> arguments = {
         'modelPath': modelPath,
         'task': task.name,
-      });
+        'instanceId': _instanceId,
+      };
+      
+      final result = await _channel.invokeMethod('loadModel', arguments);
       return result == true;
     } on PlatformException catch (e) {
       if (e.code == 'MODEL_NOT_FOUND') {
@@ -207,6 +254,9 @@ class YOLO {
       if (iouThreshold != null) {
         arguments['iouThreshold'] = iouThreshold;
       }
+      
+      // Always include instanceId
+      arguments['instanceId'] = _instanceId;
 
       final result = await _channel.invokeMethod(
         'predictSingleImage',
@@ -270,7 +320,7 @@ class YOLO {
   /// @return A map containing information about the model existence and location
   static Future<Map<String, dynamic>> checkModelExists(String modelPath) async {
     try {
-      final result = await _channel.invokeMethod('checkModelExists', {
+      final result = await _defaultChannel.invokeMethod('checkModelExists', {
         'modelPath': modelPath,
       });
 
@@ -301,7 +351,7 @@ class YOLO {
   /// These paths can be used to save or load models.
   static Future<Map<String, String?>> getStoragePaths() async {
     try {
-      final result = await _channel.invokeMethod('getStoragePaths');
+      final result = await _defaultChannel.invokeMethod('getStoragePaths');
 
       if (result is Map) {
         return Map<String, String?>.fromEntries(
@@ -318,6 +368,23 @@ class YOLO {
     } catch (e) {
       logInfo('Error getting storage paths: $e');
       return {};
+    }
+  }
+
+
+  /// Disposes this YOLO instance and releases all resources
+  Future<void> dispose() async {
+    try {
+      await _channel.invokeMethod('disposeInstance', {
+        'instanceId': _instanceId,
+      });
+      
+      // Remove from manager
+      YOLOInstanceManager.unregisterInstance(_instanceId);
+      
+      _isInitialized = false;
+    } catch (e) {
+      logInfo('Error disposing instance $_instanceId: $e');
     }
   }
 }

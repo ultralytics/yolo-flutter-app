@@ -143,9 +143,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               onPerformanceMetrics: (metrics) {
                 if (mounted) {
                   setState(() {
-                    if (metrics['fps'] != null) {
-                      _currentFps = metrics['fps']!;
-                    }
+                    _currentFps = metrics.fps;
                   });
                 }
               },
