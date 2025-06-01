@@ -13,11 +13,11 @@ void main() {
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'getPlatformVersion') {
-            return '42';
-          }
-          return null;
-        });
+      if (methodCall.method == 'getPlatformVersion') {
+        return '42';
+      }
+      return null;
+    });
   });
 
   tearDown(() {
@@ -35,12 +35,12 @@ void main() {
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'setModel') {
-            called = true;
-            capturedCall = methodCall;
-          }
-          return null;
-        });
+      if (methodCall.method == 'setModel') {
+        called = true;
+        capturedCall = methodCall;
+      }
+      return null;
+    });
 
     await platform.setModel(1, 'model.tflite', 'detect');
 
