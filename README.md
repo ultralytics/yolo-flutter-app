@@ -55,7 +55,7 @@ YOLOView(
 | 🤸 **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture      | 20-30 FPS   |
 | 📦 **OBB Detection**   | Rotated bounding boxes         | Document analysis, Aerial imagery | 20-25 FPS   |
 
-**[📱 See Examples →](./docs/examples.md)** | **[⚡ Performance Guide →](./docs/performance.md)** 
+**[📱 See Examples →](./docs/examples.md)** | **[⚡ Performance Guide →](./docs/performance.md)**
 
 ## 🚀 Installation
 
