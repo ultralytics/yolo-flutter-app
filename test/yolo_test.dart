@@ -301,4 +301,287 @@ void main() {
     await yolo.switchModel('new_model.tflite', YOLOTask.segment);
     expect(log.any((call) => call.method == 'setModel'), isTrue);
   });
+
+  group('Multi-Instance YOLO', () {
+    setUp(() {
+      // Setup mock for multi-instance channel
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('yolo_single_image_channel_test_instance'),
+        (MethodCall methodCall) async {
+          log.add(methodCall);
+          if (methodCall.method == 'loadModel') {
+            return true;
+          }
+          return null;
+        },
+      );
+    });
+
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('yolo_single_image_channel_test_instance'),
+        null,
+      );
+    });
+
+    test('creates multi-instance with unique ID', () {
+      final yolo1 = YOLO(
+        modelPath: 'model1.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+      final yolo2 = YOLO(
+        modelPath: 'model2.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+
+      expect(yolo1.instanceId, isNot(equals('default')));
+      expect(yolo2.instanceId, isNot(equals('default')));
+      expect(yolo1.instanceId, isNot(equals(yolo2.instanceId)));
+    });
+
+    test('default instance has correct ID', () {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        // useMultiInstance defaults to false
+      );
+
+      expect(yolo.instanceId, equals('default'));
+    });
+
+    test('multi-instance constructor registers with manager', () {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+
+      expect(YOLOInstanceManager.hasInstance(yolo.instanceId), isTrue);
+      expect(YOLOInstanceManager.getInstance(yolo.instanceId), equals(yolo));
+    });
+
+    test('default instance is not registered with manager', () {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        // useMultiInstance defaults to false
+      );
+
+      expect(YOLOInstanceManager.hasInstance(yolo.instanceId), isFalse);
+    });
+
+    test('multi-instance loadModel calls createInstance', () async {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+
+      await yolo.loadModel();
+
+      expect(
+        log.any((call) => call.method == 'createInstance'),
+        isTrue,
+      );
+      expect(
+        log.any((call) =>
+            call.method == 'createInstance' &&
+            call.arguments['instanceId'] == yolo.instanceId),
+        isTrue,
+      );
+    });
+
+    test('default instance loadModel does not call createInstance', () async {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        // useMultiInstance defaults to false
+      );
+
+      await yolo.loadModel();
+
+      expect(
+        log.any((call) => call.method == 'createInstance'),
+        isFalse,
+      );
+    });
+
+    test('multi-instance predict includes instanceId', () async {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+
+      await yolo.loadModel();
+      log.clear(); // Clear previous calls
+
+      final image = Uint8List.fromList([1, 2, 3, 4, 5]);
+      await yolo.predict(image);
+
+      expect(
+        log.any((call) =>
+            call.method == 'predictSingleImage' &&
+            call.arguments['instanceId'] == yolo.instanceId),
+        isTrue,
+      );
+    });
+
+    test('default instance predict does not include instanceId', () async {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        // useMultiInstance defaults to false
+      );
+
+      await yolo.loadModel();
+      log.clear(); // Clear previous calls
+
+      final image = Uint8List.fromList([1, 2, 3, 4, 5]);
+      await yolo.predict(image);
+
+      expect(
+        log.any((call) =>
+            call.method == 'predictSingleImage' &&
+            call.arguments.containsKey('instanceId')),
+        isFalse,
+      );
+    });
+
+    test('multi-instance switchModel includes instanceId', () async {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+      yolo.setViewId(1);
+
+      await yolo.switchModel('new_model.tflite', YOLOTask.segment);
+
+      expect(
+        log.any((call) =>
+            call.method == 'setModel' &&
+            call.arguments['instanceId'] == yolo.instanceId),
+        isTrue,
+      );
+    });
+
+    test('default instance switchModel does not include instanceId', () async {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        // useMultiInstance defaults to false
+      );
+      yolo.setViewId(1);
+
+      await yolo.switchModel('new_model.tflite', YOLOTask.segment);
+
+      expect(
+        log.any((call) =>
+            call.method == 'setModel' &&
+            call.arguments.containsKey('instanceId')),
+        isFalse,
+      );
+    });
+
+    test('dispose unregisters instance from manager', () async {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+      final instanceId = yolo.instanceId;
+
+      expect(YOLOInstanceManager.hasInstance(instanceId), isTrue);
+
+      await yolo.dispose();
+
+      expect(YOLOInstanceManager.hasInstance(instanceId), isFalse);
+    });
+
+    test('dispose calls disposeInstance method', () async {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+
+      await yolo.dispose();
+
+      expect(
+        log.any((call) => call.method == 'disposeInstance'),
+        isTrue,
+      );
+      expect(
+        log.any((call) =>
+            call.method == 'disposeInstance' &&
+            call.arguments['instanceId'] == yolo.instanceId),
+        isTrue,
+      );
+    });
+
+    test('dispose handles platform errors gracefully', () async {
+      // Setup mock to throw error on disposeInstance
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('yolo_single_image_channel'),
+        (MethodCall methodCall) async {
+          if (methodCall.method == 'disposeInstance') {
+            throw PlatformException(code: 'DISPOSE_ERROR');
+          }
+          return null;
+        },
+      );
+
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+
+      // Should not throw, but handle gracefully
+      await expectLater(yolo.dispose(), completes);
+
+      // Instance should still be unregistered despite error
+      expect(YOLOInstanceManager.hasInstance(yolo.instanceId), isFalse);
+    });
+
+    test('multiple instances can be created and disposed independently', () async {
+      final yolo1 = YOLO(
+        modelPath: 'model1.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+      final yolo2 = YOLO(
+        modelPath: 'model2.tflite',
+        task: YOLOTask.segment,
+        useMultiInstance: true,
+      );
+      final yolo3 = YOLO(
+        modelPath: 'model3.tflite',
+        task: YOLOTask.classify,
+        useMultiInstance: true,
+      );
+
+      expect(YOLOInstanceManager.getActiveInstanceIds().length, equals(3));
+
+      // Dispose middle instance
+      await yolo2.dispose();
+
+      expect(YOLOInstanceManager.getActiveInstanceIds().length, equals(2));
+      expect(YOLOInstanceManager.hasInstance(yolo1.instanceId), isTrue);
+      expect(YOLOInstanceManager.hasInstance(yolo2.instanceId), isFalse);
+      expect(YOLOInstanceManager.hasInstance(yolo3.instanceId), isTrue);
+
+      // Dispose remaining instances
+      await yolo1.dispose();
+      await yolo3.dispose();
+
+      expect(YOLOInstanceManager.getActiveInstanceIds(), isEmpty);
+    });
+  });
 }

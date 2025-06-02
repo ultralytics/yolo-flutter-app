@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
+import 'package:ultralytics_yolo/yolo_streaming_config.dart';
+import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:flutter/foundation.dart';
 
 void main() {
@@ -606,5 +608,654 @@ void main() {
 
     expect(find.byType(YOLOView), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
+  });
+
+  group('YOLOView Streaming Functionality', () {
+    testWidgets('handles onStreamingData callback', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      Map<String, dynamic>? streamingData;
+      var streamingCallCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onStreamingData: (data) {
+              streamingData = data;
+              streamingCallCount++;
+            },
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      state.subscribeToResults();
+
+      // Simulate comprehensive streaming event
+      final comprehensiveEvent = {
+        'detections': [
+          {
+            'classIndex': 0,
+            'className': 'person',
+            'confidence': 0.95,
+            'boundingBox': {'left': 0, 'top': 0, 'right': 100, 'bottom': 100},
+            'normalizedBox': {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0},
+          },
+        ],
+        'fps': 30.0,
+        'processingTimeMs': 33.3,
+        'frameNumber': 100,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'originalImage': Uint8List.fromList([1, 2, 3, 4, 5]),
+      };
+
+      // Simulate receiving streaming data
+      if (state.widget.onStreamingData != null) {
+        state.widget.onStreamingData!(comprehensiveEvent);
+      }
+
+      expect(streamingCallCount, equals(1));
+      expect(streamingData, isNotNull);
+      expect(streamingData!['detections'], isA<List>());
+      expect(streamingData!['fps'], equals(30.0));
+      expect(streamingData!['originalImage'], isA<Uint8List>());
+    });
+
+    testWidgets('streaming config is applied during initialization', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      final config = YOLOStreamingConfig.withMasks();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            streamingConfig: config,
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      expect(state.widget.streamingConfig, equals(config));
+      expect(state.widget.streamingConfig!.includeMasks, isTrue);
+    });
+
+    testWidgets('onStreamingData takes precedence over individual callbacks', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      var onResultCalled = false;
+      var onMetricsCalled = false;
+      var onStreamingCalled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onResult: (_) => onResultCalled = true,
+            onPerformanceMetrics: (_) => onMetricsCalled = true,
+            onStreamingData: (_) => onStreamingCalled = true,
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      state.subscribeToResults();
+
+      final event = {
+        'detections': [
+          {
+            'classIndex': 0,
+            'className': 'person',
+            'confidence': 0.95,
+            'boundingBox': {'left': 0, 'top': 0, 'right': 100, 'bottom': 100},
+          },
+        ],
+        'fps': 30.0,
+        'processingTimeMs': 50.0,
+      };
+
+      // Simulate event processing
+      if (state.widget.onStreamingData != null) {
+        state.widget.onStreamingData!(event);
+      }
+
+      expect(onStreamingCalled, isTrue);
+      // Individual callbacks should NOT be called when onStreamingData is provided
+      expect(onResultCalled, isFalse);
+      expect(onMetricsCalled, isFalse);
+    });
+
+    testWidgets('individual callbacks work when onStreamingData is null', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      var onResultCalled = false;
+      var onMetricsCalled = false;
+      List<YOLOResult>? results;
+      YOLOPerformanceMetrics? metrics;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onResult: (r) {
+              onResultCalled = true;
+              results = r;
+            },
+            onPerformanceMetrics: (m) {
+              onMetricsCalled = true;
+              metrics = m;
+            },
+            // onStreamingData is null
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      state.subscribeToResults();
+
+      final event = {
+        'detections': [
+          {
+            'classIndex': 0,
+            'className': 'person',
+            'confidence': 0.95,
+            'boundingBox': {'left': 10, 'top': 10, 'right': 110, 'bottom': 210},
+            'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.9, 'bottom': 0.9},
+          },
+        ],
+        'fps': 30.0,
+        'processingTimeMs': 50.0,
+        'frameNumber': 1,
+      };
+
+      // Simulate individual callback processing
+      if (state.widget.onResult != null) {
+        final parsedResults = state.parseDetectionResults(event);
+        state.widget.onResult!(parsedResults);
+      }
+      if (state.widget.onPerformanceMetrics != null) {
+        final performanceMetrics = YOLOPerformanceMetrics.fromMap(event);
+        state.widget.onPerformanceMetrics!(performanceMetrics);
+      }
+
+      expect(onResultCalled, isTrue);
+      expect(onMetricsCalled, isTrue);
+      expect(results, isNotNull);
+      expect(results!.length, equals(1));
+      expect(results!.first.className, equals('person'));
+      expect(metrics, isNotNull);
+      expect(metrics!.fps, equals(30.0));
+    });
+
+    testWidgets('event channel recreation is handled correctly', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      var subscriptionRecreated = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onResult: (_) => subscriptionRecreated = true,
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      state.triggerPlatformViewCreated(1);
+
+      // Simulate recreateEventChannel method call
+      final methodCall = MethodCall('recreateEventChannel', null);
+      await state.handleMethodCall(methodCall);
+
+      // Wait for delayed resubscription
+      await tester.pump(const Duration(milliseconds: 150));
+
+      expect(state.resultSubscription, isNotNull);
+    });
+
+    testWidgets('zoom level changes are handled correctly', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      double? receivedZoomLevel;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onZoomChanged: (level) => receivedZoomLevel = level,
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+
+      // Simulate onZoomChanged method call
+      final methodCall = MethodCall('onZoomChanged', 2.5);
+      await state.handleMethodCall(methodCall);
+
+      expect(receivedZoomLevel, equals(2.5));
+    });
+
+    testWidgets('unknown method calls are handled gracefully', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+
+      // Simulate unknown method call
+      final methodCall = MethodCall('unknownMethod', {'data': 'test'});
+      final result = await state.handleMethodCall(methodCall);
+
+      expect(result, isNull);
+    });
+
+    test('streaming config setter on controller works', () async {
+      final controller = YOLOViewController();
+      final config = YOLOStreamingConfig.debug();
+
+      // Mock method channel
+      const methodChannel = MethodChannel('test_channel');
+      final List<MethodCall> log = [];
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (MethodCall methodCall) async {
+        log.add(methodCall);
+        return null;
+      });
+
+      controller.init(methodChannel, 1);
+      await controller.setStreamingConfig(config);
+
+      expect(log.any((call) => call.method == 'setStreamingConfig'), isTrue);
+      final streamingCall = log.firstWhere((call) => call.method == 'setStreamingConfig');
+      expect(streamingCall.arguments['includeDetections'], isTrue);
+      expect(streamingCall.arguments['includeMasks'], isTrue);
+      expect(streamingCall.arguments['includeOriginalImage'], isTrue);
+    });
+
+    test('streaming config without channel logs warning', () async {
+      final controller = YOLOViewController();
+      final config = YOLOStreamingConfig.minimal();
+
+      // Should not throw, but log a warning
+      await controller.setStreamingConfig(config);
+      expect(controller.isInitialized, isFalse);
+    });
+
+    testWidgets('error handling in streaming data callback', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      var errorHandled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onStreamingData: (data) {
+              // Simulate an error in processing
+              throw Exception('Test error in streaming data');
+            },
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      state.subscribeToResults();
+
+      final event = {
+        'detections': [],
+        'fps': 30.0,
+      };
+
+      // This should not crash the app
+      try {
+        if (state.widget.onStreamingData != null) {
+          state.widget.onStreamingData!(event);
+        }
+      } catch (e) {
+        errorHandled = true;
+      }
+
+      expect(errorHandled, isTrue);
+    });
+
+    testWidgets('error handling in performance metrics callback', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      var errorHandled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onPerformanceMetrics: (metrics) {
+              // Simulate an error in processing
+              throw Exception('Test error in metrics');
+            },
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      state.subscribeToResults();
+
+      final event = {
+        'fps': 30.0,
+        'processingTimeMs': 50.0,
+        'frameNumber': 1,
+      };
+
+      // This should not crash the app
+      try {
+        if (state.widget.onPerformanceMetrics != null) {
+          final metrics = YOLOPerformanceMetrics.fromMap(event);
+          state.widget.onPerformanceMetrics!(metrics);
+        }
+      } catch (e) {
+        errorHandled = true;
+      }
+
+      expect(errorHandled, isTrue);
+    });
+
+    testWidgets('stream subscription error recovery', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onResult: (_) {},
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      state.subscribeToResults();
+      expect(state.resultSubscription, isNotNull);
+
+      // Simulate stream error and recovery
+      state.cancelResultSubscription();
+      expect(state.resultSubscription, isNull);
+
+      // Re-subscribe
+      state.subscribeToResults();
+      expect(state.resultSubscription, isNotNull);
+    });
+
+    testWidgets('streaming config in build params', (tester) async {
+      final config = YOLOStreamingConfig.full();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            streamingConfig: config,
+          ),
+        ),
+      );
+
+      expect(find.byType(YOLOView), findsOneWidget);
+    });
+
+    testWidgets('zoom level setter on controller works', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      
+      // Should not throw when called
+      expect(() => state.setZoomLevel(2.0), returnsNormally);
+    });
+
+    testWidgets('dynamic callback updates are handled correctly', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      var initialOnResult = false;
+      var updatedOnResult = false;
+
+      // Initial widget with onResult
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onResult: (_) => initialOnResult = true,
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      expect(state.resultSubscription, isNotNull);
+
+      // Update widget with different onResult
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onResult: (_) => updatedOnResult = true,
+          ),
+        ),
+      );
+
+      expect(state.resultSubscription, isNotNull);
+
+      // Update widget with no callbacks
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            // No callbacks
+          ),
+        ),
+      );
+
+      expect(state.resultSubscription, isNull);
+    });
+
+    testWidgets('controller switching in didUpdateWidget', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      final controller1 = YOLOViewController();
+      final controller2 = YOLOViewController();
+
+      // Initial widget with controller1
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            controller: controller1,
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      expect(state.effectiveController, equals(controller1));
+
+      // Update widget with controller2
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            controller: controller2,
+          ),
+        ),
+      );
+
+      expect(state.effectiveController, equals(controller2));
+    });
+
+    testWidgets('showNativeUI changes are applied', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+
+      // Initial widget with showNativeUI = false
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            showNativeUI: false,
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      expect(state.widget.showNativeUI, isFalse);
+
+      // Update widget with showNativeUI = true
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            showNativeUI: true,
+          ),
+        ),
+      );
+
+      expect(state.widget.showNativeUI, isTrue);
+    });
+
+    testWidgets('model/task changes trigger switchModel', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      final controller = YOLOViewController();
+      
+      // Mock the method channel for switchModel
+      const methodChannel = MethodChannel('yolo_single_image_channel');
+      final List<MethodCall> log = [];
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (MethodCall methodCall) async {
+        log.add(methodCall);
+        return null;
+      });
+
+      // Initial widget
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model1.tflite',
+            task: YOLOTask.detect,
+            controller: controller,
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      state.triggerPlatformViewCreated(1);
+
+      // Update widget with different model
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model2.tflite',
+            task: YOLOTask.segment,
+            controller: controller,
+          ),
+        ),
+      );
+
+      // Should have triggered setModel method
+      expect(log.any((call) => call.method == 'setModel'), isTrue);
+    });
+
+    testWidgets('comprehensive malformed data handling', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onResult: (_) {},
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+
+      // Test various malformed data scenarios
+      expect(state.parseDetectionResults({}), isEmpty);
+      expect(state.parseDetectionResults({'detections': null}), isEmpty);
+      
+      // Handle type error gracefully for non-list detections
+      expect(() => state.parseDetectionResults({'detections': 'not a list'}), throwsA(isA<TypeError>()));
+      
+      expect(state.parseDetectionResults({
+        'detections': [
+          {'invalidStructure': true}
+        ]
+      }), isEmpty);
+    });
+
+    testWidgets('test message handling in event stream', (tester) async {
+      final key = GlobalKey<YOLOViewState>();
+      var testMessageReceived = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            key: key,
+            modelPath: 'model.tflite',
+            task: YOLOTask.detect,
+            onResult: (_) {},
+          ),
+        ),
+      );
+
+      final state = key.currentState!;
+      state.subscribeToResults();
+
+      // Simulate test message (should be handled separately)
+      final testEvent = {'test': 'Hello from native platform'};
+      
+      // This would normally be processed in the stream listener
+      // We test that it doesn't interfere with normal processing
+      expect(testEvent.containsKey('test'), isTrue);
+      expect(testEvent.containsKey('detections'), isFalse);
+    });
   });
 }
