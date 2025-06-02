@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
+import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:flutter/foundation.dart';
 
 void main() {
@@ -13,19 +14,19 @@ void main() {
   setUpAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-          const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
-          (MethodCall methodCall) async {
-            return null;
-          },
-        );
+      const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
+      (MethodCall methodCall) async {
+        return null;
+      },
+    );
   });
 
   tearDownAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-          const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
-          null,
-        );
+      const MethodChannel('com.ultralytics.yolo/controlChannel_xyz'),
+      null,
+    );
   });
 
   tearDown(() async {
@@ -161,7 +162,12 @@ void main() {
 
       // Test callbacks work
       widget.onResult!([]);
-      widget.onPerformanceMetrics!({});
+      widget.onPerformanceMetrics!(YOLOPerformanceMetrics(
+        fps: 30.0,
+        processingTimeMs: 50.0,
+        frameNumber: 1,
+        timestamp: DateTime.now(),
+      ));
 
       expect(resultCallCount, 1);
       expect(metricsCallCount, 1);
@@ -404,11 +410,11 @@ void main() {
     // simulate failure on setThresholds
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(methodChannel, (MethodCall methodCall) async {
-          if (methodCall.method == 'setThresholds') {
-            throw PlatformException(code: 'fail');
-          }
-          return null;
-        });
+      if (methodCall.method == 'setThresholds') {
+        throw PlatformException(code: 'fail');
+      }
+      return null;
+    });
 
     await controller.setThresholds(confidenceThreshold: 0.7);
     expect(controller.confidenceThreshold, 0.7);
@@ -420,10 +426,10 @@ void main() {
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(modelChannel, (methodCall) async {
-          expect(methodCall.method, 'setModel');
-          expect(methodCall.arguments['modelPath'], 'my_model.tflite');
-          return null;
-        });
+      expect(methodCall.method, 'setModel');
+      expect(methodCall.arguments['modelPath'], 'my_model.tflite');
+      return null;
+    });
 
     controller.init(const MethodChannel('dummy'), 42);
     await controller.switchModel('my_model.tflite', YOLOTask.detect);
@@ -470,7 +476,12 @@ void main() {
     state.parseDetectionResults(event);
     if (state.widget.onResult != null) state.widget.onResult!([]);
     if (state.widget.onPerformanceMetrics != null) {
-      state.widget.onPerformanceMetrics!({'fps': 60.0});
+      state.widget.onPerformanceMetrics!(YOLOPerformanceMetrics(
+        fps: 60.0,
+        processingTimeMs: 30.0,
+        frameNumber: 1,
+        timestamp: DateTime.now(),
+      ));
     }
 
     expect(detectionCalled, isTrue);

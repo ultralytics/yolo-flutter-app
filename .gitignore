@@ -57,3 +57,35 @@ android/reference/build.gradle
 
 # Test apps (not for commit)
 streaming_test_app/
+
+# Gradle build artifacts
+**/.gradle/
+**/android/local.properties
+**/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
+# Flutter generated files
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/ios/.symlinks/
+**/ios/Pods/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/Runner.xcworkspace/xcuserdata/
+**/macos/Flutter/ephemeral/
+
+# Example apps build artifacts (keep them for development but not in git)
+simple_example/.flutter-plugins
+simple_example/.flutter-plugins-dependencies
+simple_example/android/.gradle/
+simple_example/android/local.properties
+simple_example/ios/.symlinks/
+simple_example/ios/Pods/
+simple_example/ios/Runner.xcworkspace/xcuserdata/
+simple_example/ios/Flutter/Generated.xcconfig
+simple_example/ios/Flutter/flutter_export_environment.sh
+simple_example/ios/Runner/GeneratedPluginRegistrant.*
+simple_example/macos/Flutter/ephemeral/
+
+streaming_test_example/
+threshold_test_sample/

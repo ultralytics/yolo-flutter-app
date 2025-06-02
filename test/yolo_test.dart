@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 import 'package:ultralytics_yolo/yolo_platform_interface.dart';
 import 'package:ultralytics_yolo/yolo_method_channel.dart';
+import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
@@ -32,34 +33,34 @@ void main() {
     // Configure mock response for the channel
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          log.add(methodCall);
+      log.add(methodCall);
 
-          if (methodCall.method == 'loadModel') {
-            modelLoaded = true;
-            return true;
-          } else if (methodCall.method == 'predictSingleImage') {
-            if (!modelLoaded) {
-              throw PlatformException(
-                code: 'MODEL_NOT_LOADED',
-                message: 'Model not loaded',
-              );
-            }
-            return {
-              'boxes': [
-                {
-                  'class': 'person',
-                  'confidence': 0.95,
-                  'x': 10,
-                  'y': 10,
-                  'width': 100,
-                  'height': 200,
-                },
-              ],
-              'annotatedImage': Uint8List.fromList(List.filled(100, 0)),
-            };
-          }
-          return null;
-        });
+      if (methodCall.method == 'loadModel') {
+        modelLoaded = true;
+        return true;
+      } else if (methodCall.method == 'predictSingleImage') {
+        if (!modelLoaded) {
+          throw PlatformException(
+            code: 'MODEL_NOT_LOADED',
+            message: 'Model not loaded',
+          );
+        }
+        return {
+          'boxes': [
+            {
+              'class': 'person',
+              'confidence': 0.95,
+              'x': 10,
+              'y': 10,
+              'width': 100,
+              'height': 200,
+            },
+          ],
+          'annotatedImage': Uint8List.fromList(List.filled(100, 0)),
+        };
+      }
+      return null;
+    });
   });
 
   tearDown(() {
@@ -212,7 +213,12 @@ void main() {
     // Simulate calling the callbacks
     final state = tester.state<YOLOViewState>(find.byType(YOLOView));
     state.widget.onResult?.call([]);
-    state.widget.onPerformanceMetrics?.call({'fps': 30.0});
+    state.widget.onPerformanceMetrics?.call(YOLOPerformanceMetrics(
+      fps: 30.0,
+      processingTimeMs: 50.0,
+      frameNumber: 1,
+      timestamp: DateTime.now(),
+    ));
     state.widget.onZoomChanged?.call(2.0);
 
     expect(resultCount, 1);

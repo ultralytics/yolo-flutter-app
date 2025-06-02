@@ -4,27 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(title: 'YOLO Example', home: YOLOScreen());
+    return const MaterialApp(title: 'YOLO Example', home: YOLOScreen());
   }
 }
 
 class YOLOScreen extends StatelessWidget {
+  const YOLOScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('YOLO Detection')),
+      appBar: AppBar(title: const Text('YOLO Detection')),
       body: YOLOView(
         modelPath: 'yolo11n',
         task: YOLOTask.detect,
         onResult: (results) {
           for (final result in results) {
-            print('${result.className}: ${result.confidence}');
+            debugPrint('${result.className}: ${result.confidence}');
           }
         },
       ),
@@ -34,8 +38,10 @@ class YOLOScreen extends StatelessWidget {
 
 // Single image inference example
 class SingleImageExample extends StatefulWidget {
+  const SingleImageExample({super.key});
+
   @override
-  _SingleImageExampleState createState() => _SingleImageExampleState();
+  State<SingleImageExample> createState() => _SingleImageExampleState();
 }
 
 class _SingleImageExampleState extends State<SingleImageExample> {

@@ -1,9 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-import 'package:flutter/services.dart';
 import 'yolo.dart';
-import 'yolo_platform_interface.dart';
-import 'yolo_task.dart';
 
 /// Manages multiple YOLO instances with unique IDs
 class YOLOInstanceManager {
