@@ -1,11 +1,3 @@
-## 0.1.17
-
-- Add comprehensive multi-instance usage documentation with practical examples
-- Fix pub.dev example visibility by removing `publish_to: "none"` from example/pubspec.yaml
-- Improve package compatibility with relaxed SDK constraints (>=3.0.0 <4.0.0)
-- Include dual model comparison and performance monitoring examples
-- Fix iOS Swift compilation error by removing unsupported @preconcurrency attribute for Xcode 15.x compatibility
-
 ## 0.1.16
 
 - Add multi-instance YOLO support for running multiple models simultaneously
