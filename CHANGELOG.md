@@ -1,13 +1,3 @@
-## 0.1.16
-
-- Add multi-instance YOLO support for running multiple models simultaneously
-- Implement backward compatibility with `useMultiInstance` parameter (defaults to false)
-- Add unique instance ID generation and management for iOS and Android
-- Fix iOS Swift compilation errors and Android initialization order issues
-- Create YOLOInstanceManager for platform-specific multi-instance handling
-- Resolve MissingPluginException through proper backward compatibility
-- Add comprehensive error handling and proper disposal patterns
-
 ## 0.1.15
 
 - Added `example/main.dart` for usage demonstration.
