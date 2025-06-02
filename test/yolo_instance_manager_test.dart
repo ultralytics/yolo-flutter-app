@@ -74,14 +74,16 @@ void main() {
 
     test('should handle multiple registrations and unregistrations', () {
       final instances = <YOLO>[];
-      
+
       // Register multiple instances
       for (int i = 0; i < 5; i++) {
-        instances.add(YOLO(
-          modelPath: 'model_$i.tflite',
-          task: YOLOTask.detect,
-          useMultiInstance: true,
-        ));
+        instances.add(
+          YOLO(
+            modelPath: 'model_$i.tflite',
+            task: YOLOTask.detect,
+            useMultiInstance: true,
+          ),
+        );
       }
 
       expect(YOLOInstanceManager.getActiveInstanceIds().length, equals(5));

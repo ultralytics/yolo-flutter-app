@@ -47,7 +47,10 @@ void main() {
       expect(config.includeOBB, isTrue);
       expect(config.includeOriginalImage, isTrue);
       expect(config.maxFPS, equals(30));
-      expect(config.throttleInterval, equals(const Duration(milliseconds: 100)));
+      expect(
+        config.throttleInterval,
+        equals(const Duration(milliseconds: 100)),
+      );
       expect(config.inferenceFrequency, equals(15));
       expect(config.skipFrames, equals(2));
     });
@@ -136,7 +139,10 @@ void main() {
       expect(config.includeMasks, isTrue);
       expect(config.includePoses, isTrue);
       expect(config.includeOBB, isTrue);
-      expect(config.includeOriginalImage, isFalse); // Still false for performance
+      expect(
+        config.includeOriginalImage,
+        isFalse,
+      ); // Still false for performance
     });
 
     test('debug() factory constructor', () {
@@ -222,7 +228,9 @@ void main() {
     });
 
     test('highPerformance() factory constructor with custom frequency', () {
-      final config = YOLOStreamingConfig.highPerformance(inferenceFrequency: 60);
+      final config = YOLOStreamingConfig.highPerformance(
+        inferenceFrequency: 60,
+      );
 
       expect(config.inferenceFrequency, equals(60));
     });

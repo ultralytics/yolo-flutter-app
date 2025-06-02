@@ -25,11 +25,7 @@ void main() {
     });
 
     test('fromMap() factory constructor with valid data', () {
-      final data = {
-        'fps': 25.5,
-        'processingTimeMs': 40.0,
-        'frameNumber': 50,
-      };
+      final data = {'fps': 25.5, 'processingTimeMs': 40.0, 'frameNumber': 50};
 
       final metrics = YOLOPerformanceMetrics.fromMap(data);
 
@@ -78,11 +74,7 @@ void main() {
     });
 
     test('fromMap() factory constructor with null values uses defaults', () {
-      final data = {
-        'fps': null,
-        'processingTimeMs': null,
-        'frameNumber': null,
-      };
+      final data = {'fps': null, 'processingTimeMs': null, 'frameNumber': null};
 
       final metrics = YOLOPerformanceMetrics.fromMap(data);
 

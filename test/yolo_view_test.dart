@@ -641,7 +641,12 @@ void main() {
             'className': 'person',
             'confidence': 0.95,
             'boundingBox': {'left': 0, 'top': 0, 'right': 100, 'bottom': 100},
-            'normalizedBox': {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0},
+            'normalizedBox': {
+              'left': 0.0,
+              'top': 0.0,
+              'right': 1.0,
+              'bottom': 1.0,
+            },
           },
         ],
         'fps': 30.0,
@@ -663,7 +668,9 @@ void main() {
       expect(streamingData!['originalImage'], isA<Uint8List>());
     });
 
-    testWidgets('streaming config is applied during initialization', (tester) async {
+    testWidgets('streaming config is applied during initialization', (
+      tester,
+    ) async {
       final key = GlobalKey<YOLOViewState>();
       final config = YOLOStreamingConfig.withMasks();
 
@@ -683,7 +690,9 @@ void main() {
       expect(state.widget.streamingConfig!.includeMasks, isTrue);
     });
 
-    testWidgets('onStreamingData takes precedence over individual callbacks', (tester) async {
+    testWidgets('onStreamingData takes precedence over individual callbacks', (
+      tester,
+    ) async {
       final key = GlobalKey<YOLOViewState>();
       var onResultCalled = false;
       var onMetricsCalled = false;
@@ -729,7 +738,9 @@ void main() {
       expect(onMetricsCalled, isFalse);
     });
 
-    testWidgets('individual callbacks work when onStreamingData is null', (tester) async {
+    testWidgets('individual callbacks work when onStreamingData is null', (
+      tester,
+    ) async {
       final key = GlobalKey<YOLOViewState>();
       var onResultCalled = false;
       var onMetricsCalled = false;
@@ -765,7 +776,12 @@ void main() {
             'className': 'person',
             'confidence': 0.95,
             'boundingBox': {'left': 10, 'top': 10, 'right': 110, 'bottom': 210},
-            'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.9, 'bottom': 0.9},
+            'normalizedBox': {
+              'left': 0.1,
+              'top': 0.1,
+              'right': 0.9,
+              'bottom': 0.9,
+            },
           },
         ],
         'fps': 30.0,
@@ -792,7 +808,9 @@ void main() {
       expect(metrics!.fps, equals(30.0));
     });
 
-    testWidgets('event channel recreation is handled correctly', (tester) async {
+    testWidgets('event channel recreation is handled correctly', (
+      tester,
+    ) async {
       final key = GlobalKey<YOLOViewState>();
       var subscriptionRecreated = false;
 
@@ -875,16 +893,20 @@ void main() {
       final List<MethodCall> log = [];
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (MethodCall methodCall) async {
-        log.add(methodCall);
-        return null;
-      });
+          .setMockMethodCallHandler(methodChannel, (
+            MethodCall methodCall,
+          ) async {
+            log.add(methodCall);
+            return null;
+          });
 
       controller.init(methodChannel, 1);
       await controller.setStreamingConfig(config);
 
       expect(log.any((call) => call.method == 'setStreamingConfig'), isTrue);
-      final streamingCall = log.firstWhere((call) => call.method == 'setStreamingConfig');
+      final streamingCall = log.firstWhere(
+        (call) => call.method == 'setStreamingConfig',
+      );
       expect(streamingCall.arguments['includeDetections'], isTrue);
       expect(streamingCall.arguments['includeMasks'], isTrue);
       expect(streamingCall.arguments['includeOriginalImage'], isTrue);
@@ -920,10 +942,7 @@ void main() {
       final state = key.currentState!;
       state.subscribeToResults();
 
-      final event = {
-        'detections': [],
-        'fps': 30.0,
-      };
+      final event = {'detections': [], 'fps': 30.0};
 
       // This should not crash the app
       try {
@@ -937,7 +956,9 @@ void main() {
       expect(errorHandled, isTrue);
     });
 
-    testWidgets('error handling in performance metrics callback', (tester) async {
+    testWidgets('error handling in performance metrics callback', (
+      tester,
+    ) async {
       final key = GlobalKey<YOLOViewState>();
       var errorHandled = false;
 
@@ -958,11 +979,7 @@ void main() {
       final state = key.currentState!;
       state.subscribeToResults();
 
-      final event = {
-        'fps': 30.0,
-        'processingTimeMs': 50.0,
-        'frameNumber': 1,
-      };
+      final event = {'fps': 30.0, 'processingTimeMs': 50.0, 'frameNumber': 1};
 
       // This should not crash the app
       try {
@@ -1034,12 +1051,14 @@ void main() {
       );
 
       final state = key.currentState!;
-      
+
       // Should not throw when called
       expect(() => state.setZoomLevel(2.0), returnsNormally);
     });
 
-    testWidgets('dynamic callback updates are handled correctly', (tester) async {
+    testWidgets('dynamic callback updates are handled correctly', (
+      tester,
+    ) async {
       final key = GlobalKey<YOLOViewState>();
       var initialOnResult = false;
       var updatedOnResult = false;
@@ -1159,16 +1178,18 @@ void main() {
     testWidgets('model/task changes trigger switchModel', (tester) async {
       final key = GlobalKey<YOLOViewState>();
       final controller = YOLOViewController();
-      
+
       // Mock the method channel for switchModel
       const methodChannel = MethodChannel('yolo_single_image_channel');
       final List<MethodCall> log = [];
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (MethodCall methodCall) async {
-        log.add(methodCall);
-        return null;
-      });
+          .setMockMethodCallHandler(methodChannel, (
+            MethodCall methodCall,
+          ) async {
+            log.add(methodCall);
+            return null;
+          });
 
       // Initial widget
       await tester.pumpWidget(
@@ -1220,15 +1241,21 @@ void main() {
       // Test various malformed data scenarios
       expect(state.parseDetectionResults({}), isEmpty);
       expect(state.parseDetectionResults({'detections': null}), isEmpty);
-      
+
       // Handle type error gracefully for non-list detections
-      expect(() => state.parseDetectionResults({'detections': 'not a list'}), throwsA(isA<TypeError>()));
-      
-      expect(state.parseDetectionResults({
-        'detections': [
-          {'invalidStructure': true}
-        ]
-      }), isEmpty);
+      expect(
+        () => state.parseDetectionResults({'detections': 'not a list'}),
+        throwsA(isA<TypeError>()),
+      );
+
+      expect(
+        state.parseDetectionResults({
+          'detections': [
+            {'invalidStructure': true},
+          ],
+        }),
+        isEmpty,
+      );
     });
 
     testWidgets('test message handling in event stream', (tester) async {
@@ -1251,7 +1278,7 @@ void main() {
 
       // Simulate test message (should be handled separately)
       final testEvent = {'test': 'Hello from native platform'};
-      
+
       // This would normally be processed in the stream listener
       // We test that it doesn't interfere with normal processing
       expect(testEvent.containsKey('test'), isTrue);
