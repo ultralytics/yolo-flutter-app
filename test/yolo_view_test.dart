@@ -672,7 +672,7 @@ void main() {
       tester,
     ) async {
       final key = GlobalKey<YOLOViewState>();
-      final config = YOLOStreamingConfig.withMasks();
+      const config = YOLOStreamingConfig.withMasks();
 
       await tester.pumpWidget(
         MaterialApp(
@@ -812,7 +812,6 @@ void main() {
       tester,
     ) async {
       final key = GlobalKey<YOLOViewState>();
-      var subscriptionRecreated = false;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -820,7 +819,7 @@ void main() {
             key: key,
             modelPath: 'model.tflite',
             task: YOLOTask.detect,
-            onResult: (_) => subscriptionRecreated = true,
+            onResult: (_) {},
           ),
         ),
       );
@@ -829,7 +828,7 @@ void main() {
       state.triggerPlatformViewCreated(1);
 
       // Simulate recreateEventChannel method call
-      final methodCall = MethodCall('recreateEventChannel', null);
+      const methodCall = MethodCall('recreateEventChannel', null);
       await state.handleMethodCall(methodCall);
 
       // Wait for delayed resubscription
@@ -856,7 +855,7 @@ void main() {
       final state = key.currentState!;
 
       // Simulate onZoomChanged method call
-      final methodCall = MethodCall('onZoomChanged', 2.5);
+      const methodCall = MethodCall('onZoomChanged', 2.5);
       await state.handleMethodCall(methodCall);
 
       expect(receivedZoomLevel, equals(2.5));
@@ -878,7 +877,7 @@ void main() {
       final state = key.currentState!;
 
       // Simulate unknown method call
-      final methodCall = MethodCall('unknownMethod', {'data': 'test'});
+      const methodCall = MethodCall('unknownMethod', {'data': 'test'});
       final result = await state.handleMethodCall(methodCall);
 
       expect(result, isNull);
@@ -886,7 +885,7 @@ void main() {
 
     test('streaming config setter on controller works', () async {
       final controller = YOLOViewController();
-      final config = YOLOStreamingConfig.debug();
+      const config = YOLOStreamingConfig.debug();
 
       // Mock method channel
       const methodChannel = MethodChannel('test_channel');
@@ -914,7 +913,7 @@ void main() {
 
     test('streaming config without channel logs warning', () async {
       final controller = YOLOViewController();
-      final config = YOLOStreamingConfig.minimal();
+      const config = YOLOStreamingConfig.minimal();
 
       // Should not throw, but log a warning
       await controller.setStreamingConfig(config);
@@ -1022,10 +1021,10 @@ void main() {
     });
 
     testWidgets('streaming config in build params', (tester) async {
-      final config = YOLOStreamingConfig.full();
+      const config = YOLOStreamingConfig.full();
 
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: YOLOView(
             modelPath: 'model.tflite',
             task: YOLOTask.detect,
@@ -1060,8 +1059,6 @@ void main() {
       tester,
     ) async {
       final key = GlobalKey<YOLOViewState>();
-      var initialOnResult = false;
-      var updatedOnResult = false;
 
       // Initial widget with onResult
       await tester.pumpWidget(
@@ -1070,7 +1067,7 @@ void main() {
             key: key,
             modelPath: 'model.tflite',
             task: YOLOTask.detect,
-            onResult: (_) => initialOnResult = true,
+            onResult: (_) {},
           ),
         ),
       );
@@ -1085,7 +1082,7 @@ void main() {
             key: key,
             modelPath: 'model.tflite',
             task: YOLOTask.detect,
-            onResult: (_) => updatedOnResult = true,
+            onResult: (_) {},
           ),
         ),
       );
@@ -1094,9 +1091,8 @@ void main() {
 
       // Update widget with no callbacks
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: YOLOView(
-            key: key,
             modelPath: 'model.tflite',
             task: YOLOTask.detect,
             // No callbacks
@@ -1260,7 +1256,6 @@ void main() {
 
     testWidgets('test message handling in event stream', (tester) async {
       final key = GlobalKey<YOLOViewState>();
-      var testMessageReceived = false;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -1277,8 +1272,7 @@ void main() {
       state.subscribeToResults();
 
       // Simulate test message (should be handled separately)
-      final testEvent = {'test': 'Hello from native platform'};
-
+      const testEvent = {'test': 'Hello from native platform'};
       // This would normally be processed in the stream listener
       // We test that it doesn't interfere with normal processing
       expect(testEvent.containsKey('test'), isTrue);

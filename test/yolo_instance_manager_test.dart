@@ -2,7 +2,6 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/yolo.dart';
-import 'package:ultralytics_yolo/yolo_instance_manager.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
