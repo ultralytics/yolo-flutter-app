@@ -13,7 +13,10 @@ class YOLOInstanceManager {
     private var loadingStates: [String: Bool] = [:]
     private var loadCompletionHandlers: [String: [(Result<YOLO, Error>) -> Void]] = [:]
     
-    private init() {}
+    private init() {
+        // Initialize default instance for backward compatibility
+        createInstance(instanceId: "default")
+    }
     
     /// Creates a new YOLO instance with the given ID
     func createInstance(instanceId: String) {

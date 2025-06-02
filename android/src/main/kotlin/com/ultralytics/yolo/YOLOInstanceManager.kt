@@ -17,6 +17,11 @@ class YOLOInstanceManager {
         val shared = YOLOInstanceManager()
     }
     
+    init {
+        // Initialize default instance for backward compatibility
+        createInstance("default")
+    }
+    
     private val instances = mutableMapOf<String, YOLO>()
     private val loadingStates = mutableMapOf<String, Boolean>()
     

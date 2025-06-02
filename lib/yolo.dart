@@ -63,26 +63,38 @@ class YOLO {
   /// The [modelPath] can refer to a model in assets, internal storage, or absolute path.
   /// The [task] specifies what type of inference will be performed.
   /// 
-  /// Each YOLO instance automatically gets a unique ID and its own channel.
-  YOLO({required this.modelPath, required this.task}) {
-    // Generate unique instance ID
-    _instanceId = 'yolo_${DateTime.now().millisecondsSinceEpoch}_${this.hashCode}';
-    
-    // Create instance-specific channel
-    final channelName = 'yolo_single_image_channel_$_instanceId';
-    _channel = MethodChannel(channelName);
-    
-    // Register this instance with the manager
-    YOLOInstanceManager.registerInstance(_instanceId, this);
-    
-    // Initialize the instance on the platform side
-    _initializeInstance();
+  /// If [useMultiInstance] is true, each YOLO instance gets a unique ID and its own channel.
+  /// If false, uses the default channel for backward compatibility.
+  YOLO({
+    required this.modelPath, 
+    required this.task,
+    bool useMultiInstance = false,
+  }) {
+    if (useMultiInstance) {
+      // Generate unique instance ID
+      _instanceId = 'yolo_${DateTime.now().millisecondsSinceEpoch}_${this.hashCode}';
+      
+      // Create instance-specific channel
+      final channelName = 'yolo_single_image_channel_$_instanceId';
+      _channel = MethodChannel(channelName);
+      
+      // Register this instance with the manager
+      YOLOInstanceManager.registerInstance(_instanceId, this);
+    } else {
+      // Use default values for backward compatibility
+      _instanceId = 'default';
+      _channel = _defaultChannel;
+      _isInitialized = true; // Skip initialization for default mode
+    }
   }
   
   /// Initialize this instance on the platform side
   Future<void> _initializeInstance() async {
     try {
-      await _channel.invokeMethod('createInstance', {'instanceId': _instanceId});
+      // Use the default channel to create the instance (only for multi-instance mode)
+      if (_instanceId != 'default') {
+        await _defaultChannel.invokeMethod('createInstance', {'instanceId': _instanceId});
+      }
       _isInitialized = true;
     } catch (e) {
       throw ModelLoadingException('Failed to initialize YOLO instance: $e');
@@ -115,8 +127,10 @@ class YOLO {
         'task': newTask.name,
       };
       
-      // Always include instanceId
-      arguments['instanceId'] = _instanceId;
+      // Only include instanceId for multi-instance mode
+      if (_instanceId != 'default') {
+        arguments['instanceId'] = _instanceId;
+      }
       
       await _channel.invokeMethod('setModel', arguments);
     } on PlatformException catch (e) {
@@ -162,8 +176,12 @@ class YOLO {
       final Map<String, dynamic> arguments = {
         'modelPath': modelPath,
         'task': task.name,
-        'instanceId': _instanceId,
       };
+      
+      // Only include instanceId for multi-instance mode
+      if (_instanceId != 'default') {
+        arguments['instanceId'] = _instanceId;
+      }
       
       final result = await _channel.invokeMethod('loadModel', arguments);
       return result == true;
@@ -255,8 +273,10 @@ class YOLO {
         arguments['iouThreshold'] = iouThreshold;
       }
       
-      // Always include instanceId
-      arguments['instanceId'] = _instanceId;
+      // Only include instanceId for multi-instance mode
+      if (_instanceId != 'default') {
+        arguments['instanceId'] = _instanceId;
+      }
 
       final result = await _channel.invokeMethod(
         'predictSingleImage',
