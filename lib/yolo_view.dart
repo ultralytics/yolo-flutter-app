@@ -507,7 +507,7 @@ class YOLOView extends StatefulWidget {
   ///
   /// Available data keys:
   /// - `detections`: List<Map> - Raw detection data with all features
-  /// - `fps`: double - Current frames per second  
+  /// - `fps`: double - Current frames per second
   /// - `processingTimeMs`: double - Processing time in milliseconds
   /// - `frameNumber`: int - Sequential frame number
   /// - `timestamp`: int - Timestamp in milliseconds
@@ -590,8 +590,8 @@ class YOLOViewState extends State<YOLOView> {
 
     _setupController();
 
-    if (widget.onResult != null || 
-        widget.onPerformanceMetrics != null || 
+    if (widget.onResult != null ||
+        widget.onPerformanceMetrics != null ||
         widget.onStreamingData != null) {
       _subscribeToResults();
     }
@@ -625,7 +625,7 @@ class YOLOViewState extends State<YOLOView> {
     if (oldWidget.onResult != widget.onResult ||
         oldWidget.onPerformanceMetrics != widget.onPerformanceMetrics ||
         oldWidget.onStreamingData != widget.onStreamingData) {
-      if (widget.onResult == null && 
+      if (widget.onResult == null &&
           widget.onPerformanceMetrics == null &&
           widget.onStreamingData == null) {
         _cancelResultSubscription();
@@ -745,7 +745,7 @@ class YOLOViewState extends State<YOLOView> {
           } else {
             // Separated mode: Use individual callbacks
             logInfo('YOLOView: Using separated callback mode');
-            
+
             // Handle detection results
             if (widget.onResult != null && event.containsKey('detections')) {
               try {
@@ -785,11 +785,15 @@ class YOLOViewState extends State<YOLOView> {
               }
             }
 
-            // Handle performance metrics  
+            // Handle performance metrics
             if (widget.onPerformanceMetrics != null) {
               try {
-                logInfo('YOLOView: 🔍 Raw event data for performance metrics: $event');
-                final metrics = YOLOPerformanceMetrics.fromMap(Map<String, dynamic>.from(event));
+                logInfo(
+                  'YOLOView: 🔍 Raw event data for performance metrics: $event',
+                );
+                final metrics = YOLOPerformanceMetrics.fromMap(
+                  Map<String, dynamic>.from(event),
+                );
                 widget.onPerformanceMetrics!(metrics);
                 logInfo(
                   'YOLOView: Called onPerformanceMetrics callback: ${metrics.toString()}',
@@ -906,15 +910,18 @@ class YOLOViewState extends State<YOLOView> {
     if (widget.streamingConfig != null) {
       creationParams['streamingConfig'] = {
         'includeDetections': widget.streamingConfig!.includeDetections,
-        'includeClassifications': widget.streamingConfig!.includeClassifications,
-        'includeProcessingTimeMs': widget.streamingConfig!.includeProcessingTimeMs,
+        'includeClassifications':
+            widget.streamingConfig!.includeClassifications,
+        'includeProcessingTimeMs':
+            widget.streamingConfig!.includeProcessingTimeMs,
         'includeFps': widget.streamingConfig!.includeFps,
         'includeMasks': widget.streamingConfig!.includeMasks,
         'includePoses': widget.streamingConfig!.includePoses,
         'includeOBB': widget.streamingConfig!.includeOBB,
         'includeOriginalImage': widget.streamingConfig!.includeOriginalImage,
         'maxFPS': widget.streamingConfig!.maxFPS,
-        'throttleInterval': widget.streamingConfig!.throttleInterval?.inMilliseconds,
+        'throttleInterval':
+            widget.streamingConfig!.throttleInterval?.inMilliseconds,
       };
     }
 

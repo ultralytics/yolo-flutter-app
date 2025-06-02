@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'package:flutter/services.dart';
 import 'yolo.dart';
 import 'yolo_platform_interface.dart';
@@ -6,12 +8,12 @@ import 'yolo_task.dart';
 /// Manages multiple YOLO instances with unique IDs
 class YOLOInstanceManager {
   static final Map<String, YOLO> _instances = {};
-  
+
   /// Internal method to register an instance
   static void registerInstance(String instanceId, YOLO instance) {
     _instances[instanceId] = instance;
   }
-  
+
   /// Internal method to unregister an instance
   static void unregisterInstance(String instanceId) {
     _instances.remove(instanceId);
@@ -21,7 +23,6 @@ class YOLOInstanceManager {
   static YOLO? getInstance(String instanceId) {
     return _instances[instanceId];
   }
-
 
   /// Gets all active instance IDs
   static List<String> getActiveInstanceIds() {

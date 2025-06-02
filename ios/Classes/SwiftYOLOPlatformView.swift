@@ -95,7 +95,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       // Configure YOLOView streaming functionality
       setupYOLOViewStreaming(args: dict)
-      
+
       // Configure YOLOView
       setupYOLOView(confidenceThreshold: confidenceThreshold, iouThreshold: iouThreshold)
 
@@ -131,7 +131,9 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // YOLOView streaming is now configured separately
     // Keep simple detection callback for compatibility
     yoloView.onDetection = { result in
-      print("SwiftYOLOPlatformView: onDetection callback triggered with \(result.boxes.count) detections")
+      print(
+        "SwiftYOLOPlatformView: onDetection callback triggered with \(result.boxes.count) detections"
+      )
     }
 
     // Set thresholds
@@ -329,7 +331,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         } else {
           result(
             FlutterError(
-              code: "invalid_args", message: "Invalid arguments for setStreamingConfig", details: nil
+              code: "invalid_args", message: "Invalid arguments for setStreamingConfig",
+              details: nil
             ))
         }
 
@@ -344,10 +347,10 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   /// Configure YOLOView streaming functionality based on creation parameters
   private func setupYOLOViewStreaming(args: [String: Any]) {
     guard let yoloView = yoloView else { return }
-    
+
     // Parse streaming configuration from args
     let streamingConfigParam = args["streamingConfig"] as? [String: Any]
-    
+
     let streamConfig: YOLOStreamConfig
     if let configDict = streamingConfigParam {
       print("SwiftYOLOPlatformView: Creating YOLOStreamConfig from creation params: \(configDict)")
@@ -357,27 +360,29 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       print("SwiftYOLOPlatformView: Using default streaming config")
       streamConfig = YOLOStreamConfig.DEFAULT
     }
-    
+
     // Configure YOLOView with the stream config
     yoloView.setStreamConfig(streamConfig)
     print("SwiftYOLOPlatformView: YOLOView streaming configured: \(streamConfig)")
-    
+
     // Set up streaming callback to forward data to Flutter via event channel
     yoloView.setStreamCallback { [weak self] streamData in
       // Forward streaming data from YOLOView to Flutter
       self?.sendStreamDataToFlutter(streamData)
     }
   }
-  
+
   /// Send stream data to Flutter via event channel
   private func sendStreamDataToFlutter(_ streamData: [String: Any]) {
-    print("SwiftYOLOPlatformView: Sending stream data to Flutter: \(streamData.keys.joined(separator: ", "))")
-    
+    print(
+      "SwiftYOLOPlatformView: Sending stream data to Flutter: \(streamData.keys.joined(separator: ", "))"
+    )
+
     guard let eventSink = self.eventSink else {
       print("SwiftYOLOPlatformView: eventSink is nil - no listener for events")
       return
     }
-    
+
     // Send event on main thread
     DispatchQueue.main.async {
       print("SwiftYOLOPlatformView: Sending stream data to Flutter via eventSink")

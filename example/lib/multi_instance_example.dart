@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
@@ -16,7 +18,7 @@ class _MultiInstanceExampleState extends State<MultiInstanceExample> {
   String? _segmentInstanceId;
   bool _isLoading = false;
   String _statusMessage = 'Not initialized';
-  
+
   Map<String, dynamic>? _detectResults;
   Map<String, dynamic>? _segmentResults;
 
@@ -42,7 +44,7 @@ class _MultiInstanceExampleState extends State<MultiInstanceExample> {
       // Create two instances
       _detectInstanceId = await YOLO.createInstance();
       _segmentInstanceId = await YOLO.createInstance();
-      
+
       setState(() {
         _statusMessage = 'Loading models...';
       });
@@ -139,12 +141,18 @@ class _MultiInstanceExampleState extends State<MultiInstanceExample> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_detectResults != null) ...[
-          Text('Detection Results:', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Detection Results:',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           Text('Found ${_detectResults!['boxes']?.length ?? 0} objects'),
           const SizedBox(height: 16),
         ],
         if (_segmentResults != null) ...[
-          Text('Segmentation Results:', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Segmentation Results:',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           Text('Found ${_segmentResults!['boxes']?.length ?? 0} segments'),
           const SizedBox(height: 16),
         ],
@@ -155,9 +163,7 @@ class _MultiInstanceExampleState extends State<MultiInstanceExample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Multi-Instance YOLO Example'),
-      ),
+      appBar: AppBar(title: const Text('Multi-Instance YOLO Example')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -170,18 +176,19 @@ class _MultiInstanceExampleState extends State<MultiInstanceExample> {
             Text('Detection: ${_detectInstanceId ?? "Not created"}'),
             Text('Segmentation: ${_segmentInstanceId ?? "Not created"}'),
             const SizedBox(height: 16),
-            
+
             Text(
               'Status: $_statusMessage',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 16),
-            
+
             if (_isLoading)
               const Center(child: CircularProgressIndicator())
             else ...[
               ElevatedButton(
-                onPressed: _detectInstanceId != null && _segmentInstanceId != null
+                onPressed:
+                    _detectInstanceId != null && _segmentInstanceId != null
                     ? () => _runInference('path/to/your/image.jpg')
                     : null,
                 child: const Text('Run Inference'),
@@ -203,12 +210,12 @@ void backwardCompatibleExample() async {
     modelPath: 'assets/models/yolov8n.tflite',
     task: YOLOTask.detect,
   );
-  
+
   await yolo.loadModel();
-  
+
   final imageBytes = Uint8List.fromList([/* your image data */]);
   final results = await yolo.predict(imageBytes);
-  
+
   print('Detection results: ${results['boxes']?.length ?? 0} objects found');
 }
 
@@ -218,7 +225,7 @@ Future<void> concurrentInferenceExample() async {
   final detectId = await YOLO.createInstance();
   final segmentId = await YOLO.createInstance();
   final poseId = await YOLO.createInstance();
-  
+
   // Load different models
   await Future.wait([
     YOLO.loadModelWithInstance(
@@ -237,29 +244,20 @@ Future<void> concurrentInferenceExample() async {
       task: YOLOTask.pose,
     ),
   ]);
-  
+
   // Run inference concurrently on the same image
   final imageBytes = Uint8List.fromList([/* your image data */]);
-  
+
   final results = await Future.wait([
-    YOLO.detectImageWithInstance(
-      instanceId: detectId,
-      imageBytes: imageBytes,
-    ),
-    YOLO.detectImageWithInstance(
-      instanceId: segmentId,
-      imageBytes: imageBytes,
-    ),
-    YOLO.detectImageWithInstance(
-      instanceId: poseId,
-      imageBytes: imageBytes,
-    ),
+    YOLO.detectImageWithInstance(instanceId: detectId, imageBytes: imageBytes),
+    YOLO.detectImageWithInstance(instanceId: segmentId, imageBytes: imageBytes),
+    YOLO.detectImageWithInstance(instanceId: poseId, imageBytes: imageBytes),
   ]);
-  
+
   print('Detection: ${results[0]['boxes']?.length ?? 0} objects');
   print('Segmentation: ${results[1]['boxes']?.length ?? 0} segments');
   print('Pose: ${results[2]['keypoints']?.length ?? 0} poses');
-  
+
   // Clean up
   await Future.wait([
     YOLO.disposeInstance(detectId),

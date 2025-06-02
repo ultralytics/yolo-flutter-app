@@ -4,14 +4,15 @@
 
 [![Ultralytics Actions](https://github.com/ultralytics/yolo-flutter-app/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/yolo-flutter-app/actions/workflows/format.yml) [![codecov](https://codecov.io/gh/ultralytics/yolo-flutter-app/graph/badge.svg?token=8lpScd9O2a)](https://codecov.io/gh/ultralytics/yolo-flutter-app) [![pub package](https://img.shields.io/pub/v/ultralytics_yolo.svg)](https://pub.dev/packages/ultralytics_yolo)
 
-*Real-time object detection, segmentation, and pose estimation for Flutter apps*
+_Real-time object detection, segmentation, and pose estimation for Flutter apps_
 
 <!-- ![YOLO Flutter Demo](https://via.placeholder.com/600x300/1e1e1e/ffffff?text=YOLO+Flutter+Demo+GIF+Coming+Soon) -->
 <!-- TODO: Add actual demo GIF/video -->
 
 **✨ Why Choose YOLO Flutter?**
+
 - 🏆 **Official Ultralytics Plugin** - Direct from YOLO creators
-- ⚡ **Real-time Performance** - Up to 30 FPS on modern devices  
+- ⚡ **Real-time Performance** - Up to 30 FPS on modern devices
 - 🎯 **5 AI Tasks** - Detection, Segmentation, Classification, Pose, OBB
 - 📱 **Cross-platform** - iOS & Android with single codebase
 - 🔧 **Production Ready** - Performance controls & optimization built-in
@@ -38,30 +39,33 @@ YOLOView(
 
 ## 🎯 What You Can Build
 
-| Task | Description | Use Cases | Performance |
-|------|-------------|-----------|-------------|
-| 🔍 **Detection** | Find objects & their locations | Security, Inventory, Shopping | 25-30 FPS |
-| 🎭 **Segmentation** | Pixel-perfect object masks | Photo editing, AR effects | 15-25 FPS |
-| 🏷️ **Classification** | Identify image categories | Content moderation, Tagging | 30+ FPS |
-| 🤸 **Pose Estimation** | Human pose & keypoints | Fitness apps, Motion capture | 20-30 FPS |
-| 📦 **OBB Detection** | Rotated bounding boxes | Document analysis, Aerial imagery | 20-25 FPS |
+| Task                   | Description                    | Use Cases                         | Performance |
+| ---------------------- | ------------------------------ | --------------------------------- | ----------- |
+| 🔍 **Detection**       | Find objects & their locations | Security, Inventory, Shopping     | 25-30 FPS   |
+| 🎭 **Segmentation**    | Pixel-perfect object masks     | Photo editing, AR effects         | 15-25 FPS   |
+| 🏷️ **Classification**  | Identify image categories      | Content moderation, Tagging       | 30+ FPS     |
+| 🤸 **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture      | 20-30 FPS   |
+| 📦 **OBB Detection**   | Rotated bounding boxes         | Document analysis, Aerial imagery | 20-25 FPS   |
 
 **[📱 See Examples →](./docs/examples.md)** | **[⚡ Performance Guide →](./docs/performance.md)** | **[🎮 Streaming Demo →](./streaming_test_example)**
 
 ## 🚀 Installation
 
 ### 1. Add to pubspec.yaml
+
 ```yaml
 dependencies:
   ultralytics_yolo: ^0.1.5
 ```
 
 ### 2. Install dependencies
+
 ```bash
 flutter pub get
 ```
 
 ### 3. Add models & permissions
+
 ```dart
 // Download models and add to assets/
 // Configure camera permissions
@@ -72,7 +76,7 @@ flutter pub get
 ## 🏆 Trusted by Developers
 
 - ✅ **Official Ultralytics Plugin** - Maintained by YOLO creators
-- ✅ **Production Tested** - Used in apps with millions of users  
+- ✅ **Production Tested** - Used in apps with millions of users
 - ✅ **Active Development** - Regular updates & feature additions
 - ✅ **Community Driven** - Open source with responsive support
 
@@ -80,14 +84,14 @@ flutter pub get
 
 ## 📚 Documentation
 
-| Guide | Description | For |
-|-------|-------------|-----|
-| **[Getting Started](./docs/getting-started.md)** | Installation, setup, first app | New users |
-| **[Examples](./docs/examples.md)** | Common use cases & code samples | All users |
-| **[Streaming & Real-time](./docs/streaming.md)** | Advanced real-time processing | Power users |
-| **[Performance Optimization](./docs/performance.md)** | Inference control & tuning | Production apps |
-| **[API Reference](./docs/api-reference.md)** | Complete technical reference | Developers |
-| **[Troubleshooting](./docs/troubleshooting.md)** | Common issues & solutions | All users |
+| Guide                                                 | Description                     | For             |
+| ----------------------------------------------------- | ------------------------------- | --------------- |
+| **[Getting Started](./docs/getting-started.md)**      | Installation, setup, first app  | New users       |
+| **[Examples](./docs/examples.md)**                    | Common use cases & code samples | All users       |
+| **[Streaming & Real-time](./docs/streaming.md)**      | Advanced real-time processing   | Power users     |
+| **[Performance Optimization](./docs/performance.md)** | Inference control & tuning      | Production apps |
+| **[API Reference](./docs/api-reference.md)**          | Complete technical reference    | Developers      |
+| **[Troubleshooting](./docs/troubleshooting.md)**      | Common issues & solutions       | All users       |
 
 ## 🤝 Community & Support
 

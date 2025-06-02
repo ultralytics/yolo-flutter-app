@@ -35,12 +35,12 @@ export 'yolo_instance_manager.dart';
 class YOLO {
   // Static channel for backward compatibility
   static const _defaultChannel = MethodChannel('yolo_single_image_channel');
-  
+
   // Instance-specific properties
   late final String _instanceId;
   late final MethodChannel _channel;
   bool _isInitialized = false;
-  
+
   /// The unique instance ID for this YOLO instance
   String get instanceId => _instanceId;
 
@@ -62,22 +62,23 @@ class YOLO {
   ///
   /// The [modelPath] can refer to a model in assets, internal storage, or absolute path.
   /// The [task] specifies what type of inference will be performed.
-  /// 
+  ///
   /// If [useMultiInstance] is true, each YOLO instance gets a unique ID and its own channel.
   /// If false, uses the default channel for backward compatibility.
   YOLO({
-    required this.modelPath, 
+    required this.modelPath,
     required this.task,
     bool useMultiInstance = false,
   }) {
     if (useMultiInstance) {
       // Generate unique instance ID
-      _instanceId = 'yolo_${DateTime.now().millisecondsSinceEpoch}_${this.hashCode}';
-      
+      _instanceId =
+          'yolo_${DateTime.now().millisecondsSinceEpoch}_${this.hashCode}';
+
       // Create instance-specific channel
       final channelName = 'yolo_single_image_channel_$_instanceId';
       _channel = MethodChannel(channelName);
-      
+
       // Register this instance with the manager
       YOLOInstanceManager.registerInstance(_instanceId, this);
     } else {
@@ -87,13 +88,15 @@ class YOLO {
       _isInitialized = true; // Skip initialization for default mode
     }
   }
-  
+
   /// Initialize this instance on the platform side
   Future<void> _initializeInstance() async {
     try {
       // Use the default channel to create the instance (only for multi-instance mode)
       if (_instanceId != 'default') {
-        await _defaultChannel.invokeMethod('createInstance', {'instanceId': _instanceId});
+        await _defaultChannel.invokeMethod('createInstance', {
+          'instanceId': _instanceId,
+        });
       }
       _isInitialized = true;
     } catch (e) {
@@ -126,12 +129,12 @@ class YOLO {
         'modelPath': newModelPath,
         'task': newTask.name,
       };
-      
+
       // Only include instanceId for multi-instance mode
       if (_instanceId != 'default') {
         arguments['instanceId'] = _instanceId;
       }
-      
+
       await _channel.invokeMethod('setModel', arguments);
     } on PlatformException catch (e) {
       if (e.code == 'MODEL_NOT_FOUND') {
@@ -171,18 +174,18 @@ class YOLO {
     if (!_isInitialized) {
       await _initializeInstance();
     }
-    
+
     try {
       final Map<String, dynamic> arguments = {
         'modelPath': modelPath,
         'task': task.name,
       };
-      
+
       // Only include instanceId for multi-instance mode
       if (_instanceId != 'default') {
         arguments['instanceId'] = _instanceId;
       }
-      
+
       final result = await _channel.invokeMethod('loadModel', arguments);
       return result == true;
     } on PlatformException catch (e) {
@@ -272,7 +275,7 @@ class YOLO {
       if (iouThreshold != null) {
         arguments['iouThreshold'] = iouThreshold;
       }
-      
+
       // Only include instanceId for multi-instance mode
       if (_instanceId != 'default') {
         arguments['instanceId'] = _instanceId;
@@ -391,17 +394,16 @@ class YOLO {
     }
   }
 
-
   /// Disposes this YOLO instance and releases all resources
   Future<void> dispose() async {
     try {
       await _channel.invokeMethod('disposeInstance', {
         'instanceId': _instanceId,
       });
-      
+
       // Remove from manager
       YOLOInstanceManager.unregisterInstance(_instanceId);
-      
+
       _isInitialized = false;
     } catch (e) {
       logInfo('Error disposing instance $_instanceId: $e');

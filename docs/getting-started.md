@@ -16,10 +16,11 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.1.5
+    ultralytics_yolo: ^0.1.5
 ```
 
 Install:
+
 ```bash
 flutter pub get
 ```
@@ -43,7 +44,7 @@ Update `android/app/build.gradle`:
 ```gradle
 android {
     compileSdk 35  // Required for ultralytics_yolo
-    
+
     defaultConfig {
         minSdkVersion 21  // Required minimum
     }
@@ -70,6 +71,7 @@ platform :ios, '13.0'  # Required minimum
 ### Download Pre-trained Models
 
 YOLO Flutter uses different model formats for each platform:
+
 - **Android**: `.tflite` (TensorFlow Lite)
 - **iOS**: `.mlmodel` or `.mlpackage` (Core ML)
 
@@ -80,7 +82,7 @@ YOLO Flutter uses different model formats for each platform:
 curl -L -o assets/yolo11n.tflite https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.tflite
 curl -L -o assets/yolo11n.mlpackage https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.mlpackage
 
-# Segmentation models  
+# Segmentation models
 curl -L -o assets/yolo11n-seg.tflite https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n-seg.tflite
 curl -L -o assets/yolo11n-seg.mlpackage https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n-seg.mlpackage
 ```
@@ -104,9 +106,9 @@ Update `pubspec.yaml`:
 
 ```yaml
 flutter:
-  assets:
-    - assets/
-    - assets/models/  # If using custom models
+    assets:
+        - assets/
+        - assets/models/ # If using custom models
 ```
 
 ## Your First Detection App
@@ -152,7 +154,7 @@ class _DetectionScreenState extends State<DetectionScreen> {
     try {
       final modelManager = ModelManager();
       final modelPath = await modelManager.getModelPath(ModelType.detect);
-      
+
       setState(() {
         _modelPath = modelPath;
         _isLoading = false;
@@ -203,7 +205,7 @@ class _DetectionScreenState extends State<DetectionScreen> {
                           setState(() {
                             _detectionCount = results.length;
                           });
-                          
+
                           // Print detection details
                           for (final result in results) {
                             print(
@@ -224,21 +226,23 @@ class _DetectionScreenState extends State<DetectionScreen> {
 ## Test Your App
 
 1. **Run the app**:
-   ```bash
-   flutter run
-   ```
+
+    ```bash
+    flutter run
+    ```
 
 2. **Point camera at objects** - You should see:
-   - Bounding boxes around detected objects
-   - Object names and confidence scores
-   - Detection count updating in real-time
+
+    - Bounding boxes around detected objects
+    - Object names and confidence scores
+    - Detection count updating in real-time
 
 3. **Check console** - You'll see detection logs:
-   ```
-   Detected: person (95.2%)
-   Detected: chair (87.3%)
-   Detected: laptop (92.1%)
-   ```
+    ```
+    Detected: person (95.2%)
+    Detected: chair (87.3%)
+    Detected: laptop (92.1%)
+    ```
 
 ## Common First Steps
 

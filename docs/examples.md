@@ -59,7 +59,7 @@ class _SecurityCameraState extends State<SecurityCamera> {
                     .where((r) => _securityTargets.contains(r.className))
                     .map((r) => r.className)
                     .toSet();
-                
+
                 if (detectedTargets.isNotEmpty) {
                   setState(() {
                     _alerts.add(
@@ -106,7 +106,7 @@ class _InventoryScannerState extends State<InventoryScanner> {
                 setState(() {
                   _inventory.clear();
                   for (final result in results) {
-                    _inventory[result.className] = 
+                    _inventory[result.className] =
                         (_inventory[result.className] ?? 0) + 1;
                   }
                 });
@@ -122,7 +122,7 @@ class _InventoryScannerState extends State<InventoryScanner> {
                 children: [
                   Padding(
                     padding: EdgeInsets.all(8),
-                    child: Text('Current Inventory', 
+                    child: Text('Current Inventory',
                         style: Theme.of(context).textTheme.headlineSmall),
                   ),
                   Expanded(
@@ -181,7 +181,7 @@ class _PhotoEditorState extends State<PhotoEditor> {
               itemBuilder: (context, index) {
                 final result = _currentResults[index];
                 final isSelected = _selectedObject == result.className;
-                
+
                 return Padding(
                   padding: EdgeInsets.all(4),
                   child: FilterChip(
@@ -259,16 +259,16 @@ class _FitnessTrackerState extends State<FitnessTracker> {
     // Simplified squat detection logic
     // In real app, you'd use proper pose analysis
     if (keypoints.length < 17) return false;
-    
+
     final leftKnee = keypoints[13];  // Left knee
     final rightKnee = keypoints[14]; // Right knee
     final leftHip = keypoints[11];   // Left hip
     final rightHip = keypoints[12];  // Right hip
-    
+
     // Check if knees are significantly below hips
     final avgKneeY = (leftKnee.y + rightKnee.y) / 2;
     final avgHipY = (leftHip.y + rightHip.y) / 2;
-    
+
     return avgKneeY > avgHipY + 50; // Threshold for squat position
   }
 
@@ -287,7 +287,7 @@ class _FitnessTrackerState extends State<FitnessTracker> {
               children: [
                 Column(
                   children: [
-                    Text('$_squatCount', 
+                    Text('$_squatCount',
                         style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
                     Text('Squats'),
                   ],
@@ -315,14 +315,14 @@ class _FitnessTrackerState extends State<FitnessTracker> {
                 if (results.isNotEmpty && results.first.keypoints != null) {
                   final keypoints = results.first.keypoints!;
                   final currentlyInSquat = _isInSquatPosition(keypoints);
-                  
+
                   // Count squat completion (transition from squat to standing)
                   if (_isSquatPosition && !currentlyInSquat) {
                     setState(() {
                       _squatCount++;
                     });
                   }
-                  
+
                   setState(() {
                     _isSquatPosition = currentlyInSquat;
                     _lastKeypoints = keypoints;
@@ -381,7 +381,7 @@ class _ContentModeratorState extends State<ContentModerator> {
             child: Column(
               children: [
                 Icon(
-                  _statusColor == Colors.green ? Icons.check_circle : 
+                  _statusColor == Colors.green ? Icons.check_circle :
                   _statusColor == Colors.red ? Icons.error : Icons.hourglass_empty,
                   size: 48,
                   color: _statusColor,
@@ -409,7 +409,7 @@ class _ContentModeratorState extends State<ContentModerator> {
                   final topResult = results.first;
                   final isInappropriate = _inappropriateContent
                       .contains(topResult.className.toLowerCase());
-                  
+
                   setState(() {
                     if (isInappropriate) {
                       _contentStatus = 'Content Blocked';
@@ -466,7 +466,7 @@ class _DocumentScannerState extends State<DocumentScanner> {
                       children: [
                         Icon(Icons.description, size: 32),
                         Text(doc['type']),
-                        Text('${doc['angle']}°', 
+                        Text('${doc['angle']}°',
                             style: TextStyle(fontSize: 12)),
                       ],
                     ),
@@ -527,7 +527,7 @@ class _AdaptiveYOLOViewState extends State<AdaptiveYOLOView> {
     // Detect device performance and adapt
     // This is a simplified example
     final isHighEnd = _isHighEndDevice();
-    
+
     if (isHighEnd) {
       return YOLOStreamingConfig.custom(
         maxFPS: 30,
@@ -573,7 +573,7 @@ class _AdaptiveYOLOViewState extends State<AdaptiveYOLOView> {
           setState(() {
             _currentFps = metrics.fps;
           });
-          
+
           // Auto-adjust if performance is poor
           if (metrics.fps < 10 && _config.maxFPS! > 10) {
             setState(() {
@@ -608,7 +608,7 @@ final yolo1 = YOLO(
 );
 
 final yolo2 = YOLO(
-  modelPath: 'assets/yolo11n-seg.tflite', 
+  modelPath: 'assets/yolo11n-seg.tflite',
   task: YOLOTask.segment,
   useMultiInstance: true,
 );
@@ -648,16 +648,16 @@ class _DualModelComparisonState extends State<DualModelComparison> {
         task: YOLOTask.detect,
         useMultiInstance: true,
       );
-      
+
       _yolo2 = YOLO(
         modelPath: 'assets/yolo11s.tflite',
-        task: YOLOTask.detect, 
+        task: YOLOTask.detect,
         useMultiInstance: true,
       );
 
       await _yolo1!.loadModel();
       await _yolo2!.loadModel();
-      
+
       setState(() => _isLoading = false);
     } catch (e) {
       print('Model initialization error: $e');
@@ -716,7 +716,7 @@ class _DualModelComparisonState extends State<DualModelComparison> {
                   ),
                 ),
                 VerticalDivider(),
-                // Model 2 results  
+                // Model 2 results
                 Expanded(
                   child: Column(
                     children: [
@@ -771,11 +771,11 @@ class _DualModelComparisonState extends State<DualModelComparison> {
 ```dart
 class MultiInstancePerformanceMonitor extends StatefulWidget {
   @override
-  _MultiInstancePerformanceMonitorState createState() => 
+  _MultiInstancePerformanceMonitorState createState() =>
       _MultiInstancePerformanceMonitorState();
 }
 
-class _MultiInstancePerformanceMonitorState 
+class _MultiInstancePerformanceMonitorState
     extends State<MultiInstancePerformanceMonitor> {
   final List<YOLO> _instances = [];
   final Map<String, double> _processingTimes = {};
@@ -791,7 +791,7 @@ class _MultiInstancePerformanceMonitorState
     // Create multiple instances for performance testing
     final models = [
       'assets/yolo11n.tflite',
-      'assets/yolo11s.tflite', 
+      'assets/yolo11s.tflite',
       'assets/yolo11m.tflite',
     ];
 
@@ -817,14 +817,14 @@ class _MultiInstancePerformanceMonitorState
   Future<void> _runBenchmark() async {
     // Simulate test image
     final testImage = Uint8List(640 * 640 * 3); // Dummy image data
-    
+
     for (int i = 0; i < _instances.length; i++) {
       final stopwatch = Stopwatch()..start();
-      
+
       try {
         await _instances[i].predict(testImage);
         stopwatch.stop();
-        
+
         setState(() {
           _processingTimes['Model ${i + 1}'] = stopwatch.elapsedMicroseconds / 1000.0;
         });
@@ -840,7 +840,7 @@ class _MultiInstancePerformanceMonitorState
       appBar: AppBar(title: Text('Multi-Instance Performance')),
       body: Column(
         children: [
-          Text('Processing Times (ms)', 
+          Text('Processing Times (ms)',
               style: Theme.of(context).textTheme.headlineSmall),
           SizedBox(height: 16),
           Expanded(
@@ -882,6 +882,7 @@ class _MultiInstancePerformanceMonitorState
 ### Important Considerations
 
 #### Memory Management
+
 ```dart
 // Always dispose of instances when done
 @override
@@ -893,6 +894,7 @@ void dispose() {
 ```
 
 #### Error Handling
+
 ```dart
 try {
   final yolo = YOLO(
@@ -914,6 +916,7 @@ try {
 ```
 
 #### Backward Compatibility
+
 ```dart
 // Multi-instance is opt-in for backward compatibility
 final yolo = YOLO(
@@ -926,13 +929,14 @@ final yolo = YOLO(
 ## 🚀 Next Steps
 
 - **[Performance Optimization](./performance.md)** - Advanced performance tuning
-- **[Streaming Guide](./streaming.md)** - Real-time processing details  
+- **[Streaming Guide](./streaming.md)** - Real-time processing details
 - **[API Reference](./api-reference.md)** - Complete technical documentation
 - **[Troubleshooting](./troubleshooting.md)** - Common issues and solutions
 
 ## Example Apps
 
 Check out complete example applications:
+
 - **[Basic Example](../example/)** - Simple detection app
 - **[Streaming Demo](../streaming_test_example/)** - Advanced real-time features
 - **[Simple Example](../simple_example/)** - Minimal implementation

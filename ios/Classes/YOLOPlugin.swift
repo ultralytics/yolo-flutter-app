@@ -9,14 +9,14 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
   private static var instanceChannels: [String: FlutterMethodChannel] = [:]
   // Store the registrar for creating new channels
   private static var pluginRegistrar: FlutterPluginRegistrar?
-  
+
   public static func register(with registrar: FlutterPluginRegistrar) {
     // Store the registrar for later use
     pluginRegistrar = registrar
     // 1) Register the platform view
     let factory = SwiftYOLOPlatformViewFactory(messenger: registrar.messenger())
     registrar.register(factory, withId: "com.ultralytics.yolo/YOLOPlatformView")
-    
+
     // 2) Register the default method channel for backward compatibility
     let defaultChannel = FlutterMethodChannel(
       name: "yolo_single_image_channel",
@@ -25,7 +25,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
     let instance = YOLOPlugin()
     registrar.addMethodCallDelegate(instance, channel: defaultChannel)
   }
-  
+
   private func registerInstanceChannel(instanceId: String, messenger: FlutterBinaryMessenger) {
     let channelName = "yolo_single_image_channel_\(instanceId)"
     let channel = FlutterMethodChannel(name: channelName, binaryMessenger: messenger)
@@ -37,7 +37,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
       registrar.addMethodCallDelegate(instance, channel: channel)
     }
   }
-  
+
   private func checkModelExists(modelPath: String) -> [String: Any] {
     let fileManager = FileManager.default
     var resultMap: [String: Any] = [
@@ -45,9 +45,9 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
       "path": modelPath,
       "location": "unknown",
     ]
-    
+
     let lowercasedPath = modelPath.lowercased()
-    
+
     if modelPath.hasPrefix("/") {
       if fileManager.fileExists(atPath: modelPath) {
         resultMap["exists"] = true
@@ -56,12 +56,12 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         return resultMap
       }
     }
-    
+
     if modelPath.contains("/") {
       let components = modelPath.components(separatedBy: "/")
       let fileName = components.last ?? ""
       let directory = components.dropLast().joined(separator: "/")
-      
+
       let assetPath = "flutter_assets/\(directory)"
       if let fullPath = Bundle.main.path(forResource: fileName, ofType: nil, inDirectory: assetPath)
       {
@@ -70,12 +70,12 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         resultMap["absolutePath"] = fullPath
         return resultMap
       }
-      
+
       let fileComponents = fileName.components(separatedBy: ".")
       if fileComponents.count > 1 {
         let name = fileComponents.dropLast().joined(separator: ".")
         let ext = fileComponents.last ?? ""
-        
+
         if let fullPath = Bundle.main.path(forResource: name, ofType: ext, inDirectory: assetPath) {
           resultMap["exists"] = true
           resultMap["location"] = "flutter_assets_directory_with_ext"
@@ -84,7 +84,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         }
       }
     }
-    
+
     let fileName = modelPath.components(separatedBy: "/").last ?? modelPath
     if let fullPath = Bundle.main.path(
       forResource: fileName, ofType: nil, inDirectory: "flutter_assets")
@@ -94,12 +94,12 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
       resultMap["absolutePath"] = fullPath
       return resultMap
     }
-    
+
     let fileComponents = fileName.components(separatedBy: ".")
     if fileComponents.count > 1 {
       let name = fileComponents.dropLast().joined(separator: ".")
       let ext = fileComponents.last ?? ""
-      
+
       if let fullPath = Bundle.main.path(forResource: name, ofType: ext) {
         resultMap["exists"] = true
         resultMap["location"] = "bundle_resource"
@@ -107,24 +107,24 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         return resultMap
       }
     }
-    
+
     if let compiledURL = Bundle.main.url(forResource: fileName, withExtension: "mlmodelc") {
       resultMap["exists"] = true
       resultMap["location"] = "bundle_compiled"
       resultMap["absolutePath"] = compiledURL.path
       return resultMap
     }
-    
+
     if let packageURL = Bundle.main.url(forResource: fileName, withExtension: "mlpackage") {
       resultMap["exists"] = true
       resultMap["location"] = "bundle_package"
       resultMap["absolutePath"] = packageURL.path
       return resultMap
     }
-    
+
     return resultMap
   }
-  
+
   private func getStoragePaths() -> [String: String?] {
     let fileManager = FileManager.default
     let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
@@ -132,51 +132,52 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
     let applicationSupportDirectory = fileManager.urls(
       for: .applicationSupportDirectory, in: .userDomainMask
     ).first
-    
+
     return [
       "internal": applicationSupportDirectory?.path,
       "cache": cachesDirectory?.path,
       "documents": documentsDirectory?.path,
     ]
   }
-  
+
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     Task { @MainActor in
       switch call.method {
       case "createInstance":
         guard let args = call.arguments as? [String: Any],
-              let instanceId = args["instanceId"] as? String
+          let instanceId = args["instanceId"] as? String
         else {
           result(
-            FlutterError(code: "bad_args", message: "Invalid arguments for createInstance", details: nil)
+            FlutterError(
+              code: "bad_args", message: "Invalid arguments for createInstance", details: nil)
           )
           return
         }
-        
+
         // Create the instance in the manager
         YOLOInstanceManager.shared.createInstance(instanceId: instanceId)
-        
+
         // Register a new channel for this instance
         if let registrar = YOLOPlugin.pluginRegistrar {
           registerInstanceChannel(instanceId: instanceId, messenger: registrar.messenger())
         }
-        
+
         result(nil)
-        
+
       case "loadModel":
         guard let args = call.arguments as? [String: Any],
-              let modelPath = args["modelPath"] as? String,
-              let taskString = args["task"] as? String
+          let modelPath = args["modelPath"] as? String,
+          let taskString = args["task"] as? String
         else {
           result(
             FlutterError(code: "bad_args", message: "Invalid arguments for loadModel", details: nil)
           )
           return
         }
-        
+
         let task = YOLOTask.fromString(taskString)
         let instanceId = args["instanceId"] as? String ?? "default"
-        
+
         do {
           try await withCheckedThrowingContinuation {
             (continuation: CheckedContinuation<Void, Error>) in
@@ -203,10 +204,10 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
             )
           )
         }
-        
+
       case "predictSingleImage":
         guard let args = call.arguments as? [String: Any],
-              let data = args["image"] as? FlutterStandardTypedData
+          let data = args["image"] as? FlutterStandardTypedData
         else {
           result(
             FlutterError(
@@ -214,11 +215,11 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           )
           return
         }
-        
+
         let instanceId = args["instanceId"] as? String ?? "default"
         let confidenceThreshold = args["confidenceThreshold"] as? Double
         let iouThreshold = args["iouThreshold"] as? Double
-        
+
         if let resultDict = YOLOInstanceManager.shared.predict(
           instanceId: instanceId,
           imageData: data.data,
@@ -235,27 +236,28 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
             )
           )
         }
-        
+
       case "disposeInstance":
         guard let args = call.arguments as? [String: Any],
-              let instanceId = args["instanceId"] as? String
+          let instanceId = args["instanceId"] as? String
         else {
           result(
-            FlutterError(code: "bad_args", message: "Invalid arguments for disposeInstance", details: nil)
+            FlutterError(
+              code: "bad_args", message: "Invalid arguments for disposeInstance", details: nil)
           )
           return
         }
-        
+
         YOLOInstanceManager.shared.removeInstance(instanceId: instanceId)
-        
+
         // Remove the channel for this instance
         YOLOPlugin.instanceChannels.removeValue(forKey: instanceId)
-        
+
         result(nil)
-        
+
       case "checkModelExists":
         guard let args = call.arguments as? [String: Any],
-              let modelPath = args["modelPath"] as? String
+          let modelPath = args["modelPath"] as? String
         else {
           result(
             FlutterError(
@@ -263,28 +265,28 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           )
           return
         }
-        
+
         let checkResult = checkModelExists(modelPath: modelPath)
         result(checkResult)
-        
+
       case "getStoragePaths":
         let paths = getStoragePaths()
         result(paths)
-        
+
       case "setModel":
         guard let args = call.arguments as? [String: Any],
-              let viewId = args["viewId"] as? Int,
-              let modelPath = args["modelPath"] as? String,
-              let taskString = args["task"] as? String
+          let viewId = args["viewId"] as? Int,
+          let modelPath = args["modelPath"] as? String,
+          let taskString = args["task"] as? String
         else {
           result(
             FlutterError(code: "bad_args", message: "Invalid arguments for setModel", details: nil)
           )
           return
         }
-        
+
         let task = YOLOTask.fromString(taskString)
-        
+
         // Get the YOLOView instance from the factory
         if let yoloView = SwiftYOLOPlatformViewFactory.getYOLOView(for: viewId) {
           yoloView.setModel(modelPathOrName: modelPath, task: task) { modelResult in
@@ -310,7 +312,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
             )
           )
         }
-        
+
       default:
         result(FlutterMethodNotImplemented)
       }

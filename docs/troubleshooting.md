@@ -6,24 +6,26 @@ This guide helps you resolve common issues when using YOLO Flutter, from setup p
 
 ### Most Common Issues
 
-| Problem | Quick Fix | Time to Fix |
-|---------|-----------|-------------|
-| **Model not loading** | Check file path and format | 2 minutes |
-| **Camera permission denied** | Add permissions to manifest | 1 minute |
-| **Low FPS performance** | Switch to `yolo11n` model | 30 seconds |
-| **App crashes on detection** | Update to latest plugin version | 2 minutes |
-| **No detection results** | Lower confidence threshold | 30 seconds |
+| Problem                      | Quick Fix                       | Time to Fix |
+| ---------------------------- | ------------------------------- | ----------- |
+| **Model not loading**        | Check file path and format      | 2 minutes   |
+| **Camera permission denied** | Add permissions to manifest     | 1 minute    |
+| **Low FPS performance**      | Switch to `yolo11n` model       | 30 seconds  |
+| **App crashes on detection** | Update to latest plugin version | 2 minutes   |
+| **No detection results**     | Lower confidence threshold      | 30 seconds  |
 
 ## 📱 Installation & Setup Issues
 
 ### Android Setup Problems
 
 #### Issue: "Minimum SDK version" error
+
 ```
 Error: Requires minimum SDK version 21
 ```
 
 **Solution:**
+
 ```gradle
 // In android/app/build.gradle
 android {
@@ -34,77 +36,90 @@ android {
 ```
 
 #### Issue: Camera permission denied
+
 ```
 PlatformException: Camera permission denied
 ```
 
 **Solution:**
+
 ```xml
 <!-- Add to android/app/src/main/AndroidManifest.xml -->
 <uses-permission android:name="android.permission.CAMERA" />
 ```
 
 #### Issue: TensorFlow Lite model loading fails
+
 ```
 Error: Failed to load TensorFlow Lite model
 ```
 
 **Solutions:**
+
 1. **Check model placement:**
-   ```
-   android/app/src/main/assets/yolo11n.tflite
-   ```
+
+    ```
+    android/app/src/main/assets/yolo11n.tflite
+    ```
 
 2. **Verify model format:**
-   ```dart
-   // Use correct model path
-   YOLOView(
-     modelPath: 'yolo11n',  // Without .tflite extension
-     task: YOLOTask.detect,
-   )
-   ```
+
+    ```dart
+    // Use correct model path
+    YOLOView(
+      modelPath: 'yolo11n',  // Without .tflite extension
+      task: YOLOTask.detect,
+    )
+    ```
 
 3. **Check model export:**
-   ```python
-   # Ensure model was exported correctly
-   model.export(format="tflite", int8=True, imgsz=[320, 320], nms=False)
-   ```
+    ```python
+    # Ensure model was exported correctly
+    model.export(format="tflite", int8=True, imgsz=[320, 320], nms=False)
+    ```
 
 ### iOS Setup Problems
 
 #### Issue: Core ML model not found
+
 ```
 Error: Could not load Core ML model
 ```
 
 **Solution:**
+
 1. **Add model to Xcode project:**
-   - Open `ios/Runner.xcworkspace`
-   - Drag `yolo11n.mlpackage` into project
-   - Ensure "Add to target" includes Runner
+
+    - Open `ios/Runner.xcworkspace`
+    - Drag `yolo11n.mlpackage` into project
+    - Ensure "Add to target" includes Runner
 
 2. **Verify model in Bundle Resources:**
-   - Select Runner target
-   - Build Phases → Copy Bundle Resources
-   - Ensure your `.mlpackage` is listed
+    - Select Runner target
+    - Build Phases → Copy Bundle Resources
+    - Ensure your `.mlpackage` is listed
 
 #### Issue: iOS deployment target too low
+
 ```
 Error: iOS deployment target is below minimum required version
 ```
 
 **Solution:**
+
 ```ruby
 # In ios/Podfile
 platform :ios, '13.0'  # Minimum required
 ```
 
 #### Issue: Camera usage description missing
+
 ```
 Error: This app has crashed because it attempted to access privacy-sensitive data
 ```
 
 **Solution:**
+
 ```xml
 <!-- Add to ios/Runner/Info.plist -->
 <key>NSCameraUsageDescription</key>
@@ -116,12 +131,14 @@ Error: This app has crashed because it attempted to access privacy-sensitive dat
 ### Model Loading Problems
 
 #### Issue: Model file not found
+
 ```dart
 // Common error patterns
 YOLOException: Model file not found at path: assets/yolo11n.tflite
 ```
 
 **Debugging Steps:**
+
 ```dart
 // 1. Check if model exists
 final exists = await YOLO.checkModelExists('yolo11n');
@@ -139,27 +156,30 @@ YOLOView(
 ```
 
 #### Issue: Model format incompatible
+
 ```
 Error: Unsupported model format
 ```
 
 **Solution:**
+
 ```python
 # Re-export with correct parameters
 from ultralytics import YOLO
 
-model = YOLO('yolo11n.pt')
+model = YOLO("yolo11n.pt")
 
 # For Android
 model.export(format="tflite", int8=True, imgsz=[320, 320], nms=False)
 
-# For iOS  
+# For iOS
 model.export(format="coreml", int8=True, imgsz=[640, 384], nms=True)
 ```
 
 ### Performance Issues
 
 #### Issue: Very low FPS (< 10)
+
 ```
 FPS dropping below 10, app feels sluggish
 ```
@@ -167,36 +187,40 @@ FPS dropping below 10, app feels sluggish
 **Solutions (in order of impact):**
 
 1. **Switch to smaller model:**
-   ```dart
-   // Change from yolo11s/m to yolo11n
-   YOLOView(
-     modelPath: 'yolo11n',  // Smallest, fastest model
-     task: YOLOTask.detect,
-   )
-   ```
+
+    ```dart
+    // Change from yolo11s/m to yolo11n
+    YOLOView(
+      modelPath: 'yolo11n',  // Smallest, fastest model
+      task: YOLOTask.detect,
+    )
+    ```
 
 2. **Reduce inference frequency:**
-   ```dart
-   YOLOView(
-     streamingConfig: YOLOStreamingConfig.custom(
-       inferenceFrequency: 10,  // Reduce from default 15
-     ),
-   )
-   ```
+
+    ```dart
+    YOLOView(
+      streamingConfig: YOLOStreamingConfig.custom(
+        inferenceFrequency: 10,  // Reduce from default 15
+      ),
+    )
+    ```
 
 3. **Use minimal streaming config:**
-   ```dart
-   YOLOView(
-     streamingConfig: YOLOStreamingConfig.minimal(),
-   )
-   ```
+    ```dart
+    YOLOView(
+      streamingConfig: YOLOStreamingConfig.minimal(),
+    )
+    ```
 
 #### Issue: High memory usage / crashes
+
 ```
 Out of memory errors or app crashes after extended use
 ```
 
 **Solutions:**
+
 ```dart
 // 1. Enable frame dropping
 YOLOView(
@@ -212,9 +236,9 @@ class MemoryManagedYOLO extends StatefulWidget {
   _MemoryManagedYOLOState createState() => _MemoryManagedYOLOState();
 }
 
-class _MemoryManagedYOLOState extends State<MemoryManagedYOLO> 
+class _MemoryManagedYOLOState extends State<MemoryManagedYOLO>
     with WidgetsBindingObserver {
-  
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
@@ -230,6 +254,7 @@ class _MemoryManagedYOLOState extends State<MemoryManagedYOLO>
 ### Detection Issues
 
 #### Issue: No detections appearing
+
 ```dart
 // onResult callback receiving empty results
 onResult: (results) {
@@ -240,34 +265,38 @@ onResult: (results) {
 **Debugging Steps:**
 
 1. **Lower confidence threshold:**
-   ```dart
-   YOLOView(
-     controller: controller,
-     onResult: (results) => print('Found ${results.length} objects'),
-   )
-   
-   // Set very low threshold to test
-   controller.setConfidenceThreshold(0.1);
-   ```
+
+    ```dart
+    YOLOView(
+      controller: controller,
+      onResult: (results) => print('Found ${results.length} objects'),
+    )
+
+    // Set very low threshold to test
+    controller.setConfidenceThreshold(0.1);
+    ```
 
 2. **Test with different lighting:**
-   - Ensure good lighting conditions
-   - Try different angles and distances
+
+    - Ensure good lighting conditions
+    - Try different angles and distances
 
 3. **Verify model task alignment:**
-   ```dart
-   // Ensure model and task match
-   YOLOView(
-     modelPath: 'yolo11n',        // Detection model
-     task: YOLOTask.detect,       // Detection task
-   )
-   
-   // NOT:
-   // modelPath: 'yolo11n-seg',   // Segmentation model  
-   // task: YOLOTask.detect,      // Detection task - MISMATCH!
-   ```
+
+    ```dart
+    // Ensure model and task match
+    YOLOView(
+      modelPath: 'yolo11n',        // Detection model
+      task: YOLOTask.detect,       // Detection task
+    )
+
+    // NOT:
+    // modelPath: 'yolo11n-seg',   // Segmentation model
+    // task: YOLOTask.detect,      // Detection task - MISMATCH!
+    ```
 
 #### Issue: Detections are inaccurate
+
 ```
 Getting false positives or missed detections
 ```
@@ -275,34 +304,37 @@ Getting false positives or missed detections
 **Solutions:**
 
 1. **Adjust confidence threshold:**
-   ```dart
-   // Higher threshold = fewer false positives
-   controller.setConfidenceThreshold(0.7);
-   
-   // Lower threshold = more detections (may include false positives)
-   controller.setConfidenceThreshold(0.3);
-   ```
+
+    ```dart
+    // Higher threshold = fewer false positives
+    controller.setConfidenceThreshold(0.7);
+
+    // Lower threshold = more detections (may include false positives)
+    controller.setConfidenceThreshold(0.3);
+    ```
 
 2. **Adjust IoU threshold:**
-   ```dart
-   // Higher IoU = fewer overlapping boxes
-   controller.setIoUThreshold(0.6);
-   ```
+
+    ```dart
+    // Higher IoU = fewer overlapping boxes
+    controller.setIoUThreshold(0.6);
+    ```
 
 3. **Consider model upgrade:**
-   ```dart
-   // Upgrade from nano to small for better accuracy
-   YOLOView(
-     modelPath: 'yolo11s',  // More accurate than yolo11n
-     task: YOLOTask.detect,
-   )
-   ```
+    ```dart
+    // Upgrade from nano to small for better accuracy
+    YOLOView(
+      modelPath: 'yolo11s',  // More accurate than yolo11n
+      task: YOLOTask.detect,
+    )
+    ```
 
 ## 🎭 Task-Specific Issues
 
 ### Segmentation Problems
 
 #### Issue: Mask data not appearing
+
 ```dart
 // Mask field is null in results
 for (final result in results) {
@@ -311,6 +343,7 @@ for (final result in results) {
 ```
 
 **Solution:**
+
 ```dart
 // 1. Ensure segmentation model and task
 YOLOView(
@@ -330,12 +363,14 @@ YOLOView(
 ### Pose Estimation Problems
 
 #### Issue: Keypoints not detected
+
 ```dart
 // Keypoints field is null in results
 result.keypoints == null  // Always true
 ```
 
 **Solution:**
+
 ```dart
 YOLOView(
   modelPath: 'yolo11n-pose',     // Pose estimation model
@@ -356,6 +391,7 @@ YOLOView(
 ### Streaming Configuration Problems
 
 #### Issue: Streaming callbacks not working
+
 ```dart
 // onPerformanceMetrics never called
 onPerformanceMetrics: (metrics) {
@@ -364,6 +400,7 @@ onPerformanceMetrics: (metrics) {
 ```
 
 **Solution:**
+
 ```dart
 // Ensure streaming is properly configured
 YOLOView(
@@ -375,12 +412,14 @@ YOLOView(
 ```
 
 #### Issue: Inference frequency not taking effect
+
 ```dart
 // Setting inference frequency but no performance change
 YOLOStreamingConfig.custom(inferenceFrequency: 5)  // Should be slower
 ```
 
 **Debugging:**
+
 ```dart
 // 1. Verify configuration is applied
 final controller = YOLOViewController();
@@ -449,7 +488,7 @@ class _DebugYOLOState extends State<DebugYOLO> {
 class PerformanceProfiler {
   final List<double> _frameTime = [];
   final List<double> _fpsHistory = [];
-  
+
   void profilePerformance(PerformanceMetrics metrics) {
     if (metrics.processingTimeMs != null) {
       _frameTime.add(metrics.processingTimeMs!);
@@ -457,31 +496,31 @@ class PerformanceProfiler {
     if (metrics.fps != null) {
       _fpsHistory.add(metrics.fps!);
     }
-    
+
     // Keep only recent data
     if (_frameTime.length > 100) _frameTime.removeAt(0);
     if (_fpsHistory.length > 100) _fpsHistory.removeAt(0);
-    
+
     // Print statistics every 50 frames
     if (_frameTime.length % 50 == 0) {
       _printStatistics();
     }
   }
-  
+
   void _printStatistics() {
     if (_frameTime.isEmpty || _fpsHistory.isEmpty) return;
-    
+
     final avgFrameTime = _frameTime.reduce((a, b) => a + b) / _frameTime.length;
     final avgFPS = _fpsHistory.reduce((a, b) => a + b) / _fpsHistory.length;
     final maxFrameTime = _frameTime.reduce((a, b) => a > b ? a : b);
     final minFPS = _fpsHistory.reduce((a, b) => a < b ? a : b);
-    
+
     print('=== Performance Statistics ===');
     print('Average Frame Time: ${avgFrameTime.toStringAsFixed(1)}ms');
     print('Average FPS: ${avgFPS.toStringAsFixed(1)}');
     print('Max Frame Time: ${maxFrameTime.toStringAsFixed(1)}ms');
     print('Min FPS: ${minFPS.toStringAsFixed(1)}');
-    
+
     // Warn about performance issues
     if (avgFPS < 15) {
       print('⚠️ Warning: Low average FPS detected');
@@ -500,24 +539,28 @@ class PerformanceProfiler {
 Run through this checklist systematically:
 
 #### Setup Verification
+
 - [ ] Plugin version is latest: `flutter pub deps | grep ultralytics_yolo`
 - [ ] Platform setup complete (permissions, SDK versions)
 - [ ] Model files in correct locations
 - [ ] Model names match exactly (no extra extensions)
 
-#### Model Verification  
+#### Model Verification
+
 - [ ] Model exported with correct parameters
 - [ ] Model format matches platform (`.tflite` for Android, `.mlpackage` for iOS)
 - [ ] Model task matches YOLOTask enum
 - [ ] Model exists: `await YOLO.checkModelExists('model_name')`
 
 #### Performance Verification
+
 - [ ] Appropriate model size for device
 - [ ] Streaming configuration reasonable for hardware
 - [ ] Memory usage within limits
 - [ ] No blocking operations in callbacks
 
 #### Detection Verification
+
 - [ ] Confidence threshold appropriate (try 0.1 for testing)
 - [ ] Good lighting and clear objects
 - [ ] Objects within model's training classes
@@ -544,7 +587,7 @@ void main() {
   print('Device: [device model]');
   print('Model: [model name and size]');
   print('Issue: [specific problem description]');
-  
+
   // Include minimal reproduction code
   runApp(MyApp());
 }
@@ -561,38 +604,41 @@ void main() {
 
 ### Quick Reference
 
-| Error Message | Likely Cause | Solution |
-|---------------|--------------|----------|
-| `Model file not found` | Wrong path or missing file | Check model placement and path |
-| `Camera permission denied` | Missing permissions | Add camera permissions |
-| `Unsupported model format` | Wrong model export | Re-export with correct parameters |
-| `Out of memory` | Model too large | Use smaller model or reduce frequency |
-| `Platform exception` | Setup issue | Check platform-specific setup |
-| `No detections` | High confidence threshold | Lower confidence to 0.1 for testing |
+| Error Message              | Likely Cause               | Solution                              |
+| -------------------------- | -------------------------- | ------------------------------------- |
+| `Model file not found`     | Wrong path or missing file | Check model placement and path        |
+| `Camera permission denied` | Missing permissions        | Add camera permissions                |
+| `Unsupported model format` | Wrong model export         | Re-export with correct parameters     |
+| `Out of memory`            | Model too large            | Use smaller model or reduce frequency |
+| `Platform exception`       | Setup issue                | Check platform-specific setup         |
+| `No detections`            | High confidence threshold  | Lower confidence to 0.1 for testing   |
 
 ## 🚀 Performance Recovery
 
 If your app performance degrades over time:
 
 1. **Restart detection:**
-   ```dart
-   await controller.stop();
-   await controller.start();
-   ```
+
+    ```dart
+    await controller.stop();
+    await controller.start();
+    ```
 
 2. **Clear model cache:**
-   ```dart
-   await YOLO.clearModelCache();
-   ```
+
+    ```dart
+    await YOLO.clearModelCache();
+    ```
 
 3. **Reduce streaming load:**
-   ```dart
-   controller.updateStreamingConfig(YOLOStreamingConfig.minimal());
-   ```
+
+    ```dart
+    controller.updateStreamingConfig(YOLOStreamingConfig.minimal());
+    ```
 
 4. **Monitor memory:**
-   ```dart
-   // Implement memory monitoring and restart if needed
-   ```
+    ```dart
+    // Implement memory monitoring and restart if needed
+    ```
 
 Remember: Most issues are configuration-related and can be fixed quickly with the right approach!

@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,10 +13,7 @@ class MultiInstanceTestApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'YOLO Multi-Instance Test',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: MultiInstanceTestScreen(),
     );
   }
@@ -22,20 +21,21 @@ class MultiInstanceTestApp extends StatelessWidget {
 
 class MultiInstanceTestScreen extends StatefulWidget {
   @override
-  _MultiInstanceTestScreenState createState() => _MultiInstanceTestScreenState();
+  _MultiInstanceTestScreenState createState() =>
+      _MultiInstanceTestScreenState();
 }
 
 class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
   // 複数のYOLOインスタンス
   YOLO? _detector;
   YOLO? _segmenter;
-  
+
   // UI状態
   final ImagePicker _picker = ImagePicker();
   File? _selectedImage;
   bool _isLoading = false;
   String _statusMessage = 'Initializing...';
-  
+
   // 結果
   Map<String, dynamic>? _detectionResults;
   Map<String, dynamic>? _segmentationResults;
@@ -56,29 +56,24 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
 
     try {
       // 複数のYOLOインスタンスを作成
-      _detector = YOLO(
-        modelPath: 'yolo11n',
-        task: YOLOTask.detect,
-      );
-      
-      _segmenter = YOLO(
-        modelPath: 'yolo11n-cls',
-        task: YOLOTask.classify,
-      );
-      
+      _detector = YOLO(modelPath: 'yolo11n', task: YOLOTask.detect);
+
+      _segmenter = YOLO(modelPath: 'yolo11n-cls', task: YOLOTask.classify);
+
       setState(() {
         _statusMessage = 'Loading models...';
       });
-      
+
       // モデルを並列でロード
       final loadResults = await Future.wait([
         _detector!.loadModel(),
         _segmenter!.loadModel(),
       ]);
-      
+
       if (loadResults.every((result) => result)) {
         setState(() {
-          _statusMessage = 'Models loaded successfully!\n'
+          _statusMessage =
+              'Models loaded successfully!\n'
               'Detector ID: ${_detector!.instanceId}\n'
               'Segmenter ID: ${_segmenter!.instanceId}';
           _isLoading = false;
@@ -97,27 +92,28 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
   Future<void> _pickImage(ImageSource source) async {
     final XFile? image = await _picker.pickImage(source: source);
     if (image == null) return;
-    
+
     setState(() {
       _selectedImage = File(image.path);
       _detectionResults = null;
       _segmentationResults = null;
     });
-    
+
     await _runInference();
   }
 
   Future<void> _runInference() async {
-    if (_selectedImage == null || _detector == null || _segmenter == null) return;
-    
+    if (_selectedImage == null || _detector == null || _segmenter == null)
+      return;
+
     setState(() {
       _isLoading = true;
       _statusMessage = 'Running inference...';
     });
-    
+
     try {
       final imageBytes = await _selectedImage!.readAsBytes();
-      
+
       // 物体検出の実行と時間計測
       final detectStopwatch = Stopwatch()..start();
       final detectionResult = await _detector!.predict(
@@ -127,7 +123,7 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
       );
       detectStopwatch.stop();
       _inferenceTimeDetection = detectStopwatch.elapsedMilliseconds;
-      
+
       // セグメンテーションの実行と時間計測
       final segmentStopwatch = Stopwatch()..start();
       final segmentationResult = await _segmenter!.predict(
@@ -137,7 +133,7 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
       );
       segmentStopwatch.stop();
       _inferenceTimeSegmentation = segmentStopwatch.elapsedMilliseconds;
-      
+
       setState(() {
         _detectionResults = detectionResult;
         _segmentationResults = segmentationResult;
@@ -154,11 +150,9 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
 
   Widget _buildResultsView() {
     if (_detectionResults == null && _segmentationResults == null) {
-      return Center(
-        child: Text('No results yet. Select an image to start.'),
-      );
+      return Center(child: Text('No results yet. Select an image to start.'));
     }
-    
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,16 +170,24 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
                     ),
                     SizedBox(height: 8),
                     Text('Instance ID: ${_detector!.instanceId}'),
-                    Text('Objects found: ${_detectionResults!['boxes']?.length ?? 0}'),
+                    Text(
+                      'Objects found: ${_detectionResults!['boxes']?.length ?? 0}',
+                    ),
                     Text('Inference time: ${_inferenceTimeDetection}ms'),
                     if (_detectionResults!['boxes'] != null) ...[
                       SizedBox(height: 8),
                       Text('Detected classes:'),
-                      ...(_detectionResults!['boxes'] as List).map((box) {
-                        return Text('  - Class ${box['class']}: ${(box['confidence'] * 100).toStringAsFixed(1)}%');
-                      }).take(5),
+                      ...(_detectionResults!['boxes'] as List)
+                          .map((box) {
+                            return Text(
+                              '  - Class ${box['class']}: ${(box['confidence'] * 100).toStringAsFixed(1)}%',
+                            );
+                          })
+                          .take(5),
                       if ((_detectionResults!['boxes'] as List).length > 5)
-                        Text('  ... and ${(_detectionResults!['boxes'] as List).length - 5} more'),
+                        Text(
+                          '  ... and ${(_detectionResults!['boxes'] as List).length - 5} more',
+                        ),
                     ],
                   ],
                 ),
@@ -193,7 +195,7 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
             ),
             SizedBox(height: 16),
           ],
-          
+
           if (_segmentationResults != null) ...[
             Card(
               child: Padding(
@@ -207,16 +209,24 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
                     ),
                     SizedBox(height: 8),
                     Text('Instance ID: ${_segmenter!.instanceId}'),
-                    Text('Segments found: ${_segmentationResults!['boxes']?.length ?? 0}'),
+                    Text(
+                      'Segments found: ${_segmentationResults!['boxes']?.length ?? 0}',
+                    ),
                     Text('Inference time: ${_inferenceTimeSegmentation}ms'),
                     if (_segmentationResults!['boxes'] != null) ...[
                       SizedBox(height: 8),
                       Text('Segmented classes:'),
-                      ...(_segmentationResults!['boxes'] as List).map((box) {
-                        return Text('  - Class ${box['class']}: ${(box['confidence'] * 100).toStringAsFixed(1)}%');
-                      }).take(5),
+                      ...(_segmentationResults!['boxes'] as List)
+                          .map((box) {
+                            return Text(
+                              '  - Class ${box['class']}: ${(box['confidence'] * 100).toStringAsFixed(1)}%',
+                            );
+                          })
+                          .take(5),
                       if ((_segmentationResults!['boxes'] as List).length > 5)
-                        Text('  ... and ${(_segmentationResults!['boxes'] as List).length - 5} more'),
+                        Text(
+                          '  ... and ${(_segmentationResults!['boxes'] as List).length - 5} more',
+                        ),
                     ],
                   ],
                 ),
@@ -252,16 +262,13 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Status',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('Status', style: Theme.of(context).textTheme.titleMedium),
                 SizedBox(height: 4),
                 Text(_statusMessage),
               ],
             ),
           ),
-          
+
           // Image display
           if (_selectedImage != null)
             Container(
@@ -273,13 +280,10 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  _selectedImage!,
-                  fit: BoxFit.contain,
-                ),
+                child: Image.file(_selectedImage!, fit: BoxFit.contain),
               ),
             ),
-          
+
           // Action buttons
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -287,14 +291,16 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed: _isLoading || _detector == null || _segmenter == null
+                  onPressed:
+                      _isLoading || _detector == null || _segmenter == null
                       ? null
                       : () => _pickImage(ImageSource.camera),
                   icon: Icon(Icons.camera_alt),
                   label: Text('Camera'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _isLoading || _detector == null || _segmenter == null
+                  onPressed:
+                      _isLoading || _detector == null || _segmenter == null
                       ? null
                       : () => _pickImage(ImageSource.gallery),
                   icon: Icon(Icons.photo_library),
@@ -303,7 +309,7 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
               ],
             ),
           ),
-          
+
           // Results or loading indicator
           Expanded(
             child: Padding(
@@ -333,7 +339,9 @@ class _MultiInstanceTestScreenState extends State<MultiInstanceTestScreen> {
                   if (_segmenter != null)
                     Text('Segmenter: ${_segmenter!.instanceId}'),
                   SizedBox(height: 16),
-                  Text('Total instances: ${YOLOInstanceManager.getActiveInstanceIds().length}'),
+                  Text(
+                    'Total instances: ${YOLOInstanceManager.getActiveInstanceIds().length}',
+                  ),
                 ],
               ),
               actions: [

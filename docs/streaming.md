@@ -5,6 +5,7 @@ This guide covers advanced real-time processing features including inference fre
 ## 🎮 Streaming Demo
 
 The **[Streaming Test Example](../streaming_test_example/)** demonstrates all advanced features:
+
 - Real-time inference frequency control
 - Performance monitoring
 - Task switching
@@ -43,7 +44,7 @@ YOLOView(
 // High performance (30 FPS inference)
 YOLOStreamingConfig.full()
 
-// Balanced performance (15 FPS inference)  
+// Balanced performance (15 FPS inference)
 YOLOStreamingConfig.balanced()
 
 // Power saving (5 FPS inference)
@@ -99,6 +100,7 @@ class PerformanceMetrics {
 Different YOLO tasks have different streaming considerations:
 
 ### Object Detection
+
 ```dart
 YOLOView(
   task: YOLOTask.detect,
@@ -111,6 +113,7 @@ YOLOView(
 ```
 
 ### Segmentation
+
 ```dart
 YOLOView(
   task: YOLOTask.segment,
@@ -124,6 +127,7 @@ YOLOView(
 ```
 
 ### Pose Estimation
+
 ```dart
 YOLOView(
   task: YOLOTask.pose,
@@ -163,7 +167,7 @@ class _AdaptiveStreamingExampleState extends State<AdaptiveStreamingExample> {
         setState(() {
           _currentFps = metrics.fps ?? 0;
         });
-        
+
         // Auto-adjust based on performance
         _adaptConfiguration(metrics);
       },
@@ -181,7 +185,7 @@ class _AdaptiveStreamingExampleState extends State<AdaptiveStreamingExample> {
       });
       _controller.updateStreamingConfig(_config);
     }
-    
+
     // Switch to power saving if battery is low
     if (_batteryLow && _config != YOLOStreamingConfig.minimal()) {
       setState(() {
@@ -201,6 +205,7 @@ class _AdaptiveStreamingExampleState extends State<AdaptiveStreamingExample> {
 ## 📱 Platform-Specific Considerations
 
 ### Android Optimization
+
 ```dart
 // Android benefits from higher inference frequencies
 YOLOStreamingConfig.custom(
@@ -211,6 +216,7 @@ YOLOStreamingConfig.custom(
 ```
 
 ### iOS Optimization
+
 ```dart
 // iOS Core ML optimization
 YOLOStreamingConfig.custom(
@@ -265,6 +271,7 @@ YOLOStreamingConfig.custom(
 **Symptoms**: Low FPS, stuttering, high CPU usage
 
 **Solutions**:
+
 ```dart
 // Reduce inference frequency
 YOLOStreamingConfig.custom(inferenceFrequency: 10)
@@ -284,6 +291,7 @@ YOLOStreamingConfig.custom(
 **Symptoms**: App crashes, memory warnings
 
 **Solutions**:
+
 ```dart
 // Reduce buffer size
 YOLOStreamingConfig.custom(bufferSize: 1)
@@ -300,6 +308,7 @@ YOLOStreamingConfig.custom(dropFramesWhenBusy: true)
 **Symptoms**: Rapid battery consumption
 
 **Solutions**:
+
 ```dart
 // Use power-saving mode
 YOLOStreamingConfig.minimal()
@@ -314,27 +323,28 @@ YOLOStreamingConfig.custom(inferenceFrequency: 5)
 
 ### Typical Performance by Device Class
 
-| Device Class | Model | Max FPS | Recommended Inference Freq |
-|--------------|-------|---------|----------------------------|
-| High-end (iPhone 14 Pro, Galaxy S23) | yolo11n | 30 | 25-30 |
-| High-end (iPhone 14 Pro, Galaxy S23) | yolo11s | 25 | 20-25 |
-| Mid-range (iPhone 12, Galaxy A54) | yolo11n | 25 | 15-20 |
-| Mid-range (iPhone 12, Galaxy A54) | yolo11s | 20 | 10-15 |
-| Budget (iPhone SE, Galaxy A34) | yolo11n | 20 | 10-15 |
+| Device Class                         | Model   | Max FPS | Recommended Inference Freq |
+| ------------------------------------ | ------- | ------- | -------------------------- |
+| High-end (iPhone 14 Pro, Galaxy S23) | yolo11n | 30      | 25-30                      |
+| High-end (iPhone 14 Pro, Galaxy S23) | yolo11s | 25      | 20-25                      |
+| Mid-range (iPhone 12, Galaxy A54)    | yolo11n | 25      | 15-20                      |
+| Mid-range (iPhone 12, Galaxy A54)    | yolo11s | 20      | 10-15                      |
+| Budget (iPhone SE, Galaxy A34)       | yolo11n | 20      | 10-15                      |
 
 ### Task-Specific Performance Impact
 
-| Task | Relative Speed | Memory Usage | Recommended Max Inference Freq |
-|------|----------------|--------------|-------------------------------|
-| Detection | 1x (baseline) | Low | 25-30 Hz |
-| Classification | 1.2x (faster) | Very Low | 30+ Hz |
-| Segmentation | 0.6x (slower) | High | 15-20 Hz |
-| Pose Estimation | 0.8x (slower) | Medium | 20-25 Hz |
-| OBB Detection | 0.9x (slower) | Medium | 20-25 Hz |
+| Task            | Relative Speed | Memory Usage | Recommended Max Inference Freq |
+| --------------- | -------------- | ------------ | ------------------------------ |
+| Detection       | 1x (baseline)  | Low          | 25-30 Hz                       |
+| Classification  | 1.2x (faster)  | Very Low     | 30+ Hz                         |
+| Segmentation    | 0.6x (slower)  | High         | 15-20 Hz                       |
+| Pose Estimation | 0.8x (slower)  | Medium       | 20-25 Hz                       |
+| OBB Detection   | 0.9x (slower)  | Medium       | 20-25 Hz                       |
 
 ## 🚀 Production Best Practices
 
 ### 1. Start Conservative
+
 ```dart
 // Begin with balanced settings
 YOLOStreamingConfig.balanced()
@@ -343,17 +353,19 @@ YOLOStreamingConfig.balanced()
 ```
 
 ### 2. Implement Adaptive Quality
+
 ```dart
 // Automatically adjust based on device performance
 void adaptToDevice() {
   final isHighEnd = await DeviceInfo.isHighEndDevice();
-  final config = isHighEnd 
+  final config = isHighEnd
     ? YOLOStreamingConfig.full()
     : YOLOStreamingConfig.minimal();
 }
 ```
 
 ### 3. Battery Awareness
+
 ```dart
 // Monitor battery level and adjust accordingly
 void monitorBattery() {
@@ -366,6 +378,7 @@ void monitorBattery() {
 ```
 
 ### 4. User Control
+
 ```dart
 // Provide user settings for performance vs quality trade-off
 enum QualityPreference { power_saving, balanced, high_quality }

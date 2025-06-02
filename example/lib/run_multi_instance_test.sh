@@ -1,4 +1,5 @@
 #!/bin/bash
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 # マルチインスタンステストアプリを実行するスクリプト
 
@@ -10,8 +11,8 @@ cd "$(dirname "$0")/.."
 
 # Flutterのパスを確認
 if ! command -v flutter &> /dev/null; then
-    echo "❌ Flutter not found in PATH"
-    exit 1
+  echo "❌ Flutter not found in PATH"
+  exit 1
 fi
 
 # デバイスを確認
@@ -22,11 +23,11 @@ echo ""
 # アセットファイルの確認
 echo "📁 Checking for model files..."
 if [ ! -d "assets/models" ]; then
-    echo "❌ assets/models directory not found!"
-    echo "Please create the directory and add YOLO model files:"
-    echo "  - assets/models/yolov8n.tflite"
-    echo "  - assets/models/yolov8n-seg.tflite"
-    exit 1
+  echo "❌ assets/models directory not found!"
+  echo "Please create the directory and add YOLO model files:"
+  echo "  - assets/models/yolov8n.tflite"
+  echo "  - assets/models/yolov8n-seg.tflite"
+  exit 1
 fi
 
 # クリーンビルド

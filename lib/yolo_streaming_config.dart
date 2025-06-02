@@ -23,7 +23,7 @@
 /// ```
 class YOLOStreamingConfig {
   /// Whether to include basic detection results (bounding boxes, confidence, class).
-  /// 
+  ///
   /// This is the core YOLO output and is typically always enabled.
   /// Disabling this will result in no detection data being sent.
   final bool includeDetections;
@@ -91,7 +91,7 @@ class YOLOStreamingConfig {
   ///
   /// Examples:
   /// - `30`: High frequency - smooth tracking, high resource usage
-  /// - `15`: Balanced - good tracking with moderate resource usage  
+  /// - `15`: Balanced - good tracking with moderate resource usage
   /// - `10`: Low frequency - basic detection, low resource usage
   /// - `5`: Very low - minimal detection, battery saving
   /// - `null`: Maximum frequency (device-dependent, usually 30-60 FPS)
@@ -121,9 +121,9 @@ class YOLOStreamingConfig {
     this.includeClassifications = true,
     this.includeProcessingTimeMs = true,
     this.includeFps = true,
-    this.includeMasks = false,  // Changed to false for performance
-    this.includePoses = false,  // Changed to false for performance
-    this.includeOBB = false,    // Changed to false for performance
+    this.includeMasks = false, // Changed to false for performance
+    this.includePoses = false, // Changed to false for performance
+    this.includeOBB = false, // Changed to false for performance
     this.includeOriginalImage = false,
     this.maxFPS,
     this.throttleInterval,
@@ -144,18 +144,18 @@ class YOLOStreamingConfig {
   ///
   /// Typical performance: 25-35+ FPS depending on device and model.
   const YOLOStreamingConfig.minimal()
-      : includeDetections = true,
-        includeClassifications = true,
-        includeProcessingTimeMs = true,
-        includeFps = true,
-        includeMasks = false,
-        includePoses = false,
-        includeOBB = false,
-        includeOriginalImage = false,
-        maxFPS = null,
-        throttleInterval = null,
-        inferenceFrequency = null,
-        skipFrames = null;
+    : includeDetections = true,
+      includeClassifications = true,
+      includeProcessingTimeMs = true,
+      includeFps = true,
+      includeMasks = false,
+      includePoses = false,
+      includeOBB = false,
+      includeOriginalImage = false,
+      maxFPS = null,
+      throttleInterval = null,
+      inferenceFrequency = null,
+      skipFrames = null;
 
   /// Creates a custom configuration with specified parameters.
   ///
@@ -182,14 +182,14 @@ class YOLOStreamingConfig {
     this.throttleInterval,
     this.inferenceFrequency,
     this.skipFrames,
-  })  : includeDetections = includeDetections ?? true,
-        includeClassifications = includeClassifications ?? true,
-        includeProcessingTimeMs = includeProcessingTimeMs ?? true,
-        includeFps = includeFps ?? true,
-        includeMasks = includeMasks ?? false,
-        includePoses = includePoses ?? false,
-        includeOBB = includeOBB ?? false,
-        includeOriginalImage = includeOriginalImage ?? false;
+  }) : includeDetections = includeDetections ?? true,
+       includeClassifications = includeClassifications ?? true,
+       includeProcessingTimeMs = includeProcessingTimeMs ?? true,
+       includeFps = includeFps ?? true,
+       includeMasks = includeMasks ?? false,
+       includePoses = includePoses ?? false,
+       includeOBB = includeOBB ?? false,
+       includeOriginalImage = includeOriginalImage ?? false;
 
   /// Creates a configuration with segmentation masks.
   ///
@@ -198,18 +198,18 @@ class YOLOStreamingConfig {
   ///
   /// Typical performance: 15-25 FPS depending on device and mask resolution.
   const YOLOStreamingConfig.withMasks()
-      : includeDetections = true,
-        includeClassifications = true,
-        includeProcessingTimeMs = true,
-        includeFps = true,
-        includeMasks = true,
-        includePoses = false,
-        includeOBB = false,
-        includeOriginalImage = false,
-        maxFPS = null,
-        throttleInterval = null,
-        inferenceFrequency = null,
-        skipFrames = null;
+    : includeDetections = true,
+      includeClassifications = true,
+      includeProcessingTimeMs = true,
+      includeFps = true,
+      includeMasks = true,
+      includePoses = false,
+      includeOBB = false,
+      includeOriginalImage = false,
+      maxFPS = null,
+      throttleInterval = null,
+      inferenceFrequency = null,
+      skipFrames = null;
 
   /// Creates a configuration with pose keypoints.
   ///
@@ -218,18 +218,18 @@ class YOLOStreamingConfig {
   ///
   /// Typical performance: 20-30 FPS depending on device and number of people.
   const YOLOStreamingConfig.withPoses()
-      : includeDetections = true,
-        includeClassifications = true,
-        includeProcessingTimeMs = true,
-        includeFps = true,
-        includeMasks = false,
-        includePoses = true,
-        includeOBB = false,
-        includeOriginalImage = false,
-        maxFPS = null,
-        throttleInterval = null,
-        inferenceFrequency = null,
-        skipFrames = null;
+    : includeDetections = true,
+      includeClassifications = true,
+      includeProcessingTimeMs = true,
+      includeFps = true,
+      includeMasks = false,
+      includePoses = true,
+      includeOBB = false,
+      includeOriginalImage = false,
+      maxFPS = null,
+      throttleInterval = null,
+      inferenceFrequency = null,
+      skipFrames = null;
 
   /// Creates a full configuration with all data included.
   ///
@@ -244,18 +244,18 @@ class YOLOStreamingConfig {
   ///
   /// Typical performance: 5-15 FPS depending on device and model complexity.
   const YOLOStreamingConfig.full()
-      : includeDetections = true,
-        includeClassifications = true,
-        includeProcessingTimeMs = true,
-        includeFps = true,
-        includeMasks = true,
-        includePoses = true,
-        includeOBB = true,
-        includeOriginalImage = false,
-        maxFPS = null,
-        throttleInterval = null,
-        inferenceFrequency = null,
-        skipFrames = null;
+    : includeDetections = true,
+      includeClassifications = true,
+      includeProcessingTimeMs = true,
+      includeFps = true,
+      includeMasks = true,
+      includePoses = true,
+      includeOBB = true,
+      includeOriginalImage = false,
+      maxFPS = null,
+      throttleInterval = null,
+      inferenceFrequency = null,
+      skipFrames = null;
 
   /// Creates a debug configuration with all data and images.
   ///
@@ -267,18 +267,18 @@ class YOLOStreamingConfig {
   ///
   /// Typical performance: 2-10 FPS depending on device and image resolution.
   const YOLOStreamingConfig.debug()
-      : includeDetections = true,
-        includeClassifications = true,
-        includeProcessingTimeMs = true,
-        includeFps = true,
-        includeMasks = true,
-        includePoses = true,
-        includeOBB = true,
-        includeOriginalImage = true,
-        maxFPS = null,
-        throttleInterval = null,
-        inferenceFrequency = null,
-        skipFrames = null;
+    : includeDetections = true,
+      includeClassifications = true,
+      includeProcessingTimeMs = true,
+      includeFps = true,
+      includeMasks = true,
+      includePoses = true,
+      includeOBB = true,
+      includeOriginalImage = true,
+      maxFPS = null,
+      throttleInterval = null,
+      inferenceFrequency = null,
+      skipFrames = null;
 
   /// Creates a throttled configuration with specified FPS limit.
   ///
@@ -327,7 +327,7 @@ class YOLOStreamingConfig {
   /// ```dart
   /// // Low power mode: 10 inference per second, 15 max output FPS
   /// final config = YOLOStreamingConfig.powerSaving();
-  /// 
+  ///
   /// // Custom power saving with 5 inferences per second
   /// final config = YOLOStreamingConfig.powerSaving(inferenceFrequency: 5);
   /// ```
@@ -359,9 +359,7 @@ class YOLOStreamingConfig {
   /// // High performance: 30 inferences per second
   /// final config = YOLOStreamingConfig.highPerformance();
   /// ```
-  factory YOLOStreamingConfig.highPerformance({
-    int inferenceFrequency = 30,
-  }) {
+  factory YOLOStreamingConfig.highPerformance({int inferenceFrequency = 30}) {
     return YOLOStreamingConfig(
       includeDetections: true,
       includeClassifications: true,

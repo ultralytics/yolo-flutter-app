@@ -24,17 +24,17 @@ YOLOView({
 
 #### Parameters
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `modelPath` | `String` | ✅ | - | Path to YOLO model file |
-| `task` | `YOLOTask` | ✅ | - | YOLO task type (detect, segment, etc.) |
-| `controller` | `YOLOViewController?` | ❌ | `null` | Controller for managing view settings |
-| `cameraResolution` | `String` | ❌ | `'720p'` | Camera resolution ('480p', '720p', '1080p') |
-| `streamingConfig` | `YOLOStreamingConfig?` | ❌ | `balanced()` | Real-time streaming configuration |
-| `onResult` | `Function(List<YOLOResult>)?` | ❌ | `null` | Callback for detection results |
-| `onPerformanceMetrics` | `Function(PerformanceMetrics)?` | ❌ | `null` | Callback for performance data |
-| `onZoomChanged` | `Function(double)?` | ❌ | `null` | Callback for zoom level changes |
-| `showNativeUI` | `bool` | ❌ | `false` | Show native platform UI overlays |
+| Parameter              | Type                            | Required | Default      | Description                                 |
+| ---------------------- | ------------------------------- | -------- | ------------ | ------------------------------------------- |
+| `modelPath`            | `String`                        | ✅       | -            | Path to YOLO model file                     |
+| `task`                 | `YOLOTask`                      | ✅       | -            | YOLO task type (detect, segment, etc.)      |
+| `controller`           | `YOLOViewController?`           | ❌       | `null`       | Controller for managing view settings       |
+| `cameraResolution`     | `String`                        | ❌       | `'720p'`     | Camera resolution ('480p', '720p', '1080p') |
+| `streamingConfig`      | `YOLOStreamingConfig?`          | ❌       | `balanced()` | Real-time streaming configuration           |
+| `onResult`             | `Function(List<YOLOResult>)?`   | ❌       | `null`       | Callback for detection results              |
+| `onPerformanceMetrics` | `Function(PerformanceMetrics)?` | ❌       | `null`       | Callback for performance data               |
+| `onZoomChanged`        | `Function(double)?`             | ❌       | `null`       | Callback for zoom level changes             |
+| `showNativeUI`         | `bool`                          | ❌       | `false`      | Show native platform UI overlays            |
 
 #### Example
 
@@ -86,9 +86,11 @@ Future<void> setConfidenceThreshold(double threshold)
 Sets the confidence threshold for detections.
 
 **Parameters:**
+
 - `threshold` (double): Confidence threshold (0.0-1.0)
 
 **Example:**
+
 ```dart
 await controller.setConfidenceThreshold(0.6);
 ```
@@ -102,9 +104,11 @@ Future<void> setIoUThreshold(double threshold)
 Sets the IoU (Intersection over Union) threshold for non-maximum suppression.
 
 **Parameters:**
+
 - `threshold` (double): IoU threshold (0.0-1.0)
 
 **Example:**
+
 ```dart
 await controller.setIoUThreshold(0.5);
 ```
@@ -122,6 +126,7 @@ Future<void> setThresholds({
 Sets multiple thresholds at once.
 
 **Example:**
+
 ```dart
 await controller.setThresholds(
   confidenceThreshold: 0.6,
@@ -147,6 +152,7 @@ Future<void> setZoomLevel(double zoom)
 Sets camera zoom level.
 
 **Parameters:**
+
 - `zoom` (double): Zoom level (1.0 = no zoom, 2.0 = 2x zoom)
 
 ##### switchModel()
@@ -158,6 +164,7 @@ Future<void> switchModel(String modelPath, YOLOTask task)
 Dynamically switches to a different model.
 
 **Parameters:**
+
 - `modelPath` (String): Path to new model
 - `task` (YOLOTask): Task type for new model
 
@@ -205,6 +212,7 @@ Future<List<YOLOResult>> predict(
 Runs inference on a single image.
 
 **Parameters:**
+
 - `imageBytes` (Uint8List): Image data as bytes
 - `confidenceThreshold` (double?): Optional confidence threshold
 - `iouThreshold` (double?): Optional IoU threshold
@@ -250,16 +258,16 @@ class YOLOResult {
 
 #### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `classIndex` | `int` | Numeric class identifier |
-| `className` | `String` | Human-readable class name |
-| `confidence` | `double` | Detection confidence (0.0-1.0) |
-| `boundingBox` | `Rect` | Object bounding rectangle |
-| `mask` | `List<List<double>>?` | Segmentation mask (segmentation only) |
-| `keypoints` | `List<Point>?` | Pose keypoints (pose estimation only) |
-| `processingTimeMs` | `double?` | Processing time for this frame |
-| `fps` | `double?` | Current frames per second |
+| Property           | Type                  | Description                           |
+| ------------------ | --------------------- | ------------------------------------- |
+| `classIndex`       | `int`                 | Numeric class identifier              |
+| `className`        | `String`              | Human-readable class name             |
+| `confidence`       | `double`              | Detection confidence (0.0-1.0)        |
+| `boundingBox`      | `Rect`                | Object bounding rectangle             |
+| `mask`             | `List<List<double>>?` | Segmentation mask (segmentation only) |
+| `keypoints`        | `List<Point>?`        | Pose keypoints (pose estimation only) |
+| `processingTimeMs` | `double?`             | Processing time for this frame        |
+| `fps`              | `double?`             | Current frames per second             |
 
 #### Example
 
@@ -269,11 +277,11 @@ void handleResults(List<YOLOResult> results) {
     print('Class: ${result.className}');
     print('Confidence: ${result.confidence.toStringAsFixed(3)}');
     print('BBox: ${result.boundingBox}');
-    
+
     if (result.mask != null) {
       print('Mask size: ${result.mask!.length}x${result.mask!.first.length}');
     }
-    
+
     if (result.keypoints != null) {
       print('Keypoints: ${result.keypoints!.length}');
     }
@@ -369,19 +377,19 @@ Custom configuration with fine-grained control.
 
 #### Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `maxFPS` | `int?` | `20` | Maximum output frame rate |
-| `inferenceFrequency` | `int?` | `15` | Inference frequency in Hz |
-| `skipFrames` | `int?` | `null` | Skip N frames between inferences |
-| `includeBoundingBoxes` | `bool` | `true` | Include bounding box data |
-| `includeMasks` | `bool` | `false` | Include segmentation masks |
-| `includePoses` | `bool` | `false` | Include pose keypoints |
-| `includeClassifications` | `bool` | `false` | Include classification scores |
-| `includeOBB` | `bool` | `false` | Include oriented bounding boxes |
-| `bufferSize` | `int` | `2` | Internal buffer size |
-| `dropFramesWhenBusy` | `bool` | `false` | Drop frames when processing is slow |
-| `callbackPriority` | `CallbackPriority` | `balanced` | Callback priority mode |
+| Parameter                | Type               | Default    | Description                         |
+| ------------------------ | ------------------ | ---------- | ----------------------------------- |
+| `maxFPS`                 | `int?`             | `20`       | Maximum output frame rate           |
+| `inferenceFrequency`     | `int?`             | `15`       | Inference frequency in Hz           |
+| `skipFrames`             | `int?`             | `null`     | Skip N frames between inferences    |
+| `includeBoundingBoxes`   | `bool`             | `true`     | Include bounding box data           |
+| `includeMasks`           | `bool`             | `false`    | Include segmentation masks          |
+| `includePoses`           | `bool`             | `false`    | Include pose keypoints              |
+| `includeClassifications` | `bool`             | `false`    | Include classification scores       |
+| `includeOBB`             | `bool`             | `false`    | Include oriented bounding boxes     |
+| `bufferSize`             | `int`              | `2`        | Internal buffer size                |
+| `dropFramesWhenBusy`     | `bool`             | `false`    | Drop frames when processing is slow |
+| `callbackPriority`       | `CallbackPriority` | `balanced` | Callback priority mode              |
 
 #### Example
 
@@ -417,15 +425,15 @@ class PerformanceMetrics {
 
 #### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `fps` | `double?` | Current frames per second |
-| `processingTimeMs` | `double?` | Processing time per frame (ms) |
-| `inferenceFrequency` | `int?` | Actual inference frequency (Hz) |
-| `memoryUsageMB` | `double?` | Memory usage in megabytes |
-| `cpuUsagePercent` | `double?` | CPU usage percentage |
-| `gpuUsagePercent` | `double?` | GPU usage percentage |
-| `droppedFrames` | `int?` | Number of dropped frames |
+| Property             | Type      | Description                     |
+| -------------------- | --------- | ------------------------------- |
+| `fps`                | `double?` | Current frames per second       |
+| `processingTimeMs`   | `double?` | Processing time per frame (ms)  |
+| `inferenceFrequency` | `int?`    | Actual inference frequency (Hz) |
+| `memoryUsageMB`      | `double?` | Memory usage in megabytes       |
+| `cpuUsagePercent`    | `double?` | CPU usage percentage            |
+| `gpuUsagePercent`    | `double?` | GPU usage percentage            |
+| `droppedFrames`      | `int?`    | Number of dropped frames        |
 
 ---
 
@@ -471,7 +479,7 @@ class AndroidYOLOConfig {
   final bool useGPUAcceleration;
   final bool useNNAPI;
   final int numThreads;
-  
+
   const AndroidYOLOConfig({
     this.useGPUAcceleration = true,
     this.useNNAPI = false,
@@ -490,7 +498,7 @@ class iOSYOLOConfig {
   final bool useANE;  // Apple Neural Engine
   final bool allowLowPrecision;
   final MLComputeUnits computeUnits;
-  
+
   const iOSYOLOConfig({
     this.useANE = true,
     this.allowLowPrecision = true,
@@ -512,20 +520,20 @@ class YOLOException implements Exception {
   final String message;
   final String? code;
   final dynamic details;
-  
+
   YOLOException(this.message, {this.code, this.details});
 }
 ```
 
 #### Common Error Codes
 
-| Code | Description |
-|------|-------------|
-| `MODEL_NOT_FOUND` | Model file not found |
-| `MODEL_LOAD_FAILED` | Failed to load model |
-| `INFERENCE_FAILED` | Inference execution failed |
-| `PERMISSION_DENIED` | Camera permission denied |
-| `UNSUPPORTED_FORMAT` | Unsupported model format |
+| Code                 | Description                |
+| -------------------- | -------------------------- |
+| `MODEL_NOT_FOUND`    | Model file not found       |
+| `MODEL_LOAD_FAILED`  | Failed to load model       |
+| `INFERENCE_FAILED`   | Inference execution failed |
+| `PERMISSION_DENIED`  | Camera permission denied   |
+| `UNSUPPORTED_FORMAT` | Unsupported model format   |
 
 #### Error Handling Example
 
@@ -561,12 +569,12 @@ class ModelUtils {
   static Future<String> downloadModel(String modelName) async {
     // Implementation for downloading models
   }
-  
+
   /// Get local model path
   static Future<String?> getLocalModelPath(String modelName) async {
     // Implementation for finding local models
   }
-  
+
   /// Get model info (size, task type, etc.)
   static Future<ModelInfo> getModelInfo(String modelPath) async {
     // Implementation for model metadata
@@ -582,12 +590,12 @@ class DeviceUtils {
   static Future<bool> isHighEndDevice() async {
     // Implementation for device capability detection
   }
-  
+
   /// Get optimal model for current device
   static Future<String> getOptimalModel(YOLOTask task) async {
     // Implementation for device-appropriate model selection
   }
-  
+
   /// Get recommended streaming config
   static Future<YOLOStreamingConfig> getRecommendedConfig() async {
     // Implementation for device-optimized configuration
@@ -622,19 +630,19 @@ class YOLOModels {
   static const String yolo11m = 'yolo11m';
   static const String yolo11l = 'yolo11l';
   static const String yolo11x = 'yolo11x';
-  
+
   // Segmentation models
   static const String yolo11nSeg = 'yolo11n-seg';
   static const String yolo11sSeg = 'yolo11s-seg';
-  
+
   // Pose estimation models
   static const String yolo11nPose = 'yolo11n-pose';
   static const String yolo11sPose = 'yolo11s-pose';
-  
+
   // Classification models
   static const String yolo11nCls = 'yolo11n-cls';
   static const String yolo11sCls = 'yolo11s-cls';
-  
+
   // OBB detection models
   static const String yolo11nObb = 'yolo11n-obb';
   static const String yolo11sObb = 'yolo11s-obb';
@@ -650,22 +658,24 @@ class YOLOModels {
 #### Breaking Changes
 
 1. **YOLOStreamingConfig constructor changes:**
-   ```dart
-   // Old
-   YOLOStreamingConfig(maxFPS: 30, includeStreaming: true)
-   
-   // New
-   YOLOStreamingConfig.custom(maxFPS: 30, inferenceFrequency: 25)
-   ```
+
+    ```dart
+    // Old
+    YOLOStreamingConfig(maxFPS: 30, includeStreaming: true)
+
+    // New
+    YOLOStreamingConfig.custom(maxFPS: 30, inferenceFrequency: 25)
+    ```
 
 2. **Performance callback signature:**
-   ```dart
-   // Old
-   onPerformanceMetrics: (Map<String, double> metrics) { }
-   
-   // New
-   onPerformanceMetrics: (PerformanceMetrics metrics) { }
-   ```
+
+    ```dart
+    // Old
+    onPerformanceMetrics: (Map<String, double> metrics) { }
+
+    // New
+    onPerformanceMetrics: (PerformanceMetrics metrics) { }
+    ```
 
 #### New Features
 
