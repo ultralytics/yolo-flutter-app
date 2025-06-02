@@ -15,6 +15,9 @@
 - Create YOLOInstanceManager for platform-specific multi-instance handling
 - Resolve MissingPluginException through proper backward compatibility
 - Add comprehensive error handling and proper disposal patterns
+## 0.1.15
+
+- Added `example/main.dart` for usage demonstration.
 
 ## 0.1.13
 
