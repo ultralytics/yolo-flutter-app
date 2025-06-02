@@ -286,12 +286,22 @@ class YOLOInstanceManager {
             "boxes": flutterResults
         ]
         
+        // Debug logging for annotated image
+        print("YOLOInstanceManager: result.annotatedImage exists: \(result.annotatedImage != nil)")
+        
         if let annotatedImage = result.annotatedImage {
+            print("YOLOInstanceManager: Converting annotated image to PNG data")
             if let imageData = annotatedImage.pngData() {
+                print("YOLOInstanceManager: PNG data size: \(imageData.count) bytes")
                 resultDict["annotatedImage"] = FlutterStandardTypedData(bytes: imageData)
+            } else {
+                print("YOLOInstanceManager: Failed to convert image to PNG data")
             }
+        } else {
+            print("YOLOInstanceManager: No annotated image in result")
         }
         
+        print("YOLOInstanceManager: Result dictionary keys: \(resultDict.keys)")
         return resultDict
     }
 }

@@ -17,13 +17,13 @@ class YOLOInstanceManager {
         val shared = YOLOInstanceManager()
     }
     
+    private val instances = mutableMapOf<String, YOLO>()
+    private val loadingStates = mutableMapOf<String, Boolean>()
+    
     init {
         // Initialize default instance for backward compatibility
         createInstance("default")
     }
-    
-    private val instances = mutableMapOf<String, YOLO>()
-    private val loadingStates = mutableMapOf<String, Boolean>()
     
     /**
      * Creates a new instance placeholder with the given ID
