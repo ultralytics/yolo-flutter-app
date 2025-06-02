@@ -399,13 +399,12 @@ class YOLO {
       await _channel.invokeMethod('disposeInstance', {
         'instanceId': _instanceId,
       });
-
-      // Remove from manager
-      YOLOInstanceManager.unregisterInstance(_instanceId);
-
-      _isInitialized = false;
     } catch (e) {
       logInfo('Error disposing instance $_instanceId: $e');
+    } finally {
+      // Always remove from manager, even if platform call fails
+      YOLOInstanceManager.unregisterInstance(_instanceId);
+      _isInitialized = false;
     }
   }
 }
