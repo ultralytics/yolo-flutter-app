@@ -1,112 +1,108 @@
 # YOLO Multi-Instance Test App
 
-独立したマルチインスタンステスト用アプリケーションです。
+A dedicated application for testing multi-instance YOLO functionality.
 
-## 実行方法
+## How to Run
 
-### 方法1: スクリプトを使用
+### Method 1: Using Script
 
 ```bash
 cd example
 ./lib/run_multi_instance_test.sh
 ```
 
-### 方法2: 直接実行
+### Method 2: Direct Execution
 
 ```bash
 cd example
 flutter run lib/multi_instance_test_main.dart
 ```
 
-### 方法3: 特定のデバイスで実行
+### Method 3: Run on Specific Device
 
 ```bash
-# デバイス一覧を確認
+# Check available devices
 flutter devices
 
-# iOS実機で実行
-flutter run -d < ios-device-id > lib/multi_instance_test_main.dart
+# Run on iOS device
+flutter run -d <ios-device-id> lib/multi_instance_test_main.dart
 
-# Android実機で実行
-flutter run -d < android-device-id > lib/multi_instance_test_main.dart
+# Run on Android device
+flutter run -d <android-device-id> lib/multi_instance_test_main.dart
 ```
 
-## 必要なファイル
+## Required Files
 
-以下のモデルファイルを配置してください：
+Please place the following model files:
 
 ```
 example/assets/models/
-├── yolov8n.tflite      # 物体検出用
-└── yolov8n-seg.tflite  # セグメンテーション用
+├── yolov8n.tflite      # For object detection
+└── yolov8n-seg.tflite  # For segmentation
 ```
 
-モデルファイルは[Ultralytics](https://docs.ultralytics.com/modes/export/)からダウンロードできます。
+Model files can be downloaded from [Ultralytics](https://docs.ultralytics.com/modes/export/).
 
-## テスト内容
+## Test Features
 
-このアプリは以下をテストします：
+This app tests the following:
 
-1. **複数インスタンスの作成**
+1. **Multiple Instance Creation**
+   - Object detection instance
+   - Segmentation instance
 
-   - 物体検出用インスタンス
-   - セグメンテーション用インスタンス
+2. **Parallel Model Loading**
+   - Load both models simultaneously
 
-2. **並列モデルロード**
+3. **Inference Execution**
+   - Run both models on the same image
+   - Measure inference time
 
-   - 両方のモデルを同時にロード
+4. **Instance ID Verification**
+   - Display unique ID for each instance
+   - Check number of active instances
 
-3. **推論実行**
+## Main Features
 
-   - 同じ画像で両方のモデルを実行
-   - 推論時間の計測
+- **Camera Capture**: Take photos with camera for inference
+- **Gallery Selection**: Select saved images for inference
+- **Result Display**: Show detection and segmentation results simultaneously
+- **Performance Measurement**: Display inference time for each model
+- **Instance Information**: Check instance info via floating button
 
-4. **インスタンスID確認**
-   - 各インスタンスの一意なIDを表示
-   - アクティブなインスタンス数の確認
+## Troubleshooting
 
-## 主な機能
-
-- **カメラ撮影**: カメラから画像を撮影して推論
-- **ギャラリー選択**: 保存済み画像を選択して推論
-- **結果表示**: 検出結果とセグメンテーション結果を同時表示
-- **パフォーマンス計測**: 各モデルの推論時間を表示
-- **インスタンス情報**: フローティングボタンでインスタンス情報を確認
-
-## トラブルシューティング
-
-### モデルが見つからない
+### Model Not Found
 
 ```bash
-# モデルファイルの存在を確認
+# Check if model files exist
 ls -la example/assets/models/
 ```
 
-### ビルドエラー
+### Build Errors
 
 ```bash
-# クリーンビルド
+# Clean build
 cd example
 flutter clean
 flutter pub get
 flutter run lib/multi_instance_test_main.dart
 ```
 
-### Android Gradleエラー
+### Android Gradle Errors
 
-既にsettings.gradleでAndroid Gradle Plugin 8.3.0に更新済みです。
+Android Gradle Plugin has already been updated to 8.3.0 in settings.gradle.
 
-## デバッグ方法
+## Debugging
 
-1. **ログの確認**
-
+1. **Check Logs**
    ```bash
    flutter logs
    ```
 
-2. **インスタンスIDの確認**
-   アプリ内の情報ボタン（右下のフローティングボタン）をタップ
+2. **Verify Instance IDs**
+   Tap the info button (floating action button in bottom right)
 
-3. **メモリ使用量の監視**
+3. **Monitor Memory Usage**
    - iOS: Xcode > Debug Navigator > Memory
    - Android: Android Studio > Profiler
