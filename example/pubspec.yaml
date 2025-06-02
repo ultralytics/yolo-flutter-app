@@ -1,6 +1,6 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-name: yolo_example
+name: ultralytics_yolo_example
 description: "Example app demonstrating Ultralytics YOLO Flutter plugin usage."
 
 environment:
