@@ -1,3 +1,7 @@
+## 0.1.15
+
+- Added `example/main.dart` for usage demonstration.
+
 ## 0.1.13
 
 - Updated publishing workflows.
