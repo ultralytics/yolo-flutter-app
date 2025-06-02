@@ -119,6 +119,9 @@ class _DualModelScreenState extends State<DualModelScreen> {
     try {
       // Load model 1 (Detection)
       final model1Path = await _modelManager.getModelPath(_model1Type);
+      if (model1Path == null) {
+        throw Exception('Failed to get model path for ${_model1Type.displayName}');
+      }
       _yolo1 = YOLO(
         modelPath: model1Path,
         task: _model1Type.task,
@@ -131,6 +134,9 @@ class _DualModelScreenState extends State<DualModelScreen> {
       
       // Load model 2 (Segmentation)
       final model2Path = await _modelManager.getModelPath(_model2Type);
+      if (model2Path == null) {
+        throw Exception('Failed to get model path for ${_model2Type.displayName}');
+      }
       _yolo2 = YOLO(
         modelPath: model2Path,
         task: _model2Type.task,
@@ -242,6 +248,9 @@ class _DualModelScreenState extends State<DualModelScreen> {
 
     try {
       final modelPath = await _modelManager.getModelPath(newType);
+      if (modelPath == null) {
+        throw Exception('Failed to get model path for ${newType.displayName}');
+      }
       _yolo1 = YOLO(
         modelPath: modelPath,
         task: newType.task,
@@ -272,6 +281,9 @@ class _DualModelScreenState extends State<DualModelScreen> {
 
     try {
       final modelPath = await _modelManager.getModelPath(newType);
+      if (modelPath == null) {
+        throw Exception('Failed to get model path for ${newType.displayName}');
+      }
       _yolo2 = YOLO(
         modelPath: modelPath,
         task: newType.task,
