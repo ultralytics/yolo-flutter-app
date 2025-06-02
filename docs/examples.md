@@ -593,6 +593,336 @@ class _AdaptiveYOLOViewState extends State<AdaptiveYOLOView> {
 }
 ```
 
+## 🔄 Multi-Instance Usage
+
+For advanced use cases requiring multiple YOLO models running simultaneously, enable multi-instance support.
+
+### Basic Multi-Instance Setup
+
+```dart
+// Create multiple YOLO instances with unique IDs
+final yolo1 = YOLO(
+  modelPath: 'assets/yolo11n.tflite',
+  task: YOLOTask.detect,
+  useMultiInstance: true,  // Enable multi-instance support
+);
+
+final yolo2 = YOLO(
+  modelPath: 'assets/yolo11n-seg.tflite', 
+  task: YOLOTask.segment,
+  useMultiInstance: true,
+);
+
+// Load models
+await yolo1.loadModel();
+await yolo2.loadModel();
+
+// Run inference on same image with different models
+final detectionResults = await yolo1.predict(imageBytes);
+final segmentationResults = await yolo2.predict(imageBytes);
+```
+
+### Dual Model Comparison Screen
+
+```dart
+class DualModelComparison extends StatefulWidget {
+  @override
+  _DualModelComparisonState createState() => _DualModelComparisonState();
+}
+
+class _DualModelComparisonState extends State<DualModelComparison> {
+  YOLO? _yolo1, _yolo2;
+  List<YOLOResult> _results1 = [], _results2 = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeModels();
+  }
+
+  Future<void> _initializeModels() async {
+    try {
+      _yolo1 = YOLO(
+        modelPath: 'assets/yolo11n.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+      
+      _yolo2 = YOLO(
+        modelPath: 'assets/yolo11s.tflite',
+        task: YOLOTask.detect, 
+        useMultiInstance: true,
+      );
+
+      await _yolo1!.loadModel();
+      await _yolo2!.loadModel();
+      
+      setState(() => _isLoading = false);
+    } catch (e) {
+      print('Model initialization error: $e');
+    }
+  }
+
+  Future<void> _runComparison(Uint8List imageBytes) async {
+    if (_yolo1 == null || _yolo2 == null) return;
+
+    final futures = await Future.wait([
+      _yolo1!.predict(imageBytes),
+      _yolo2!.predict(imageBytes),
+    ]);
+
+    setState(() {
+      _results1 = futures[0];
+      _results2 = futures[1];
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: Text('Model Comparison')),
+      body: Column(
+        children: [
+          // Comparison results
+          Expanded(
+            child: Row(
+              children: [
+                // Model 1 results
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text('YOLO11n', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('Detected: ${_results1.length} objects'),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _results1.length,
+                          itemBuilder: (context, index) {
+                            final result = _results1[index];
+                            return ListTile(
+                              title: Text(result.className),
+                              subtitle: Text('${(result.confidence * 100).toStringAsFixed(1)}%'),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                VerticalDivider(),
+                // Model 2 results  
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text('YOLO11s', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('Detected: ${_results2.length} objects'),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _results2.length,
+                          itemBuilder: (context, index) {
+                            final result = _results2[index];
+                            return ListTile(
+                              title: Text(result.className),
+                              subtitle: Text('${(result.confidence * 100).toStringAsFixed(1)}%'),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Camera selection button
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: ElevatedButton(
+              onPressed: () async {
+                // Implement image picker and run comparison
+                // final imageBytes = await pickImage();
+                // await _runComparison(imageBytes);
+              },
+              child: Text('Select Image for Comparison'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _yolo1?.dispose();
+    _yolo2?.dispose();
+    super.dispose();
+  }
+}
+```
+
+### Performance Monitoring with Multiple Instances
+
+```dart
+class MultiInstancePerformanceMonitor extends StatefulWidget {
+  @override
+  _MultiInstancePerformanceMonitorState createState() => 
+      _MultiInstancePerformanceMonitorState();
+}
+
+class _MultiInstancePerformanceMonitorState 
+    extends State<MultiInstancePerformanceMonitor> {
+  final List<YOLO> _instances = [];
+  final Map<String, double> _processingTimes = {};
+  Timer? _benchmarkTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeInstances();
+  }
+
+  Future<void> _initializeInstances() async {
+    // Create multiple instances for performance testing
+    final models = [
+      'assets/yolo11n.tflite',
+      'assets/yolo11s.tflite', 
+      'assets/yolo11m.tflite',
+    ];
+
+    for (int i = 0; i < models.length; i++) {
+      final yolo = YOLO(
+        modelPath: models[i],
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+      await yolo.loadModel();
+      _instances.add(yolo);
+    }
+
+    _startBenchmark();
+  }
+
+  void _startBenchmark() {
+    _benchmarkTimer = Timer.periodic(Duration(seconds: 2), (timer) {
+      _runBenchmark();
+    });
+  }
+
+  Future<void> _runBenchmark() async {
+    // Simulate test image
+    final testImage = Uint8List(640 * 640 * 3); // Dummy image data
+    
+    for (int i = 0; i < _instances.length; i++) {
+      final stopwatch = Stopwatch()..start();
+      
+      try {
+        await _instances[i].predict(testImage);
+        stopwatch.stop();
+        
+        setState(() {
+          _processingTimes['Model ${i + 1}'] = stopwatch.elapsedMicroseconds / 1000.0;
+        });
+      } catch (e) {
+        print('Benchmark error for model $i: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Multi-Instance Performance')),
+      body: Column(
+        children: [
+          Text('Processing Times (ms)', 
+              style: Theme.of(context).textTheme.headlineSmall),
+          SizedBox(height: 16),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _processingTimes.length,
+              itemBuilder: (context, index) {
+                final entry = _processingTimes.entries.elementAt(index);
+                return Card(
+                  child: ListTile(
+                    title: Text(entry.key),
+                    trailing: Text(
+                      '${entry.value.toStringAsFixed(1)} ms',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: entry.value < 100 ? Colors.green : Colors.orange,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _benchmarkTimer?.cancel();
+    for (final instance in _instances) {
+      instance.dispose();
+    }
+    super.dispose();
+  }
+}
+```
+
+### Important Considerations
+
+#### Memory Management
+```dart
+// Always dispose of instances when done
+@override
+void dispose() {
+  yolo1.dispose();
+  yolo2.dispose();
+  super.dispose();
+}
+```
+
+#### Error Handling
+```dart
+try {
+  final yolo = YOLO(
+    modelPath: 'assets/model.tflite',
+    task: YOLOTask.detect,
+    useMultiInstance: true,
+  );
+  await yolo.loadModel();
+} on YOLOException catch (e) {
+  if (e.code == 'MULTI_INSTANCE_NOT_SUPPORTED') {
+    // Fallback to single instance mode
+    final yolo = YOLO(
+      modelPath: 'assets/model.tflite',
+      task: YOLOTask.detect,
+      // useMultiInstance defaults to false
+    );
+  }
+}
+```
+
+#### Backward Compatibility
+```dart
+// Multi-instance is opt-in for backward compatibility
+final yolo = YOLO(
+  modelPath: 'assets/model.tflite',
+  task: YOLOTask.detect,
+  // useMultiInstance: false (default)
+);
+```
+
 ## 🚀 Next Steps
 
 - **[Performance Optimization](./performance.md)** - Advanced performance tuning
