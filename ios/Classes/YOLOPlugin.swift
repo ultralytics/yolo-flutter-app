@@ -7,8 +7,12 @@ import UIKit
 public class YOLOPlugin: NSObject, FlutterPlugin {
   // Dictionary to store channels for each instance
   private static var instanceChannels: [String: FlutterMethodChannel] = [:]
+  // Store the registrar for creating new channels
+  private static var pluginRegistrar: FlutterPluginRegistrar?
   
   public static func register(with registrar: FlutterPluginRegistrar) {
+    // Store the registrar for later use
+    pluginRegistrar = registrar
     // 1) Register the platform view
     let factory = SwiftYOLOPlatformViewFactory(messenger: registrar.messenger())
     registrar.register(factory, withId: "com.ultralytics.yolo/YOLOPlatformView")
@@ -29,7 +33,9 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
     // Store the channel for later use
     YOLOPlugin.instanceChannels[instanceId] = channel
     // Register this instance as the method call delegate
-    channel.setMethodCallHandler(instance.handle)
+    if let registrar = YOLOPlugin.pluginRegistrar {
+      registrar.addMethodCallDelegate(instance, channel: channel)
+    }
   }
   
   private func checkModelExists(modelPath: String) -> [String: Any] {
@@ -151,8 +157,8 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         YOLOInstanceManager.shared.createInstance(instanceId: instanceId)
         
         // Register a new channel for this instance
-        if let messenger = YOLOPlugin.instanceChannels.values.first?.binaryMessenger {
-          registerInstanceChannel(instanceId: instanceId, messenger: messenger)
+        if let registrar = YOLOPlugin.pluginRegistrar {
+          registerInstanceChannel(instanceId: instanceId, messenger: registrar.messenger())
         }
         
         result(nil)

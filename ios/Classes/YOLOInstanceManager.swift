@@ -2,6 +2,7 @@
 
 import Foundation
 import UIKit
+import Flutter
 
 /// Manages multiple YOLO instances with unique IDs
 @MainActor
@@ -118,7 +119,7 @@ class YOLOInstanceManager {
             yolo.iouThreshold = iouThres
         }
         
-        result = yolo.predict(image: image)
+        result = yolo.callAsFunction(image)
         
         // Restore original thresholds
         yolo.confidenceThreshold = originalConfThreshold
