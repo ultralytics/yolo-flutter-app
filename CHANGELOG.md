@@ -4,6 +4,7 @@
 - Fix pub.dev example visibility by removing `publish_to: "none"` from example/pubspec.yaml
 - Improve package compatibility with relaxed SDK constraints (>=3.0.0 <4.0.0)
 - Include dual model comparison and performance monitoring examples
+- Fix iOS Swift compilation error with @preconcurrency attribute placement for Xcode 15.x compatibility
 
 ## 0.1.16
 

@@ -1211,7 +1211,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 }
 
-extension YOLOView: @preconcurrency AVCapturePhotoCaptureDelegate {
+@preconcurrency
+extension YOLOView: AVCapturePhotoCaptureDelegate {
   public func photoOutput(
     _ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?
   ) {
