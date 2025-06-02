@@ -648,8 +648,8 @@ class YOLOViewState extends State<YOLOView> {
       _effectiveController
           .switchModel(widget.modelPath, widget.task)
           .catchError((e) {
-        logInfo('YoloView: Error switching model in didUpdateWidget: $e');
-      });
+            logInfo('YoloView: Error switching model in didUpdateWidget: $e');
+          });
     }
   }
 
@@ -789,9 +789,11 @@ class YOLOViewState extends State<YOLOView> {
             if (widget.onPerformanceMetrics != null) {
               try {
                 logInfo(
-                    'YOLOView: 🔍 Raw event data for performance metrics: $event');
+                  'YOLOView: 🔍 Raw event data for performance metrics: $event',
+                );
                 final metrics = YOLOPerformanceMetrics.fromMap(
-                    Map<String, dynamic>.from(event));
+                  Map<String, dynamic>.from(event),
+                );
                 widget.onPerformanceMetrics!(metrics);
                 logInfo(
                   'YOLOView: Called onPerformanceMetrics callback: ${metrics.toString()}',

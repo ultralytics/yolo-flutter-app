@@ -93,8 +93,9 @@ class YOLO {
     try {
       // Use the default channel to create the instance (only for multi-instance mode)
       if (_instanceId != 'default') {
-        await _defaultChannel
-            .invokeMethod('createInstance', {'instanceId': _instanceId});
+        await _defaultChannel.invokeMethod('createInstance', {
+          'instanceId': _instanceId,
+        });
       }
       _isInitialized = true;
     } catch (e) {
@@ -292,17 +293,18 @@ class YOLO {
 
         // Convert boxes list if it exists
         if (resultMap.containsKey('boxes') && resultMap['boxes'] is List) {
-          final List<Map<String, dynamic>> boxes =
-              (resultMap['boxes'] as List).map((item) {
-            if (item is Map) {
-              return Map<String, dynamic>.fromEntries(
-                item.entries.map(
-                  (e) => MapEntry(e.key.toString(), e.value),
-                ),
-              );
-            }
-            return <String, dynamic>{};
-          }).toList();
+          final List<Map<String, dynamic>> boxes = (resultMap['boxes'] as List)
+              .map((item) {
+                if (item is Map) {
+                  return Map<String, dynamic>.fromEntries(
+                    item.entries.map(
+                      (e) => MapEntry(e.key.toString(), e.value),
+                    ),
+                  );
+                }
+                return <String, dynamic>{};
+              })
+              .toList();
 
           resultMap['boxes'] = boxes;
         }
