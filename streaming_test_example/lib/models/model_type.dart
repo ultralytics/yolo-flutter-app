@@ -29,4 +29,20 @@ enum ModelType {
   final YOLOTask task;
 
   const ModelType(this.modelName, this.task);
+
+  /// Display name for UI
+  String get displayName {
+    switch (this) {
+      case ModelType.detect:
+        return 'Detection';
+      case ModelType.segment:
+        return 'Segmentation';
+      case ModelType.classify:
+        return 'Classification';
+      case ModelType.pose:
+        return 'Pose Estimation';
+      case ModelType.obb:
+        return 'OBB Detection';
+    }
+  }
 }
