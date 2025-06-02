@@ -6,7 +6,8 @@
 
 *Real-time object detection, segmentation, and pose estimation for Flutter apps*
 
-![YOLO Flutter Demo](https://via.placeholder.com/600x300/1e1e1e/ffffff?text=YOLO+Flutter+Demo+GIF+Coming+Soon)
+<!-- ![YOLO Flutter Demo](https://via.placeholder.com/600x300/1e1e1e/ffffff?text=YOLO+Flutter+Demo+GIF+Coming+Soon) -->
+<!-- TODO: Add actual demo GIF/video -->
 
 **✨ Why Choose YOLO Flutter?**
 - 🏆 **Official Ultralytics Plugin** - Direct from YOLO creators
