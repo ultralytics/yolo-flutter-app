@@ -265,8 +265,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
           // Center logo - only show when camera is active
           if (_modelPath != null && !_isModelLoading)
-            IgnorePointer(
-              child: Positioned.fill(
+            Positioned.fill(
+              child: IgnorePointer(
                 child: Align(
                   alignment: Alignment.center,
                   child: FractionallySizedBox(
