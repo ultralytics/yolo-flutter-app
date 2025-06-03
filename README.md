@@ -80,7 +80,7 @@ You can get the model in one of the following ways:
 
 2. Get it from [Ultralytics Hub](https://www.ultralytics.com/hub)
 
-3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite]: https://docs.ultralytics.com/integrations/tflite/))
+3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
 
 **[📥 Download Models](./docs/install.md#models)** | **[🔧 Setup Guide](./docs/install.md)**
 
