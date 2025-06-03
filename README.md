@@ -32,7 +32,7 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 // Add this widget and you're detecting objects!
 YOLOView(
-  modelPath: 'assets/yolo11n.tflite',
+  modelPath: 'yolo11n',
   task: YOLOTask.detect,
   onResult: (results) {
     print('Found ${results.length} objects!');
@@ -83,6 +83,12 @@ You can get the model in one of the following ways:
 3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
 
 **[📥 Download Models](./docs/install.md#models)** |
+
+Bundle the model with your app using the following method.
+
+For iOS: Drag and drop mlpackage/mlmodel directly into **ios/Runner.xcworkspace** and set target to Runner.
+
+For Android: Create a folder called **android/app/src/main/assets** and place tflite in it.
 
 ### 4. Platform-Specific Setup
 
