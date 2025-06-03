@@ -47,8 +47,8 @@ YOLOView(
 
 ## 🎯 What You Can Build
 
-| Task                   | Description                    | Use Cases                     | Performance |
-| ---------------------- | ------------------------------ | ----------------------------- | ----------- |
+| Task                | Description                    | Use Cases                     | Performance |
+| ------------------- | ------------------------------ | ----------------------------- | ----------- |
 | **Detection**       | Find objects & their locations | Security, Inventory, Shopping | 25-30 FPS   |
 | **Segmentation**    | Pixel-perfect object masks     | Photo editing,                | 15-25 FPS   |
 | **Classification**  | Identify image categories      | Content moderation, Tagging   | 30+ FPS     |
