@@ -21,12 +21,12 @@ Welcome to the official **Ultralytics YOLO Flutter Plugin** - the most comprehen
 
 ## 🎯 Why Choose YOLO Flutter?
 
-- **🏆 Official Plugin**: Direct from the YOLO creators at Ultralytics
-- **⚡ Real-time Performance**: Optimized for mobile devices with up to 30 FPS
-- **🔧 Production Ready**: Built-in performance controls and memory management
-- **📱 Cross-platform**: Single codebase for iOS and Android
-- **🎨 Multiple AI Tasks**: 5 different computer vision capabilities
-- **🔀 Multi-Instance**: Run multiple models simultaneously (New!)
+- **Official Plugin**: Direct from the YOLO creators at Ultralytics
+- **Real-time Performance**: Optimized for mobile devices with up to 30 FPS
+- **Production Ready**: Built-in performance controls and memory management
+- **Cross-platform**: Single codebase for iOS and Android
+- **Multiple AI Tasks**: 5 different computer vision capabilities
+- **Multi-Instance**: Run multiple models simultaneously (New!)
 
 ## 🎨 Supported Tasks
 
