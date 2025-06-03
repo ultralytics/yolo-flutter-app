@@ -1,592 +1,676 @@
-# Performance Optimization Guide
+---
+title: Performance Guide
+description: Optimization tips, benchmarks, and best practices for YOLO Flutter plugin performance
+path: /integrations/flutter/performance/
+---
 
-This guide provides comprehensive performance optimization strategies for YOLO Flutter applications, including benchmarks, device-specific tuning, and production deployment best practices.
+# Performance Guide
 
-## 🎯 Performance Overview
+Optimize your YOLO Flutter app for maximum performance with proven strategies and benchmarks.
 
-YOLO Flutter delivers real-time performance across devices, but optimization is key for production applications.
+## 📊 Performance Benchmarks
 
-### Target Performance Metrics
+### Model Performance Comparison
 
-| Device Tier                               | Target FPS | Target Latency | Model Recommendation |
-| ----------------------------------------- | ---------- | -------------- | -------------------- |
-| **High-end** (iPhone 14 Pro, Galaxy S23+) | 25-30 FPS  | <35ms          | YOLO11s, YOLO11m     |
-| **Mid-range** (iPhone 12, Galaxy A54)     | 15-25 FPS  | <50ms          | YOLO11n, YOLO11s     |
-| **Budget** (iPhone SE, Galaxy A34)        | 10-20 FPS  | <75ms          | YOLO11n only         |
+| Model | Size | Android (Pixel 6) | iOS (iPhone 13) | Memory Usage |
+|-------|------|-------------------|-----------------|--------------|
+| **YOLOv11n** | 6.2 MB | 25-30 FPS | 28-32 FPS | ~150 MB |
+| **YOLOv11s** | 21.5 MB | 18-22 FPS | 20-25 FPS | ~200 MB |
+| **YOLOv11m** | 49.7 MB | 12-15 FPS | 15-18 FPS | ~300 MB |
+| **YOLOv11l** | 86.9 MB | 8-10 FPS | 10-12 FPS | ~450 MB |
 
-## 📊 Benchmarks by Device & Model
+### Task Performance Comparison
 
-### iOS Devices (Core ML)
+| Task | Model | FPS Range | Best Use Case |
+|------|-------|-----------|---------------|
+| **Detection** | YOLOv11n | 25-30 | Real-time applications |
+| **Segmentation** | YOLOv11n-seg | 15-25 | Photo editing, AR |
+| **Classification** | YOLOv11n-cls | 30+ | Content moderation |
+| **Pose** | YOLOv11n-pose | 20-30 | Fitness, motion capture |
+| **OBB** | YOLOv11n-obb | 20-25 | Document analysis |
 
-| Model       | iPhone 14 Pro | iPhone 13     | iPhone 12     | iPhone SE 3rd |
-| ----------- | ------------- | ------------- | ------------- | ------------- |
-| **YOLO11n** | 30 FPS / 25ms | 28 FPS / 28ms | 25 FPS / 35ms | 20 FPS / 45ms |
-| **YOLO11s** | 25 FPS / 35ms | 22 FPS / 40ms | 18 FPS / 50ms | 12 FPS / 75ms |
-| **YOLO11m** | 20 FPS / 45ms | 16 FPS / 55ms | 12 FPS / 75ms | 8 FPS / 120ms |
+## 🚀 Optimization Strategies
 
-### Android Devices (TensorFlow Lite)
+### 1. Model Selection
 
-| Model       | Galaxy S23 Ultra | Pixel 7 Pro   | Galaxy A54    | Galaxy A34    |
-| ----------- | ---------------- | ------------- | ------------- | ------------- |
-| **YOLO11n** | 28 FPS / 28ms    | 25 FPS / 32ms | 20 FPS / 45ms | 15 FPS / 60ms |
-| **YOLO11s** | 22 FPS / 40ms    | 20 FPS / 45ms | 15 FPS / 60ms | 10 FPS / 90ms |
-| **YOLO11m** | 18 FPS / 50ms    | 15 FPS / 60ms | 10 FPS / 90ms | 6 FPS / 150ms |
-
-_Benchmarks measured with 640x640 input resolution, detection task_
-
-## ⚡ Model Selection Strategy
-
-Choose the right model for your target devices and use case:
-
-### By Use Case
+#### Choose the Right Model Size
 
 ```dart
-// Real-time security/surveillance
-class SecurityApp {
-  String getOptimalModel() {
-    return 'yolo11n';  // Prioritize speed over accuracy
-  }
+// For real-time applications - prioritize speed
+final fastYOLO = YOLO(
+  modelPath: 'assets/models/yolo11n.tflite',  // Nano - fastest
+  task: YOLOTask.detect,
+);
 
-  YOLOStreamingConfig getConfig() {
-    return YOLOStreamingConfig.custom(
-      maxFPS: 30,
-      inferenceFrequency: 25,
-      confidenceThreshold: 0.7,  // Higher threshold for security
+// For accuracy-critical applications
+final accurateYOLO = YOLO(
+  modelPath: 'assets/models/yolo11s.tflite',  // Small - balanced
+  task: YOLOTask.detect,
+);
+
+// For maximum accuracy (use sparingly)
+final preciseYOLO = YOLO(
+  modelPath: 'assets/models/yolo11m.tflite',  // Medium - high accuracy
+  task: YOLOTask.detect,
+);
+```
+
+#### Task-Specific Optimization
+
+```dart
+// Detection: Use nano for real-time
+final detector = YOLO(modelPath: 'yolo11n.tflite', task: YOLOTask.detect);
+
+// Segmentation: Consider small model for better masks
+final segmenter = YOLO(modelPath: 'yolo11s-seg.tflite', task: YOLOTask.segment);
+
+// Classification: Nano is usually sufficient
+final classifier = YOLO(modelPath: 'yolo11n-cls.tflite', task: YOLOTask.classify);
+```
+
+### 2. Threshold Optimization
+
+#### Smart Threshold Configuration
+
+```dart
+class PerformanceOptimizer {
+  late YOLOViewController controller;
+  
+  Future<void> optimizeForSpeed() async {
+    controller = YOLOViewController();
+    
+    // Higher confidence = fewer detections = faster processing
+    await controller.setThresholds(
+      confidenceThreshold: 0.6,    // Higher threshold
+      iouThreshold: 0.3,           // Lower IoU for faster NMS
+      numItemsThreshold: 10,       // Limit max detections
+    );
+  }
+  
+  Future<void> optimizeForAccuracy() async {
+    controller = YOLOViewController();
+    
+    // Lower confidence = more detections = better recall
+    await controller.setThresholds(
+      confidenceThreshold: 0.25,   // Lower threshold
+      iouThreshold: 0.5,           // Higher IoU for better precision
+      numItemsThreshold: 50,       // Allow more detections
+    );
+  }
+  
+  Future<void> optimizeForBattery() async {
+    controller = YOLOViewController();
+    
+    // Reduce processing load
+    await controller.setThresholds(
+      confidenceThreshold: 0.7,    // High confidence only
+      iouThreshold: 0.2,           // Fast NMS
+      numItemsThreshold: 5,        // Minimal detections
     );
   }
 }
+```
 
-// Photo/document analysis
-class PhotoAnalysisApp {
-  String getOptimalModel() {
-    return 'yolo11s';  // Balance of speed and accuracy
+### 3. Streaming Configuration
+
+#### Power-Saving Configurations
+
+```dart
+// Battery-efficient streaming
+final powerSavingConfig = YOLOStreamingConfig.powerSaving(
+  inferenceFrequency: 5,    // 5 FPS inference
+  maxFPS: 10,               // 10 FPS display
+);
+
+// Balanced performance
+final balancedConfig = YOLOStreamingConfig.throttled(
+  maxFPS: 15,
+  includeMasks: false,      // Disable expensive features
+  includeOriginalImage: false,
+);
+
+// High-performance mode
+final highPerfConfig = YOLOStreamingConfig.highPerformance(
+  inferenceFrequency: 30,
+);
+```
+
+#### Adaptive Performance
+
+```dart
+class AdaptivePerformance {
+  YOLOStreamingConfig _currentConfig = YOLOStreamingConfig.minimal();
+  double _avgFps = 30.0;
+  int _frameCount = 0;
+  
+  void onPerformanceMetrics(YOLOPerformanceMetrics metrics) {
+    _frameCount++;
+    _avgFps = (_avgFps * (_frameCount - 1) + metrics.fps) / _frameCount;
+    
+    // Adapt configuration based on performance
+    if (_avgFps < 15 && metrics.processingTimeMs > 100) {
+      _adaptForLowPerformance();
+    } else if (_avgFps > 25 && metrics.processingTimeMs < 50) {
+      _adaptForHighPerformance();
+    }
   }
-
-  YOLOStreamingConfig getConfig() {
-    return YOLOStreamingConfig.custom(
-      maxFPS: 15,
-      inferenceFrequency: 10,
-      confidenceThreshold: 0.5,
-    );
-  }
-}
-
-// High-precision industrial inspection
-class IndustrialApp {
-  String getOptimalModel() {
-    return 'yolo11m';  // Prioritize accuracy
-  }
-
-  YOLOStreamingConfig getConfig() {
-    return YOLOStreamingConfig.custom(
-      maxFPS: 10,
+  
+  void _adaptForLowPerformance() {
+    _currentConfig = YOLOStreamingConfig.powerSaving(
       inferenceFrequency: 8,
-      confidenceThreshold: 0.3,  // Lower threshold for detection
+      maxFPS: 12,
     );
+    print('🔋 Adapted to power-saving mode');
+  }
+  
+  void _adaptForHighPerformance() {
+    _currentConfig = YOLOStreamingConfig.throttled(
+      maxFPS: 20,
+      includeMasks: true,
+    );
+    print('🚀 Adapted to high-performance mode');
   }
 }
 ```
 
-### By Device Performance
+### 4. Multi-Instance Optimization
+
+#### Memory-Efficient Multi-Instance
 
 ```dart
-class ModelSelector {
-  static Future<String> selectOptimalModel() async {
-    final deviceInfo = await DeviceInfo.getInstance();
-    final memoryGB = deviceInfo.totalMemoryGB;
-    final cpuCores = deviceInfo.cpuCores;
-    final isHighEnd = deviceInfo.isHighEndDevice;
+class OptimizedMultiInstance {
+  static const int MAX_CONCURRENT = 2;  // Limit concurrent instances
+  final Map<String, YOLO> _instances = {};
+  final Map<String, DateTime> _lastUsed = {};
+  
+  Future<YOLO> getOrCreateInstance(String modelPath, YOLOTask task) async {
+    final key = '${modelPath}_${task.name}';
+    
+    // Return existing instance if available
+    if (_instances.containsKey(key)) {
+      _lastUsed[key] = DateTime.now();
+      return _instances[key]!;
+    }
+    
+    // Clean up old instances if at limit
+    if (_instances.length >= MAX_CONCURRENT) {
+      await _cleanupOldestInstance();
+    }
+    
+    // Create new instance
+    final yolo = YOLO(
+      modelPath: modelPath,
+      task: task,
+      useMultiInstance: true,
+    );
+    
+    await yolo.loadModel();
+    _instances[key] = yolo;
+    _lastUsed[key] = DateTime.now();
+    
+    return yolo;
+  }
+  
+  Future<void> _cleanupOldestInstance() async {
+    if (_lastUsed.isEmpty) return;
+    
+    // Find oldest instance
+    final oldestKey = _lastUsed.entries
+        .reduce((a, b) => a.value.isBefore(b.value) ? a : b)
+        .key;
+    
+    // Dispose and remove
+    await _instances[oldestKey]?.dispose();
+    _instances.remove(oldestKey);
+    _lastUsed.remove(oldestKey);
+    
+    print('🗑️ Cleaned up instance: $oldestKey');
+  }
+  
+  Future<void> disposeAll() async {
+    await Future.wait(_instances.values.map((yolo) => yolo.dispose()));
+    _instances.clear();
+    _lastUsed.clear();
+  }
+}
+```
 
-    if (isHighEnd && memoryGB >= 6) {
-      return 'yolo11m';  // High-end devices can handle larger models
-    } else if (memoryGB >= 4 && cpuCores >= 6) {
-      return 'yolo11s';  // Mid-range devices
-    } else {
-      return 'yolo11n';  // Budget devices
+#### Smart Instance Management
+
+```dart
+class SmartInstanceManager {
+  final Map<YOLOTask, YOLO> _taskInstances = {};
+  bool _isHighMemoryPressure = false;
+  
+  Future<YOLO> getInstanceForTask(YOLOTask task) async {
+    // Use task-specific instance or create new one
+    if (!_taskInstances.containsKey(task)) {
+      final modelPath = _getModelPathForTask(task);
+      _taskInstances[task] = YOLO(
+        modelPath: modelPath,
+        task: task,
+        useMultiInstance: true,
+      );
+      await _taskInstances[task]!.loadModel();
+    }
+    
+    return _taskInstances[task]!;
+  }
+  
+  Future<void> handleMemoryPressure() async {
+    _isHighMemoryPressure = true;
+    
+    // Keep only the most recently used instance
+    if (_taskInstances.length > 1) {
+      final tasks = _taskInstances.keys.toList();
+      for (int i = 0; i < tasks.length - 1; i++) {
+        await _taskInstances[tasks[i]]?.dispose();
+        _taskInstances.remove(tasks[i]);
+      }
+      print('🔴 Memory pressure: Reduced to ${_taskInstances.length} instances');
+    }
+  }
+  
+  String _getModelPathForTask(YOLOTask task) {
+    switch (task) {
+      case YOLOTask.detect:
+        return 'assets/models/yolo11n.tflite';
+      case YOLOTask.segment:
+        return 'assets/models/yolo11n-seg.tflite';
+      case YOLOTask.classify:
+        return 'assets/models/yolo11n-cls.tflite';
+      case YOLOTask.pose:
+        return 'assets/models/yolo11n-pose.tflite';
+      case YOLOTask.obb:
+        return 'assets/models/yolo11n-obb.tflite';
     }
   }
 }
 ```
 
-## 🔧 Optimization Techniques
+## 🏗️ Platform-Specific Optimizations
 
-### 1. Inference Frequency Optimization
+### iOS Optimization
 
-Reduce computational load by controlling inference frequency:
+#### Info.plist Configuration
+
+```xml
+<!-- ios/Runner/Info.plist -->
+<key>UIRequiredDeviceCapabilities</key>
+<array>
+    <string>metal</string>
+</array>
+
+<!-- Enable GPU acceleration -->
+<key>NSCameraUsageDescription</key>
+<string>Camera access for real-time AI detection</string>
+```
+
+#### Swift Optimization
+
+```swift
+// Enable Metal Performance Shaders
+import MetalPerformanceShaders
+
+// In your iOS native code
+let device = MTLCreateSystemDefaultDevice()
+let commandQueue = device?.makeCommandQueue()
+```
+
+### Android Optimization
+
+#### Gradle Configuration
+
+```gradle
+// android/app/build.gradle
+android {
+    defaultConfig {
+        // Use only required ABIs
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
+    }
+    
+    buildTypes {
+        release {
+            // Enable code shrinking
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // Optimize for performance
+            debuggable false
+            jniDebuggable false
+        }
+    }
+}
+```
+
+#### ProGuard Rules
+
+```pro
+# android/app/proguard-rules.pro
+-keep class org.tensorflow.lite.** { *; }
+-keep class com.ultralytics.** { *; }
+-dontwarn org.tensorflow.**
+
+# Optimize native libraries
+-keepclassmembers class * {
+    native <methods>;
+}
+```
+
+## 📱 Device-Specific Optimizations
+
+### High-End Devices (Flagship)
 
 ```dart
-// Adaptive inference frequency based on motion detection
-class AdaptiveInference extends StatefulWidget {
-  @override
-  _AdaptiveInferenceState createState() => _AdaptiveInferenceState();
-}
-
-class _AdaptiveInferenceState extends State<AdaptiveInference> {
-  final YOLOViewController _controller = YOLOViewController();
-  int _motionLevel = 0;  // 0=static, 1=slow, 2=fast
-  int _baseFrequency = 15;
-
-  @override
-  Widget build(BuildContext context) {
-    return YOLOView(
-      controller: _controller,
-      modelPath: 'assets/yolo11n.tflite',
-      task: YOLOTask.detect,
-      streamingConfig: _getAdaptiveConfig(),
-      onResult: (results) {
-        _analyzeMotion(results);
-      },
+class HighEndOptimization {
+  static bool isHighEndDevice() {
+    // Implement device detection logic
+    return true; // Placeholder
+  }
+  
+  static YOLOStreamingConfig getOptimalConfig() {
+    return YOLOStreamingConfig(
+      includeDetections: true,
+      includeMasks: true,           // Enable advanced features
+      includePoses: true,
+      maxFPS: 25,                   // Higher FPS
+      inferenceFrequency: 25,
     );
   }
-
-  YOLOStreamingConfig _getAdaptiveConfig() {
-    int frequency = _baseFrequency;
-
-    switch (_motionLevel) {
-      case 0: // Static scene - reduce frequency
-        frequency = _baseFrequency ~/ 3;
-        break;
-      case 1: // Slow motion - normal frequency
-        frequency = _baseFrequency;
-        break;
-      case 2: // Fast motion - increase frequency
-        frequency = (_baseFrequency * 1.5).round();
-        break;
+  
+  static String getOptimalModelPath(YOLOTask task) {
+    // Use larger models for better accuracy
+    switch (task) {
+      case YOLOTask.detect:
+        return 'assets/models/yolo11s.tflite';  // Small instead of nano
+      default:
+        return 'assets/models/yolo11n.tflite';
     }
-
-    return YOLOStreamingConfig.custom(
-      inferenceFrequency: frequency,
-      maxFPS: 30,
-    );
-  }
-
-  void _analyzeMotion(List<YOLOResult> results) {
-    // Implement motion detection logic
-    // Update _motionLevel based on object movement
   }
 }
 ```
 
-### 2. Resolution Optimization
-
-Adjust input resolution based on device capabilities:
+### Mid-Range Devices
 
 ```dart
-class ResolutionOptimizer {
-  static Future<Size> getOptimalResolution() async {
-    final deviceInfo = await DeviceInfo.getInstance();
-
-    if (deviceInfo.isHighEndDevice) {
-      return Size(640, 640);  // Full resolution
-    } else if (deviceInfo.isMidRangeDevice) {
-      return Size(480, 480);  // Reduced resolution
-    } else {
-      return Size(320, 320);  // Minimal resolution
-    }
+class MidRangeOptimization {
+  static YOLOStreamingConfig getOptimalConfig() {
+    return YOLOStreamingConfig.throttled(
+      maxFPS: 15,
+      includeMasks: false,          // Disable expensive features
+      includeOriginalImage: false,
+    );
   }
-}
-
-// Usage in model export/preprocessing
-void exportOptimizedModels() {
-  final resolutions = [
-    Size(320, 320),  // Budget devices
-    Size(480, 480),  // Mid-range devices
-    Size(640, 640),  // High-end devices
-  ];
-
-  for (final res in resolutions) {
-    // Export models with different input sizes
-    // model.export(format="tflite", imgsz=[res.width, res.height])
+  
+  static Map<String, double> getOptimalThresholds() {
+    return {
+      'confidence': 0.5,            // Balanced threshold
+      'iou': 0.4,
+      'maxItems': 20.0,
+    };
   }
 }
 ```
+
+### Low-End Devices (Budget)
+
+```dart
+class LowEndOptimization {
+  static YOLOStreamingConfig getOptimalConfig() {
+    return YOLOStreamingConfig.powerSaving(
+      inferenceFrequency: 5,        // Very low frequency
+      maxFPS: 10,
+    );
+  }
+  
+  static Map<String, double> getOptimalThresholds() {
+    return {
+      'confidence': 0.7,            // High threshold for fewer detections
+      'iou': 0.2,                   // Fast NMS
+      'maxItems': 5.0,              // Minimal detections
+    };
+  }
+}
+```
+
+## 🔍 Performance Monitoring
+
+### Real-time Performance Tracking
+
+```dart
+class PerformanceTracker {
+  final List<double> _fpsHistory = [];
+  final List<double> _timeHistory = [];
+  final int _maxHistoryLength = 100;
+  
+  Timer? _reportTimer;
+  
+  void startTracking() {
+    _reportTimer = Timer.periodic(Duration(seconds: 5), (_) {
+      _generatePerformanceReport();
+    });
+  }
+  
+  void onPerformanceUpdate(YOLOPerformanceMetrics metrics) {
+    _fpsHistory.add(metrics.fps);
+    _timeHistory.add(metrics.processingTimeMs);
+    
+    // Maintain history size
+    if (_fpsHistory.length > _maxHistoryLength) {
+      _fpsHistory.removeAt(0);
+      _timeHistory.removeAt(0);
+    }
+    
+    // Check for performance issues
+    _checkPerformanceIssues(metrics);
+  }
+  
+  void _checkPerformanceIssues(YOLOPerformanceMetrics metrics) {
+    if (metrics.fps < 10) {
+      print('⚠️ Low FPS detected: ${metrics.fps.toStringAsFixed(1)}');
+      _suggestOptimizations();
+    }
+    
+    if (metrics.processingTimeMs > 200) {
+      print('⚠️ Slow processing: ${metrics.processingTimeMs.toStringAsFixed(1)}ms');
+      _suggestOptimizations();
+    }
+    
+    if (metrics.hasPerformanceIssues) {
+      print('⚠️ Performance rating: ${metrics.performanceRating}');
+    }
+  }
+  
+  void _generatePerformanceReport() {
+    if (_fpsHistory.isEmpty) return;
+    
+    final avgFps = _fpsHistory.reduce((a, b) => a + b) / _fpsHistory.length;
+    final avgTime = _timeHistory.reduce((a, b) => a + b) / _timeHistory.length;
+    final minFps = _fpsHistory.reduce(math.min);
+    final maxTime = _timeHistory.reduce(math.max);
+    
+    print('📊 Performance Report:');
+    print('  Average FPS: ${avgFps.toStringAsFixed(1)}');
+    print('  Average Time: ${avgTime.toStringAsFixed(1)}ms');
+    print('  Min FPS: ${minFps.toStringAsFixed(1)}');
+    print('  Max Time: ${maxTime.toStringAsFixed(1)}ms');
+    print('  Performance: ${_getOverallRating(avgFps, avgTime)}');
+  }
+  
+  String _getOverallRating(double avgFps, double avgTime) {
+    if (avgFps >= 20 && avgTime <= 80) return 'Excellent ⭐⭐⭐⭐⭐';
+    if (avgFps >= 15 && avgTime <= 120) return 'Good ⭐⭐⭐⭐';
+    if (avgFps >= 10 && avgTime <= 160) return 'Fair ⭐⭐⭐';
+    return 'Poor ⭐⭐';
+  }
+  
+  void _suggestOptimizations() {
+    print('💡 Optimization suggestions:');
+    print('  • Try a smaller model (yolo11n)');
+    print('  • Increase confidence threshold');
+    print('  • Reduce maxFPS in streaming config');
+    print('  • Disable masks and poses if not needed');
+  }
+  
+  void stopTracking() {
+    _reportTimer?.cancel();
+  }
+}
+```
+
+### Memory Usage Monitoring
+
+```dart
+class MemoryMonitor {
+  Timer? _monitorTimer;
+  int _peakMemoryMB = 0;
+  
+  void startMonitoring() {
+    _monitorTimer = Timer.periodic(Duration(seconds: 2), (_) {
+      _checkMemoryUsage();
+    });
+  }
+  
+  void _checkMemoryUsage() {
+    // Platform-specific memory checking would go here
+    // This is a simplified example
+    final estimatedMemory = _estimateCurrentMemoryUsage();
+    
+    if (estimatedMemory > _peakMemoryMB) {
+      _peakMemoryMB = estimatedMemory;
+    }
+    
+    if (estimatedMemory > 400) { // > 400MB
+      print('⚠️ High memory usage: ${estimatedMemory}MB');
+      _suggestMemoryOptimizations();
+    }
+  }
+  
+  int _estimateCurrentMemoryUsage() {
+    // Simplified estimation based on active instances
+    final activeInstances = YOLOInstanceManager.getActiveInstanceIds().length;
+    return 100 + (activeInstances * 150); // Base + per instance
+  }
+  
+  void _suggestMemoryOptimizations() {
+    print('🔋 Memory optimization suggestions:');
+    print('  • Dispose unused YOLO instances');
+    print('  • Use smaller models');
+    print('  • Limit concurrent instances');
+    print('  • Disable original image in streaming');
+  }
+  
+  void stopMonitoring() {
+    _monitorTimer?.cancel();
+  }
+}
+```
+
+## 🎯 Performance Best Practices
+
+### 1. Model Management
+
+- **Use nano models** for real-time applications
+- **Cache loaded models** instead of reloading
+- **Dispose unused instances** promptly
+- **Limit concurrent instances** to 2-3 maximum
+
+### 2. Streaming Optimization
+
+- **Choose appropriate FPS** based on use case
+- **Disable unnecessary features** (masks, poses, original image)
+- **Use throttling** for battery-sensitive applications
+- **Monitor performance metrics** continuously
 
 ### 3. Memory Management
 
-Optimize memory usage for sustained performance:
+- **Monitor memory usage** in production
+- **Implement memory pressure handling**
+- **Use weak references** where possible
+- **Clean up resources** in dispose methods
+
+### 4. Platform Optimization
+
+- **Enable GPU acceleration** on both platforms
+- **Use appropriate build configurations**
+- **Optimize for target devices**
+- **Test on real devices** not emulators
+
+### 5. Code Patterns
 
 ```dart
-class MemoryOptimizedYOLO extends StatefulWidget {
-  @override
-  _MemoryOptimizedYOLOState createState() => _MemoryOptimizedYOLOState();
+// ✅ Good: Reuse instances
+class GoodPattern {
+  late final YOLO _yolo;
+  
+  Future<void> init() async {
+    _yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
+    await _yolo.loadModel();
+  }
+  
+  Future<List<dynamic>> predict(Uint8List image) async {
+    final results = await _yolo.predict(image);
+    return results['boxes'];
+  }
 }
 
-class _MemoryOptimizedYOLOState extends State<MemoryOptimizedYOLO>
-    with WidgetsBindingObserver {
-  final YOLOViewController _controller = YOLOViewController();
-  bool _isAppInBackground = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    switch (state) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-        // Reduce performance when app is backgrounded
-        _controller.updateStreamingConfig(
-          YOLOStreamingConfig.custom(inferenceFrequency: 1)
-        );
-        _isAppInBackground = true;
-        break;
-      case AppLifecycleState.resumed:
-        // Restore performance when app is foregrounded
-        if (_isAppInBackground) {
-          _controller.updateStreamingConfig(
-            YOLOStreamingConfig.balanced()
-          );
-          _isAppInBackground = false;
-        }
-        break;
-      default:
-        break;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return YOLOView(
-      controller: _controller,
-      modelPath: 'assets/yolo11n.tflite',
-      task: YOLOTask.detect,
-      streamingConfig: YOLOStreamingConfig.custom(
-        bufferSize: 1,  // Minimal buffering
-        dropFramesWhenBusy: true,  // Prevent memory buildup
-      ),
-    );
+// ❌ Bad: Create new instances repeatedly  
+class BadPattern {
+  Future<List<dynamic>> predict(Uint8List image) async {
+    final yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
+    await yolo.loadModel(); // Expensive!
+    final results = await yolo.predict(image);
+    await yolo.dispose();
+    return results['boxes'];
   }
 }
 ```
 
-### 4. Battery Optimization
+## 📈 Performance Testing
 
-Implement battery-aware performance scaling:
+### Benchmark Your App
 
 ```dart
-import 'package:battery_plus/battery_plus.dart';
-
-class BatteryAwareYOLO extends StatefulWidget {
-  @override
-  _BatteryAwareYOLOState createState() => _BatteryAwareYOLOState();
-}
-
-class _BatteryAwareYOLOState extends State<BatteryAwareYOLO> {
-  final YOLOViewController _controller = YOLOViewController();
-  final Battery _battery = Battery();
-  YOLOStreamingConfig _currentConfig = YOLOStreamingConfig.balanced();
-
-  @override
-  void initState() {
-    super.initState();
-    _monitorBattery();
-  }
-
-  void _monitorBattery() {
-    _battery.onBatteryStateChanged.listen((BatteryState state) {
-      _updateConfigForBatteryState(state);
-    });
-
-    // Also monitor battery level
-    Timer.periodic(Duration(minutes: 1), (timer) async {
-      final level = await _battery.batteryLevel;
-      _updateConfigForBatteryLevel(level);
-    });
-  }
-
-  void _updateConfigForBatteryState(BatteryState state) {
-    YOLOStreamingConfig newConfig;
-
-    switch (state) {
-      case BatteryState.charging:
-        newConfig = YOLOStreamingConfig.full();  // Maximum performance
-        break;
-      case BatteryState.full:
-        newConfig = YOLOStreamingConfig.balanced();
-        break;
-      default:
-        newConfig = YOLOStreamingConfig.minimal();  // Power saving
-        break;
+class PerformanceBenchmark {
+  Future<Map<String, dynamic>> runBenchmark(
+    String modelPath,
+    List<Uint8List> testImages,
+  ) async {
+    final yolo = YOLO(modelPath: modelPath, task: YOLOTask.detect);
+    await yolo.loadModel();
+    
+    final List<double> inferenceTimes = [];
+    final stopwatch = Stopwatch();
+    
+    for (final image in testImages) {
+      stopwatch.reset();
+      stopwatch.start();
+      
+      await yolo.predict(image);
+      
+      stopwatch.stop();
+      inferenceTimes.add(stopwatch.elapsedMilliseconds.toDouble());
     }
-
-    if (newConfig != _currentConfig) {
-      setState(() => _currentConfig = newConfig);
-      _controller.updateStreamingConfig(newConfig);
-    }
-  }
-
-  void _updateConfigForBatteryLevel(int batteryLevel) {
-    if (batteryLevel < 20 && _currentConfig != YOLOStreamingConfig.minimal()) {
-      // Switch to power saving mode when battery is low
-      setState(() => _currentConfig = YOLOStreamingConfig.minimal());
-      _controller.updateStreamingConfig(_currentConfig);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return YOLOView(
-      controller: _controller,
-      modelPath: 'assets/yolo11n.tflite',
-      task: YOLOTask.detect,
-      streamingConfig: _currentConfig,
-    );
+    
+    await yolo.dispose();
+    
+    final avgTime = inferenceTimes.reduce((a, b) => a + b) / inferenceTimes.length;
+    final minTime = inferenceTimes.reduce(math.min);
+    final maxTime = inferenceTimes.reduce(math.max);
+    
+    return {
+      'model': modelPath,
+      'samples': testImages.length,
+      'avg_time_ms': avgTime,
+      'min_time_ms': minTime,
+      'max_time_ms': maxTime,
+      'avg_fps': 1000 / avgTime,
+      'times': inferenceTimes,
+    };
   }
 }
 ```
 
-## 📱 Platform-Specific Optimizations
-
-### iOS Optimizations
-
-```dart
-class iOSOptimizedYOLO {
-  // Leverage Core ML optimizations
-  static YOLOStreamingConfig getiOSConfig() {
-    return YOLOStreamingConfig.custom(
-      // iOS handles Core ML scheduling automatically
-      useSystemOptimizations: true,
-
-      // Core ML benefits from consistent inference frequency
-      inferenceFrequency: 20,
-
-      // iOS GPUs handle higher resolutions well
-      preferHighResolution: true,
-    );
-  }
-
-  // Use iOS-specific model optimizations
-  static String getiOSModel(String baseModel) {
-    // Prefer .mlpackage for iOS 13+
-    return Platform.isIOS ? '$baseModel.mlpackage' : '$baseModel.tflite';
-  }
-}
-```
-
-### Android Optimizations
-
-```dart
-class AndroidOptimizedYOLO {
-  // Optimize for TensorFlow Lite
-  static YOLOStreamingConfig getAndroidConfig() {
-    return YOLOStreamingConfig.custom(
-      // Android benefits from GPU acceleration
-      useGPUAcceleration: true,
-
-      // TensorFlow Lite can handle variable frequency well
-      adaptiveInferenceFrequency: true,
-
-      // Optimize for diverse hardware
-      useHardwareDetection: true,
-    );
-  }
-
-  // Use Android-specific optimizations
-  static Future<String> getOptimizedModel() async {
-    final info = await DeviceInfoPlugin().androidInfo;
-
-    // Use NNAPI-optimized models on supported devices
-    if (info.version.sdkInt >= 27) {
-      return 'yolo11n_nnapi.tflite';
-    }
-    return 'yolo11n.tflite';
-  }
-}
-```
-
-## 🎛️ Production Deployment
-
-### Performance Monitoring
-
-Implement comprehensive performance monitoring for production:
-
-```dart
-class ProductionYOLO extends StatefulWidget {
-  @override
-  _ProductionYOLOState createState() => _ProductionYOLOState();
-}
-
-class _ProductionYOLOState extends State<ProductionYOLO> {
-  final YOLOViewController _controller = YOLOViewController();
-  final PerformanceMonitor _monitor = PerformanceMonitor();
-
-  @override
-  Widget build(BuildContext context) {
-    return YOLOView(
-      controller: _controller,
-      modelPath: 'assets/yolo11n.tflite',
-      task: YOLOTask.detect,
-      streamingConfig: YOLOStreamingConfig.balanced(),
-      onPerformanceMetrics: (metrics) {
-        _monitor.recordMetrics(metrics);
-
-        // Auto-adjust if performance degrades
-        if (metrics.fps != null && metrics.fps! < 10) {
-          _handlePerformanceDegradation();
-        }
-      },
-    );
-  }
-
-  void _handlePerformanceDegradation() {
-    // Step down performance automatically
-    _controller.updateStreamingConfig(YOLOStreamingConfig.minimal());
-
-    // Log for analytics
-    _monitor.logPerformanceIssue('FPS dropped below threshold');
-  }
-}
-
-class PerformanceMonitor {
-  final List<PerformanceMetrics> _metrics = [];
-
-  void recordMetrics(PerformanceMetrics metrics) {
-    _metrics.add(metrics);
-
-    // Keep only recent metrics
-    if (_metrics.length > 100) {
-      _metrics.removeAt(0);
-    }
-
-    // Send to analytics if needed
-    _sendToAnalytics(metrics);
-  }
-
-  void _sendToAnalytics(PerformanceMetrics metrics) {
-    // Send performance data to your analytics service
-    Analytics.track('yolo_performance', {
-      'fps': metrics.fps,
-      'processing_time_ms': metrics.processingTimeMs,
-      'device_model': DeviceInfo.model,
-      'app_version': AppInfo.version,
-    });
-  }
-
-  double get averageFPS {
-    if (_metrics.isEmpty) return 0;
-    return _metrics.map((m) => m.fps ?? 0).reduce((a, b) => a + b) / _metrics.length;
-  }
-
-  void logPerformanceIssue(String issue) {
-    Analytics.track('yolo_performance_issue', {
-      'issue': issue,
-      'average_fps': averageFPS,
-      'metrics_count': _metrics.length,
-    });
-  }
-}
-```
-
-### A/B Testing Performance
-
-Test different configurations with real users:
-
-```dart
-class PerformanceABTest {
-  static YOLOStreamingConfig getConfigForUser(String userId) {
-    final variant = _getABTestVariant(userId);
-
-    switch (variant) {
-      case 'high_performance':
-        return YOLOStreamingConfig.custom(
-          inferenceFrequency: 25,
-          maxFPS: 30,
-        );
-      case 'balanced':
-        return YOLOStreamingConfig.balanced();
-      case 'power_saving':
-        return YOLOStreamingConfig.minimal();
-      default:
-        return YOLOStreamingConfig.balanced();
-    }
-  }
-
-  static String _getABTestVariant(String userId) {
-    // Simple hash-based assignment
-    final hash = userId.hashCode.abs();
-    final variants = ['high_performance', 'balanced', 'power_saving'];
-    return variants[hash % variants.length];
-  }
-}
-```
-
-## 🔍 Performance Debugging
-
-### Identifying Bottlenecks
-
-```dart
-class PerformanceDebugger {
-  static void analyzePerformance(List<PerformanceMetrics> metrics) {
-    final avgFps = metrics.map((m) => m.fps ?? 0).reduce((a, b) => a + b) / metrics.length;
-    final avgProcessingTime = metrics.map((m) => m.processingTimeMs ?? 0).reduce((a, b) => a + b) / metrics.length;
-
-    print('=== Performance Analysis ===');
-    print('Average FPS: ${avgFps.toStringAsFixed(1)}');
-    print('Average Processing Time: ${avgProcessingTime.toStringAsFixed(1)}ms');
-
-    if (avgFps < 15) {
-      print('❌ Low FPS detected - consider:');
-      print('  • Reducing inference frequency');
-      print('  • Using smaller model (yolo11n)');
-      print('  • Reducing input resolution');
-    }
-
-    if (avgProcessingTime > 100) {
-      print('❌ High processing time - consider:');
-      print('  • Enabling GPU acceleration');
-      print('  • Using quantized models');
-      print('  • Reducing model complexity');
-    }
-
-    _checkMemoryUsage();
-    _checkCPUUsage();
-  }
-
-  static void _checkMemoryUsage() {
-    // Monitor memory usage patterns
-    print('Memory usage analysis...');
-  }
-
-  static void _checkCPUUsage() {
-    // Monitor CPU usage patterns
-    print('CPU usage analysis...');
-  }
-}
-```
-
-## 📋 Performance Checklist
-
-### Pre-Production Checklist
-
-- [ ] **Model Selection**: Right model for target devices
-- [ ] **Inference Frequency**: Optimized for use case
-- [ ] **Memory Management**: No memory leaks or excessive usage
-- [ ] **Battery Impact**: Reasonable power consumption
-- [ ] **Device Testing**: Tested on representative device range
-- [ ] **Performance Monitoring**: Analytics and alerting in place
-- [ ] **Graceful Degradation**: Handles performance issues automatically
-- [ ] **User Controls**: Allow users to adjust quality settings
-
-### Optimization Priority
-
-1. **Choose appropriate model size** (biggest impact)
-2. **Optimize inference frequency** (easy wins)
-3. **Implement adaptive quality** (best user experience)
-4. **Add performance monitoring** (production readiness)
-5. **Fine-tune for specific devices** (advanced optimization)
-
-## 🔗 Related Documentation
-
-- **[Streaming Guide](./streaming.md)** - Real-time processing and inference control
-- **[Getting Started](./getting-started.md)** - Basic setup and configuration
-- **[API Reference](./api-reference.md)** - Complete technical documentation
-- **[Troubleshooting](./troubleshooting.md)** - Performance issue resolution
+This performance guide provides comprehensive strategies for optimizing YOLO Flutter applications. For implementation details, see the [Usage Guide](usage.md), and for troubleshooting performance issues, check the [Troubleshooting Guide](troubleshooting.md).
