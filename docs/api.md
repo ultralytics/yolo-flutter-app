@@ -60,7 +60,7 @@ Future<bool> loadModel()
 **Example**:
 
 ```dart
-final yolo = YOLO(modelPath: 'assets/models/yolo11n.tflite', task: YOLOTask.detect);
+final yolo = YOLO(modelPath: 'yolo11n', task: YOLOTask.detect);
 final success = await yolo.loadModel();
 if (success) {
   print('Model loaded successfully');
