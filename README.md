@@ -50,10 +50,10 @@ YOLOView(
 | Task                   | Description                    | Use Cases                         | Performance |
 | ---------------------- | ------------------------------ | --------------------------------- | ----------- |
 | 🔍 **Detection**       | Find objects & their locations | Security, Inventory, Shopping     | 25-30 FPS   |
-| 🎭 **Segmentation**    | Pixel-perfect object masks     | Photo editing, AR effects         | 15-25 FPS   |
+| 🎭 **Segmentation**    | Pixel-perfect object masks     | Photo editing,                    | 15-25 FPS   |
 | 🏷️ **Classification**  | Identify image categories      | Content moderation, Tagging       | 30+ FPS     |
 | 🤸 **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture      | 20-30 FPS   |
-| 📦 **OBB Detection**   | Rotated bounding boxes         | Document analysis, Aerial imagery | 20-25 FPS   |
+| 📦 **OBB Detection**   | Rotated bounding boxes         | Aerial imagery | 20-25 FPS   |
 
 **[📱 See Examples →](./docs/usage.md)** | **[⚡ Performance Guide →](./docs/performance.md)**
 
@@ -84,7 +84,7 @@ flutter pub get
 ## 🏆 Trusted by Developers
 
 - ✅ **Official Ultralytics Plugin** - Maintained by YOLO creators
-- ✅ **Production Tested** - Used in apps with millions of users
+- ✅ **Production Tested** - Used in apps with many users
 - ✅ **Active Development** - Regular updates & feature additions
 - ✅ **Community Driven** - Open source with responsive support
 
