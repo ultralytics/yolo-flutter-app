@@ -12,7 +12,7 @@ Optimize your YOLO Flutter app for maximum performance with proven strategies an
 
 ### Model Performance Comparison
 
-| Model        | Size    | Android (Pixel 6) | iOS (iPhone 13) | Memory Usage |
+| Model        | Size    | Android (Pixel 9) | iOS (iPhone 16) | Memory Usage |
 | ------------ | ------- | ----------------- | --------------- | ------------ |
 | **YOLOv11n** | 6.2 MB  | 25-30 FPS         | 28-32 FPS       | ~150 MB      |
 | **YOLOv11s** | 21.5 MB | 18-22 FPS         | 20-25 FPS       | ~200 MB      |
@@ -24,10 +24,10 @@ Optimize your YOLO Flutter app for maximum performance with proven strategies an
 | Task               | Model         | FPS Range | Best Use Case           |
 | ------------------ | ------------- | --------- | ----------------------- |
 | **Detection**      | YOLOv11n      | 25-30     | Real-time applications  |
-| **Segmentation**   | YOLOv11n-seg  | 15-25     | Photo editing, AR       |
+| **Segmentation**   | YOLOv11n-seg  | 15-25     | Photo editing  |
 | **Classification** | YOLOv11n-cls  | 30+       | Content moderation      |
 | **Pose**           | YOLOv11n-pose | 20-30     | Fitness, motion capture |
-| **OBB**            | YOLOv11n-obb  | 20-25     | Document analysis       |
+| **OBB**            | YOLOv11n-obb  | 20-25     | aerial photography |
 
 ## 🚀 Optimization Strategies
 
@@ -38,19 +38,19 @@ Optimize your YOLO Flutter app for maximum performance with proven strategies an
 ```dart
 // For real-time applications - prioritize speed
 final fastYOLO = YOLO(
-  modelPath: 'assets/models/yolo11n.tflite',  // Nano - fastest
+  modelPath: 'yolo11n',  // Nano - fastest
   task: YOLOTask.detect,
 );
 
 // For accuracy-critical applications
 final accurateYOLO = YOLO(
-  modelPath: 'assets/models/yolo11s.tflite',  // Small - balanced
+  modelPath: 'yolo11s',  // Small - balanced
   task: YOLOTask.detect,
 );
 
-// For maximum accuracy (use sparingly)
+// For better accuracy (use sparingly)
 final preciseYOLO = YOLO(
-  modelPath: 'assets/models/yolo11m.tflite',  // Medium - high accuracy
+  modelPath: 'yolo11m',  // Medium - high accuracy
   task: YOLOTask.detect,
 );
 ```
@@ -59,13 +59,13 @@ final preciseYOLO = YOLO(
 
 ```dart
 // Detection: Use nano for real-time
-final detector = YOLO(modelPath: 'yolo11n.tflite', task: YOLOTask.detect);
+final detector = YOLO(modelPath: 'yolo11n', task: YOLOTask.detect);
 
 // Segmentation: Consider small model for better masks
-final segmenter = YOLO(modelPath: 'yolo11s-seg.tflite', task: YOLOTask.segment);
+final segmenter = YOLO(modelPath: 'yolo11s-seg', task: YOLOTask.segment);
 
 // Classification: Nano is usually sufficient
-final classifier = YOLO(modelPath: 'yolo11n-cls.tflite', task: YOLOTask.classify);
+final classifier = YOLO(modelPath: 'yolo11n-cls', task: YOLOTask.classify);
 ```
 
 ### 2. Threshold Optimization
@@ -274,74 +274,17 @@ class SmartInstanceManager {
   String _getModelPathForTask(YOLOTask task) {
     switch (task) {
       case YOLOTask.detect:
-        return 'assets/models/yolo11n.tflite';
+        return 'yolo11n';
       case YOLOTask.segment:
-        return 'assets/models/yolo11n-seg.tflite';
+        return 'yolo11n-seg';
       case YOLOTask.classify:
-        return 'assets/models/yolo11n-cls.tflite';
+        return 'yolo11n-cls';
       case YOLOTask.pose:
-        return 'assets/models/yolo11n-pose.tflite';
+        return 'yolo11n-pose';
       case YOLOTask.obb:
-        return 'assets/models/yolo11n-obb.tflite';
+        return 'yolo11n-obb';
     }
   }
-}
-```
-
-## 🏗️ Platform-Specific Optimizations
-
-### iOS Optimization
-
-#### Info.plist Configuration
-
-```xml
-<!-- ios/Runner/Info.plist -->
-<key>UIRequiredDeviceCapabilities</key>
-<array>
-    <string>metal</string>
-</array>
-
-<!-- Enable GPU acceleration -->
-<key>NSCameraUsageDescription</key>
-<string>Camera access for real-time AI detection</string>
-```
-
-#### Swift Optimization
-
-```swift
-// Enable Metal Performance Shaders
-import MetalPerformanceShaders
-
-// In your iOS native code
-let device = MTLCreateSystemDefaultDevice()
-let commandQueue = device?.makeCommandQueue()
-```
-
-### Android Optimization
-
-#### Gradle Configuration
-
-```gradle
-// android/app/build.gradle
-android {
-    defaultConfig {
-        // Use only required ABIs
-        ndk {
-            abiFilters 'arm64-v8a', 'armeabi-v7a'
-        }
-    }
-
-    buildTypes {
-        release {
-            // Enable code shrinking
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-
-            // Optimize for performance
-            debuggable false
-            jniDebuggable false
-        }
-    }
 }
 ```
 
@@ -384,9 +327,9 @@ class HighEndOptimization {
     // Use larger models for better accuracy
     switch (task) {
       case YOLOTask.detect:
-        return 'assets/models/yolo11s.tflite';  // Small instead of nano
+        return 'yolo11s';  // Small instead of nano
       default:
-        return 'assets/models/yolo11n.tflite';
+        return 'yolo11n';
     }
   }
 }
