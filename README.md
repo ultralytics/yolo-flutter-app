@@ -92,14 +92,14 @@ flutter pub get
 
 ## 📚 Documentation
 
-| Guide                                                 | Description                     | For             |
-| ----------------------------------------------------- | ------------------------------- | --------------- |
-| **[Installation Guide](./docs/install.md)**           | Installation, setup, requirements| New users       |
-| **[Quick Start](./docs/quickstart.md)**               | 2-minute setup guide            | New users       |
-| **[Usage Guide](./docs/usage.md)**                    | Common use cases & code samples | All users       |
-| **[Performance Optimization](./docs/performance.md)** | Inference control & tuning      | Production apps |
-| **[API Reference](./docs/api.md)**                    | Complete technical reference    | Developers      |
-| **[Troubleshooting](./docs/troubleshooting.md)**      | Common issues & solutions       | All users       |
+| Guide                                                 | Description                       | For             |
+| ----------------------------------------------------- | --------------------------------- | --------------- |
+| **[Installation Guide](./docs/install.md)**           | Installation, setup, requirements | New users       |
+| **[Quick Start](./docs/quickstart.md)**               | 2-minute setup guide              | New users       |
+| **[Usage Guide](./docs/usage.md)**                    | Common use cases & code samples   | All users       |
+| **[Performance Optimization](./docs/performance.md)** | Inference control & tuning        | Production apps |
+| **[API Reference](./docs/api.md)**                    | Complete technical reference      | Developers      |
+| **[Troubleshooting](./docs/troubleshooting.md)**      | Common issues & solutions         | All users       |
 
 ## 🤝 Community & Support
 
