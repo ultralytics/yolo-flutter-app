@@ -72,12 +72,19 @@ dependencies:
 flutter pub get
 ```
 
-### 3. Add models & permissions
+### 3. Add models
 
-```dart
-// Download models and add to assets/
-// Configure camera permissions
-```
+You can get the model in one of the following ways:
+
+1. Download from the release assets of this repository https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.0.0
+
+2. Get it from Ultralytics Hub https://www.ultralytics.com/hub
+
+3. Export it from Ultralytics/ultralytics
+
+  CoreML: https://docs.ultralytics.com/ja/integrations/coreml/
+
+  TF Lite: https://docs.ultralytics.com/integrations/tflite/
 
 **[📥 Download Models](./docs/install.md#models)** | **[🔧 Setup Guide](./docs/install.md)**
 
