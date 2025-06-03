@@ -47,13 +47,13 @@ YOLOView(
 
 ## 🎯 What You Can Build
 
-| Task                   | Description                    | Use Cases                         | Performance |
-| ---------------------- | ------------------------------ | --------------------------------- | ----------- |
-| 🔍 **Detection**       | Find objects & their locations | Security, Inventory, Shopping     | 25-30 FPS   |
-| 🎭 **Segmentation**    | Pixel-perfect object masks     | Photo editing,                    | 15-25 FPS   |
-| 🏷️ **Classification**  | Identify image categories      | Content moderation, Tagging       | 30+ FPS     |
-| 🤸 **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture      | 20-30 FPS   |
-| 📦 **OBB Detection**   | Rotated bounding boxes         | Aerial imagery | 20-25 FPS   |
+| Task                   | Description                    | Use Cases                     | Performance |
+| ---------------------- | ------------------------------ | ----------------------------- | ----------- |
+| 🔍 **Detection**       | Find objects & their locations | Security, Inventory, Shopping | 25-30 FPS   |
+| 🎭 **Segmentation**    | Pixel-perfect object masks     | Photo editing,                | 15-25 FPS   |
+| 🏷️ **Classification**  | Identify image categories      | Content moderation, Tagging   | 30+ FPS     |
+| 🤸 **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture  | 20-30 FPS   |
+| 📦 **OBB Detection**   | Rotated bounding boxes         | Aerial imagery                | 20-25 FPS   |
 
 **[📱 See Examples →](./docs/usage.md)** | **[⚡ Performance Guide →](./docs/performance.md)**
 
