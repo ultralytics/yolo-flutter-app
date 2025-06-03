@@ -95,13 +95,6 @@ Native Platform Layer (iOS/Android)
 YOLO Model Inference Engine
 ```
 
-For multi-instance support, each instance gets:
-
-- Unique instance ID
-- Dedicated method channel
-- Independent model lifecycle
-- Isolated memory space
-
 ## 🎯 Use Cases
 
 ### 📱 Mobile Applications
