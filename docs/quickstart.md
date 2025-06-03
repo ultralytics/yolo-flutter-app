@@ -47,17 +47,22 @@ Install dependencies:
 flutter pub get
 ```
 
-## 🎯 Step 3: Download a Model
+## 🎯 Step 3: Add a model
 
-Download a YOLO model and place it in your project:
+You can get the model in one of the following ways:
 
-```bash
-# Create assets folder
-mkdir -p assets/models
+1. Download from the [release assets](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.0.0) of this repository
 
-# Download YOLO11n model (or copy your own .tflite file)
-# Place yolo11n.tflite in assets/models/
-```
+2. Get it from [Ultralytics Hub](https://www.ultralytics.com/hub)
+
+3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
+
+**[📥 Download Models](./docs/install.md#models)** |
+
+Bundle the model with your app using the following method.
+
+For iOS: Drag and drop mlpackage/mlmodel directly into **ios/Runner.xcworkspace** and set target to Runner.
+
 
 ## ⚡ Step 4: Minimal Detection Code
 
@@ -92,7 +97,7 @@ class _YOLODemoState extends State<YOLODemo> {
     setState(() => isLoading = true);
 
     yolo = YOLO(
-      modelPath: 'assets/models/yolo11n.tflite',
+      modelPath: 'yolo11n',
       task: YOLOTask.detect,
     );
 
@@ -199,7 +204,7 @@ import 'package:ultralytics_yolo/yolo_view.dart';
 
 // Replace the Column with:
 YOLOView(
-  modelPath: 'assets/models/yolo11n.tflite',
+  modelPath: 'yolo11n',
   task: YOLOTask.detect,
   onResult: (results) {
     print('Detected ${results.length} objects');
@@ -238,8 +243,7 @@ final classifications = await classifier.predict(imageBytes);
 
 **App crashes on startup?**
 
-- Make sure the model file exists in `assets/models/`
-- Check that assets are listed in `pubspec.yaml`
+- Make sure the model file exists in the right place
 
 **No detections found?**
 
