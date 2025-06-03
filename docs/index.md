@@ -28,36 +28,6 @@ Welcome to the official **Ultralytics YOLO Flutter Plugin** - the most comprehen
 - **🎨 Multiple AI Tasks**: 5 different computer vision capabilities
 - **🔀 Multi-Instance**: Run multiple models simultaneously (New!)
 
-## 🌟 Multi-Instance Support
-
-Our latest feature allows you to run multiple YOLO models simultaneously:
-
-```dart
-// Run detection and segmentation models in parallel
-final detector = YOLO(
-  modelPath: 'yolo11n.tflite',
-  task: YOLOTask.detect,
-  useMultiInstance: true, // Enable multi-instance
-);
-
-final segmenter = YOLO(
-  modelPath: 'yolo11n-seg.tflite',
-  task: YOLOTask.segment,
-  useMultiInstance: true,
-);
-
-// Both models can run independently
-await detector.loadModel();
-await segmenter.loadModel();
-```
-
-Perfect for:
-
-- **Dual Analysis**: Compare detection vs segmentation results
-- **Multi-Model Workflows**: Chain different AI tasks
-- **A/B Testing**: Test different model configurations
-- **Advanced Applications**: Complex computer vision pipelines
-
 ## 🎨 Supported Tasks
 
 ### 🔍 Object Detection
