@@ -72,7 +72,7 @@ dependencies:
 flutter pub get
 ```
 
-### 3. Add models
+### 3. Add a model
 
 You can get the model in one of the following ways:
 
