@@ -43,7 +43,7 @@ YOLOView(
 )
 ```
 
-**[▶️ Try the Live Demo](./example)** | **[📖 Full Setup Guide](./docs/getting-started.md)**
+**[▶️ Try the Live Demo](./example)** | **[📖 Full Setup Guide](./docs/install.md)**
 
 ## 🎯 What You Can Build
 
@@ -55,7 +55,7 @@ YOLOView(
 | 🤸 **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture      | 20-30 FPS   |
 | 📦 **OBB Detection**   | Rotated bounding boxes         | Document analysis, Aerial imagery | 20-25 FPS   |
 
-**[📱 See Examples →](./docs/examples.md)** | **[⚡ Performance Guide →](./docs/performance.md)**
+**[📱 See Examples →](./docs/usage.md)** | **[⚡ Performance Guide →](./docs/performance.md)**
 
 ## 🚀 Installation
 
@@ -79,7 +79,7 @@ flutter pub get
 // Configure camera permissions
 ```
 
-**[📥 Download Models](./docs/getting-started.md#models)** | **[🔧 Setup Guide](./docs/getting-started.md)**
+**[📥 Download Models](./docs/install.md#models)** | **[🔧 Setup Guide](./docs/install.md)**
 
 ## 🏆 Trusted by Developers
 
@@ -94,11 +94,11 @@ flutter pub get
 
 | Guide                                                 | Description                     | For             |
 | ----------------------------------------------------- | ------------------------------- | --------------- |
-| **[Getting Started](./docs/getting-started.md)**      | Installation, setup, first app  | New users       |
-| **[Examples](./docs/examples.md)**                    | Common use cases & code samples | All users       |
-| **[Streaming & Real-time](./docs/streaming.md)**      | Advanced real-time processing   | Power users     |
+| **[Installation Guide](./docs/install.md)**           | Installation, setup, requirements| New users       |
+| **[Quick Start](./docs/quickstart.md)**               | 2-minute setup guide            | New users       |
+| **[Usage Guide](./docs/usage.md)**                    | Common use cases & code samples | All users       |
 | **[Performance Optimization](./docs/performance.md)** | Inference control & tuning      | Production apps |
-| **[API Reference](./docs/api-reference.md)**          | Complete technical reference    | Developers      |
+| **[API Reference](./docs/api.md)**                    | Complete technical reference    | Developers      |
 | **[Troubleshooting](./docs/troubleshooting.md)**      | Common issues & solutions       | All users       |
 
 ## 🤝 Community & Support
