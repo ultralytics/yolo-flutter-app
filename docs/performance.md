@@ -24,10 +24,10 @@ Optimize your YOLO Flutter app for maximum performance with proven strategies an
 | Task               | Model         | FPS Range | Best Use Case           |
 | ------------------ | ------------- | --------- | ----------------------- |
 | **Detection**      | YOLOv11n      | 25-30     | Real-time applications  |
-| **Segmentation**   | YOLOv11n-seg  | 15-25     | Photo editing  |
+| **Segmentation**   | YOLOv11n-seg  | 15-25     | Photo editing           |
 | **Classification** | YOLOv11n-cls  | 30+       | Content moderation      |
 | **Pose**           | YOLOv11n-pose | 20-30     | Fitness, motion capture |
-| **OBB**            | YOLOv11n-obb  | 20-25     | aerial photography |
+| **OBB**            | YOLOv11n-obb  | 20-25     | aerial photography      |
 
 ## 🚀 Optimization Strategies
 
