@@ -12,22 +12,22 @@ Optimize your YOLO Flutter app for maximum performance with proven strategies an
 
 ### Model Performance Comparison
 
-| Model | Size | Android (Pixel 6) | iOS (iPhone 13) | Memory Usage |
-|-------|------|-------------------|-----------------|--------------|
-| **YOLOv11n** | 6.2 MB | 25-30 FPS | 28-32 FPS | ~150 MB |
-| **YOLOv11s** | 21.5 MB | 18-22 FPS | 20-25 FPS | ~200 MB |
-| **YOLOv11m** | 49.7 MB | 12-15 FPS | 15-18 FPS | ~300 MB |
-| **YOLOv11l** | 86.9 MB | 8-10 FPS | 10-12 FPS | ~450 MB |
+| Model        | Size    | Android (Pixel 6) | iOS (iPhone 13) | Memory Usage |
+| ------------ | ------- | ----------------- | --------------- | ------------ |
+| **YOLOv11n** | 6.2 MB  | 25-30 FPS         | 28-32 FPS       | ~150 MB      |
+| **YOLOv11s** | 21.5 MB | 18-22 FPS         | 20-25 FPS       | ~200 MB      |
+| **YOLOv11m** | 49.7 MB | 12-15 FPS         | 15-18 FPS       | ~300 MB      |
+| **YOLOv11l** | 86.9 MB | 8-10 FPS          | 10-12 FPS       | ~450 MB      |
 
 ### Task Performance Comparison
 
-| Task | Model | FPS Range | Best Use Case |
-|------|-------|-----------|---------------|
-| **Detection** | YOLOv11n | 25-30 | Real-time applications |
-| **Segmentation** | YOLOv11n-seg | 15-25 | Photo editing, AR |
-| **Classification** | YOLOv11n-cls | 30+ | Content moderation |
-| **Pose** | YOLOv11n-pose | 20-30 | Fitness, motion capture |
-| **OBB** | YOLOv11n-obb | 20-25 | Document analysis |
+| Task               | Model         | FPS Range | Best Use Case           |
+| ------------------ | ------------- | --------- | ----------------------- |
+| **Detection**      | YOLOv11n      | 25-30     | Real-time applications  |
+| **Segmentation**   | YOLOv11n-seg  | 15-25     | Photo editing, AR       |
+| **Classification** | YOLOv11n-cls  | 30+       | Content moderation      |
+| **Pose**           | YOLOv11n-pose | 20-30     | Fitness, motion capture |
+| **OBB**            | YOLOv11n-obb  | 20-25     | Document analysis       |
 
 ## 🚀 Optimization Strategies
 
@@ -75,10 +75,10 @@ final classifier = YOLO(modelPath: 'yolo11n-cls.tflite', task: YOLOTask.classify
 ```dart
 class PerformanceOptimizer {
   late YOLOViewController controller;
-  
+
   Future<void> optimizeForSpeed() async {
     controller = YOLOViewController();
-    
+
     // Higher confidence = fewer detections = faster processing
     await controller.setThresholds(
       confidenceThreshold: 0.6,    // Higher threshold
@@ -86,10 +86,10 @@ class PerformanceOptimizer {
       numItemsThreshold: 10,       // Limit max detections
     );
   }
-  
+
   Future<void> optimizeForAccuracy() async {
     controller = YOLOViewController();
-    
+
     // Lower confidence = more detections = better recall
     await controller.setThresholds(
       confidenceThreshold: 0.25,   // Lower threshold
@@ -97,10 +97,10 @@ class PerformanceOptimizer {
       numItemsThreshold: 50,       // Allow more detections
     );
   }
-  
+
   Future<void> optimizeForBattery() async {
     controller = YOLOViewController();
-    
+
     // Reduce processing load
     await controller.setThresholds(
       confidenceThreshold: 0.7,    // High confidence only
@@ -142,11 +142,11 @@ class AdaptivePerformance {
   YOLOStreamingConfig _currentConfig = YOLOStreamingConfig.minimal();
   double _avgFps = 30.0;
   int _frameCount = 0;
-  
+
   void onPerformanceMetrics(YOLOPerformanceMetrics metrics) {
     _frameCount++;
     _avgFps = (_avgFps * (_frameCount - 1) + metrics.fps) / _frameCount;
-    
+
     // Adapt configuration based on performance
     if (_avgFps < 15 && metrics.processingTimeMs > 100) {
       _adaptForLowPerformance();
@@ -154,7 +154,7 @@ class AdaptivePerformance {
       _adaptForHighPerformance();
     }
   }
-  
+
   void _adaptForLowPerformance() {
     _currentConfig = YOLOStreamingConfig.powerSaving(
       inferenceFrequency: 8,
@@ -162,7 +162,7 @@ class AdaptivePerformance {
     );
     print('🔋 Adapted to power-saving mode');
   }
-  
+
   void _adaptForHighPerformance() {
     _currentConfig = YOLOStreamingConfig.throttled(
       maxFPS: 20,
@@ -182,51 +182,51 @@ class OptimizedMultiInstance {
   static const int MAX_CONCURRENT = 2;  // Limit concurrent instances
   final Map<String, YOLO> _instances = {};
   final Map<String, DateTime> _lastUsed = {};
-  
+
   Future<YOLO> getOrCreateInstance(String modelPath, YOLOTask task) async {
     final key = '${modelPath}_${task.name}';
-    
+
     // Return existing instance if available
     if (_instances.containsKey(key)) {
       _lastUsed[key] = DateTime.now();
       return _instances[key]!;
     }
-    
+
     // Clean up old instances if at limit
     if (_instances.length >= MAX_CONCURRENT) {
       await _cleanupOldestInstance();
     }
-    
+
     // Create new instance
     final yolo = YOLO(
       modelPath: modelPath,
       task: task,
       useMultiInstance: true,
     );
-    
+
     await yolo.loadModel();
     _instances[key] = yolo;
     _lastUsed[key] = DateTime.now();
-    
+
     return yolo;
   }
-  
+
   Future<void> _cleanupOldestInstance() async {
     if (_lastUsed.isEmpty) return;
-    
+
     // Find oldest instance
     final oldestKey = _lastUsed.entries
         .reduce((a, b) => a.value.isBefore(b.value) ? a : b)
         .key;
-    
+
     // Dispose and remove
     await _instances[oldestKey]?.dispose();
     _instances.remove(oldestKey);
     _lastUsed.remove(oldestKey);
-    
+
     print('🗑️ Cleaned up instance: $oldestKey');
   }
-  
+
   Future<void> disposeAll() async {
     await Future.wait(_instances.values.map((yolo) => yolo.dispose()));
     _instances.clear();
@@ -241,7 +241,7 @@ class OptimizedMultiInstance {
 class SmartInstanceManager {
   final Map<YOLOTask, YOLO> _taskInstances = {};
   bool _isHighMemoryPressure = false;
-  
+
   Future<YOLO> getInstanceForTask(YOLOTask task) async {
     // Use task-specific instance or create new one
     if (!_taskInstances.containsKey(task)) {
@@ -253,13 +253,13 @@ class SmartInstanceManager {
       );
       await _taskInstances[task]!.loadModel();
     }
-    
+
     return _taskInstances[task]!;
   }
-  
+
   Future<void> handleMemoryPressure() async {
     _isHighMemoryPressure = true;
-    
+
     // Keep only the most recently used instance
     if (_taskInstances.length > 1) {
       final tasks = _taskInstances.keys.toList();
@@ -270,7 +270,7 @@ class SmartInstanceManager {
       print('🔴 Memory pressure: Reduced to ${_taskInstances.length} instances');
     }
   }
-  
+
   String _getModelPathForTask(YOLOTask task) {
     switch (task) {
       case YOLOTask.detect:
@@ -330,13 +330,13 @@ android {
             abiFilters 'arm64-v8a', 'armeabi-v7a'
         }
     }
-    
+
     buildTypes {
         release {
             // Enable code shrinking
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            
+
             // Optimize for performance
             debuggable false
             jniDebuggable false
@@ -369,7 +369,7 @@ class HighEndOptimization {
     // Implement device detection logic
     return true; // Placeholder
   }
-  
+
   static YOLOStreamingConfig getOptimalConfig() {
     return YOLOStreamingConfig(
       includeDetections: true,
@@ -379,7 +379,7 @@ class HighEndOptimization {
       inferenceFrequency: 25,
     );
   }
-  
+
   static String getOptimalModelPath(YOLOTask task) {
     // Use larger models for better accuracy
     switch (task) {
@@ -403,7 +403,7 @@ class MidRangeOptimization {
       includeOriginalImage: false,
     );
   }
-  
+
   static Map<String, double> getOptimalThresholds() {
     return {
       'confidence': 0.5,            // Balanced threshold
@@ -424,7 +424,7 @@ class LowEndOptimization {
       maxFPS: 10,
     );
   }
-  
+
   static Map<String, double> getOptimalThresholds() {
     return {
       'confidence': 0.7,            // High threshold for fewer detections
@@ -444,53 +444,53 @@ class PerformanceTracker {
   final List<double> _fpsHistory = [];
   final List<double> _timeHistory = [];
   final int _maxHistoryLength = 100;
-  
+
   Timer? _reportTimer;
-  
+
   void startTracking() {
     _reportTimer = Timer.periodic(Duration(seconds: 5), (_) {
       _generatePerformanceReport();
     });
   }
-  
+
   void onPerformanceUpdate(YOLOPerformanceMetrics metrics) {
     _fpsHistory.add(metrics.fps);
     _timeHistory.add(metrics.processingTimeMs);
-    
+
     // Maintain history size
     if (_fpsHistory.length > _maxHistoryLength) {
       _fpsHistory.removeAt(0);
       _timeHistory.removeAt(0);
     }
-    
+
     // Check for performance issues
     _checkPerformanceIssues(metrics);
   }
-  
+
   void _checkPerformanceIssues(YOLOPerformanceMetrics metrics) {
     if (metrics.fps < 10) {
       print('⚠️ Low FPS detected: ${metrics.fps.toStringAsFixed(1)}');
       _suggestOptimizations();
     }
-    
+
     if (metrics.processingTimeMs > 200) {
       print('⚠️ Slow processing: ${metrics.processingTimeMs.toStringAsFixed(1)}ms');
       _suggestOptimizations();
     }
-    
+
     if (metrics.hasPerformanceIssues) {
       print('⚠️ Performance rating: ${metrics.performanceRating}');
     }
   }
-  
+
   void _generatePerformanceReport() {
     if (_fpsHistory.isEmpty) return;
-    
+
     final avgFps = _fpsHistory.reduce((a, b) => a + b) / _fpsHistory.length;
     final avgTime = _timeHistory.reduce((a, b) => a + b) / _timeHistory.length;
     final minFps = _fpsHistory.reduce(math.min);
     final maxTime = _timeHistory.reduce(math.max);
-    
+
     print('📊 Performance Report:');
     print('  Average FPS: ${avgFps.toStringAsFixed(1)}');
     print('  Average Time: ${avgTime.toStringAsFixed(1)}ms');
@@ -498,14 +498,14 @@ class PerformanceTracker {
     print('  Max Time: ${maxTime.toStringAsFixed(1)}ms');
     print('  Performance: ${_getOverallRating(avgFps, avgTime)}');
   }
-  
+
   String _getOverallRating(double avgFps, double avgTime) {
     if (avgFps >= 20 && avgTime <= 80) return 'Excellent ⭐⭐⭐⭐⭐';
     if (avgFps >= 15 && avgTime <= 120) return 'Good ⭐⭐⭐⭐';
     if (avgFps >= 10 && avgTime <= 160) return 'Fair ⭐⭐⭐';
     return 'Poor ⭐⭐';
   }
-  
+
   void _suggestOptimizations() {
     print('💡 Optimization suggestions:');
     print('  • Try a smaller model (yolo11n)');
@@ -513,7 +513,7 @@ class PerformanceTracker {
     print('  • Reduce maxFPS in streaming config');
     print('  • Disable masks and poses if not needed');
   }
-  
+
   void stopTracking() {
     _reportTimer?.cancel();
   }
@@ -526,34 +526,34 @@ class PerformanceTracker {
 class MemoryMonitor {
   Timer? _monitorTimer;
   int _peakMemoryMB = 0;
-  
+
   void startMonitoring() {
     _monitorTimer = Timer.periodic(Duration(seconds: 2), (_) {
       _checkMemoryUsage();
     });
   }
-  
+
   void _checkMemoryUsage() {
     // Platform-specific memory checking would go here
     // This is a simplified example
     final estimatedMemory = _estimateCurrentMemoryUsage();
-    
+
     if (estimatedMemory > _peakMemoryMB) {
       _peakMemoryMB = estimatedMemory;
     }
-    
+
     if (estimatedMemory > 400) { // > 400MB
       print('⚠️ High memory usage: ${estimatedMemory}MB');
       _suggestMemoryOptimizations();
     }
   }
-  
+
   int _estimateCurrentMemoryUsage() {
     // Simplified estimation based on active instances
     final activeInstances = YOLOInstanceManager.getActiveInstanceIds().length;
     return 100 + (activeInstances * 150); // Base + per instance
   }
-  
+
   void _suggestMemoryOptimizations() {
     print('🔋 Memory optimization suggestions:');
     print('  • Dispose unused YOLO instances');
@@ -561,7 +561,7 @@ class MemoryMonitor {
     print('  • Limit concurrent instances');
     print('  • Disable original image in streaming');
   }
-  
+
   void stopMonitoring() {
     _monitorTimer?.cancel();
   }
@@ -604,19 +604,19 @@ class MemoryMonitor {
 // ✅ Good: Reuse instances
 class GoodPattern {
   late final YOLO _yolo;
-  
+
   Future<void> init() async {
     _yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
     await _yolo.loadModel();
   }
-  
+
   Future<List<dynamic>> predict(Uint8List image) async {
     final results = await _yolo.predict(image);
     return results['boxes'];
   }
 }
 
-// ❌ Bad: Create new instances repeatedly  
+// ❌ Bad: Create new instances repeatedly
 class BadPattern {
   Future<List<dynamic>> predict(Uint8List image) async {
     final yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
@@ -640,26 +640,26 @@ class PerformanceBenchmark {
   ) async {
     final yolo = YOLO(modelPath: modelPath, task: YOLOTask.detect);
     await yolo.loadModel();
-    
+
     final List<double> inferenceTimes = [];
     final stopwatch = Stopwatch();
-    
+
     for (final image in testImages) {
       stopwatch.reset();
       stopwatch.start();
-      
+
       await yolo.predict(image);
-      
+
       stopwatch.stop();
       inferenceTimes.add(stopwatch.elapsedMilliseconds.toDouble());
     }
-    
+
     await yolo.dispose();
-    
+
     final avgTime = inferenceTimes.reduce((a, b) => a + b) / inferenceTimes.length;
     final minTime = inferenceTimes.reduce(math.min);
     final maxTime = inferenceTimes.reduce(math.max);
-    
+
     return {
       'model': modelPath,
       'samples': testImages.length,

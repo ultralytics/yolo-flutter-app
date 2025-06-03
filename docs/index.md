@@ -10,14 +10,14 @@ Welcome to the official **Ultralytics YOLO Flutter Plugin** - the most comprehen
 
 ## 🚀 Key Features
 
-| Feature | Android | iOS | Performance |
-|---------|---------|-----|-------------|
-| **Object Detection** | ✅ | ✅ | 25-30 FPS |
-| **Instance Segmentation** | ✅ | ✅ | 15-25 FPS |
-| **Image Classification** | ✅ | ✅ | 30+ FPS |
-| **Pose Estimation** | ✅ | ✅ | 20-30 FPS |
-| **Oriented Bounding Boxes** | ✅ | ✅ | 20-25 FPS |
-| **Multi-Instance Support** | ✅ | ✅ | Variable |
+| Feature                     | Android | iOS | Performance |
+| --------------------------- | ------- | --- | ----------- |
+| **Object Detection**        | ✅      | ✅  | 25-30 FPS   |
+| **Instance Segmentation**   | ✅      | ✅  | 15-25 FPS   |
+| **Image Classification**    | ✅      | ✅  | 30+ FPS     |
+| **Pose Estimation**         | ✅      | ✅  | 20-30 FPS   |
+| **Oriented Bounding Boxes** | ✅      | ✅  | 20-25 FPS   |
+| **Multi-Instance Support**  | ✅      | ✅  | Variable    |
 
 ## 🎯 Why Choose YOLO Flutter?
 
@@ -41,7 +41,7 @@ final detector = YOLO(
 );
 
 final segmenter = YOLO(
-  modelPath: 'yolo11n-seg.tflite', 
+  modelPath: 'yolo11n-seg.tflite',
   task: YOLOTask.segment,
   useMultiInstance: true,
 );
@@ -52,6 +52,7 @@ await segmenter.loadModel();
 ```
 
 Perfect for:
+
 - **Dual Analysis**: Compare detection vs segmentation results
 - **Multi-Model Workflows**: Chain different AI tasks
 - **A/B Testing**: Test different model configurations
@@ -60,31 +61,41 @@ Perfect for:
 ## 🎨 Supported Tasks
 
 ### 🔍 Object Detection
+
 Detect and locate objects in images with bounding boxes.
+
 ```dart
 final yolo = YOLO(modelPath: 'yolo11n.tflite', task: YOLOTask.detect);
 ```
 
-### 🎭 Instance Segmentation  
+### 🎭 Instance Segmentation
+
 Get pixel-perfect masks for each detected object.
+
 ```dart
 final yolo = YOLO(modelPath: 'yolo11n-seg.tflite', task: YOLOTask.segment);
 ```
 
 ### 🏷️ Classification
+
 Classify entire images into categories.
+
 ```dart
 final yolo = YOLO(modelPath: 'yolo11n-cls.tflite', task: YOLOTask.classify);
 ```
 
 ### 🤸 Pose Estimation
+
 Detect human poses and keypoints.
+
 ```dart
 final yolo = YOLO(modelPath: 'yolo11n-pose.tflite', task: YOLOTask.pose);
 ```
 
 ### 📦 Oriented Bounding Box (OBB)
+
 Detect objects with rotated bounding boxes.
+
 ```dart
 final yolo = YOLO(modelPath: 'yolo11n-obb.tflite', task: YOLOTask.obb);
 ```
@@ -94,7 +105,7 @@ final yolo = YOLO(modelPath: 'yolo11n-obb.tflite', task: YOLOTask.obb);
 Explore our comprehensive documentation:
 
 - **[📦 Installation](install.md)** - Add the plugin to your Flutter project
-- **[⚡ Quick Start](quickstart.md)** - Get running in 2 minutes  
+- **[⚡ Quick Start](quickstart.md)** - Get running in 2 minutes
 - **[📖 Usage Guide](usage.md)** - Comprehensive examples and patterns
 - **[🔧 API Reference](api.md)** - Complete API documentation
 - **[🚀 Performance](performance.md)** - Optimization tips and benchmarks
@@ -107,14 +118,15 @@ The YOLO Flutter Plugin uses a hybrid architecture:
 ```
 Flutter App Layer
     ↓
-Method Channel Bridge  
+Method Channel Bridge
     ↓
 Native Platform Layer (iOS/Android)
-    ↓  
+    ↓
 YOLO Model Inference Engine
 ```
 
 For multi-instance support, each instance gets:
+
 - Unique instance ID
 - Dedicated method channel
 - Independent model lifecycle
@@ -123,12 +135,14 @@ For multi-instance support, each instance gets:
 ## 🎯 Use Cases
 
 ### 📱 Mobile Applications
+
 - **Security Apps**: Real-time surveillance and monitoring
 - **Retail Apps**: Product recognition and inventory management
 - **Health Apps**: Pose analysis for fitness and rehabilitation
 - **Camera Apps**: Enhanced photography with AI effects
 
-### 🏢 Enterprise Solutions  
+### 🏢 Enterprise Solutions
+
 - **Quality Control**: Automated defect detection in manufacturing
 - **Logistics**: Package and barcode recognition
 - **Agriculture**: Crop monitoring and pest detection
@@ -137,7 +151,7 @@ For multi-instance support, each instance gets:
 ## 🔮 Roadmap
 
 - ✅ Multi-instance support (v0.1.16+)
-- ✅ Performance optimization (v0.1.15+) 
+- ✅ Performance optimization (v0.1.15+)
 - ✅ Streaming configuration (v0.1.16+)
 - 🔄 Custom model training integration
 - 🔄 Advanced streaming modes

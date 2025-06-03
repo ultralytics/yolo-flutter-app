@@ -31,14 +31,14 @@ Add to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  flutter:
-    sdk: flutter
-  ultralytics_yolo: ^0.1.16
-  image_picker: ^0.8.7  # For image selection
+    flutter:
+        sdk: flutter
+    ultralytics_yolo: ^0.1.16
+    image_picker: ^0.8.7 # For image selection
 
 flutter:
-  assets:
-    - assets/models/
+    assets:
+        - assets/models/
 ```
 
 Install dependencies:
@@ -90,12 +90,12 @@ class _YOLODemoState extends State<YOLODemo> {
 
   Future<void> loadYOLO() async {
     setState(() => isLoading = true);
-    
+
     yolo = YOLO(
       modelPath: 'assets/models/yolo11n.tflite',
       task: YOLOTask.detect,
     );
-    
+
     await yolo!.loadModel();
     setState(() => isLoading = false);
   }
@@ -103,7 +103,7 @@ class _YOLODemoState extends State<YOLODemo> {
   Future<void> pickAndDetect() async {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.gallery);
-    
+
     if (image != null) {
       setState(() {
         selectedImage = File(image.path);
@@ -112,7 +112,7 @@ class _YOLODemoState extends State<YOLODemo> {
 
       final imageBytes = await selectedImage!.readAsBytes();
       final detectionResults = await yolo!.predict(imageBytes);
-      
+
       setState(() {
         results = detectionResults['boxes'] ?? [];
         isLoading = false;
@@ -134,23 +134,23 @@ class _YOLODemoState extends State<YOLODemo> {
                   height: 300,
                   child: Image.file(selectedImage!),
                 ),
-              
+
               SizedBox(height: 20),
-              
+
               if (isLoading)
                 CircularProgressIndicator()
               else
                 Text('Detected ${results.length} objects'),
-              
+
               SizedBox(height: 20),
-              
+
               ElevatedButton(
                 onPressed: yolo != null ? pickAndDetect : null,
                 child: Text('Pick Image & Detect'),
               ),
-              
+
               SizedBox(height: 20),
-              
+
               // Show detection results
               Expanded(
                 child: ListView.builder(
@@ -186,7 +186,7 @@ flutter run
 You now have a working YOLO object detection app! The app will:
 
 1. **Load the YOLO model** when it starts
-2. **Let you pick an image** from your gallery  
+2. **Let you pick an image** from your gallery
 3. **Detect objects** in the selected image
 4. **Show results** with class names and confidence scores
 
@@ -220,7 +220,7 @@ final detector = YOLO(
 );
 
 final classifier = YOLO(
-  modelPath: 'assets/models/yolo11n-cls.tflite', 
+  modelPath: 'assets/models/yolo11n-cls.tflite',
   task: YOLOTask.classify,
   useMultiInstance: true,
 );
@@ -237,15 +237,18 @@ final classifications = await classifier.predict(imageBytes);
 ## 🛠️ Troubleshooting
 
 **App crashes on startup?**
+
 - Make sure the model file exists in `assets/models/`
 - Check that assets are listed in `pubspec.yaml`
 
 **No detections found?**
+
 - Try a different image with clear objects
 - Check model file is not corrupted
 - Verify model matches the task type
 
 **Build errors?**
+
 - Run `flutter clean && flutter pub get`
 - Check minimum SDK versions in installation guide
 
@@ -254,7 +257,7 @@ final classifications = await classifier.predict(imageBytes);
 Now that you have YOLO working, explore more features:
 
 - **[📖 Usage Guide](usage.md)** - Advanced patterns and examples
-- **[🔧 API Reference](api.md)** - Complete API documentation  
+- **[🔧 API Reference](api.md)** - Complete API documentation
 - **[🚀 Performance](performance.md)** - Optimization tips
 - **[🛠️ Troubleshooting](troubleshooting.md)** - Common issues and solutions
 

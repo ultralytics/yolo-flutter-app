@@ -14,9 +14,9 @@ Add the plugin to your Flutter project's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  flutter:
-    sdk: flutter
-  ultralytics_yolo: ^0.1.16  # Latest version
+    flutter:
+        sdk: flutter
+    ultralytics_yolo: ^0.1.16 # Latest version
 ```
 
 Run the installation command:
@@ -116,7 +116,7 @@ your_flutter_app/
 ├── assets/
 │   └── models/
 │       ├── yolo11n.tflite          # Object detection
-│       ├── yolo11n-seg.tflite      # Segmentation  
+│       ├── yolo11n-seg.tflite      # Segmentation
 │       ├── yolo11n-cls.tflite      # Classification
 │       ├── yolo11n-pose.tflite     # Pose estimation
 │       └── yolo11n-obb.tflite      # Oriented bounding boxes
@@ -127,8 +127,8 @@ Update `pubspec.yaml` to include assets:
 
 ```yaml
 flutter:
-  assets:
-    - assets/models/
+    assets:
+        - assets/models/
 ```
 
 ## ✅ Verify Installation
@@ -154,10 +154,10 @@ class TestYOLO extends StatelessWidget {
                 modelPath: 'assets/models/yolo11n.tflite',
                 task: YOLOTask.detect,
               );
-              
+
               await yolo.loadModel();
               print('✅ YOLO loaded successfully!');
-              
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('YOLO plugin working!')),
               );
@@ -207,11 +207,13 @@ android {
 ## 🛠️ Development vs Production
 
 ### Development Setup
+
 - Use smaller models (yolo11n) for faster iteration
 - Enable debug logging
 - Test on real devices for accurate performance
 
-### Production Setup  
+### Production Setup
+
 - Optimize model size vs accuracy trade-offs
 - Enable ProGuard/R8 code shrinking
 - Test memory usage under load
@@ -219,18 +221,19 @@ android {
 
 ## 📋 Requirements Summary
 
-| Platform | Minimum Version | Recommended |
-|----------|----------------|-------------|
-| **iOS** | 12.0+ | 14.0+ |
-| **Android** | API 24+ | API 28+ |
-| **Flutter** | 3.3.0+ | Latest stable |
-| **Dart** | 3.0.0+ | Latest stable |
+| Platform    | Minimum Version | Recommended   |
+| ----------- | --------------- | ------------- |
+| **iOS**     | 12.0+           | 14.0+         |
+| **Android** | API 24+         | API 28+       |
+| **Flutter** | 3.3.0+          | Latest stable |
+| **Dart**    | 3.0.0+          | Latest stable |
 
 ## 🔍 Troubleshooting Installation
 
 ### Common Issues
 
 **Issue**: `MissingPluginException`
+
 ```bash
 # Solution: Clean and rebuild
 flutter clean
@@ -239,17 +242,20 @@ flutter run
 ```
 
 **Issue**: iOS build fails with "No such module"
+
 ```bash
 # Solution: Update pods
 cd ios && pod install --repo-update
 ```
 
 **Issue**: Android build fails with "API level" error
+
 ```bash
 # Solution: Update compileSdkVersion and targetSdkVersion in android/app/build.gradle
 ```
 
 **Issue**: Model file not found
+
 ```bash
 # Solution: Verify assets are correctly configured in pubspec.yaml
 flutter packages get

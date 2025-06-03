@@ -15,15 +15,17 @@ Comprehensive solutions for common issues with the Ultralytics YOLO Flutter plug
 **Symptoms**: `MissingPluginException(No implementation found for method)`
 
 **Solution**:
+
 ```bash
 # Clean and rebuild completely
 flutter clean
 flutter pub get
-cd ios && pod install --repo-update  # iOS only
+cd ios && pod install --repo-update # iOS only
 flutter run
 ```
 
 **Alternative solution**:
+
 ```bash
 # If above doesn't work, try hot restart instead of hot reload
 # In IDE: Stop app completely and restart
@@ -35,9 +37,10 @@ flutter run
 #### "No such module 'ultralytics_yolo'"
 
 **Solution**:
+
 ```bash
 cd ios
-pod deintegrate  # Remove existing pods
+pod deintegrate # Remove existing pods
 pod install --repo-update
 cd .. && flutter run
 ```
@@ -47,6 +50,7 @@ cd .. && flutter run
 **Symptoms**: `The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 8.0`
 
 **Solution**: Update `ios/Podfile`:
+
 ```ruby
 # ios/Podfile
 platform :ios, '12.0'  # Change to 12.0 or higher
@@ -68,6 +72,7 @@ end
 **Symptoms**: `uses-sdk:minSdkVersion 16 cannot be smaller than version 24`
 
 **Solution**: Update `android/app/build.gradle`:
+
 ```gradle
 android {
     defaultConfig {
@@ -83,6 +88,7 @@ android {
 **Symptoms**: `Cannot fit requested classes in a single dex file`
 
 **Solution**: Enable MultiDex in `android/app/build.gradle`:
+
 ```gradle
 android {
     defaultConfig {
@@ -102,6 +108,7 @@ dependencies {
 **Symptoms**: `ModelLoadingException: Model file not found`
 
 **Debugging Steps**:
+
 ```dart
 // 1. Check if model exists
 final modelExists = await YOLO.checkModelExists('assets/models/yolo11n.tflite');
@@ -116,13 +123,15 @@ print('Storage paths: $storagePaths');
 **Common Solutions**:
 
 1. **Verify pubspec.yaml**:
+
 ```yaml
 flutter:
-  assets:
-    - assets/models/  # Must end with /
+    assets:
+        - assets/models/ # Must end with /
 ```
 
 2. **Check file structure**:
+
 ```
 your_app/
 ├── assets/
@@ -132,6 +141,7 @@ your_app/
 ```
 
 3. **Refresh assets**:
+
 ```bash
 flutter packages get
 flutter clean
@@ -143,6 +153,7 @@ flutter run
 **Symptoms**: `InferenceException: Model inference failed`
 
 **Solutions**:
+
 1. **Re-download model**: Corrupt download is common
 2. **Verify file size**: Check against official model size
 3. **Test with different model**: Try yolo11n.tflite first
@@ -154,7 +165,7 @@ try {
     modelPath: 'assets/models/yolo11n.tflite',
     task: YOLOTask.detect,
   );
-  
+
   final success = await yolo.loadModel();
   print('Model loaded: $success');
 } catch (e) {
@@ -173,11 +184,12 @@ try {
 **Solutions**:
 
 1. **Limit concurrent instances**:
+
 ```dart
 class MemoryManager {
   static const int MAX_INSTANCES = 2;
   static final Map<String, YOLO> _instances = {};
-  
+
   static Future<YOLO> getOrCreateInstance(String modelPath) async {
     if (_instances.length >= MAX_INSTANCES) {
       // Dispose oldest instance
@@ -185,7 +197,7 @@ class MemoryManager {
       await oldest.value.dispose();
       _instances.remove(oldest.key);
     }
-    
+
     if (!_instances.containsKey(modelPath)) {
       final yolo = YOLO(
         modelPath: modelPath,
@@ -195,13 +207,14 @@ class MemoryManager {
       await yolo.loadModel();
       _instances[modelPath] = yolo;
     }
-    
+
     return _instances[modelPath]!;
   }
 }
 ```
 
 2. **Use smaller models**:
+
 ```dart
 // Instead of yolo11l.tflite (86MB)
 // Use yolo11n.tflite (6MB)
@@ -212,6 +225,7 @@ final yolo = YOLO(
 ```
 
 3. **Dispose properly**:
+
 ```dart
 @override
 void dispose() {
@@ -223,18 +237,19 @@ void dispose() {
 #### iOS Memory Warnings
 
 **Solution**: Monitor and respond to memory pressure:
+
 ```dart
 class MemoryAwareYOLO {
   YOLO? _primaryInstance;
   List<YOLO> _secondaryInstances = [];
-  
+
   Future<void> handleMemoryWarning() async {
     // Dispose secondary instances first
     for (final instance in _secondaryInstances) {
       await instance.dispose();
     }
     _secondaryInstances.clear();
-    
+
     print('🔋 Memory warning: Disposed secondary instances');
   }
 }
@@ -245,6 +260,7 @@ class MemoryAwareYOLO {
 #### Low FPS / Slow Inference
 
 **Debugging**:
+
 ```dart
 class PerformanceDebugger {
   void onPerformanceMetrics(YOLOPerformanceMetrics metrics) {
@@ -252,13 +268,13 @@ class PerformanceDebugger {
     print('  FPS: ${metrics.fps.toStringAsFixed(1)}');
     print('  Processing: ${metrics.processingTimeMs.toStringAsFixed(1)}ms');
     print('  Rating: ${metrics.performanceRating}');
-    
+
     if (metrics.hasPerformanceIssues) {
       print('⚠️ Performance issues detected!');
       _suggestOptimizations();
     }
   }
-  
+
   void _suggestOptimizations() {
     print('💡 Try these optimizations:');
     print('  • Use yolo11n instead of larger models');
@@ -272,6 +288,7 @@ class PerformanceDebugger {
 **Solutions**:
 
 1. **Optimize thresholds**:
+
 ```dart
 // High-performance settings
 await controller.setThresholds(
@@ -282,6 +299,7 @@ await controller.setThresholds(
 ```
 
 2. **Use efficient streaming**:
+
 ```dart
 final config = YOLOStreamingConfig.powerSaving(
   inferenceFrequency: 10,  // 10 FPS inference
@@ -290,12 +308,13 @@ final config = YOLOStreamingConfig.powerSaving(
 ```
 
 3. **Profile on real devices**:
+
 ```bash
 # Android profiling
 flutter run --profile
 # Monitor in Android Studio Profiler
 
-# iOS profiling  
+# iOS profiling
 flutter run --profile
 # Monitor in Xcode Instruments
 ```
@@ -305,12 +324,14 @@ flutter run --profile
 #### Camera Permission Denied
 
 **Android Solution**:
+
 ```xml
 <!-- android/app/src/main/AndroidManifest.xml -->
 <uses-permission android:name="android.permission.CAMERA" />
 ```
 
 Request permission in code:
+
 ```dart
 import 'package:permission_handler/permission_handler.dart';
 
@@ -323,6 +344,7 @@ Future<void> requestCameraPermission() async {
 ```
 
 **iOS Solution**:
+
 ```xml
 <!-- ios/Runner/Info.plist -->
 <key>NSCameraUsageDescription</key>
@@ -332,6 +354,7 @@ Future<void> requestCameraPermission() async {
 #### YOLOView Not Showing Camera
 
 **Debugging**:
+
 ```dart
 YOLOView(
   modelPath: 'assets/models/yolo11n.tflite',
@@ -347,6 +370,7 @@ YOLOView(
 ```
 
 **Solutions**:
+
 1. **Check permissions** (see above)
 2. **Verify model loading** before camera starts
 3. **Test on real device** (not emulator)
@@ -358,6 +382,7 @@ YOLOView(
 **Symptoms**: Multiple instances interfering with each other
 
 **Solution**: Use proper instance management:
+
 ```dart
 class ProperInstanceManager {
   Future<YOLO> createUniqueInstance(String modelPath, YOLOTask task) async {
@@ -366,13 +391,13 @@ class ProperInstanceManager {
       task: task,
       useMultiInstance: true,  // Must be true for multi-instance
     );
-    
+
     await yolo.loadModel();
-    
+
     // Verify instance is registered
     final isRegistered = YOLOInstanceManager.hasInstance(yolo.instanceId);
     print('Instance ${yolo.instanceId} registered: $isRegistered');
-    
+
     return yolo;
   }
 }
@@ -381,6 +406,7 @@ class ProperInstanceManager {
 ### Memory Leaks in Multi-Instance
 
 **Debugging**: Track active instances:
+
 ```dart
 void debugInstances() {
   final activeIds = YOLOInstanceManager.getActiveInstanceIds();
@@ -392,32 +418,33 @@ void debugInstances() {
 ```
 
 **Solution**: Proper cleanup:
+
 ```dart
 class InstanceCleanup {
   final List<YOLO> _managedInstances = [];
-  
+
   Future<YOLO> createManagedInstance(String modelPath, YOLOTask task) async {
     final yolo = YOLO(
       modelPath: modelPath,
       task: task,
       useMultiInstance: true,
     );
-    
+
     await yolo.loadModel();
     _managedInstances.add(yolo);
-    
+
     return yolo;
   }
-  
+
   Future<void> disposeAll() async {
     print('Disposing ${_managedInstances.length} instances');
-    
+
     await Future.wait(
       _managedInstances.map((yolo) => yolo.dispose()),
     );
-    
+
     _managedInstances.clear();
-    
+
     // Verify cleanup
     final remaining = YOLOInstanceManager.getActiveInstanceIds();
     print('Remaining instances: ${remaining.length}');
@@ -432,16 +459,17 @@ class InstanceCleanup {
 **Cause**: Wrong image format or size
 
 **Solution**:
+
 ```dart
 Future<Uint8List> prepareImageBytes(File imageFile) async {
   // Ensure image is in correct format
   final bytes = await imageFile.readAsBytes();
-  
+
   // Verify it's a valid image
   if (bytes.length < 100) {
     throw InvalidInputException('Image file too small or corrupted');
   }
-  
+
   return bytes;
 }
 ```
@@ -451,6 +479,7 @@ Future<Uint8List> prepareImageBytes(File imageFile) async {
 **Cause**: Using wrong model for task
 
 **Solution**:
+
 ```dart
 // ❌ Wrong: detection model with pose task
 final yolo = YOLO(
@@ -458,7 +487,7 @@ final yolo = YOLO(
   task: YOLOTask.pose,                             // Pose task
 );
 
-// ✅ Correct: pose model with pose task  
+// ✅ Correct: pose model with pose task
 final yolo = YOLO(
   modelPath: 'assets/models/yolo11n-pose.tflite', // Pose model
   task: YOLOTask.pose,                             // Pose task
@@ -470,16 +499,17 @@ final yolo = YOLO(
 **Cause**: Calling methods before view is ready
 
 **Solution**:
+
 ```dart
 class SafeViewController {
   YOLOViewController? _controller;
   bool _isViewReady = false;
-  
+
   void onViewCreated(YOLOViewController controller) {
     _controller = controller;
     _isViewReady = true;
   }
-  
+
   Future<void> safeSetThresholds(double confidence) async {
     if (_isViewReady && _controller != null) {
       await _controller!.setConfidenceThreshold(confidence);
@@ -500,7 +530,7 @@ import 'package:ultralytics_yolo/utils/logger.dart';
 void main() {
   // Enable debug logging
   logInfo('Debug mode enabled');
-  
+
   runApp(MyApp());
 }
 ```
@@ -510,36 +540,36 @@ void main() {
 ```dart
 class DebugProfiler {
   late Stopwatch _stopwatch;
-  
+
   void startProfiling() {
     _stopwatch = Stopwatch()..start();
   }
-  
+
   void logPerformance(String operation) {
     _stopwatch.stop();
     print('⏱️ $operation took: ${_stopwatch.elapsedMilliseconds}ms');
     _stopwatch.reset();
     _stopwatch.start();
   }
-  
+
   Future<void> profileYOLOOperations() async {
     startProfiling();
-    
+
     final yolo = YOLO(
       modelPath: 'assets/models/yolo11n.tflite',
       task: YOLOTask.detect,
     );
     logPerformance('YOLO instantiation');
-    
+
     await yolo.loadModel();
     logPerformance('Model loading');
-    
+
     final imageBytes = await loadTestImage();
     logPerformance('Image loading');
-    
+
     final results = await yolo.predict(imageBytes);
     logPerformance('Inference');
-    
+
     await yolo.dispose();
     logPerformance('Disposal');
   }

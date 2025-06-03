@@ -26,19 +26,19 @@ class YOLO {
 
 #### Constructor Parameters
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `modelPath` | `String` | ✅ | - | Path to the YOLO model file (.tflite) |
-| `task` | `YOLOTask` | ✅ | - | Type of YOLO task to perform |
-| `useMultiInstance` | `bool` | ❌ | `false` | Enable multi-instance support |
+| Parameter          | Type       | Required | Default | Description                           |
+| ------------------ | ---------- | -------- | ------- | ------------------------------------- |
+| `modelPath`        | `String`   | ✅       | -       | Path to the YOLO model file (.tflite) |
+| `task`             | `YOLOTask` | ✅       | -       | Type of YOLO task to perform          |
+| `useMultiInstance` | `bool`     | ❌       | `false` | Enable multi-instance support         |
 
 #### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `instanceId` | `String` | Unique identifier for this YOLO instance |
-| `modelPath` | `String` | Path to the loaded model file |
-| `task` | `YOLOTask` | Current task type |
+| Property     | Type       | Description                              |
+| ------------ | ---------- | ---------------------------------------- |
+| `instanceId` | `String`   | Unique identifier for this YOLO instance |
+| `modelPath`  | `String`   | Path to the loaded model file            |
+| `task`       | `YOLOTask` | Current task type                        |
 
 #### Methods
 
@@ -53,10 +53,12 @@ Future<bool> loadModel()
 **Returns**: `Future<bool>` - `true` if model loaded successfully
 
 **Throws**:
+
 - `ModelLoadingException` - If model file cannot be found or loaded
 - `PlatformException` - If platform-specific error occurs
 
 **Example**:
+
 ```dart
 final yolo = YOLO(modelPath: 'assets/models/yolo11n.tflite', task: YOLOTask.detect);
 final success = await yolo.loadModel();
@@ -79,20 +81,22 @@ Future<Map<String, dynamic>> predict(
 
 **Parameters**:
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `imageBytes` | `Uint8List` | ✅ | - | Raw image data |
-| `confidenceThreshold` | `double?` | ❌ | `0.25` | Confidence threshold (0.0-1.0) |
-| `iouThreshold` | `double?` | ❌ | `0.4` | IoU threshold for NMS (0.0-1.0) |
+| Parameter             | Type        | Required | Default | Description                     |
+| --------------------- | ----------- | -------- | ------- | ------------------------------- |
+| `imageBytes`          | `Uint8List` | ✅       | -       | Raw image data                  |
+| `confidenceThreshold` | `double?`   | ❌       | `0.25`  | Confidence threshold (0.0-1.0)  |
+| `iouThreshold`        | `double?`   | ❌       | `0.4`   | IoU threshold for NMS (0.0-1.0) |
 
 **Returns**: `Future<Map<String, dynamic>>` - Prediction results
 
 **Throws**:
+
 - `ModelNotLoadedException` - If model not loaded
 - `InvalidInputException` - If input parameters invalid
 - `InferenceException` - If inference fails
 
 **Example**:
+
 ```dart
 final imageBytes = await File('image.jpg').readAsBytes();
 final results = await yolo.predict(
@@ -112,12 +116,13 @@ Future<void> switchModel(String newModelPath, YOLOTask newTask)
 
 **Parameters**:
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `newModelPath` | `String` | Path to the new model file |
-| `newTask` | `YOLOTask` | Task type for the new model |
+| Parameter      | Type       | Description                 |
+| -------------- | ---------- | --------------------------- |
+| `newModelPath` | `String`   | Path to the new model file  |
+| `newTask`      | `YOLOTask` | Task type for the new model |
 
 **Throws**:
+
 - `StateError` - If view not initialized
 - `ModelLoadingException` - If model switch fails
 
@@ -130,6 +135,7 @@ Future<void> dispose()
 ```
 
 **Example**:
+
 ```dart
 await yolo.dispose();
 ```
@@ -165,7 +171,7 @@ Defines the type of YOLO task to perform.
 ```dart
 enum YOLOTask {
   detect,      // Object detection
-  segment,     // Instance segmentation  
+  segment,     // Instance segmentation
   classify,    // Image classification
   pose,        // Pose estimation
   obb,         // Oriented bounding boxes
@@ -173,6 +179,7 @@ enum YOLOTask {
 ```
 
 #### Usage
+
 ```dart
 final task = YOLOTask.detect;
 print(task.name); // "detect"
@@ -204,18 +211,18 @@ class YOLOView extends StatefulWidget {
 
 #### Constructor Parameters
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `modelPath` | `String` | ✅ | - | Path to YOLO model file |
-| `task` | `YOLOTask` | ✅ | - | YOLO task type |
-| `controller` | `YOLOViewController?` | ❌ | `null` | Custom view controller |
-| `onResult` | `Function(List<YOLOResult>)?` | ❌ | `null` | Detection results callback |
-| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌ | `null` | Performance metrics callback |
-| `onStreamingData` | `Function(Map<String, dynamic>)?` | ❌ | `null` | Comprehensive streaming callback |
-| `onZoomChanged` | `Function(double)?` | ❌ | `null` | Zoom level change callback |
-| `cameraResolution` | `String` | ❌ | `"720p"` | Camera resolution |
-| `showNativeUI` | `bool` | ❌ | `true` | Show native camera UI |
-| `streamingConfig` | `YOLOStreamingConfig?` | ❌ | `null` | Streaming configuration |
+| Parameter              | Type                                | Required | Default  | Description                      |
+| ---------------------- | ----------------------------------- | -------- | -------- | -------------------------------- |
+| `modelPath`            | `String`                            | ✅       | -        | Path to YOLO model file          |
+| `task`                 | `YOLOTask`                          | ✅       | -        | YOLO task type                   |
+| `controller`           | `YOLOViewController?`               | ❌       | `null`   | Custom view controller           |
+| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`   | Detection results callback       |
+| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`   | Performance metrics callback     |
+| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`   | Comprehensive streaming callback |
+| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`   | Zoom level change callback       |
+| `cameraResolution`     | `String`                            | ❌       | `"720p"` | Camera resolution                |
+| `showNativeUI`         | `bool`                              | ❌       | `true`   | Show native camera UI            |
+| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`   | Streaming configuration          |
 
 #### Example
 
@@ -246,12 +253,12 @@ class YOLOViewController {
 
 #### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
+| Property              | Type     | Description                            |
+| --------------------- | -------- | -------------------------------------- |
 | `confidenceThreshold` | `double` | Current confidence threshold (0.0-1.0) |
-| `iouThreshold` | `double` | Current IoU threshold (0.0-1.0) |
-| `numItemsThreshold` | `int` | Maximum number of detections (1-100) |
-| `isInitialized` | `bool` | Whether controller is initialized |
+| `iouThreshold`        | `double` | Current IoU threshold (0.0-1.0)        |
+| `numItemsThreshold`   | `int`    | Maximum number of detections (1-100)   |
+| `isInitialized`       | `bool`   | Whether controller is initialized      |
 
 #### Methods
 
@@ -292,7 +299,7 @@ Set multiple thresholds at once.
 ```dart
 Future<void> setThresholds({
   double? confidenceThreshold,
-  double? iouThreshold, 
+  double? iouThreshold,
   int? numItemsThreshold,
 })
 ```
@@ -333,15 +340,15 @@ class YOLOResult {
 
 #### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `classIndex` | `int` | Class index in the model |
-| `className` | `String` | Human-readable class name |
-| `confidence` | `double` | Detection confidence (0.0-1.0) |
-| `boundingBox` | `Rect` | Bounding box in pixel coordinates |
-| `normalizedBox` | `Rect` | Normalized bounding box (0.0-1.0) |
-| `keypoints` | `List<Offset>?` | Pose keypoints (pose task only) |
-| `mask` | `Uint8List?` | Segmentation mask (segment task only) |
+| Property        | Type            | Description                           |
+| --------------- | --------------- | ------------------------------------- |
+| `classIndex`    | `int`           | Class index in the model              |
+| `className`     | `String`        | Human-readable class name             |
+| `confidence`    | `double`        | Detection confidence (0.0-1.0)        |
+| `boundingBox`   | `Rect`          | Bounding box in pixel coordinates     |
+| `normalizedBox` | `Rect`          | Normalized bounding box (0.0-1.0)     |
+| `keypoints`     | `List<Offset>?` | Pose keypoints (pose task only)       |
+| `mask`          | `Uint8List?`    | Segmentation mask (segment task only) |
 
 ---
 
@@ -360,12 +367,12 @@ class YOLOPerformanceMetrics {
 
 #### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `fps` | `double` | Frames per second |
-| `processingTimeMs` | `double` | Processing time in milliseconds |
-| `frameNumber` | `int` | Current frame number |
-| `timestamp` | `DateTime` | Timestamp of the measurement |
+| Property           | Type       | Description                     |
+| ------------------ | ---------- | ------------------------------- |
+| `fps`              | `double`   | Frames per second               |
+| `processingTimeMs` | `double`   | Processing time in milliseconds |
+| `frameNumber`      | `int`      | Current frame number            |
+| `timestamp`        | `DateTime` | Timestamp of the measurement    |
 
 #### Methods
 
@@ -416,7 +423,7 @@ onPerformanceMetrics: (metrics) {
   print('Performance: ${metrics.performanceRating}');
   print('FPS: ${metrics.fps.toStringAsFixed(1)}');
   print('Processing: ${metrics.processingTimeMs.toStringAsFixed(1)}ms');
-  
+
   if (metrics.hasPerformanceIssues) {
     print('⚠️ Performance issues detected');
   }
@@ -450,20 +457,20 @@ class YOLOStreamingConfig {
 
 #### Properties
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `includeDetections` | `bool` | `true` | Include detection results |
-| `includeClassifications` | `bool` | `true` | Include classification results |
-| `includeProcessingTimeMs` | `bool` | `true` | Include processing time |
-| `includeFps` | `bool` | `true` | Include FPS metrics |
-| `includeMasks` | `bool` | `false` | Include segmentation masks |
-| `includePoses` | `bool` | `false` | Include pose keypoints |
-| `includeOBB` | `bool` | `false` | Include oriented bounding boxes |
-| `includeOriginalImage` | `bool` | `false` | Include original frame data |
-| `maxFPS` | `int?` | `null` | Maximum FPS limit |
-| `throttleInterval` | `Duration?` | `null` | Throttling interval |
-| `inferenceFrequency` | `int?` | `null` | Inference frequency (per second) |
-| `skipFrames` | `int?` | `null` | Number of frames to skip |
+| Property                  | Type        | Default | Description                      |
+| ------------------------- | ----------- | ------- | -------------------------------- |
+| `includeDetections`       | `bool`      | `true`  | Include detection results        |
+| `includeClassifications`  | `bool`      | `true`  | Include classification results   |
+| `includeProcessingTimeMs` | `bool`      | `true`  | Include processing time          |
+| `includeFps`              | `bool`      | `true`  | Include FPS metrics              |
+| `includeMasks`            | `bool`      | `false` | Include segmentation masks       |
+| `includePoses`            | `bool`      | `false` | Include pose keypoints           |
+| `includeOBB`              | `bool`      | `false` | Include oriented bounding boxes  |
+| `includeOriginalImage`    | `bool`      | `false` | Include original frame data      |
+| `maxFPS`                  | `int?`      | `null`  | Maximum FPS limit                |
+| `throttleInterval`        | `Duration?` | `null`  | Throttling interval              |
+| `inferenceFrequency`      | `int?`      | `null`  | Inference frequency (per second) |
+| `skipFrames`              | `int?`      | `null`  | Number of frames to skip         |
 
 #### Factory Constructors
 
@@ -728,14 +735,16 @@ const List<String> SUPPORTED_RESOLUTIONS = [
 #### Multi-Instance Support
 
 **Old (Single Instance)**:
+
 ```dart
 final yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
 ```
 
 **New (Multi-Instance)**:
+
 ```dart
 final yolo = YOLO(
-  modelPath: 'model.tflite', 
+  modelPath: 'model.tflite',
   task: YOLOTask.detect,
   useMultiInstance: true, // Add this line
 );
@@ -744,6 +753,7 @@ final yolo = YOLO(
 #### Streaming Configuration
 
 **New Feature**:
+
 ```dart
 YOLOView(
   modelPath: 'model.tflite',
