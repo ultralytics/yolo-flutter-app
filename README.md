@@ -82,9 +82,9 @@ You can get the model in one of the following ways:
 
 3. Export it from Ultralytics/ultralytics
 
-CoreML: https://docs.ultralytics.com/ja/integrations/coreml/
+&nbsp;&nbsp;CoreML: https://docs.ultralytics.com/ja/integrations/coreml/
 
-TF Lite: https://docs.ultralytics.com/integrations/tflite/
+&nbsp;&nbsp;TF Lite: https://docs.ultralytics.com/integrations/tflite/
 
 **[📥 Download Models](./docs/install.md#models)** | **[🔧 Setup Guide](./docs/install.md)**
 
