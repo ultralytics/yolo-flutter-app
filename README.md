@@ -82,7 +82,11 @@ You can get the model in one of the following ways:
 
 3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
 
-**[📥 Download Models](./docs/install.md#models)** | **[🔧 Setup Guide](./docs/install.md)**
+**[📥 Download Models](./docs/install.md#models)** | 
+
+### 4. Platform-Specific Setup
+
+**[🔧 Setup Guide](./docs/install.md)**
 
 ## 🏆 Trusted by Developers
 
