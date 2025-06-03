@@ -19,11 +19,11 @@ _Real-time object detection, segmentation, and pose estimation for Flutter apps_
 | Pose Estimation | ✅      | ✅  |
 | OBB Detection   | ✅      | ✅  |
 
-- 🏆 **Official Ultralytics Plugin** - Direct from YOLO creators
-- ⚡ **Real-time Performance** - Up to 30 FPS on modern devices
-- 🎯 **5 AI Tasks** - Detection, Segmentation, Classification, Pose, OBB
-- 📱 **Cross-platform** - iOS & Android with single codebase
-- 🔧 **Production Ready** - Performance controls & optimization built-in
+- **Official Ultralytics Plugin** - Direct from YOLO creators
+- **Real-time Performance** - Up to 30 FPS on modern devices
+- **5 AI Tasks** - Detection, Segmentation, Classification, Pose, OBB
+- **Cross-platform** - iOS & Android with single codebase
+- **Production Ready** - Performance controls & optimization built-in
 
 ## ⚡ Quick Start (2 minutes)
 
@@ -49,11 +49,11 @@ YOLOView(
 
 | Task                   | Description                    | Use Cases                     | Performance |
 | ---------------------- | ------------------------------ | ----------------------------- | ----------- |
-| 🔍 **Detection**       | Find objects & their locations | Security, Inventory, Shopping | 25-30 FPS   |
-| 🎭 **Segmentation**    | Pixel-perfect object masks     | Photo editing,                | 15-25 FPS   |
-| 🏷️ **Classification**  | Identify image categories      | Content moderation, Tagging   | 30+ FPS     |
-| 🤸 **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture  | 20-30 FPS   |
-| 📦 **OBB Detection**   | Rotated bounding boxes         | Aerial imagery                | 20-25 FPS   |
+| **Detection**       | Find objects & their locations | Security, Inventory, Shopping | 25-30 FPS   |
+| **Segmentation**    | Pixel-perfect object masks     | Photo editing,                | 15-25 FPS   |
+| **Classification**  | Identify image categories      | Content moderation, Tagging   | 30+ FPS     |
+| **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture  | 20-30 FPS   |
+| **OBB Detection**   | Rotated bounding boxes         | Aerial imagery                | 20-25 FPS   |
 
 **[📱 See Examples →](./docs/usage.md)** | **[⚡ Performance Guide →](./docs/performance.md)**
 
