@@ -63,7 +63,6 @@ Bundle the model with your app using the following method.
 
 For iOS: Drag and drop mlpackage/mlmodel directly into **ios/Runner.xcworkspace** and set target to Runner.
 
-
 ## ⚡ Step 4: Minimal Detection Code
 
 Replace `lib/main.dart` with this complete working example:
