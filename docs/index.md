@@ -102,12 +102,10 @@ YOLO Model Inference Engine
 - **Security Apps**: Real-time surveillance and monitoring
 - **Retail Apps**: Product recognition and inventory management
 - **Health Apps**: Pose analysis for fitness and rehabilitation
-- **Camera Apps**: Enhanced photography with AI effects
 
 ### 🏢 Enterprise Solutions
 
 - **Quality Control**: Automated defect detection in manufacturing
-- **Logistics**: Package and barcode recognition
 - **Agriculture**: Crop monitoring and pest detection
 - **Construction**: Safety equipment compliance monitoring
 
@@ -116,10 +114,6 @@ YOLO Model Inference Engine
 - ✅ Multi-instance support (v0.1.16+)
 - ✅ Performance optimization (v0.1.15+)
 - ✅ Streaming configuration (v0.1.16+)
-- 🔄 Custom model training integration
-- 🔄 Advanced streaming modes
-- 🔄 Web platform support
-- 🔄 Background processing
 
 ## 🤝 Community & Support
 
