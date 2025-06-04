@@ -219,7 +219,9 @@ class YOLO(
 
                     // Transform coordinates
                     val transformedRect = transformRect(box.xywh)
-                    canvas.drawRect(box.xywh, paint)
+                    // Draw rounded rectangle with corner radius
+                    val cornerRadius = 12f
+                    canvas.drawRoundRect(box.xywh, cornerRadius, cornerRadius, paint)
 
                     // Draw label
                     paint.style = Paint.Style.FILL
@@ -239,7 +241,9 @@ class YOLO(
 
                     // Transform coordinates
                     val transformedRect = transformRect(box.xywh)
-                    canvas.drawRect(transformedRect, paint)
+                    // Draw rounded rectangle with corner radius
+                    val cornerRadius = 12f
+                    canvas.drawRoundRect(transformedRect, cornerRadius, cornerRadius, paint)
 
                     paint.style = Paint.Style.FILL
                     canvas.drawText(
@@ -323,7 +327,9 @@ class YOLO(
 
                     // Transform coordinates
                     val transformedRect = transformRect(box.xywh)
-                    canvas.drawRect(transformedRect, paint)
+                    // Draw rounded rectangle with corner radius
+                    val cornerRadius = 12f
+                    canvas.drawRoundRect(transformedRect, cornerRadius, cornerRadius, paint)
 
                     paint.style = Paint.Style.FILL
                     canvas.drawText(

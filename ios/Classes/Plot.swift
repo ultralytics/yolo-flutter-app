@@ -116,7 +116,11 @@ public func drawYOLODetections(on ciImage: CIImage, result: YOLOResult) -> UIIma
     drawContext.setStrokeColor(color.cgColor)
     drawContext.setLineWidth(lineWidth)
     let rect = box.xywh
-    drawContext.stroke(rect)
+    // Draw rounded rectangle with corner radius
+    let cornerRadius: CGFloat = 12.0
+    let path = UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius)
+    drawContext.addPath(path.cgPath)
+    drawContext.strokePath()
     let confidencePercent = Int(box.conf * 100)
     let labelText = "\(box.cls) \(confidencePercent)%"
     let font = UIFont.systemFont(ofSize: CGFloat(width) * 0.03, weight: .semibold)
