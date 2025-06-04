@@ -1,3 +1,8 @@
+## 0.1.19
+
+- Added Dart publish dry run to CI
+- Renamed incorrect docs/ directory to /doc
+
 ## 0.1.18
 
 - Added customizable result streaming with `YOLOStreamingConfig`
