@@ -10,10 +10,10 @@ Complete guide for integrating YOLO models into your Flutter app with support fo
 
 ## 📱 Supported Model Formats
 
-| Format | Platform | Extension | Optimized For | Performance |
-|--------|----------|-----------|---------------|-------------|
-| **CoreML** | iOS only | `.mlpackage`, `.mlmodel` | Apple Neural Engine | Excellent |
-| **LiteRT** | Android/iOS | `.tflite` | TensorFlow Lite | Very Good |
+| Format     | Platform    | Extension                | Optimized For       | Performance |
+| ---------- | ----------- | ------------------------ | ------------------- | ----------- |
+| **CoreML** | iOS only    | `.mlpackage`, `.mlmodel` | Apple Neural Engine | Excellent   |
+| **LiteRT** | Android/iOS | `.tflite`                | TensorFlow Lite     | Very Good   |
 
 ## 🎯 Getting YOLO Models
 
@@ -51,14 +51,14 @@ pip install ultralytics
 from ultralytics import YOLO
 
 # Load a YOLOv11 model
-model = YOLO('yolo11n.pt')
+model = YOLO("yolo11n.pt")
 
 # Export to CoreML
 model.export(
-    format='coreml',
+    format="coreml",
     imgsz=640,
     half=False,  # Use float32 for better compatibility
-    nms=True,    # Include NMS in the model
+    nms=True,  # Include NMS in the model
 )
 ```
 
@@ -68,11 +68,11 @@ model.export(
 from ultralytics import YOLO
 
 # Load a YOLOv11 model
-model = YOLO('yolo11n.pt')
+model = YOLO("yolo11n.pt")
 
 # Export to TFLite with quantization
 model.export(
-    format='tflite',
+    format="tflite",
     imgsz=640,
 )
 ```
@@ -81,28 +81,16 @@ model.export(
 
 ```python
 # For different YOLO tasks
-tasks = {
-    'segment': 'yolo11n-seg.pt', 
-    'classify': 'yolo11n-cls.pt',
-    'pose': 'yolo11n-pose.pt',
-    'obb': 'yolo11n-obb.pt'
-}
+tasks = {"segment": "yolo11n-seg.pt", "classify": "yolo11n-cls.pt", "pose": "yolo11n-pose.pt", "obb": "yolo11n-obb.pt"}
 
 for task, model_path in tasks.items():
     model = YOLO(model_path)
-    
+
     # Export CoreML
-    model.export(
-        format='coreml',
-        imgsz=640,
-        half=False
-    )
-    
+    model.export(format="coreml", imgsz=640, half=False)
+
     # Export TFLite
-    model.export(
-        format='tflite',
-        imgsz=640
-    )
+    model.export(format="tflite", imgsz=640)
 ```
 
 ## 🏗️ Platform Integration
@@ -220,7 +208,7 @@ For apps targeting both iOS and Android, use conditional model loading:
 ```dart
 class CrossPlatformYOLO {
   late YOLO _yolo;
-  
+
   Future<void> initializePlatformSpecificModel() async {
     if (Platform.isIOS) {
       // Use CoreML on iOS
@@ -231,11 +219,11 @@ class CrossPlatformYOLO {
     } else if (Platform.isAndroid) {
       // Use TFLite on Android
       _yolo = YOLO(
-        modelPath: 'yolo11n', 
+        modelPath: 'yolo11n',
         task: YOLOTask.detect,
       );
     }
-    
+
     await _yolo.loadModel();
   }
 }
@@ -245,20 +233,20 @@ class CrossPlatformYOLO {
 
 ### Performance Characteristics
 
-| Model Size | iOS (CoreML) | Android (TFLite) | Memory | Use Case |
-|------------|--------------|------------------|---------|----------|
-| **Nano (n)** | 28-32 FPS | 25-30 FPS | ~150MB | Real-time apps |
-| **Small (s)** | 20-25 FPS | 18-22 FPS | ~200MB | Balanced performance |
-| **Medium (m)** | 15-18 FPS | 12-15 FPS | ~300MB | High accuracy |
-| **Large (l)** | 10-12 FPS | 8-10 FPS | ~450MB | Maximum accuracy |
+| Model Size     | iOS (CoreML) | Android (TFLite) | Memory | Use Case             |
+| -------------- | ------------ | ---------------- | ------ | -------------------- |
+| **Nano (n)**   | 28-32 FPS    | 25-30 FPS        | ~150MB | Real-time apps       |
+| **Small (s)**  | 20-25 FPS    | 18-22 FPS        | ~200MB | Balanced performance |
+| **Medium (m)** | 15-18 FPS    | 12-15 FPS        | ~300MB | High accuracy        |
+| **Large (l)**  | 10-12 FPS    | 8-10 FPS         | ~450MB | Maximum accuracy     |
 
 ### File Size Comparison
 
-| Model | Original (.pt) | CoreML (.mlpackage) | TFLite (.tflite) | TFLite INT8 |
-|-------|----------------|---------------------|------------------|-------------|
-| YOLOv11n | 5.4 MB | 6.8 MB | 6.2 MB | 3.1 MB |
-| YOLOv11s | 19.8 MB | 24.2 MB | 21.5 MB | 11.2 MB |
-| YOLOv11m | 45.7 MB | 55.1 MB | 49.7 MB | 25.8 MB |
+| Model    | Original (.pt) | CoreML (.mlpackage) | TFLite (.tflite) | TFLite INT8 |
+| -------- | -------------- | ------------------- | ---------------- | ----------- |
+| YOLOv11n | 5.4 MB         | 6.8 MB              | 6.2 MB           | 3.1 MB      |
+| YOLOv11s | 19.8 MB        | 24.2 MB             | 21.5 MB          | 11.2 MB     |
+| YOLOv11m | 45.7 MB        | 55.1 MB             | 49.7 MB          | 25.8 MB     |
 
 ## 🔧 Model Optimization
 
@@ -266,14 +254,14 @@ class CrossPlatformYOLO {
 
 ```python
 # Export with optimal settings for iOS
-model = YOLO('yolo11n.pt')
+model = YOLO("yolo11n.pt")
 
 model.export(
-    format='coreml',
+    format="coreml",
     imgsz=640,
-    half=False,           # Use float32 for Neural Engine
-    nms=True,             # Include NMS in model
-    simplify=True,        # Simplify model for better performance
+    half=False,  # Use float32 for Neural Engine
+    nms=True,  # Include NMS in model
+    simplify=True,  # Simplify model for better performance
 )
 ```
 
@@ -281,28 +269,21 @@ model.export(
 
 ```python
 # Different quantization options
-model = YOLO('yolo11n.pt')
+model = YOLO("yolo11n.pt")
 
 # INT8 quantization (smallest size)
 model.export(
-    format='tflite',
+    format="tflite",
     imgsz=640,
     int8=True,
-    data='coco128.yaml'   # Calibration dataset
+    data="coco128.yaml",  # Calibration dataset
 )
 
 # Float16 quantization (balance)
-model.export(
-    format='tflite', 
-    imgsz=640,
-    half=True
-)
+model.export(format="tflite", imgsz=640, half=True)
 
 # No quantization (best accuracy)
-model.export(
-    format='tflite',
-    imgsz=640
-)
+model.export(format="tflite", imgsz=640)
 ```
 
 ## 🚀 Advanced Model Features
@@ -312,7 +293,7 @@ model.export(
 ```dart
 class MultiModelManager {
   final Map<YOLOTask, YOLO> _models = {};
-  
+
   Future<void> loadAllModels() async {
     final modelConfigs = Platform.isIOS ? {
       YOLOTask.detect: 'yolo11n',
@@ -320,10 +301,10 @@ class MultiModelManager {
       YOLOTask.classify: 'yolo11n-cls',
     } : {
       YOLOTask.detect: 'yolo11n',
-      YOLOTask.segment: 'yolo11n-seg', 
+      YOLOTask.segment: 'yolo11n-seg',
       YOLOTask.classify: 'yolo11n-cls',
     };
-    
+
     for (final entry in modelConfigs.entries) {
       _models[entry.key] = YOLO(
         modelPath: entry.value,
@@ -333,7 +314,7 @@ class MultiModelManager {
       await _models[entry.key]!.loadModel();
     }
   }
-  
+
   YOLO? getModel(YOLOTask task) => _models[task];
 }
 ```
@@ -343,22 +324,22 @@ class MultiModelManager {
 ```dart
 class AdaptiveModelLoader {
   YOLO? _currentModel;
-  
+
   Future<void> switchToOptimalModel(String deviceType) async {
     await _currentModel?.dispose();
-    
+
     String modelPath;
     if (deviceType == 'high-end') {
       modelPath = Platform.isIOS ? 'yolo11s' : 'yolo11s';
     } else {
       modelPath = Platform.isIOS ? 'yolo11n' : 'yolo11n';
     }
-    
+
     _currentModel = YOLO(
       modelPath: modelPath,
       task: YOLOTask.detect,
     );
-    
+
     await _currentModel!.loadModel();
   }
 }
@@ -378,29 +359,29 @@ class ModelValidator {
         print('❌ Model file not found: $modelPath');
         return false;
       }
-      
+
       // Try to load the model
       final yolo = YOLO(modelPath: modelPath, task: task);
       final loaded = await yolo.loadModel();
-      
+
       if (!loaded) {
         print('❌ Failed to load model: $modelPath');
         return false;
       }
-      
+
       // Test with dummy data
       final testResult = await _testInference(yolo);
       await yolo.dispose();
-      
+
       print('✅ Model validation successful: $modelPath');
       return testResult;
-      
+
     } catch (e) {
       print('❌ Model validation failed: $e');
       return false;
     }
   }
-  
+
   static Future<bool> _testInference(YOLO yolo) async {
     try {
       // Create test image (1x1 white pixel)
@@ -420,30 +401,30 @@ class ModelValidator {
 ```dart
 class ModelBenchmark {
   static Future<Map<String, dynamic>> benchmarkModel(
-    String modelPath, 
+    String modelPath,
     YOLOTask task,
     List<Uint8List> testImages,
   ) async {
     final yolo = YOLO(modelPath: modelPath, task: task);
     await yolo.loadModel();
-    
+
     final times = <double>[];
     final stopwatch = Stopwatch();
-    
+
     for (final image in testImages) {
       stopwatch.reset();
       stopwatch.start();
-      
+
       await yolo.predict(image);
-      
+
       stopwatch.stop();
       times.add(stopwatch.elapsedMilliseconds.toDouble());
     }
-    
+
     await yolo.dispose();
-    
+
     final avgTime = times.reduce((a, b) => a + b) / times.length;
-    
+
     return {
       'model': modelPath,
       'task': task.name,
@@ -483,7 +464,7 @@ print('Location: ${exists['location']}');
 ```dart
 // Try different quantization levels
 // INT8 (smallest, fastest): model.export(format='tflite', int8=True)
-// Float16 (balanced): model.export(format='tflite', half=True)  
+// Float16 (balanced): model.export(format='tflite', half=True)
 // Float32 (largest, most accurate): model.export(format='tflite')
 ```
 
@@ -495,7 +476,7 @@ class DeviceOptimizer {
   static String getOptimalModel(YOLOTask task) {
     final isLowEnd = _isLowEndDevice();
     final suffix = Platform.isIOS ? '.mlpackage' : '.tflite';
-    
+
     if (isLowEnd) {
       return 'yolo11n${_getTaskSuffix(task)}$suffix';  // Nano
     } else {
@@ -511,16 +492,16 @@ class DeviceOptimizer {
 class ModelDebugger {
   static Future<void> debugModelLoading(String modelPath) async {
     print('🔍 Debugging model: $modelPath');
-    
+
     // Check file existence
     final exists = await YOLO.checkModelExists(modelPath);
     print('Exists: ${exists['exists']}');
     print('Location: ${exists['location']}');
-    
+
     // Check storage paths
     final paths = await YOLO.getStoragePaths();
     print('Storage paths: $paths');
-    
+
     // Attempt loading with error handling
     try {
       final yolo = YOLO(modelPath: modelPath, task: YOLOTask.detect);
