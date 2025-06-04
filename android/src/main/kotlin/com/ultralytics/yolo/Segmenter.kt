@@ -73,47 +73,78 @@ class Segmenter(
         // Load model file (automatic extension appending)
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
-        // ===== Load label information from metadata =====
-        try {
-            val metadataExtractor = MetadataExtractor(modelBuffer)
-            val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
-            if (modelMetadata != null) {
-                Log.d("Segmenter", "Model metadata retrieved successfully.")
-            }
-            val associatedFiles = metadataExtractor.associatedFileNames
-            if (!associatedFiles.isNullOrEmpty()) {
-                for (fileName in associatedFiles) {
-                    Log.d("Segmenter", "Found associated file: $fileName")
-                    val inputStream = metadataExtractor.getAssociatedFile(fileName)
-                    inputStream?.use { stream ->
-                        val fileContent = stream.readBytes()
-                        val fileString = fileContent.toString(Charsets.UTF_8)
-                        Log.d("Segmenter", "Associated file contents:\n$fileString")
-                        try {
-                            val yaml = Yaml()
-                            @Suppress("UNCHECKED_CAST")
-                            val data = yaml.load<Map<String, Any>>(fileString)
-                            if (data != null && data.containsKey("names")) {
-                                val namesMap = data["names"] as? Map<Int, String>
-                                if (namesMap != null) {
-                                    this.labels = namesMap.values.toList()
-                                    Log.d("Segmenter", "Loaded labels from metadata: $labels")
-                                } else {
+        /* --- Get labels from metadata (try Appended ZIP → FlatBuffers in order) --- */
+        var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        var labelsWereLoaded = loadedLabels != null
 
+        if (labelsWereLoaded) {
+            this.labels = loadedLabels!! // Use labels from appended ZIP
+            Log.i("Segmenter", "Labels successfully loaded from appended ZIP.")
+        } else {
+            Log.w("Segmenter", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
+            // Try FlatBuffers as a fallback
+            try {
+                val metadataExtractor = MetadataExtractor(modelBuffer)
+                val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
+                if (modelMetadata != null) {
+                    Log.d("Segmenter", "Model metadata retrieved successfully.")
+                }
+                val associatedFiles = metadataExtractor.associatedFileNames
+                if (!associatedFiles.isNullOrEmpty()) {
+                    run breaking@{
+                        for (fileName in associatedFiles) {
+                            Log.d("Segmenter", "Found associated file: $fileName")
+                            val inputStream = metadataExtractor.getAssociatedFile(fileName)
+                            inputStream?.use { stream ->
+                                val fileContent = stream.readBytes()
+                                val fileString = fileContent.toString(Charsets.UTF_8)
+                                Log.d("Segmenter", "Associated file contents:\n$fileString")
+                                try {
+                                    val yaml = Yaml()
+                                    @Suppress("UNCHECKED_CAST")
+                                    val data = yaml.load<Map<String, Any>>(fileString)
+                                    if (data != null && data.containsKey("names")) {
+                                        val namesMap = data["names"] as? Map<Int, String>
+                                        if (namesMap != null) {
+                                            this.labels = namesMap.values.toList()
+                                            labelsWereLoaded = true
+                                            Log.d("Segmenter", "Loaded labels from metadata: $labels")
+                                            return@breaking
+                                        }
+                                    }
+                                } catch (ex: Exception) {
+                                    Log.e("Segmenter", "Failed to parse YAML from metadata: ${ex.message}")
                                 }
-                            } else {
-
                             }
-                        } catch (ex: Exception) {
-                            Log.e("Segmenter", "Failed to parse YAML from metadata: ${ex.message}")
                         }
                     }
+                } else {
+                    Log.d("Segmenter", "No associated files found in the metadata.")
                 }
-            } else {
-                Log.d("Segmenter", "No associated files found in the metadata.")
+            } catch (e: Exception) {
+                Log.e("Segmenter", "Failed to extract metadata: ${e.message}")
             }
-        } catch (e: Exception) {
-            Log.e("Segmenter", "Failed to extract metadata: ${e.message}")
+        }
+
+        if (!labelsWereLoaded) {
+            Log.w("Segmenter", "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor or COCO fallback.")
+            // If labels were passed via constructor and not overridden, they will be used.
+            if (this.labels.isEmpty()) {
+                Log.w("Segmenter", "Warning: No labels loaded and no labels provided via constructor. Using COCO classes as fallback.")
+                // Use COCO dataset's 80 classes as a fallback
+                this.labels = listOf(
+                    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
+                    "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog",
+                    "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
+                    "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite",
+                    "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle",
+                    "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich",
+                    "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
+                    "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote",
+                    "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book",
+                    "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+                )
+            }
         }
 
         // Create Interpreter

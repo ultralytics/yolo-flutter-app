@@ -223,14 +223,35 @@ class YOLO(
                     val cornerRadius = 12f
                     canvas.drawRoundRect(box.xywh, cornerRadius, cornerRadius, paint)
 
-                    // Draw label
+                    // Draw label with background
+                    val labelText = "${box.cls} ${(box.conf * 100).toInt()}%"
+                    val labelPadding = 8f
+                    
+                    // Measure text
+                    val textBounds = Rect()
+                    paint.getTextBounds(labelText, 0, labelText.length, textBounds)
+                    
+                    // Calculate label background position
+                    val labelLeft = transformedRect.left
+                    val labelTop = transformedRect.top - textBounds.height() - labelPadding * 2
+                    val labelRight = labelLeft + textBounds.width() + labelPadding * 2
+                    val labelBottom = transformedRect.top
+                    
+                    // Draw label background
                     paint.style = Paint.Style.FILL
+                    val labelRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
+                    canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
+                    
+                    // Draw label text in white
+                    paint.color = Color.WHITE
                     canvas.drawText(
-                        "${box.cls} ${"%.2f".format(box.conf * 100)}%",
-                        transformedRect.left,
-                        transformedRect.top - 10,
+                        labelText,
+                        labelLeft + labelPadding,
+                        labelBottom - labelPadding,
                         paint
                     )
+                    
+                    // Reset paint for next box
                     paint.style = Paint.Style.STROKE
                 }
             }
@@ -245,13 +266,35 @@ class YOLO(
                     val cornerRadius = 12f
                     canvas.drawRoundRect(transformedRect, cornerRadius, cornerRadius, paint)
 
+                    // Draw label with background
+                    val labelText = "${box.cls} ${(box.conf * 100).toInt()}%"
+                    val labelPadding = 8f
+                    
+                    // Measure text
+                    val textBounds = Rect()
+                    paint.getTextBounds(labelText, 0, labelText.length, textBounds)
+                    
+                    // Calculate label background position
+                    val labelLeft = transformedRect.left
+                    val labelTop = transformedRect.top - textBounds.height() - labelPadding * 2
+                    val labelRight = labelLeft + textBounds.width() + labelPadding * 2
+                    val labelBottom = transformedRect.top
+                    
+                    // Draw label background
                     paint.style = Paint.Style.FILL
+                    val labelRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
+                    canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
+                    
+                    // Draw label text in white
+                    paint.color = Color.WHITE
                     canvas.drawText(
-                        "${box.cls} ${"%.2f".format(box.conf * 100)}%",
-                        transformedRect.left,
-                        transformedRect.top - 10,
+                        labelText,
+                        labelLeft + labelPadding,
+                        labelBottom - labelPadding,
                         paint
                     )
+                    
+                    // Reset paint style
                     paint.style = Paint.Style.STROKE
                 }
 
@@ -331,13 +374,35 @@ class YOLO(
                     val cornerRadius = 12f
                     canvas.drawRoundRect(transformedRect, cornerRadius, cornerRadius, paint)
 
+                    // Draw label with background
+                    val labelText = "${box.cls} ${(box.conf * 100).toInt()}%"
+                    val labelPadding = 8f
+                    
+                    // Measure text
+                    val textBounds = Rect()
+                    paint.getTextBounds(labelText, 0, labelText.length, textBounds)
+                    
+                    // Calculate label background position
+                    val labelLeft = transformedRect.left
+                    val labelTop = transformedRect.top - textBounds.height() - labelPadding * 2
+                    val labelRight = labelLeft + textBounds.width() + labelPadding * 2
+                    val labelBottom = transformedRect.top
+                    
+                    // Draw label background
                     paint.style = Paint.Style.FILL
+                    val labelRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
+                    canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
+                    
+                    // Draw label text in white
+                    paint.color = Color.WHITE
                     canvas.drawText(
-                        "${box.cls} ${"%.2f".format(box.conf * 100)}%",
-                        transformedRect.left,
-                        transformedRect.top - 10,
+                        labelText,
+                        labelLeft + labelPadding,
+                        labelBottom - labelPadding,
                         paint
                     )
+                    
+                    // Reset paint style
                     paint.style = Paint.Style.STROKE
                 }
 
