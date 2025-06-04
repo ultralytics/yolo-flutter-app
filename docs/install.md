@@ -97,39 +97,9 @@ For release builds, add to `android/app/proguard-rules.pro`:
 -dontwarn org.tensorflow.**
 ```
 
-## 🎯 Model Files Setup
+## 🎯 [Model Files Setup](./docs/quickstart.md#-step-3-add-a-model)
 
-### Download Pre-trained Models
-
-Get official YOLO models from Ultralytics:
-
-1. **Visit**: [Ultralytics Models](https://docs.ultralytics.com/models/)
-2. **Download** the `.tflite` versions for mobile
-3. **Place** in your assets folder
-
-### Asset Configuration
-
-Create the assets structure in your project:
-
-```
-your_flutter_app/
-├── assets/
-│   └── models/
-│       ├── yolo11n.tflite          # Object detection
-│       ├── yolo11n-seg.tflite      # Segmentation
-│       ├── yolo11n-cls.tflite      # Classification
-│       ├── yolo11n-pose.tflite     # Pose estimation
-│       └── yolo11n-obb.tflite      # Oriented bounding boxes
-└── pubspec.yaml
-```
-
-Update `pubspec.yaml` to include assets:
-
-```yaml
-flutter:
-    assets:
-        - assets/models/
-```
+Please check out the [quickstart.md](./docs/quickstart.md#-step-3-add-a-model)
 
 ## ✅ Verify Installation
 
@@ -151,7 +121,7 @@ class TestYOLO extends StatelessWidget {
           onPressed: () async {
             try {
               final yolo = YOLO(
-                modelPath: 'assets/models/yolo11n.tflite',
+                modelPath: 'yolo11n',
                 task: YOLOTask.detect,
               );
 
