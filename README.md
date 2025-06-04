@@ -111,8 +111,8 @@ For Android: Create a folder called **android/app/src/main/assets** and place tf
 
 ## 📚 Documentation
 
-| Guide                                                 | Description                       | For             |
-| ----------------------------------------------------- | --------------------------------- | --------------- |
+| Guide                                              | Description                       | For             |
+| -------------------------------------------------- | --------------------------------- | --------------- |
 | **[Installation Guide](doc/install.md)**           | Installation, setup, requirements | New users       |
 | **[Quick Start](doc/quickstart.md)**               | 2-minute setup guide              | New users       |
 | **[Usage Guide](doc/usage.md)**                    | Common use cases & code samples   | All users       |
