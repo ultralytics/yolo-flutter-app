@@ -14,9 +14,9 @@ Add the plugin to your Flutter project's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-    flutter:
-        sdk: flutter
-    ultralytics_yolo: ^0.1.18 # Latest version
+  flutter:
+    sdk: flutter
+  ultralytics_yolo: ^0.1.18 # Latest version
 ```
 
 Run the installation command:
@@ -97,9 +97,9 @@ For release builds, add to `android/app/proguard-rules.pro`:
 -dontwarn org.tensorflow.**
 ```
 
-## 🎯 [Model Files Setup](./docs/quickstart.md#-step-3-add-a-model)
+## 🎯 [Model Files Setup](quickstart.md#-step-3-add-a-model)
 
-Please check out the [quickstart.md](./docs/quickstart.md#-step-3-add-a-model)
+Please check out the [quickstart.md](quickstart.md#-step-3-add-a-model)
 
 ## ✅ Verify Installation
 
