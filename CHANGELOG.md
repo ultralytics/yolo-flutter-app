@@ -1,5 +1,10 @@
 ## 0.1.18
 
+- Added Dart publish dry run to CI
+- Renamed incorrect docs/ directory to /doc
+
+## 0.1.18
+
 - Added customizable result streaming with `YOLOStreamingConfig`
   - Enable detailed control based on streaming mode
   - Enable throttling and frame dropping for performance optimization
