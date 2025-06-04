@@ -84,7 +84,7 @@ You can get the model in one of the following ways:
 
 1. Download from the [release assets](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.0.0) of this repository
 
-2. Get it from [Ultralytics Hub](https://www.ultralytics.com/hub)
+2. Get it from [Ultralytics HUB](https://www.ultralytics.com/hub)
 
 3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
 
