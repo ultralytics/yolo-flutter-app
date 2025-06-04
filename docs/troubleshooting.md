@@ -53,7 +53,7 @@ cd .. && flutter run
 
 ```ruby
 # ios/Podfile
-platform :ios, '12.0'  # Change to 12.0 or higher
+platform :ios, '13.0'  # Change to 13.0 or higher
 
 # Also add this if needed:
 post_install do |installer|
@@ -111,7 +111,7 @@ dependencies {
 
 ```dart
 // 1. Check if model exists
-final modelExists = await YOLO.checkModelExists('assets/models/yolo11n.tflite');
+final modelExists = await YOLO.checkModelExists('yolo11n');
 print('Model exists: ${modelExists['exists']}');
 print('Location: ${modelExists['location']}');
 
@@ -122,25 +122,20 @@ print('Storage paths: $storagePaths');
 
 **Common Solutions**:
 
-1. **Verify pubspec.yaml**:
+1. **Please check again if the model file is correctly placed.**
+   **iOS: Drag and drop the mlpackage directly into ios/Runner.xcproject and set the target to Runner.**
+   **Android: Place the tflite in app/src/main/assets**
 
-```yaml
-flutter:
-    assets:
-        - assets/models/ # Must end with /
-```
-
-2. **Check file structure**:
+2. **Please make sure you are passing the model file to YOLOView/YOLO with the correct file name and task.**
 
 ```
-your_app/
-├── assets/
-│   └── models/
-│       └── yolo11n.tflite  ← File must be here
-└── pubspec.yaml
-```
+YOLOView(
+  modelPath: 'yolo11n',
+  task: YOLOTask.detect // segment, classify, pose, obb
+)
+``` 
 
-3. **Refresh assets**:
+4. **Refresh assets**:
 
 ```bash
 flutter packages get
@@ -156,13 +151,13 @@ flutter run
 
 1. **Re-download model**: Corrupt download is common
 2. **Verify file size**: Check against official model size
-3. **Test with different model**: Try yolo11n.tflite first
+3. **Test with different model**: Try yolo11n first
 
 ```dart
 // Test model loading explicitly
 try {
   final yolo = YOLO(
-    modelPath: 'assets/models/yolo11n.tflite',
+    modelPath: 'yolo11n',
     task: YOLOTask.detect,
   );
 
@@ -214,15 +209,6 @@ class MemoryManager {
 ```
 
 2. **Use smaller models**:
-
-```dart
-// Instead of yolo11l.tflite (86MB)
-// Use yolo11n.tflite (6MB)
-final yolo = YOLO(
-  modelPath: 'assets/models/yolo11n.tflite',  // Smaller model
-  task: YOLOTask.detect,
-);
-```
 
 3. **Dispose properly**:
 
@@ -483,13 +469,13 @@ Future<Uint8List> prepareImageBytes(File imageFile) async {
 ```dart
 // ❌ Wrong: detection model with pose task
 final yolo = YOLO(
-  modelPath: 'assets/models/yolo11n.tflite',      // Detection model
+  modelPath: 'yolo11n',      // Detection model
   task: YOLOTask.pose,                             // Pose task
 );
 
 // ✅ Correct: pose model with pose task
 final yolo = YOLO(
-  modelPath: 'assets/models/yolo11n-pose.tflite', // Pose model
+  modelPath: 'yolo11n-pose', // Pose model
   task: YOLOTask.pose,                             // Pose task
 );
 ```
@@ -556,7 +542,7 @@ class DebugProfiler {
     startProfiling();
 
     final yolo = YOLO(
-      modelPath: 'assets/models/yolo11n.tflite',
+      modelPath: 'yolo11n',
       task: YOLOTask.detect,
     );
     logPerformance('YOLO instantiation');
@@ -593,8 +579,8 @@ Future<Map<String, dynamic>> collectDebugInfo() async {
     'flutter_version': 'Run: flutter --version',
     'plugin_version': '0.1.16',
     'platform': Platform.isIOS ? 'iOS' : 'Android',
-    'model_path': 'assets/models/yolo11n.tflite',
-    'model_exists': await YOLO.checkModelExists('assets/models/yolo11n.tflite'),
+    'model_path': 'yolo11n',
+    'model_exists': await YOLO.checkModelExists('yolo11n'),
     'storage_paths': await YOLO.getStoragePaths(),
     'active_instances': YOLOInstanceManager.getActiveInstanceIds().length,
   };
