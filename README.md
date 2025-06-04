@@ -49,7 +49,7 @@ YOLOView(
 )
 ```
 
-**[▶️ Try the Live Demo](./example)** | **[📖 Full Setup Guide](./docs/install.md)**
+**[▶️ Try the Live Demo](./example)** | **[📖 Full Setup Guide](doc/install.md)**
 
 ## 🎯 What You Can Build
 
@@ -61,7 +61,7 @@ YOLOView(
 | **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture  | 20-30 FPS   |
 | **OBB Detection**   | Rotated bounding boxes         | Aerial imagery                | 20-25 FPS   |
 
-**[📱 See Examples →](./docs/usage.md)** | **[⚡ Performance Guide →](./docs/performance.md)**
+**[📱 See Examples →](doc/usage.md)** | **[⚡ Performance Guide →](doc/performance.md)**
 
 ## 🚀 Installation
 
@@ -88,7 +88,7 @@ You can get the model in one of the following ways:
 
 3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
 
-**[📥 Download Models](./docs/install.md#models)** |
+**[📥 Download Models](doc/install.md#models)** |
 
 Bundle the model with your app using the following method.
 
@@ -98,7 +98,7 @@ For Android: Create a folder called **android/app/src/main/assets** and place tf
 
 ### 4. Platform-Specific Setup
 
-**[🔧 Setup Guide](./docs/install.md)**
+**[🔧 Setup Guide](doc/install.md)**
 
 ## 🏆 Trusted by Developers
 
@@ -113,12 +113,12 @@ For Android: Create a folder called **android/app/src/main/assets** and place tf
 
 | Guide                                                 | Description                       | For             |
 | ----------------------------------------------------- | --------------------------------- | --------------- |
-| **[Installation Guide](./docs/install.md)**           | Installation, setup, requirements | New users       |
-| **[Quick Start](./docs/quickstart.md)**               | 2-minute setup guide              | New users       |
-| **[Usage Guide](./docs/usage.md)**                    | Common use cases & code samples   | All users       |
-| **[Performance Optimization](./docs/performance.md)** | Inference control & tuning        | Production apps |
-| **[API Reference](./docs/api.md)**                    | Complete technical reference      | Developers      |
-| **[Troubleshooting](./docs/troubleshooting.md)**      | Common issues & solutions         | All users       |
+| **[Installation Guide](doc/install.md)**           | Installation, setup, requirements | New users       |
+| **[Quick Start](doc/quickstart.md)**               | 2-minute setup guide              | New users       |
+| **[Usage Guide](doc/usage.md)**                    | Common use cases & code samples   | All users       |
+| **[Performance Optimization](doc/performance.md)** | Inference control & tuning        | Production apps |
+| **[API Reference](doc/api.md)**                    | Complete technical reference      | Developers      |
+| **[Troubleshooting](doc/troubleshooting.md)**      | Common issues & solutions         | All users       |
 
 ## 🤝 Community & Support
 
