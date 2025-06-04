@@ -171,18 +171,3 @@ Encountering issues or have feature requests related to Ultralytics YOLO? Please
   <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
   <a href="https://discord.com/invite/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-discord.png" width="3%" alt="Ultralytics Discord"></a>
 </div>
-
-## ⭐ Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=ultralytics/yolo-flutter-app&type=Date)](https://star-history.com/#ultralytics/yolo-flutter-app&Date)
-
----
-
-<div align="center">
-  <p>Made with ❤️ by <a href="https://www.ultralytics.com/">Ultralytics</a></p>
-  <p>
-    <a href="https://github.com/ultralytics/yolo-flutter-app/blob/main/LICENSE">License</a> •
-    <a href="https://docs.ultralytics.com/">YOLO Docs</a> •
-    <a href="https://www.ultralytics.com/">Ultralytics</a>
-  </p>
-</div>
