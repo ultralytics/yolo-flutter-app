@@ -33,7 +33,7 @@ Add to `pubspec.yaml`:
 dependencies:
     flutter:
         sdk: flutter
-    ultralytics_yolo: ^0.1.16
+    ultralytics_yolo: ^0.1.18
     image_picker: ^0.8.7 # For image selection
 
 flutter:

@@ -111,9 +111,9 @@ YOLO Model Inference Engine
 
 ## 🔮 Roadmap
 
-- ✅ Multi-instance support (v0.1.16+)
+- ✅ Multi-instance support (v0.1.18+)
 - ✅ Performance optimization (v0.1.15+)
-- ✅ Streaming configuration (v0.1.16+)
+- ✅ Streaming configuration (v0.1.18+)
 
 ## 🤝 Community & Support
 

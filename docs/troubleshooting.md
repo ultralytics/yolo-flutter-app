@@ -577,7 +577,7 @@ class DebugProfiler {
 Future<Map<String, dynamic>> collectDebugInfo() async {
   return {
     'flutter_version': 'Run: flutter --version',
-    'plugin_version': '0.1.16',
+    'plugin_version': '0.1.18',
     'platform': Platform.isIOS ? 'iOS' : 'Android',
     'model_path': 'yolo11n',
     'model_exists': await YOLO.checkModelExists('yolo11n'),

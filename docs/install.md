@@ -16,7 +16,7 @@ Add the plugin to your Flutter project's `pubspec.yaml`:
 dependencies:
     flutter:
         sdk: flutter
-    ultralytics_yolo: ^0.1.16 # Latest version
+    ultralytics_yolo: ^0.1.18 # Latest version
 ```
 
 Run the installation command:

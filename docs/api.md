@@ -730,7 +730,7 @@ const List<String> SUPPORTED_RESOLUTIONS = [
 
 ## 🎯 Migration Guide
 
-### From v0.1.15 to v0.1.16+
+### From v0.1.15 to v0.1.18+
 
 #### Multi-Instance Support
 
