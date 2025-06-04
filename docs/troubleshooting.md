@@ -133,7 +133,7 @@ YOLOView(
   modelPath: 'yolo11n',
   task: YOLOTask.detect // segment, classify, pose, obb
 )
-``` 
+```
 
 4. **Refresh assets**:
 
