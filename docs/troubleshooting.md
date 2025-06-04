@@ -616,3 +616,6 @@ If none of these solutions work:
 4. **Open new issue**: With complete debug information
 
 Remember: Most issues are configuration or setup related. Double-check the [Installation Guide](install.md) and try the [Quick Start](quickstart.md) example first.
+
+If still having issue - let's link this here
+https://github.com/ultralytics/yolo-flutter-app/issues
