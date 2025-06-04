@@ -19,16 +19,18 @@ import java.io.ByteArrayOutputStream
 class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler, PluginRegistry.RequestPermissionsResultListener {
 
   private lateinit var methodChannel: MethodChannel
-  private var yolo: YOLO? = null
+  private val instanceChannels = mutableMapOf<String, MethodChannel>()
   private lateinit var applicationContext: android.content.Context
   private var activity: Activity? = null
   private var activityBinding: ActivityPluginBinding? = null // Added to store the binding
   private val TAG = "YOLOPlugin"
   private lateinit var viewFactory: YOLOPlatformViewFactory
+  private lateinit var binaryMessenger: io.flutter.plugin.common.BinaryMessenger
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-    // Store application context for later use
+    // Store application context and binary messenger for later use
     applicationContext = flutterPluginBinding.applicationContext
+    binaryMessenger = flutterPluginBinding.binaryMessenger
 
     // Create and store the view factory for later activity updates
     viewFactory = YOLOPlatformViewFactory(flutterPluginBinding.binaryMessenger)
@@ -39,7 +41,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
       viewFactory
     )
 
-    // Register method channel for single-image
+    // Register default method channel for backward compatibility
     methodChannel = MethodChannel(
       flutterPluginBinding.binaryMessenger,
       "yolo_single_image_channel"
@@ -118,11 +120,38 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
 
   override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
     when (call.method) {
+      "createInstance" -> {
+        try {
+          val args = call.arguments as? Map<*, *>
+          val instanceId = args?.get("instanceId") as? String
+          
+          if (instanceId == null) {
+            result.error("bad_args", "Missing instanceId", null)
+            return
+          }
+          
+          // Create instance placeholder
+          YOLOInstanceManager.shared.createInstance(instanceId)
+          
+          // Register a new channel for this instance
+          val channelName = "yolo_single_image_channel_$instanceId"
+          val instanceChannel = MethodChannel(binaryMessenger, channelName)
+          instanceChannel.setMethodCallHandler(this)
+          instanceChannels[instanceId] = instanceChannel
+          
+          result.success(null)
+        } catch (e: Exception) {
+          Log.e(TAG, "Error creating instance", e)
+          result.error("create_error", "Failed to create instance: ${e.message}", null)
+        }
+      }
+      
       "loadModel" -> {
         try {
           val args = call.arguments as? Map<*, *>
           var modelPath = args?.get("modelPath") as? String ?: "yolo11n"
           val taskString = args?.get("task") as? String ?: "detect"
+          val instanceId = args?.get("instanceId") as? String ?: "default"
           
           // Resolve the model path (handling absolute paths, internal:// scheme, or asset paths)
           modelPath = resolveModelPath(modelPath)
@@ -133,17 +162,21 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           // Load labels (in real implementation, you would load from metadata)
           val labels = loadLabels(modelPath)
           
-          // Initialize YOLO with new implementation
-          yolo = YOLO(
+          // Initialize YOLO with instance manager
+          YOLOInstanceManager.shared.loadModel(
+            instanceId = instanceId,
             context = applicationContext,
             modelPath = modelPath,
-            task = task,
-            labels = labels,
-            useGpu = true
-          )
-          
-          Log.d(TAG, "Model loaded successfully: $modelPath for task: $task")
-          result.success(true)
+            task = task
+          ) { loadResult ->
+            if (loadResult.isSuccess) {
+              Log.d(TAG, "Model loaded successfully: $modelPath for task: $task, instance: $instanceId")
+              result.success(true)
+            } else {
+              Log.e(TAG, "Failed to load model for instance $instanceId", loadResult.exceptionOrNull())
+              result.error("MODEL_NOT_FOUND", loadResult.exceptionOrNull()?.message ?: "Failed to load model", null)
+            }
+          }
         } catch (e: Exception) {
           Log.e(TAG, "Failed to load model", e)
           result.error("model_error", "Failed to load model: ${e.message}", null)
@@ -156,14 +189,10 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           val imageData = args?.get("image") as? ByteArray
           val confidenceThreshold = args?.get("confidenceThreshold") as? Double
           val iouThreshold = args?.get("iouThreshold") as? Double
+          val instanceId = args?.get("instanceId") as? String ?: "default"
 
           if (imageData == null) {
             result.error("bad_args", "No image data", null)
-            return
-          }
-          
-          if (yolo == null) {
-            result.error("not_initialized", "Model not loaded", null)
             return
           }
           
@@ -174,37 +203,17 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             return
           }
           
-          // Store original thresholds to restore after prediction
-          var originalConfThreshold: Double? = null
-          var originalIouThreshold: Double? = null
+          // Run inference using instance manager
+          val yoloResult = YOLOInstanceManager.shared.predict(
+            instanceId = instanceId,
+            bitmap = bitmap,
+            confidenceThreshold = confidenceThreshold?.toFloat(),
+            iouThreshold = iouThreshold?.toFloat()
+          )
           
-          // Apply thresholds if provided
-          if (confidenceThreshold != null) {
-            // Store original before changing
-            originalConfThreshold = when (yolo!!.task) {
-              YOLOTask.DETECT -> 0.25
-              YOLOTask.SEGMENT -> 0.25
-              YOLOTask.POSE -> 0.25
-              YOLOTask.OBB -> 0.25
-              else -> 0.25
-            }
-            yolo!!.setConfidenceThreshold(confidenceThreshold)
-          }
-          if (iouThreshold != null) {
-            // Store original before changing
-            originalIouThreshold = 0.4
-            yolo!!.setIouThreshold(iouThreshold)
-          }
-          
-          // Run inference with new YOLO implementation
-          val yoloResult = yolo!!.predict(bitmap, rotateForCamera = false)
-          
-          // Restore original thresholds if they were changed
-          if (originalConfThreshold != null) {
-            yolo!!.setConfidenceThreshold(originalConfThreshold)
-          }
-          if (originalIouThreshold != null) {
-            yolo!!.setIouThreshold(originalIouThreshold)
+          if (yoloResult == null) {
+            result.error("MODEL_NOT_LOADED", "Model has not been loaded. Call loadModel() first.", null)
+            return
           }
           
           // Create response
@@ -222,8 +231,11 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             )
           }
           
+          // Get instance to check task type
+          val yolo = YOLOInstanceManager.shared.getInstance(instanceId)
+          
           // Add task-specific data to response
-          when (yolo!!.task) {
+          when (yolo?.task) {
             YOLOTask.SEGMENT -> {
               // Include segmentation mask if available
               yoloResult.masks?.combinedMask?.let { mask ->
@@ -351,6 +363,30 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
         } catch (e: Exception) {
           Log.e(TAG, "Error setting model", e)
           result.error("set_model_error", "Error setting model: ${e.message}", null)
+        }
+      }
+      
+      "disposeInstance" -> {
+        try {
+          val args = call.arguments as? Map<*, *>
+          val instanceId = args?.get("instanceId") as? String
+          
+          if (instanceId == null) {
+            result.error("bad_args", "Missing instanceId", null)
+            return
+          }
+          
+          // Remove instance from manager
+          YOLOInstanceManager.shared.removeInstance(instanceId)
+          
+          // Remove the channel for this instance
+          instanceChannels[instanceId]?.setMethodCallHandler(null)
+          instanceChannels.remove(instanceId)
+          
+          result.success(null)
+        } catch (e: Exception) {
+          Log.e(TAG, "Error disposing instance", e)
+          result.error("dispose_error", "Failed to dispose instance: ${e.message}", null)
         }
       }
       

@@ -20,6 +20,10 @@ import Vision
 @MainActor
 public class YOLOView: UIView, VideoCaptureDelegate {
   func onInferenceTime(speed: Double, fps: Double) {
+    // Store performance data for streaming
+    self.currentFps = fps
+    self.currentProcessingTime = speed
+
     DispatchQueue.main.async {
       self.labelFPS.text = String(format: "%.1f FPS - %.1f ms", fps, speed)  // t2 seconds to ms
     }
@@ -27,8 +31,34 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   func onPredict(result: YOLOResult) {
 
+    // Check if we should process inference result based on frequency control
+    if !shouldRunInference() {
+      print("YOLOView: Skipping inference result due to frequency control")
+      return
+    }
+
     showBoxes(predictions: result)
     onDetection?(result)
+
+    // Streaming callback (with output throttling)
+    if let streamCallback = onStream {
+      if shouldProcessFrame() {
+        updateLastInferenceTime()
+
+        // Convert to stream data and send
+        let streamData = convertResultToStreamData(result)
+        // Add timestamp and frame info
+        var enhancedStreamData = streamData
+        enhancedStreamData["timestamp"] = Int64(Date().timeIntervalSince1970 * 1000)  // milliseconds
+        enhancedStreamData["frameNumber"] = frameNumberCounter
+        frameNumberCounter += 1
+
+        streamCallback(enhancedStreamData)
+        print("YOLOView: Sent streaming data with \(result.boxes.count) detections")
+      } else {
+        print("YOLOView: Skipping frame output due to throttling")
+      }
+    }
 
     if task == .segment {
       DispatchQueue.main.async {
@@ -75,6 +105,28 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   var onDetection: ((YOLOResult) -> Void)?
+
+  // Streaming functionality
+  private var streamConfig: YOLOStreamConfig?
+  var onStream: (([String: Any]) -> Void)?
+
+  // Frame counter for streaming
+  private var frameNumberCounter: Int64 = 0
+
+  // Throttling variables for performance control
+  private var lastInferenceTime: TimeInterval = 0
+  private var targetFrameInterval: TimeInterval? = nil  // in seconds
+  private var throttleInterval: TimeInterval? = nil  // in seconds
+
+  // Inference frequency control variables
+  private var inferenceFrameInterval: TimeInterval? = nil  // Target inference interval in seconds
+  private var frameSkipCount: Int = 0  // Current frame skip counter
+  private var targetSkipFrames: Int = 0  // Number of frames to skip between inferences
+
+  // Performance data tracking
+  private var currentFps: Double = 0.0
+  private var currentProcessingTime: Double = 0.0
+
   private var videoCapture: VideoCapture
   private var busy = false
   private var currentBuffer: CVPixelBuffer?
@@ -1159,7 +1211,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 }
 
-extension YOLOView: @preconcurrency AVCapturePhotoCaptureDelegate {
+extension YOLOView: AVCapturePhotoCaptureDelegate {
   public func photoOutput(
     _ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?
   ) {
@@ -1221,5 +1273,277 @@ extension YOLOView: @preconcurrency AVCapturePhotoCaptureDelegate {
     } else {
       print("AVCapturePhotoCaptureDelegate Error")
     }
+  }
+
+  // MARK: - Streaming Functionality
+
+  /// Set streaming configuration
+  public func setStreamConfig(_ config: YOLOStreamConfig?) {
+    self.streamConfig = config
+    setupThrottlingFromConfig()
+    print("YOLOView: Streaming config set: \(String(describing: config))")
+  }
+
+  /// Set streaming callback
+  public func setStreamCallback(_ callback: (([String: Any]) -> Void)?) {
+    self.onStream = callback
+    print("YOLOView: Streaming callback set: \(callback != nil)")
+  }
+
+  /// Setup throttling parameters from streaming configuration
+  private func setupThrottlingFromConfig() {
+    guard let config = streamConfig else { return }
+
+    // Setup maxFPS throttling (for result output)
+    if let maxFPS = config.maxFPS, maxFPS > 0 {
+      targetFrameInterval = 1.0 / Double(maxFPS)  // Convert to seconds
+      print(
+        "YOLOView: maxFPS throttling enabled - target FPS: \(maxFPS), interval: \(targetFrameInterval! * 1000)ms"
+      )
+    } else {
+      targetFrameInterval = nil
+      print("YOLOView: maxFPS throttling disabled")
+    }
+
+    // Setup throttleInterval (for result output)
+    if let throttleMs = config.throttleIntervalMs, throttleMs > 0 {
+      throttleInterval = Double(throttleMs) / 1000.0  // Convert ms to seconds
+      print("YOLOView: throttleInterval enabled - interval: \(throttleMs)ms")
+    } else {
+      throttleInterval = nil
+      print("YOLOView: throttleInterval disabled")
+    }
+
+    // Setup inference frequency control
+    if let inferenceFreq = config.inferenceFrequency, inferenceFreq > 0 {
+      inferenceFrameInterval = 1.0 / Double(inferenceFreq)  // Convert to seconds
+      print(
+        "YOLOView: Inference frequency control enabled - target inference FPS: \(inferenceFreq), interval: \(inferenceFrameInterval! * 1000)ms"
+      )
+    } else {
+      inferenceFrameInterval = nil
+      print("YOLOView: Inference frequency control disabled")
+    }
+
+    // Setup frame skipping
+    if let skipFrames = config.skipFrames, skipFrames > 0 {
+      targetSkipFrames = skipFrames
+      frameSkipCount = 0  // Reset counter
+      print("YOLOView: Frame skipping enabled - skip \(skipFrames) frames between inferences")
+    } else {
+      targetSkipFrames = 0
+      frameSkipCount = 0
+      print("YOLOView: Frame skipping disabled")
+    }
+
+    // Initialize timing
+    lastInferenceTime = CACurrentMediaTime()
+  }
+
+  /// Check if we should run inference on this frame based on inference frequency control
+  private func shouldRunInference() -> Bool {
+    let now = CACurrentMediaTime()
+
+    // Check frame skipping control first (simpler, more deterministic)
+    if targetSkipFrames > 0 {
+      frameSkipCount += 1
+      if frameSkipCount <= targetSkipFrames {
+        // Still skipping frames
+        return false
+      } else {
+        // Reset counter and allow inference
+        frameSkipCount = 0
+        return true
+      }
+    }
+
+    // Check inference frequency control (time-based)
+    if let interval = inferenceFrameInterval {
+      if now - lastInferenceTime < interval {
+        return false
+      }
+    }
+
+    return true
+  }
+
+  /// Check if we should send results to Flutter based on output throttling settings
+  private func shouldProcessFrame() -> Bool {
+    let now = CACurrentMediaTime()
+
+    // Check maxFPS throttling
+    if let interval = targetFrameInterval {
+      if now - lastInferenceTime < interval {
+        return false
+      }
+    }
+
+    // Check throttleInterval
+    if let interval = throttleInterval {
+      if now - lastInferenceTime < interval {
+        return false
+      }
+    }
+
+    return true
+  }
+
+  /// Update the last inference time (call this when actually processing)
+  private func updateLastInferenceTime() {
+    lastInferenceTime = CACurrentMediaTime()
+  }
+
+  /// Convert YOLOResult to a Dictionary for streaming (ported from Android implementation)
+  /// Uses detection index correctly to avoid class index confusion
+  private func convertResultToStreamData(_ result: YOLOResult) -> [String: Any] {
+    var map: [String: Any] = [:]
+    guard let config = streamConfig else { return map }
+
+    // Convert detection results (if enabled)
+    if config.includeDetections {
+      var detections: [[String: Any]] = []
+
+      // Convert detection boxes - CRITICAL: use detectionIndex, not class index
+      for (detectionIndex, box) in result.boxes.enumerated() {
+        var detection: [String: Any] = [:]
+        detection["classIndex"] = box.index
+        detection["className"] = box.cls
+        detection["confidence"] = Double(box.conf)
+
+        // Bounding box in original coordinates
+        let boundingBox: [String: Any] = [
+          "left": Double(box.xywh.minX),
+          "top": Double(box.xywh.minY),
+          "right": Double(box.xywh.maxX),
+          "bottom": Double(box.xywh.maxY),
+        ]
+        detection["boundingBox"] = boundingBox
+
+        // Normalized bounding box (0-1)
+        let normalizedBox: [String: Any] = [
+          "left": Double(box.xywhn.minX),
+          "top": Double(box.xywhn.minY),
+          "right": Double(box.xywhn.maxX),
+          "bottom": Double(box.xywhn.maxY),
+        ]
+        detection["normalizedBox"] = normalizedBox
+
+        // Add mask data for segmentation (if available and enabled)
+        if config.includeMasks && result.masks?.masks != nil
+          && detectionIndex < result.masks!.masks.count
+        {
+          if let maskData = result.masks?.masks[detectionIndex] {
+            // Convert mask data to array format for Flutter compatibility
+            let maskDataDouble = maskData.map { row in
+              row.map { Double($0) }
+            }
+            detection["mask"] = maskDataDouble
+            print(
+              "YOLOView: ✅ Added mask data (\(maskData.count)x\(maskData.first?.count ?? 0)) for detection \(detectionIndex)"
+            )
+          }
+        }
+
+        // Add pose keypoints (if available and enabled)
+        if config.includePoses && detectionIndex < result.keypointsList.count {
+          let keypoints = result.keypointsList[detectionIndex]
+          // Convert to flat array [x1, y1, conf1, x2, y2, conf2, ...]
+          var keypointsFlat: [Double] = []
+          for i in 0..<keypoints.xyn.count {
+            keypointsFlat.append(Double(keypoints.xyn[i].x))
+            keypointsFlat.append(Double(keypoints.xyn[i].y))
+            if i < keypoints.conf.count {
+              keypointsFlat.append(Double(keypoints.conf[i]))
+            } else {
+              keypointsFlat.append(0.0)  // Default confidence if missing
+            }
+          }
+          detection["keypoints"] = keypointsFlat
+          print(
+            "YOLOView: Added keypoints data (\(keypoints.xyn.count) points) for detection \(detectionIndex)"
+          )
+        }
+
+        // Add OBB data (if available and enabled)
+        if config.includeOBB && detectionIndex < result.obb.count {
+          let obbResult = result.obb[detectionIndex]
+          let obbBox = obbResult.box
+
+          // Convert OBB to 4 corner points
+          let polygon = obbBox.toPolygon()
+          let points = polygon.map { point in
+            [
+              "x": Double(point.x),
+              "y": Double(point.y),
+            ]
+          }
+
+          // Create comprehensive OBB data map
+          let obbDataMap: [String: Any] = [
+            "centerX": Double(obbBox.cx),
+            "centerY": Double(obbBox.cy),
+            "width": Double(obbBox.w),
+            "height": Double(obbBox.h),
+            "angle": Double(obbBox.angle),  // radians
+            "angleDegrees": (Double(obbBox.angle) * 180.0 / Double.pi),  // degrees for convenience
+            "area": Double(obbBox.area),
+            "points": points,  // 4 corner points
+            "confidence": Double(obbResult.confidence),
+            "className": obbResult.cls,
+            "classIndex": obbResult.index,
+          ]
+
+          detection["obb"] = obbDataMap
+          print(
+            "YOLOView: ✅ Added OBB data: \(obbResult.cls) (\(String(format: "%.1f", Double(obbBox.angle) * 180.0 / Double.pi))° rotation)"
+          )
+        }
+
+        detections.append(detection)
+      }
+
+      map["detections"] = detections
+      print("YOLOView: Converted \(detections.count) detections to stream data")
+    }
+
+    // Add performance metrics (if enabled)
+    if config.includeProcessingTimeMs {
+      map["processingTimeMs"] = currentProcessingTime  // inference time in ms
+      print(
+        "YOLOView: 📊 Including processingTimeMs: \(currentProcessingTime) ms (includeProcessingTimeMs=\(config.includeProcessingTimeMs))"
+      )
+    } else {
+      print(
+        "YOLOView: ⚠️ Skipping processingTimeMs (includeProcessingTimeMs=\(config.includeProcessingTimeMs))"
+      )
+    }
+
+    if config.includeFps {
+      map["fps"] = currentFps  // FPS value
+      print("YOLOView: 📊 Including fps: \(currentFps) (includeFps=\(config.includeFps))")
+    } else {
+      print("YOLOView: ⚠️ Skipping fps (includeFps=\(config.includeFps))")
+    }
+
+    // Add original image (if available and enabled)
+    if config.includeOriginalImage {
+      if let pixelBuffer = currentBuffer {
+        if let imageData = convertPixelBufferToJPEGData(pixelBuffer) {
+          map["originalImage"] = imageData
+          print("YOLOView: ✅ Added original image data (\(imageData.count) bytes)")
+        }
+      }
+    }
+
+    return map
+  }
+
+  /// Convert CVPixelBuffer to JPEG data for streaming
+  private func convertPixelBufferToJPEGData(_ pixelBuffer: CVPixelBuffer) -> Data? {
+    let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+    let context = CIContext()
+    guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
+    let uiImage = UIImage(cgImage: cgImage)
+    return uiImage.jpegData(compressionQuality: 0.9)
   }
 }

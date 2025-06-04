@@ -375,6 +375,14 @@ class ObjectDetector(
         super.setIouThreshold(iou)
     }
 
+    override fun getConfidenceThreshold(): Double {
+        return confidenceThreshold.toDouble()
+    }
+
+    override fun getIouThreshold(): Double {
+        return iouThreshold.toDouble()
+    }
+
     override fun setNumItemsThreshold(n: Int) {
         numItemsThreshold = n
     }

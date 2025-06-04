@@ -1,3 +1,21 @@
+## 0.1.18
+
+- Added customizable result streaming with `YOLOStreamingConfig`
+  - Enable detailed control based on streaming mode
+  - Enable throttling and frame dropping for performance optimization
+  - Added optional support for mask and pose data in results
+- Added multi-instance YOLO model support
+  - Run multiple YOLO models simultaneously
+  - Independent configuration for each instance
+  - Efficient resource management across instances
+- Enhanced Swift backward compatibility
+  - Improved support for older iOS versions
+  - Better compatibility with legacy Swift code
+- Updated documentation
+  - Added comprehensive model integration guide
+  - Improved API documentation
+  - Enhanced troubleshooting section
+
 ## 0.1.17
 
 - Improved publish workflow robustness.

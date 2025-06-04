@@ -20,6 +20,8 @@ interface Predictor {
     abstract fun setIouThreshold(iou: Double)
     abstract fun setConfidenceThreshold(conf: Double)
     abstract fun setNumItemsThreshold(progress: Int)
+    abstract fun getConfidenceThreshold(): Double
+    abstract fun getIouThreshold(): Double
 
     var labels: List<String>
     var isUpdating: Boolean
@@ -61,5 +63,13 @@ abstract class BasePredictor : Predictor {
 
     override fun setNumItemsThreshold(progress: Int) {
 
+    }
+    
+    override fun getConfidenceThreshold(): Double {
+        return CONFIDENCE_THRESHOLD.toDouble()
+    }
+    
+    override fun getIouThreshold(): Double {
+        return IOU_THRESHOLD.toDouble()
     }
 }

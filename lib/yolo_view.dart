@@ -9,6 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
+import 'package:ultralytics_yolo/yolo_streaming_config.dart';
+import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 
 /// Controller for interacting with a [YOLOView] widget.
 ///
@@ -74,6 +76,12 @@ class YOLOViewController {
   /// Limits the number of detections returned to improve
   /// performance. Default is 30.
   int get numItemsThreshold => _numItemsThreshold;
+
+  /// Whether the controller has been initialized with a platform view.
+  ///
+  /// Returns true if the controller is connected to a native view and
+  /// can receive method calls.
+  bool get isInitialized => _methodChannel != null && _viewId != null;
 
   @visibleForTesting
   void init(MethodChannel methodChannel, int viewId) =>
@@ -355,6 +363,54 @@ class YOLOViewController {
       rethrow;
     }
   }
+
+  /// Sets the streaming configuration for real-time detection.
+  ///
+  /// This method allows dynamic configuration of what data is included
+  /// in the detection stream, enabling performance optimization based
+  /// on application needs.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Switch to minimal streaming for better performance
+  /// await controller.setStreamingConfig(
+  ///   YOLOStreamingConfig.minimal(),
+  /// );
+  ///
+  /// // Switch to full data streaming
+  /// await controller.setStreamingConfig(
+  ///   YOLOStreamingConfig.full(),
+  /// );
+  /// ```
+  ///
+  /// @param config The streaming configuration to apply
+  Future<void> setStreamingConfig(YOLOStreamingConfig config) async {
+    if (_methodChannel == null) {
+      logInfo(
+        'YOLOViewController: Warning - Cannot set streaming config, view not yet created',
+      );
+      return;
+    }
+    try {
+      await _methodChannel!.invokeMethod('setStreamingConfig', {
+        'includeDetections': config.includeDetections,
+        'includeClassifications': config.includeClassifications,
+        'includeProcessingTimeMs': config.includeProcessingTimeMs,
+        'includeFps': config.includeFps,
+        'includeMasks': config.includeMasks,
+        'includePoses': config.includePoses,
+        'includeOBB': config.includeOBB,
+        'includeOriginalImage': config.includeOriginalImage,
+        'maxFPS': config.maxFPS,
+        'throttleInterval': config.throttleInterval?.inMilliseconds,
+        'inferenceFrequency': config.inferenceFrequency,
+        'skipFrames': config.skipFrames,
+      });
+      logInfo('YOLOViewController: Streaming config updated');
+    } catch (e) {
+      logInfo('YOLOViewController: Error setting streaming config: $e');
+    }
+  }
 }
 
 /// A Flutter widget that displays a real-time camera preview with YOLO object detection.
@@ -412,16 +468,51 @@ class YOLOView extends StatefulWidget {
 
   /// Callback invoked when new detection results are available.
   ///
-  /// This callback is called for each processed frame that contains
-  /// detections. The frequency depends on the device's processing speed.
+  /// This callback provides structured, type-safe detection results as [YOLOResult] objects.
+  /// It's the recommended callback for basic object detection applications.
+  ///
+  /// **Usage:** Basic detection, UI updates, simple statistics
+  /// **Performance:** Lightweight (~1-2KB per frame)
+  /// **Data:** Bounding boxes, class names, confidence scores
+  ///
+  /// Note: If [onStreamingData] is provided, this callback will NOT be called
+  /// to avoid data duplication.
   final Function(List<YOLOResult>)? onResult;
 
   /// Callback invoked with performance metrics.
   ///
-  /// Provides real-time performance data including:
-  /// - 'processingTimeMs': Time to process a single frame
-  /// - 'fps': Current frames per second
-  final Function(Map<String, double> metrics)? onPerformanceMetrics;
+  /// This callback provides structured performance data as [YOLOPerformanceMetrics] objects.
+  /// Use this for monitoring app performance and optimizing detection settings.
+  ///
+  /// **Usage:** Performance monitoring, FPS display, optimization
+  /// **Performance:** Very lightweight (~100 bytes per frame)
+  /// **Data:** FPS, processing time, frame numbers, timestamps
+  ///
+  /// Note: If [onStreamingData] is provided, this callback will NOT be called
+  /// to avoid data duplication.
+  final Function(YOLOPerformanceMetrics)? onPerformanceMetrics;
+
+  /// Callback invoked with comprehensive raw streaming data.
+  ///
+  /// This callback provides access to ALL available YOLO data including advanced
+  /// features like segmentation masks, pose keypoints, oriented bounding boxes,
+  /// and original camera frames.
+  ///
+  /// **Usage:** Advanced AI/ML applications, research, debugging, custom processing
+  /// **Performance:** Heavy (~100KB-10MB per frame depending on configuration)
+  /// **Data:** Everything from [onResult] + [onPerformanceMetrics] + advanced features
+  ///
+  /// **IMPORTANT:** When this callback is provided, [onResult] and [onPerformanceMetrics]
+  /// will NOT be called to prevent data duplication and improve performance.
+  ///
+  /// Available data keys:
+  /// - `detections`: List<Map> - Raw detection data with all features
+  /// - `fps`: double - Current frames per second
+  /// - `processingTimeMs`: double - Processing time in milliseconds
+  /// - `frameNumber`: int - Sequential frame number
+  /// - `timestamp`: int - Timestamp in milliseconds
+  /// - `originalImage`: Uint8List? - JPEG encoded camera frame (if enabled)
+  final Function(Map<String, dynamic> streamData)? onStreamingData;
 
   /// Whether to show native UI controls on the camera preview.
   ///
@@ -434,6 +525,25 @@ class YOLOView extends StatefulWidget {
   /// Provides the current zoom level as a double value (e.g., 1.0, 2.0, 3.5).
   final Function(double zoomLevel)? onZoomChanged;
 
+  /// Initial streaming configuration for detection results.
+  ///
+  /// Controls what data is included in the streaming results.
+  /// If not specified, uses the default minimal configuration.
+  /// Can be changed dynamically via the controller.
+  final YOLOStreamingConfig? streamingConfig;
+
+  /// Initial confidence threshold for detections.
+  ///
+  /// Only detections with confidence above this value will be returned.
+  /// Range: 0.0 to 1.0. Default is 0.5.
+  final double confidenceThreshold;
+
+  /// Initial IoU (Intersection over Union) threshold.
+  ///
+  /// Used for non-maximum suppression to filter overlapping detections.
+  /// Range: 0.0 to 1.0. Default is 0.45.
+  final double iouThreshold;
+
   const YOLOView({
     super.key,
     required this.modelPath,
@@ -442,8 +552,12 @@ class YOLOView extends StatefulWidget {
     this.cameraResolution = '720p',
     this.onResult,
     this.onPerformanceMetrics,
+    this.onStreamingData,
     this.showNativeUI = false,
     this.onZoomChanged,
+    this.streamingConfig,
+    this.confidenceThreshold = 0.5,
+    this.iouThreshold = 0.45,
   });
 
   @override
@@ -476,8 +590,17 @@ class YOLOViewState extends State<YOLOView> {
 
     _setupController();
 
-    if (widget.onResult != null || widget.onPerformanceMetrics != null) {
+    if (widget.onResult != null ||
+        widget.onPerformanceMetrics != null ||
+        widget.onStreamingData != null) {
       _subscribeToResults();
+    }
+
+    // Apply initial streaming config if provided
+    if (widget.streamingConfig != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _effectiveController.setStreamingConfig(widget.streamingConfig!);
+      });
     }
   }
 
@@ -500,8 +623,11 @@ class YOLOViewState extends State<YOLOView> {
     }
 
     if (oldWidget.onResult != widget.onResult ||
-        oldWidget.onPerformanceMetrics != widget.onPerformanceMetrics) {
-      if (widget.onResult == null && widget.onPerformanceMetrics == null) {
+        oldWidget.onPerformanceMetrics != widget.onPerformanceMetrics ||
+        oldWidget.onStreamingData != widget.onStreamingData) {
+      if (widget.onResult == null &&
+          widget.onPerformanceMetrics == null &&
+          widget.onStreamingData == null) {
         _cancelResultSubscription();
       } else {
         // If at least one callback is now non-null, ensure subscription
@@ -603,67 +729,82 @@ class YOLOViewState extends State<YOLOView> {
         }
 
         if (event is Map) {
-          // Handle detection results
-          if (widget.onResult != null && event.containsKey('detections')) {
+          // Priority system: onStreamingData takes precedence
+          if (widget.onStreamingData != null) {
             try {
-              final List<dynamic> detections = event['detections'] ?? [];
-              logInfo('YOLOView: Received ${detections.length} detections');
-
-              for (var i = 0; i < detections.length && i < 3; i++) {
-                final detection = detections[i];
-                final className = detection['className'] ?? 'unknown';
-                final confidence = detection['confidence'] ?? 0.0;
-                logInfo(
-                  'YOLOView: Detection $i - $className (${(confidence * 100).toStringAsFixed(1)}%)',
-                );
-              }
-
-              final results = _parseDetectionResults(event);
-              logInfo('YOLOView: Parsed results count: ${results.length}');
-              widget.onResult!(results);
-              logInfo('YOLOView: Called onResult callback with results');
-            } catch (e, s) {
-              logInfo('Error parsing detection results: $e');
-              logInfo('Stack trace for detection error: $s');
+              // Comprehensive mode: Pass all data via onStreamingData
+              final streamData = Map<String, dynamic>.from(event);
+              widget.onStreamingData!(streamData);
               logInfo(
-                'YOLOView: Event keys for detection error: ${event.keys.toList()}',
+                'YOLOView: Called onStreamingData callback (comprehensive mode) with keys: ${streamData.keys.toList()}',
               );
-              if (event.containsKey('detections')) {
-                final detections = event['detections'];
-                logInfo(
-                  'YOLOView: Detections type for error: ${detections.runtimeType}',
-                );
-                if (detections is List && detections.isNotEmpty) {
+            } catch (e, s) {
+              logInfo('Error processing streaming data: $e');
+              logInfo('Stack trace for streaming error: $s');
+            }
+          } else {
+            // Separated mode: Use individual callbacks
+            logInfo('YOLOView: Using separated callback mode');
+
+            // Handle detection results
+            if (widget.onResult != null && event.containsKey('detections')) {
+              try {
+                final List<dynamic> detections = event['detections'] ?? [];
+                logInfo('YOLOView: Received ${detections.length} detections');
+
+                for (var i = 0; i < detections.length && i < 3; i++) {
+                  final detection = detections[i];
+                  final className = detection['className'] ?? 'unknown';
+                  final confidence = detection['confidence'] ?? 0.0;
                   logInfo(
-                    'YOLOView: First detection keys for error: ${detections.first?.keys?.toList()}',
+                    'YOLOView: Detection $i - $className (${(confidence * 100).toStringAsFixed(1)}%)',
                   );
+                }
+
+                final results = _parseDetectionResults(event);
+                logInfo('YOLOView: Parsed results count: ${results.length}');
+                widget.onResult!(results);
+                logInfo('YOLOView: Called onResult callback with results');
+              } catch (e, s) {
+                logInfo('Error parsing detection results: $e');
+                logInfo('Stack trace for detection error: $s');
+                logInfo(
+                  'YOLOView: Event keys for detection error: ${event.keys.toList()}',
+                );
+                if (event.containsKey('detections')) {
+                  final detections = event['detections'];
+                  logInfo(
+                    'YOLOView: Detections type for error: ${detections.runtimeType}',
+                  );
+                  if (detections is List && detections.isNotEmpty) {
+                    logInfo(
+                      'YOLOView: First detection keys for error: ${detections.first?.keys?.toList()}',
+                    );
+                  }
                 }
               }
             }
-          }
 
-          // Handle performance metrics
-          if (widget.onPerformanceMetrics != null) {
-            try {
-              final double? processingTimeMs =
-                  (event['processingTimeMs'] as num?)?.toDouble();
-              final double? fps = (event['fps'] as num?)?.toDouble();
-
-              if (processingTimeMs != null && fps != null) {
-                widget.onPerformanceMetrics!({
-                  'processingTimeMs': processingTimeMs,
-                  'fps': fps,
-                });
+            // Handle performance metrics
+            if (widget.onPerformanceMetrics != null) {
+              try {
                 logInfo(
-                  'YOLOView: Called onPerformanceMetrics callback with: processingTimeMs=$processingTimeMs, fps=$fps',
+                  'YOLOView: 🔍 Raw event data for performance metrics: $event',
+                );
+                final metrics = YOLOPerformanceMetrics.fromMap(
+                  Map<String, dynamic>.from(event),
+                );
+                widget.onPerformanceMetrics!(metrics);
+                logInfo(
+                  'YOLOView: Called onPerformanceMetrics callback: ${metrics.toString()}',
+                );
+              } catch (e, s) {
+                logInfo('Error parsing performance metrics: $e');
+                logInfo('Stack trace for metrics error: $s');
+                logInfo(
+                  'YOLOView: Event keys for metrics error: ${event.keys.toList()}',
                 );
               }
-            } catch (e, s) {
-              logInfo('Error parsing performance metrics: $e');
-              logInfo('Stack trace for metrics error: $s');
-              logInfo(
-                'YOLOView: Event keys for metrics error: ${event.keys.toList()}',
-              );
             }
           }
         } else {
@@ -759,11 +900,30 @@ class YOLOViewState extends State<YOLOView> {
     final creationParams = <String, dynamic>{
       'modelPath': widget.modelPath,
       'task': widget.task.name,
-      'confidenceThreshold': _effectiveController.confidenceThreshold,
-      'iouThreshold': _effectiveController.iouThreshold,
+      'confidenceThreshold': widget.confidenceThreshold,
+      'iouThreshold': widget.iouThreshold,
       'numItemsThreshold': _effectiveController.numItemsThreshold,
       'viewId': _viewId,
     };
+
+    // Add streaming config to creation params if provided
+    if (widget.streamingConfig != null) {
+      creationParams['streamingConfig'] = {
+        'includeDetections': widget.streamingConfig!.includeDetections,
+        'includeClassifications':
+            widget.streamingConfig!.includeClassifications,
+        'includeProcessingTimeMs':
+            widget.streamingConfig!.includeProcessingTimeMs,
+        'includeFps': widget.streamingConfig!.includeFps,
+        'includeMasks': widget.streamingConfig!.includeMasks,
+        'includePoses': widget.streamingConfig!.includePoses,
+        'includeOBB': widget.streamingConfig!.includeOBB,
+        'includeOriginalImage': widget.streamingConfig!.includeOriginalImage,
+        'maxFPS': widget.streamingConfig!.maxFPS,
+        'throttleInterval':
+            widget.streamingConfig!.throttleInterval?.inMilliseconds,
+      };
+    }
 
     // This was causing issues in initState/didUpdateWidget, better to call once after view created.
     // WidgetsBinding.instance.addPostFrameCallback((_) {

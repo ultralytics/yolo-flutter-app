@@ -3,260 +3,39 @@
 import Flutter
 import UIKit
 
-/// Class that manages YOLO models as a singleton instance
-@MainActor
-class SingleImageYOLO {
-  static let shared = SingleImageYOLO()
-  private var yolo: YOLO?
-  private var isLoadingModel = false
-  private var loadCompletionHandlers: [(Result<YOLO, Error>) -> Void] = []
-
-  private init() {}
-
-  func loadModel(
-    modelName: String, task: YOLOTask, completion: @escaping (Result<Void, Error>) -> Void
-  ) {
-    if yolo != nil {
-      completion(.success(()))
-      return
-    }
-
-    if isLoadingModel {
-      loadCompletionHandlers.append({ result in
-        switch result {
-        case .success:
-          completion(.success(()))
-        case .failure(let error):
-          completion(.failure(error))
-        }
-      })
-      return
-    }
-
-    isLoadingModel = true
-
-    let resolvedModelPath = resolveModelPath(modelName)
-
-    YOLO(resolvedModelPath, task: task) { [weak self] result in
-      guard let self = self else { return }
-
-      self.isLoadingModel = false
-
-      switch result {
-      case .success(let loadedYolo):
-        self.yolo = loadedYolo
-        completion(.success(()))
-
-        for handler in self.loadCompletionHandlers {
-          handler(.success(loadedYolo))
-        }
-
-      case .failure(let error):
-        completion(.failure(error))
-
-        for handler in self.loadCompletionHandlers {
-          handler(.failure(error))
-        }
-      }
-
-      self.loadCompletionHandlers.removeAll()
-    }
-  }
-
-  private func resolveModelPath(_ modelPath: String) -> String {
-    // 既に絶対パスの場合はそのまま返す
-    if modelPath.hasPrefix("/") {
-      return modelPath
-    }
-
-    let fileManager = FileManager.default
-
-    if modelPath.contains("/") {
-      let components = modelPath.components(separatedBy: "/")
-      let fileName = components.last ?? ""
-      let fileNameWithoutExt = fileName.components(separatedBy: ".").first ?? fileName
-      let directory = components.dropLast().joined(separator: "/")
-
-      let searchPaths = [
-        "flutter_assets/\(modelPath)",
-        "flutter_assets/\(directory)",
-        "flutter_assets",
-        "",
-      ]
-
-      for searchPath in searchPaths {
-        // 完全な名前で検索
-        if !searchPath.isEmpty,
-          let assetPath = Bundle.main.path(
-            forResource: fileName, ofType: nil, inDirectory: searchPath)
-        {
-          return assetPath
-        }
-
-        if fileName.contains(".") {
-          let fileComponents = fileName.components(separatedBy: ".")
-          let name = fileComponents.dropLast().joined(separator: ".")
-          let ext = fileComponents.last ?? ""
-
-          if !searchPath.isEmpty,
-            let assetPath = Bundle.main.path(
-              forResource: name, ofType: ext, inDirectory: searchPath)
-          {
-            return assetPath
-          }
-        }
-
-        if !searchPath.isEmpty,
-          let assetPath = Bundle.main.path(
-            forResource: fileNameWithoutExt, ofType: nil, inDirectory: searchPath)
-        {
-          return assetPath
-        }
-      }
-
-      for bundle in Bundle.allBundles {
-        let bundleID = bundle.bundleIdentifier ?? "unknown"
-
-        if let assetPath = bundle.path(forResource: fileName, ofType: nil) {
-          return assetPath
-        }
-
-        if fileName.contains(".") {
-          let fileComponents = fileName.components(separatedBy: ".")
-          let name = fileComponents.dropLast().joined(separator: ".")
-          let ext = fileComponents.last ?? ""
-
-          if let assetPath = bundle.path(forResource: name, ofType: ext) {
-            return assetPath
-          }
-        }
-
-        if let assetPath = bundle.path(forResource: fileNameWithoutExt, ofType: nil) {
-          return assetPath
-        }
-      }
-
-      let possiblePaths = [
-        Bundle.main.bundlePath + "/flutter_assets/\(modelPath)",
-        Bundle.main.bundlePath + "/flutter_assets/\(fileName)",
-      ]
-
-      for path in possiblePaths {
-        if fileManager.fileExists(atPath: path) {
-          return path
-        }
-      }
-    } else {
-      for bundle in Bundle.allBundles {
-        let bundleID = bundle.bundleIdentifier ?? "unknown"
-
-        if let path = bundle.path(forResource: modelPath, ofType: nil) {
-          return path
-        }
-
-        if modelPath.contains(".") {
-          let fileComponents = modelPath.components(separatedBy: ".")
-          let name = fileComponents.dropLast().joined(separator: ".")
-          let ext = fileComponents.last ?? ""
-
-          if let path = bundle.path(forResource: name, ofType: ext) {
-            return path
-          }
-        }
-      }
-
-      if let path = Bundle.main.path(
-        forResource: modelPath, ofType: nil, inDirectory: "flutter_assets")
-      {
-        return path
-      }
-    }
-
-    // ファイルが見つからなかった場合、元のパスをそのまま返す
-    return modelPath
-  }
-
-  func predict(imageData: Data, confidenceThreshold: Double? = nil, iouThreshold: Double? = nil)
-    -> [String: Any]?
-  {
-    guard let yolo = self.yolo, let uiImage = UIImage(data: imageData) else {
-      return nil
-    }
-
-    // Store original thresholds
-    let originalConfThreshold = yolo.confidenceThreshold
-    let originalIouThreshold = yolo.iouThreshold
-
-    // Apply custom thresholds if provided
-    if let confThreshold = confidenceThreshold {
-      yolo.confidenceThreshold = confThreshold
-    }
-    if let iouThreshold = iouThreshold {
-      yolo.iouThreshold = iouThreshold
-    }
-
-    let result = yolo(uiImage)
-
-    // Restore original thresholds
-    yolo.confidenceThreshold = originalConfThreshold
-    yolo.iouThreshold = originalIouThreshold
-
-    return convertToFlutterFormat(result: result)
-  }
-
-  private func convertToFlutterFormat(result: YOLOResult) -> [String: Any] {
-    var flutterResults: [[String: Any]] = []
-
-    for box in result.boxes {
-      var boxDict: [String: Any] = [
-        "cls": box.cls,
-        "confidence": box.conf,
-        "index": box.index,
-      ]
-
-      boxDict["x"] = box.xywhn.minX
-      boxDict["y"] = box.xywhn.minY
-      boxDict["width"] = box.xywhn.width
-      boxDict["height"] = box.xywhn.height
-
-      boxDict["xImg"] = box.xywh.minX
-      boxDict["yImg"] = box.xywh.minY
-      boxDict["widthImg"] = box.xywh.width
-      boxDict["heightImg"] = box.xywh.height
-
-      boxDict["bbox"] = [box.xywh.minX, box.xywh.minY, box.xywh.width, box.xywh.height]
-
-      flutterResults.append(boxDict)
-    }
-
-    var resultDict: [String: Any] = [
-      "boxes": flutterResults
-    ]
-
-    if let annotatedImage = result.annotatedImage {
-      if let imageData = annotatedImage.pngData() {
-        resultDict["annotatedImage"] = FlutterStandardTypedData(bytes: imageData)
-      }
-    }
-
-    return resultDict
-  }
-}
-
 @MainActor
 public class YOLOPlugin: NSObject, FlutterPlugin {
+  // Dictionary to store channels for each instance
+  private static var instanceChannels: [String: FlutterMethodChannel] = [:]
+  // Store the registrar for creating new channels
+  private static var pluginRegistrar: FlutterPluginRegistrar?
+
   public static func register(with registrar: FlutterPluginRegistrar) {
+    // Store the registrar for later use
+    pluginRegistrar = registrar
     // 1) Register the platform view
     let factory = SwiftYOLOPlatformViewFactory(messenger: registrar.messenger())
     registrar.register(factory, withId: "com.ultralytics.yolo/YOLOPlatformView")
 
-    // 2) Register the method channel for single-image inference
-    let channel = FlutterMethodChannel(
+    // 2) Register the default method channel for backward compatibility
+    let defaultChannel = FlutterMethodChannel(
       name: "yolo_single_image_channel",
       binaryMessenger: registrar.messenger()
     )
     let instance = YOLOPlugin()
-    registrar.addMethodCallDelegate(instance, channel: channel)
+    registrar.addMethodCallDelegate(instance, channel: defaultChannel)
+  }
+
+  private func registerInstanceChannel(instanceId: String, messenger: FlutterBinaryMessenger) {
+    let channelName = "yolo_single_image_channel_\(instanceId)"
+    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: messenger)
+    let instance = YOLOPlugin()
+    // Store the channel for later use
+    YOLOPlugin.instanceChannels[instanceId] = channel
+    // Register this instance as the method call delegate
+    if let registrar = YOLOPlugin.pluginRegistrar {
+      registrar.addMethodCallDelegate(instance, channel: channel)
+    }
   }
 
   private func checkModelExists(modelPath: String) -> [String: Any] {
@@ -364,6 +143,27 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     Task { @MainActor in
       switch call.method {
+      case "createInstance":
+        guard let args = call.arguments as? [String: Any],
+          let instanceId = args["instanceId"] as? String
+        else {
+          result(
+            FlutterError(
+              code: "bad_args", message: "Invalid arguments for createInstance", details: nil)
+          )
+          return
+        }
+
+        // Create the instance in the manager
+        YOLOInstanceManager.shared.createInstance(instanceId: instanceId)
+
+        // Register a new channel for this instance
+        if let registrar = YOLOPlugin.pluginRegistrar {
+          registerInstanceChannel(instanceId: instanceId, messenger: registrar.messenger())
+        }
+
+        result(nil)
+
       case "loadModel":
         guard let args = call.arguments as? [String: Any],
           let modelPath = args["modelPath"] as? String,
@@ -376,11 +176,16 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         }
 
         let task = YOLOTask.fromString(taskString)
+        let instanceId = args["instanceId"] as? String ?? "default"
 
         do {
           try await withCheckedThrowingContinuation {
             (continuation: CheckedContinuation<Void, Error>) in
-            SingleImageYOLO.shared.loadModel(modelName: modelPath, task: task) { modelResult in
+            YOLOInstanceManager.shared.loadModel(
+              instanceId: instanceId,
+              modelName: modelPath,
+              task: task
+            ) { modelResult in
               switch modelResult {
               case .success:
                 continuation.resume()
@@ -389,11 +194,15 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
               }
             }
           }
-          result(nil)
+          result(true)
         } catch {
           result(
             FlutterError(
-              code: "model_load_error", message: error.localizedDescription, details: nil))
+              code: "MODEL_NOT_FOUND",
+              message: error.localizedDescription,
+              details: nil
+            )
+          )
         }
 
       case "predictSingleImage":
@@ -402,15 +211,17 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         else {
           result(
             FlutterError(
-              code: "bad_args", message: "Invalid arguments for predictSingleImage", details: nil))
+              code: "bad_args", message: "Invalid arguments for predictSingleImage", details: nil)
+          )
           return
         }
 
-        // Extract optional threshold parameters
+        let instanceId = args["instanceId"] as? String ?? "default"
         let confidenceThreshold = args["confidenceThreshold"] as? Double
         let iouThreshold = args["iouThreshold"] as? Double
 
-        if let resultDict = SingleImageYOLO.shared.predict(
+        if let resultDict = YOLOInstanceManager.shared.predict(
+          instanceId: instanceId,
           imageData: data.data,
           confidenceThreshold: confidenceThreshold,
           iouThreshold: iouThreshold
@@ -418,8 +229,31 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           result(resultDict)
         } else {
           result(
-            FlutterError(code: "inference_error", message: "Failed to run inference", details: nil))
+            FlutterError(
+              code: "MODEL_NOT_LOADED",
+              message: "Model has not been loaded. Call loadModel() first.",
+              details: nil
+            )
+          )
         }
+
+      case "disposeInstance":
+        guard let args = call.arguments as? [String: Any],
+          let instanceId = args["instanceId"] as? String
+        else {
+          result(
+            FlutterError(
+              code: "bad_args", message: "Invalid arguments for disposeInstance", details: nil)
+          )
+          return
+        }
+
+        YOLOInstanceManager.shared.removeInstance(instanceId: instanceId)
+
+        // Remove the channel for this instance
+        YOLOPlugin.instanceChannels.removeValue(forKey: instanceId)
+
+        result(nil)
 
       case "checkModelExists":
         guard let args = call.arguments as? [String: Any],
@@ -427,7 +261,8 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         else {
           result(
             FlutterError(
-              code: "bad_args", message: "Invalid arguments for checkModelExists", details: nil))
+              code: "bad_args", message: "Invalid arguments for checkModelExists", details: nil)
+          )
           return
         }
 

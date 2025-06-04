@@ -143,9 +143,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               onPerformanceMetrics: (metrics) {
                 if (mounted) {
                   setState(() {
-                    if (metrics['fps'] != null) {
-                      _currentFps = metrics['fps']!;
-                    }
+                    _currentFps = metrics.fps;
                   });
                 }
               },
@@ -267,8 +265,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
           // Center logo - only show when camera is active
           if (_modelPath != null && !_isModelLoading)
-            IgnorePointer(
-              child: Positioned.fill(
+            Positioned.fill(
+              child: IgnorePointer(
                 child: Align(
                   alignment: Alignment.center,
                   child: FractionallySizedBox(

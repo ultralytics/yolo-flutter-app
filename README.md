@@ -1,6 +1,6 @@
 <a href="https://www.ultralytics.com/"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
 
-# Ultralytics YOLO Flutter App
+# 🚀 YOLO Flutter - Ultralytics Official Plugin
 
 [![Ultralytics Actions](https://github.com/ultralytics/yolo-flutter-app/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/yolo-flutter-app/actions/workflows/format.yml)
 [![.github/workflows/ci.yml](https://github.com/ultralytics/yolo-flutter-app/actions/workflows/ci.yml/badge.svg)](https://github.com/ultralytics/yolo-flutter-app/actions/workflows/ci.yml)
@@ -12,7 +12,10 @@
 
 Welcome to the Ultralytics YOLO Flutter plugin! Integrate cutting-edge [Ultralytics YOLO](https://docs.ultralytics.com/) [computer vision](https://www.ultralytics.com/glossary/computer-vision-cv) models seamlessly into your Flutter mobile applications. This plugin at https://pub.dev/packages/ultralytics_yolo supports both Android and iOS platforms, offering APIs for [object detection](https://docs.ultralytics.com/tasks/detect/), [image classification](https://docs.ultralytics.com/tasks/classify/), [instance segmentation](https://docs.ultralytics.com/tasks/segment/), [pose estimation](https://docs.ultralytics.com/tasks/pose/), and [oriented bounding box detection](https://docs.ultralytics.com/tasks/obb/).
 
-## ✨ Features
+<!-- ![YOLO Flutter Demo](https://via.placeholder.com/600x300/1e1e1e/ffffff?text=YOLO+Flutter+Demo+GIF+Coming+Soon) -->
+<!-- TODO: Add actual demo GIF/video -->
+
+**✨ Why Choose YOLO Flutter?**
 
 | Feature         | Android | iOS |
 | --------------- | ------- | --- |
@@ -22,654 +25,108 @@ Welcome to the Ultralytics YOLO Flutter plugin! Integrate cutting-edge [Ultralyt
 | Pose Estimation | ✅      | ✅  |
 | OBB Detection   | ✅      | ✅  |
 
-- **Real-time Processing**: Optimized for [real-time inference](https://www.ultralytics.com/glossary/real-time-inference) on mobile devices
-- **Camera Integration**: Easy integration with device cameras for live detection
-- **Cross-Platform**: Works seamlessly on both Android and iOS platforms
-- **High Performance**: Leverages [TensorFlow Lite](https://www.ultralytics.com/glossary/tensorflow) for Android and [Core ML](https://docs.ultralytics.com/integrations/coreml/) for iOS
-- **Camera Zoom Control**: Support for pinch-to-zoom and programmatic zoom control
-- **Dynamic Model Switching**: Switch between different YOLO models without recreating the view
+- **Official Ultralytics Plugin** - Direct from YOLO creators
+- **Real-time Performance** - Up to 30 FPS on modern devices
+- **5 AI Tasks** - Detection, Segmentation, Classification, Pose, OBB
+- **Cross-platform** - iOS & Android with single codebase
+- **Production Ready** - Performance controls & optimization built-in
+
+## ⚡ Quick Start (2 minutes)
+
+```dart
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
+
+// Add this widget and you're detecting objects!
+YOLOView(
+  modelPath: 'yolo11n',
+  task: YOLOTask.detect,
+  onResult: (results) {
+    print('Found ${results.length} objects!');
+    for (final result in results) {
+      print('${result.className}: ${result.confidence}');
+    }
+  },
+)
+```
+
+**[▶️ Try the Live Demo](./example)** | **[📖 Full Setup Guide](./docs/install.md)**
+
+## 🎯 What You Can Build
+
+| Task                | Description                    | Use Cases                     | Performance |
+| ------------------- | ------------------------------ | ----------------------------- | ----------- |
+| **Detection**       | Find objects & their locations | Security, Inventory, Shopping | 25-30 FPS   |
+| **Segmentation**    | Pixel-perfect object masks     | Photo editing,                | 15-25 FPS   |
+| **Classification**  | Identify image categories      | Content moderation, Tagging   | 30+ FPS     |
+| **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture  | 20-30 FPS   |
+| **OBB Detection**   | Rotated bounding boxes         | Aerial imagery                | 20-25 FPS   |
+
+**[📱 See Examples →](./docs/usage.md)** | **[⚡ Performance Guide →](./docs/performance.md)**
 
 ## 🚀 Installation
 
-Add this to your package's `pubspec.yaml` file:
+### 1. Add to pubspec.yaml
 
 ```yaml
 dependencies:
   ultralytics_yolo: ^0.1.5
 ```
 
-Then run:
+### 2. Install dependencies
 
 ```bash
 flutter pub get
 ```
 
-## 📱 Platform-Specific Setup
+### 3. Add a model
 
-### Android
+You can get the model in one of the following ways:
 
-Add the following permissions to your `AndroidManifest.xml` file:
+1. Download from the [release assets](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.0.0) of this repository
 
-```xml
-<!-- For camera access -->
-<uses-permission android:name="android.permission.CAMERA" />
+2. Get it from [Ultralytics HUB](https://www.ultralytics.com/hub)
 
-<!-- For accessing images from storage -->
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-```
+3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
 
-Set minimum SDK version in your `android/app/build.gradle`:
+**[📥 Download Models](./docs/install.md#models)** |
 
-```gradle
-minSdkVersion 21
-```
+Bundle the model with your app using the following method.
 
-### iOS
+For iOS: Drag and drop mlpackage/mlmodel directly into **ios/Runner.xcworkspace** and set target to Runner.
 
-Add these entries to your `Info.plist`:
+For Android: Create a folder called **android/app/src/main/assets** and place tflite in it.
 
-```xml
-<key>NSCameraUsageDescription</key>
-<string>This app needs camera access to detect objects</string>
-<key>NSPhotoLibraryUsageDescription</key>
-<string>This app needs photos access to get images for object detection</string>
-```
+### 4. Platform-Specific Setup
 
-Additionally, modify your `Podfile` (located at `ios/Podfile`) to include permission configurations:
+**[🔧 Setup Guide](./docs/install.md)**
 
-```ruby
-post_install do |installer|
-  installer.pods_project.targets.each do |target|
-    flutter_additional_ios_build_settings(target)
+## 🏆 Trusted by Developers
 
-    # Start of the permission_handler configuration
-    target.build_configurations.each do |config|
-      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
-        '$(inherited)',
+- ✅ **Official Ultralytics Plugin** - Maintained by YOLO creators
+- ✅ **Production Tested** - Used in apps with many users
+- ✅ **Active Development** - Regular updates & feature additions
+- ✅ **Community Driven** - Open source with responsive support
 
-        ## dart: PermissionGroup.camera
-        'PERMISSION_CAMERA=1',
+**Performance**: Up to 30 FPS on modern devices | **Model Size**: Optimized from 6MB | **Platforms**: iOS 13.0+ & Android API 21+
 
-        ## dart: PermissionGroup.photos
-        'PERMISSION_PHOTOS=1',
-      ]
-    end
-    # End of the permission_handler configuration
-  end
-end
-```
+## 📚 Documentation
 
-## ✅ Prerequisites
+| Guide                                                 | Description                       | For             |
+| ----------------------------------------------------- | --------------------------------- | --------------- |
+| **[Installation Guide](./docs/install.md)**           | Installation, setup, requirements | New users       |
+| **[Quick Start](./docs/quickstart.md)**               | 2-minute setup guide              | New users       |
+| **[Usage Guide](./docs/usage.md)**                    | Common use cases & code samples   | All users       |
+| **[Performance Optimization](./docs/performance.md)** | Inference control & tuning        | Production apps |
+| **[API Reference](./docs/api.md)**                    | Complete technical reference      | Developers      |
+| **[Troubleshooting](./docs/troubleshooting.md)**      | Common issues & solutions         | All users       |
 
-### Export Ultralytics YOLO Models
+## 🤝 Community & Support
 
-Before integrating Ultralytics YOLO into your app, you must export the necessary models. The [export process](https://docs.ultralytics.com/modes/export/) generates `.tflite` (for Android) and `.mlpackage` (for iOS) files, which you'll include in your app. Use the Ultralytics YOLO Command Line Interface (CLI) for exporting.
+[![Ultralytics Discord](https://img.shields.io/discord/1089800235347353640?logo=discord&logoColor=white&label=Discord&color=blue)](https://discord.com/invite/ultralytics) [![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/) [![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://www.reddit.com/r/ultralytics/)
 
-> **IMPORTANT:** The parameters specified in the commands below are **mandatory**. This Flutter plugin currently only supports models exported using these exact commands. Using different parameters may cause the plugin to malfunction. We are actively working on expanding support for more models and parameters.
-
-Use the following commands to export the required YOLO models:
-
-```python
-from ultralytics import YOLO
-from ultralytics.utils.downloads import zip_directory
-
-
-def export_and_zip_yolo_models(
-    model_types=("", "-seg", "-cls", "-pose", "-obb"),
-    model_sizes=("n",),  #  optional additional sizes are "s", "m", "l", "x"
-):
-    """Exports YOLO11 models to CoreML format and optionally zips the output packages."""
-    for model_type in model_types:
-        imgsz = [224, 224] if "cls" in model_type else [640, 384]  # default input image sizes
-        nms = True if model_type == "" else False  # only apply NMS to Detect models
-        for size in model_sizes:
-            model_name = f"yolo11{size}{model_type}"
-            model = YOLO(f"{model_name}.pt")
-
-            # iOS Export
-            model.export(format="coreml", int8=True, imgsz=imgsz, nms=nms)
-            zip_directory(f"{model_name}.mlpackage").rename(f"{model_name}.mlpackage.zip")
-
-            # TFLite Export
-            model.export(format="tflite", int8=True, imgsz=[320, 320], nms=False)
-
-
-# Execute with default parameters
-export_and_zip_yolo_models()
-```
-
-## 👨‍💻 Usage
-
-### Minimal Example
-
-The simplest way to use YoloView requires only two parameters:
-
-```dart
-import 'package:flutter/material.dart';
-import 'package:ultralytics_yolo/ultralytics_yolo.dart';
-
-class MinimalExample extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Minimal YOLO Example')),
-      body: YoloView(
-        modelPath: 'yolo11n',     // Required: model name
-        task: YOLOTask.detect,    // Required: task type
-      ),
-    );
-  }
-}
-```
-
-That's it! The YoloView will:
-
-- Automatically create an internal controller with default settings
-- Use default confidence threshold (0.5) and IoU threshold (0.45)
-- Display the camera feed with real-time object detection
-- Handle all camera permissions and lifecycle management
-
-### Full-Featured Example
-
-For more control and features, you can use all the optional parameters:
-
-```dart
-import 'package:flutter/material.dart';
-import 'package:ultralytics_yolo/yolo.dart';
-import 'package:ultralytics_yolo/yolo_view.dart';
-import 'package:ultralytics_yolo/yolo_task.dart';
-
-class YoloDemo extends StatefulWidget {
-  @override
-  _YoloDemoState createState() => _YoloDemoState();
-}
-
-class _YoloDemoState extends State<YoloDemo> {
-  // Create a controller to interact with the YOLOView
-  final controller = YOLOViewController();
-  double _confidenceValue = 0.5;
-  double _currentZoom = 1.0;
-  YOLOTask _currentTask = YOLOTask.detect;
-  String _currentModel = 'yolo11n';
-
-  @override
-  void initState() {
-    super.initState();
-    // Set initial detection parameters
-    controller.setThresholds(
-      confidenceThreshold: 0.5,
-      iouThreshold: 0.45,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('YOLO Object Detection'),
-        actions: [
-          // Switch camera button
-          IconButton(
-            icon: Icon(Icons.flip_camera_ios),
-            onPressed: () => controller.switchCamera(),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Controls for adjusting detection parameters
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                // Confidence threshold slider
-                Row(
-                  children: [
-                    Text('Confidence: ${_confidenceValue.toStringAsFixed(2)}'),
-                    Expanded(
-                      child: Slider(
-                        value: _confidenceValue,
-                        min: 0.1,
-                        max: 0.9,
-                        onChanged: (value) {
-                          setState(() => _confidenceValue = value);
-                          controller.setConfidenceThreshold(value);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                // Zoom control
-                Row(
-                  children: [
-                    Text('Zoom: ${_currentZoom.toStringAsFixed(1)}x'),
-                    IconButton(
-                      icon: Icon(Icons.zoom_out),
-                      onPressed: () => controller.setZoomLevel(1.0),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.zoom_in),
-                      onPressed: () => controller.setZoomLevel(3.0),
-                    ),
-                  ],
-                ),
-                // Model switcher
-                Row(
-                  children: [
-                    Text('Model: '),
-                    DropdownButton<String>(
-                      value: _currentModel,
-                      items: ['yolo11n', 'yolo11s', 'yolo11m']
-                          .map((model) => DropdownMenuItem(
-                                value: model,
-                                child: Text(model),
-                              ))
-                          .toList(),
-                      onChanged: (model) {
-                        if (model != null) {
-                          setState(() => _currentModel = model);
-                          controller.switchModel(model, _currentTask);
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // YOLOView with controller
-          Expanded(
-            child: YOLOView(
-              controller: controller,
-              task: _currentTask,
-              modelPath: _currentModel,
-              onResult: (results) {
-                // Handle detection results
-                print('Detected ${results.length} objects');
-              },
-              onZoomChanged: (zoom) {
-                setState(() => _currentZoom = zoom);
-              },
-              onPerformanceMetrics: (metrics) {
-                print('FPS: ${metrics['fps']?.toStringAsFixed(1)}');
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-```
-
-### Object Detection with Camera Feed
-
-There are three ways to control YOLOView's detection parameters:
-
-#### Camera Zoom Control
-
-The plugin now supports camera zoom functionality through both gestures and programmatic control:
-
-```dart
-// Enable zoom callbacks to track zoom changes
-YoloView(
-  controller: controller,
-  task: YOLOTask.detect,
-  modelPath: 'yolo11n',
-  onZoomChanged: (zoomLevel) {
-    print('Current zoom: ${zoomLevel}x');
-  },
-  onResult: (results) {
-    // Handle results
-  },
-)
-
-// Programmatically set zoom level
-controller.setZoomLevel(2.5);  // Set to 2.5x zoom
-
-// Users can also pinch-to-zoom on the camera view
-```
-
-#### Method 1: Using a Controller (Recommended)
-
-```dart
-// Create a controller outside build method
-final controller = YOLOViewController();
-
-// In your build method:
-YOLOView(
-  controller: controller,  // Provide the controller
-  task: YOLOTask.detect,
-  modelPath: 'yolo11n',  // Just the model name - most reliable approach
-  onResult: (results) {
-    for (var result in results) {
-      print('Detected: ${result.className}, Confidence: ${result.confidence}');
-    }
-  },
-)
-
-// Set detection parameters anywhere in your code
-controller.setConfidenceThreshold(0.5);
-controller.setIoUThreshold(0.45);
-
-// Or set both at once
-controller.setThresholds(
-  confidenceThreshold: 0.5,
-  iouThreshold: 0.45,
-);
-```
-
-#### Method 2: Using GlobalKey Direct Access (Simpler)
-
-```dart
-// Create a GlobalKey to access the YOLOView
-final yoloViewKey = GlobalKey<YOLOViewState>();
-
-// In your build method:
-YOLOView(
-  key: yoloViewKey,  // Important: Provide the key
-  task: YOLOTask.detect,
-  modelPath: 'yolo11n',  // Just the model name without extension
-  onResult: (results) {
-    for (var result in results) {
-      print('Detected: ${result.className}, Confidence: ${result.confidence}');
-    }
-  },
-)
-
-// Set detection parameters directly through the key
-yoloViewKey.currentState?.setConfidenceThreshold(0.6);
-yoloViewKey.currentState?.setIoUThreshold(0.5);
-
-// Or set both at once
-yoloViewKey.currentState?.setThresholds(
-  confidenceThreshold: 0.6,
-  iouThreshold: 0.5,
-);
-```
-
-#### Method 3: Automatic Controller (Simplest)
-
-```dart
-// No controller needed - just create the view
-YOLOView(
-  task: YOLOTask.detect,
-  modelPath: 'yolo11n',  // Simple model name works best across platforms
-  onResult: (results) {
-    for (var result in results) {
-      print('Detected: ${result.className}, Confidence: ${result.confidence}');
-    }
-  },
-)
-
-// A controller is automatically created internally
-// with default threshold values (0.5 for confidence, 0.45 for IoU)
-```
-
-### Dynamic Model Switching
-
-You can switch between different YOLO models at runtime without recreating the entire view:
-
-```dart
-final controller = YoloViewController();
-
-// Initial model
-YoloView(
-  controller: controller,
-  task: YOLOTask.detect,
-  modelPath: 'yolo11n',  // Start with nano model
-  onResult: (results) {
-    // Handle results
-  },
-)
-
-// Switch to a different model based on user preference or device capabilities
-await controller.switchModel('yolo11s', YOLOTask.detect);  // Switch to small model
-await controller.switchModel('yolo11m', YOLOTask.detect);  // Switch to medium model
-
-// Switch to a different task type
-await controller.switchModel('yolo11n-seg', YOLOTask.segment);  // Switch to segmentation
-await controller.switchModel('yolo11n-pose', YOLOTask.pose);    // Switch to pose estimation
-```
-
-### Model Loading
-
-#### Important: Recommended Approach For Both Platforms
-
-For the most reliable cross-platform experience, the simplest approach is to:
-
-1. **Use model name without extension** (`modelPath: 'yolo11n'`)
-2. **Place platform-specific model files in the correct locations:**
-   - Android: `android/app/src/main/assets/yolo11n.tflite`
-   - iOS: Add `yolo11n.mlmodel` or `yolo11n.mlpackage` to your Xcode project
-
-This approach avoids path resolution issues across platforms and lets each platform automatically find the appropriate model file without complicated path handling.
-
-## 📚 API Reference
-
-### Classes
-
-#### YOLO
-
-Main class for YOLO operations.
-
-```dart
-YOLO({
-  required String modelPath,
-  required YOLOTask task,
-});
-```
-
-##### Methods
-
-###### loadModel()
-
-Loads the YOLO model for inference. Must be called before `predict()`.
-
-```dart
-final yolo = YOLO(modelPath: 'yolo11n', task: YOLOTask.detect);
-await yolo.loadModel();
-```
-
-###### predict()
-
-Runs inference on a single image with optional threshold parameters. The thresholds are only applied for this specific prediction and do not affect subsequent predictions.
-
-```dart
-// Basic usage with default thresholds
-final results = await yolo.predict(imageBytes);
-
-// Usage with custom thresholds (only for this prediction)
-final results = await yolo.predict(
-  imageBytes,
-  confidenceThreshold: 0.6,  // Optional: 0.0-1.0, defaults to 0.25
-  iouThreshold: 0.5,         // Optional: 0.0-1.0, defaults to 0.4
-);
-
-// Process results
-final boxes = results['boxes'] as List<Map<String, dynamic>>;
-for (var box in boxes) {
-  print('Class: ${box['class']}, Confidence: ${box['confidence']}');
-}
-```
-
-###### Static Methods
-
-```dart
-// Check if a model exists at the specified path
-final exists = await YOLO.checkModelExists('yolo11n');
-
-// Get available storage paths
-final paths = await YOLO.getStoragePaths();
-```
-
-#### YOLOViewController
-
-Controller for interacting with a YOLOView, managing settings like thresholds.
-
-```dart
-// Create a controller
-final controller = YOLOViewController();
-
-// Get current values
-double confidence = controller.confidenceThreshold;
-double iou = controller.iouThreshold;
-int numItems = controller.numItemsThreshold;
-
-// Set confidence threshold (0.0-1.0)
-await controller.setConfidenceThreshold(0.6);
-
-// Set IoU threshold (0.0-1.0)
-await controller.setIoUThreshold(0.5);
-
-// Set maximum number of detection items (1-100)
-await controller.setNumItemsThreshold(20);
-
-// Set multiple thresholds at once
-await controller.setThresholds(
-  confidenceThreshold: 0.6,
-  iouThreshold: 0.5,
-  numItemsThreshold: 20,
-);
-
-// Switch between front and back camera
-await controller.switchCamera();
-
-// Set camera zoom level (1.0 = no zoom, 2.0 = 2x zoom)
-await controller.setZoomLevel(2.0);
-
-// Switch to a different model dynamically
-await controller.switchModel('yolo11s', YOLOTask.detect);
-```
-
-#### YOLOView
-
-Flutter widget to display YOLO detection results.
-
-##### Minimal Usage
-
-```dart
-// Only two required parameters!
-YOLOView(
-  modelPath: 'yolo11n',      // Required
-  task: YOLOTask.detect,     // Required
-)
-```
-
-##### Full Constructor
-
-```dart
-YOLOView({
-  required String modelPath,                            // Model name or path
-  required YOLOTask task,                              // Task type (detect, segment, etc.)
-  YOLOViewController? controller,                       // Optional: Control thresholds and camera
-  String cameraResolution = '720p',                    // Optional: Camera resolution
-  Function(List<YOLOResult>)? onResult,               // Optional: Detection results callback
-  Function(Map<String, double>)? onPerformanceMetrics, // Optional: FPS and timing metrics
-  Function(double)? onZoomChanged,                     // Optional: Zoom level changes
-  bool showNativeUI = false,                           // Optional: Show native UI overlays
-})
-```
-
-##### Resource Management
-
-YOLOView automatically handles cleanup when the widget is disposed. The dispose method:
-
-- Cancels event subscriptions to prevent memory leaks
-- Cleans up method channel handlers
-- Prepares for future camera stop functionality (currently commented out, pending implementation)
-
-```dart
-// YOLOView automatically cleans up resources when removed from the widget tree
-// No manual disposal is required - just remove the widget normally:
-
-class MyScreen extends StatefulWidget {
-  @override
-  _MyScreenState createState() => _MyScreenState();
-}
-
-class _MyScreenState extends State<MyScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return YOLOView(
-      modelPath: 'yolo11n',
-      task: YOLOTask.detect,
-      onResult: (results) {
-        // Handle results
-      },
-    );
-  }
-
-  // When this screen is popped or the widget is removed,
-  // YOLOView automatically cleans up its resources
-}
-```
-
-#### YOLOResult
-
-Contains detection results.
-
-```dart
-class YOLOResult {
-  final int classIndex;
-  final String className;
-  final double confidence;
-  final Rect boundingBox;
-  // For segmentation
-  final List<List<double>>? mask;
-  // For pose estimation
-  final List<Point>? keypoints;
-  // Performance metrics
-  final double? processingTimeMs; // Processing time in milliseconds for the frame
-  final double? fps;              // Frames Per Second (available on Android, and iOS for real-time)
-}
-```
-
-### Enums
-
-#### YOLOTask
-
-```dart
-enum YOLOTask {
-  detect,   // Object detection
-  segment,  // Image segmentation
-  classify, // Image classification
-  pose,     // Pose estimation
-  obb,      // Oriented bounding boxes
-}
-```
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-1. **Model loading fails**
-
-   - Make sure your model file is correctly placed as described above
-   - Verify that the model path is correctly specified
-   - For iOS, ensure `.mlpackage` files are added directly to the Xcode project and properly included in target's "Build Phases" → "Copy Bundle Resources"
-   - Check that the model format is compatible with [TensorFlow Lite](https://www.ultralytics.com/glossary/tensorflow) (Android) or [Core ML](https://docs.ultralytics.com/integrations/coreml/) (iOS)
-   - Use `YOLO.checkModelExists(modelPath)` to verify if your model can be found
-
-2. **Low performance on older devices**
-
-   - Try using smaller models (e.g., YOLO11n instead of YOLO11l)
-   - Reduce input image resolution
-   - Increase [confidence threshold](https://www.ultralytics.com/glossary/confidence) to reduce the number of detections
-   - Adjust [IoU threshold](https://www.ultralytics.com/glossary/intersection-over-union-iou) to control overlapping detections
-   - Limit the maximum number of detection items
-
-3. **Camera permission issues**
-
-   - Ensure that your app has the proper permissions in the manifest or Info.plist
-   - Handle runtime permissions properly in your app
-
-4. **Performance optimization tips**
-   - Use [model quantization](https://www.ultralytics.com/glossary/model-quantization) for faster inference
-   - Consider [edge computing](https://www.ultralytics.com/glossary/edge-computing) approaches for better performance
-   - Implement proper [data preprocessing](https://www.ultralytics.com/glossary/data-preprocessing) for optimal results
+- **💬 Questions?** [Discord](https://discord.com/invite/ultralytics) | [Forums](https://community.ultralytics.com/) | [GitHub Issues](https://github.com/ultralytics/yolo-flutter-app/issues)
+- **🐛 Found a bug?** [Report it here](https://github.com/ultralytics/yolo-flutter-app/issues/new)
+- **💡 Feature request?** [Let us know](https://github.com/ultralytics/yolo-flutter-app/discussions)
 
 ## 💡 Contribute
 
