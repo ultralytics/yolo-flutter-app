@@ -25,8 +25,8 @@ funding:
   - https://github.com/sponsors/ultralytics
 
 environment:
-  sdk: ^3.5.3
-  flutter: ">=3.3.0"
+  sdk: ^3.8.1
+  flutter: ">=3.32.1"
 
 dependencies:
   flutter:
