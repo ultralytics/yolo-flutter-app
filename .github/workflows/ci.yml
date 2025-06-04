@@ -33,6 +33,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb
 
+      - name: Dart analyze
+        run: dart analyze
+        # WARNING: Errors cause action to crash, need debugging
+        continue-on-error: true
+
       - name: Create test .env file
         run: |
           echo "# Test environment variables" > .env
