@@ -31,7 +31,7 @@ class ObjectDetector {
 
   Future<void> initializeYOLO() async {
     yolo = YOLO(
-      modelPath: 'assets/models/yolo11n.tflite',
+      modelPath: 'yolo11n',
       task: YOLOTask.detect,
     );
 
@@ -85,7 +85,7 @@ class BatchProcessor {
 class DetectionExample {
   Future<void> runDetection() async {
     final yolo = YOLO(
-      modelPath: 'assets/models/yolo11n.tflite',
+      modelPath: 'yolo11n',
       task: YOLOTask.detect,
     );
 
@@ -111,7 +111,7 @@ class DetectionExample {
 class SegmentationExample {
   Future<void> runSegmentation() async {
     final yolo = YOLO(
-      modelPath: 'assets/models/yolo11n-seg.tflite',
+      modelPath: 'yolo11n-seg',
       task: YOLOTask.segment,
     );
 
@@ -142,7 +142,7 @@ class SegmentationExample {
 class ClassificationExample {
   Future<void> runClassification() async {
     final yolo = YOLO(
-      modelPath: 'assets/models/yolo11n-cls.tflite',
+      modelPath: 'yolo11n-cls',
       task: YOLOTask.classify,
     );
 
@@ -167,7 +167,7 @@ class ClassificationExample {
 class PoseEstimationExample {
   Future<void> runPoseEstimation() async {
     final yolo = YOLO(
-      modelPath: 'assets/models/yolo11n-pose.tflite',
+      modelPath: 'yolo11n-pose',
       task: YOLOTask.pose,
     );
 
@@ -198,7 +198,7 @@ class PoseEstimationExample {
 class OBBExample {
   Future<void> runOBBDetection() async {
     final yolo = YOLO(
-      modelPath: 'assets/models/yolo11n-obb.tflite',
+      modelPath: 'yolo11n-obb',
       task: YOLOTask.obb,
     );
 
@@ -235,19 +235,19 @@ class MultiInstanceExample {
   Future<void> initializeMultipleModels() async {
     // Create multiple instances with unique IDs
     detector = YOLO(
-      modelPath: 'assets/models/yolo11n.tflite',
+      modelPath: 'yolo11n',
       task: YOLOTask.detect,
       useMultiInstance: true, // Enable multi-instance mode
     );
 
     segmenter = YOLO(
-      modelPath: 'assets/models/yolo11n-seg.tflite',
+      modelPath: 'yolo11n-seg',
       task: YOLOTask.segment,
       useMultiInstance: true,
     );
 
     classifier = YOLO(
-      modelPath: 'assets/models/yolo11n-cls.tflite',
+      modelPath: 'yolo11n-cls',
       task: YOLOTask.classify,
       useMultiInstance: true,
     );
@@ -300,13 +300,13 @@ class ModelComparison {
 
   Future<void> initializeComparison() async {
     modelA = YOLO(
-      modelPath: 'assets/models/yolo11n.tflite',
+      modelPath: 'yolo11n',
       task: YOLOTask.detect,
       useMultiInstance: true,
     );
 
     modelB = YOLO(
-      modelPath: 'assets/models/yolo11s.tflite', // Different model size
+      modelPath: 'yolo11s', // Different model size
       task: YOLOTask.detect,
       useMultiInstance: true,
     );
@@ -371,7 +371,7 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
         children: [
           // Camera view with YOLO processing
           YOLOView(
-            modelPath: 'assets/models/yolo11n.tflite',
+            modelPath: 'yolo11n',
             task: YOLOTask.detect,
             controller: controller,
             onResult: (results) {
@@ -418,7 +418,7 @@ class AdvancedCameraScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: YOLOView(
-        modelPath: 'assets/models/yolo11n.tflite',
+        modelPath: 'yolo11n',
         task: YOLOTask.detect,
 
         // Configure streaming behavior
@@ -468,7 +468,7 @@ class AdvancedConfiguration {
 
   Future<void> setupOptimizedYOLO() async {
     yolo = YOLO(
-      modelPath: 'assets/models/yolo11n.tflite',
+      modelPath: 'yolo11n',
       task: YOLOTask.detect,
     );
 
@@ -693,7 +693,7 @@ class SecuritySystem {
 
   Future<void> initialize() async {
     detector = YOLO(
-      modelPath: 'assets/models/yolo11n.tflite',
+      modelPath: 'yolo11n',
       task: YOLOTask.detect,
     );
     await detector.loadModel();
