@@ -35,10 +35,6 @@ dependencies:
         sdk: flutter
     ultralytics_yolo: ^0.1.18
     image_picker: ^0.8.7 # For image selection
-
-flutter:
-    assets:
-        - assets/models/
 ```
 
 Install dependencies:
@@ -62,6 +58,8 @@ You can get the model in one of the following ways:
 Bundle the model with your app using the following method.
 
 For iOS: Drag and drop mlpackage/mlmodel directly into **ios/Runner.xcworkspace** and set target to Runner.
+
+For Android: Place the tflite file in app/src/main/assets.
 
 ## ⚡ Step 4: Minimal Detection Code
 
