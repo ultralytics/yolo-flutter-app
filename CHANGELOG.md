@@ -1,3 +1,11 @@
+## 0.1.17
+
+- Improved publish workflow robustness.
+
+## 0.1.16
+
+- Fixed publishing workflows for non-sequential version numbers.
+
 ## 0.1.15
 
 - Added `example/main.dart` for usage demonstration.
