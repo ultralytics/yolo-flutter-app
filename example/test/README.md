@@ -66,10 +66,10 @@ flutter run lib/multi_instance_test_main.dart
 flutter devices
 
 # Run on iOS device
-flutter run -d <ios-device-id> lib/multi_instance_test_main.dart
+flutter run -d < ios-device-id > lib/multi_instance_test_main.dart
 
 # Run on Android device
-flutter run -d <android-device-id> lib/multi_instance_test_main.dart
+flutter run -d < android-device-id > lib/multi_instance_test_main.dart
 ```
 
 ## 📋 Test Categories
@@ -89,13 +89,16 @@ The test suite covers:
 The multi-instance test app validates:
 
 1. **Multiple Instance Creation**
+
    - Object detection instance
    - Segmentation instance
 
 2. **Parallel Model Loading**
+
    - Load both models simultaneously
 
 3. **Inference Execution**
+
    - Run both models on the same image
    - Measure inference time
 
@@ -149,6 +152,7 @@ Android Gradle Plugin has already been updated to 8.3.0 in settings.gradle.
 ### Debugging
 
 1. **Check Logs**
+
    ```bash
    flutter logs
    ```
