@@ -1,3 +1,8 @@
+## 0.1.21 
+
+- Merge example READMEs
+- Rename `example/example.dart` to `example/main.dart`
+
 ## 0.1.20
 
 - Added `example/example.dart` for usage demonstration.
