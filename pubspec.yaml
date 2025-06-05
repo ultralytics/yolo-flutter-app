@@ -6,7 +6,7 @@ version: 0.1.20
 homepage: https://github.com/ultralytics/yolo-flutter-app
 repository: https://github.com/ultralytics/yolo-flutter-app
 issue_tracker: https://github.com/ultralytics/yolo-flutter-app/issues
-publish_to: pub.dev
+publish_to: https://pub.dev
 example: example/example.dart
 
 topics:
