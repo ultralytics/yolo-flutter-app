@@ -1,3 +1,7 @@
+## 0.1.20
+
+- Added `example/example.dart` for usage demonstration.
+
 ## 0.1.19
 
 - Added Dart publish dry run to CI
