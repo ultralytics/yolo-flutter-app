@@ -1,4 +1,4 @@
-## 0.1.21 
+## 0.1.21
 
 - Merge example READMEs
 - Rename `example/example.dart` to `example/main.dart`
