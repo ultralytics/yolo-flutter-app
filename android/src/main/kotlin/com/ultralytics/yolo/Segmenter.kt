@@ -110,7 +110,11 @@ class Segmenter(
                                             labelsWereLoaded = true
                                             Log.d("Segmenter", "Loaded labels from metadata: $labels")
                                             return@breaking
+                                        } else {
+                                            Log.d("Segmenter", "Names map is null")
                                         }
+                                    } else {
+                                        Log.d("Segmenter", "Data is null or doesn't contain 'names'")
                                     }
                                 } catch (ex: Exception) {
                                     Log.e("Segmenter", "Failed to parse YAML from metadata: ${ex.message}")
