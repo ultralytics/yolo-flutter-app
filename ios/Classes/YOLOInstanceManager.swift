@@ -258,50 +258,151 @@ class YOLOInstanceManager {
   }
 
   private func convertToFlutterFormat(result: YOLOResult) -> [String: Any] {
-    var flutterResults: [[String: Any]] = []
+    var flutterBoxes: [[String: Any]] = []
 
+    // Get image dimensions for normalization
+    let imageWidth = result.orig_shape.width
+    let imageHeight = result.orig_shape.height
+
+    // Convert boxes to Flutter format
     for box in result.boxes {
       var boxDict: [String: Any] = [
-        "cls": box.cls,
+        "class": box.cls,
         "confidence": box.conf,
-        "index": box.index,
+        "x1": box.xywh.minX,
+        "y1": box.xywh.minY,
+        "x2": box.xywh.maxX,
+        "y2": box.xywh.maxY,
+        "x1_norm": box.xywh.minX / imageWidth,
+        "y1_norm": box.xywh.minY / imageHeight,
+        "x2_norm": box.xywh.maxX / imageWidth,
+        "y2_norm": box.xywh.maxY / imageHeight,
       ]
 
-      boxDict["x"] = box.xywhn.minX
-      boxDict["y"] = box.xywhn.minY
-      boxDict["width"] = box.xywhn.width
-      boxDict["height"] = box.xywhn.height
-
-      boxDict["xImg"] = box.xywh.minX
-      boxDict["yImg"] = box.xywh.minY
-      boxDict["widthImg"] = box.xywh.width
-      boxDict["heightImg"] = box.xywh.height
-
-      boxDict["bbox"] = [box.xywh.minX, box.xywh.minY, box.xywh.width, box.xywh.height]
-
-      flutterResults.append(boxDict)
+      flutterBoxes.append(boxDict)
     }
 
     var resultDict: [String: Any] = [
-      "boxes": flutterResults
+      "boxes": flutterBoxes,
+      "imageSize": [
+        "width": Int(imageWidth),
+        "height": Int(imageHeight)
+      ]
     ]
 
-    // Debug logging for annotated image
-    print("YOLOInstanceManager: result.annotatedImage exists: \(result.annotatedImage != nil)")
-
-    if let annotatedImage = result.annotatedImage {
-      print("YOLOInstanceManager: Converting annotated image to PNG data")
-      if let imageData = annotatedImage.pngData() {
-        print("YOLOInstanceManager: PNG data size: \(imageData.count) bytes")
-        resultDict["annotatedImage"] = FlutterStandardTypedData(bytes: imageData)
-      } else {
-        print("YOLOInstanceManager: Failed to convert image to PNG data")
+    // Add task-specific data based on what's available in result
+    
+    // Pose estimation - keypoints
+    if !result.keypointsList.isEmpty {
+      var keypointsArray: [[String: Any]] = []
+      
+      for keypoints in result.keypointsList {
+        var coordinates: [[String: Any]] = []
+        
+        for (index, (x, y)) in keypoints.xyn.enumerated() {
+          if index < keypoints.conf.count {
+            coordinates.append([
+              "x": x,
+              "y": y,
+              "confidence": keypoints.conf[index]
+            ])
+          }
+        }
+        
+        keypointsArray.append([
+          "coordinates": coordinates
+        ])
       }
-    } else {
-      print("YOLOInstanceManager: No annotated image in result")
+      
+      resultDict["keypoints"] = keypointsArray
     }
-
-    print("YOLOInstanceManager: Result dictionary keys: \(resultDict.keys)")
+    
+    // Classification - probs
+    if let probs = result.probs {
+      resultDict["classification"] = [
+        "topClass": probs.top1,
+        "topConfidence": probs.top1Conf,
+        "top5Classes": probs.top5,
+        "top5Confidences": probs.top5Confs
+      ]
+    }
+    
+    // Segmentation - masks
+    if let masks = result.masks {
+      // Send raw mask data for each detected instance
+      var rawMasks: [[[Double]]] = []
+      
+      for instanceMask in masks.masks {
+        var mask2D: [[Double]] = []
+        for row in instanceMask {
+          mask2D.append(row.map { Double($0) })
+        }
+        rawMasks.append(mask2D)
+      }
+      resultDict["masks"] = rawMasks
+      
+      // Also send PNG for backward compatibility (optional)
+      if let combinedMask = masks.combinedMask {
+        let ciImage = CIImage(cgImage: combinedMask)
+        let context = CIContext()
+        if let cgImage = context.createCGImage(ciImage, from: ciImage.extent),
+           let uiImage = UIImage(cgImage: cgImage),
+           let maskData = uiImage.pngData() {
+          resultDict["maskPng"] = FlutterStandardTypedData(bytes: maskData)
+        }
+      }
+    }
+    
+    // OBB - oriented bounding boxes
+    if !result.obb.isEmpty {
+      var obbArray: [[String: Any]] = []
+      
+      for obbResult in result.obb {
+        let box = obbResult.box
+        
+        // Calculate the 4 corner points of the OBB
+        let angle = box.angle
+        let cx = box.cx
+        let cy = box.cy
+        let w = box.w
+        let h = box.h
+        
+        let cos_a = cos(angle)
+        let sin_a = sin(angle)
+        
+        // Calculate corner points
+        let dx1 = w/2 * cos_a
+        let dy1 = w/2 * sin_a
+        let dx2 = h/2 * sin_a
+        let dy2 = h/2 * cos_a
+        
+        let points = [
+          ["x": cx - dx1 + dx2, "y": cy - dy1 - dy2],
+          ["x": cx + dx1 + dx2, "y": cy + dy1 - dy2],
+          ["x": cx + dx1 - dx2, "y": cy + dy1 + dy2],
+          ["x": cx - dx1 - dx2, "y": cy - dy1 + dy2]
+        ]
+        
+        obbArray.append([
+          "points": points,
+          "class": obbResult.cls,
+          "confidence": obbResult.confidence
+        ])
+      }
+      
+      resultDict["obb"] = obbArray
+    }
+    
+    // Include annotated image if available
+    if let annotatedImage = result.annotatedImage {
+      if let imageData = annotatedImage.pngData() {
+        resultDict["annotatedImage"] = FlutterStandardTypedData(bytes: imageData)
+      }
+    }
+    
+    // Include speed metric
+    resultDict["speed"] = result.speed
+    
     return resultDict
   }
 }
