@@ -1,3 +1,17 @@
+## 0.1.21
+
+- Merge example READMEs
+- Rename `example/example.dart` to `example/main.dart`
+
+## 0.1.20
+
+- Added `example/example.dart` for usage demonstration.
+
+## 0.1.19
+
+- Added Dart publish dry run to CI
+- Renamed incorrect docs/ directory to /doc
+
 ## 0.1.18
 
 - Added customizable result streaming with `YOLOStreamingConfig`
