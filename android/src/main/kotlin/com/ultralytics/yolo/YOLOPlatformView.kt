@@ -205,6 +205,17 @@ class YOLOPlatformView(
                     Log.d(TAG, "YOLOView streaming config updated: $streamConfig")
                     result.success(null)
                 }
+                                "stop" -> {
+                    Log.d(TAG, "Received manual stop call from Flutter")
+                    try {
+                        yoloView.stop()
+                        Log.d(TAG, "YOLOView stopped successfully via method call")
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error stopping YOLOView via method call", e)
+                        result.error("stop_error", "Error stopping YOLOView: ${e.message}", null)
+                    }
+                }
                 else -> {
                     Log.w(TAG, "Method not implemented: ${call.method}")
                     result.notImplemented()
@@ -351,10 +362,25 @@ class YOLOPlatformView(
 
     override fun dispose() {
         Log.d(TAG, "Disposing YOLOPlatformView for viewId: $viewId")
-        // Clean up resources
-        methodChannel?.setMethodCallHandler(null)
-        // Notify the factory that this view is disposed
-        factory.onPlatformViewDisposed(viewId)
+
+        try {
+            // Stop camera and inference before disposing
+            Log.d(TAG, "Calling yoloView.stop() to stop camera and inference")
+            yoloView.stop()
+
+            // Clean up method channel
+            Log.d(TAG, "Clearing method channel handler")
+            methodChannel?.setMethodCallHandler(null)
+
+            // Notify the factory that this view is disposed
+            Log.d(TAG, "Notifying factory of disposal")
+            factory.onPlatformViewDisposed(viewId)
+
+            Log.d(TAG, "YOLOPlatformView disposal completed successfully")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during YOLOPlatformView disposal", e)
+        }
     }
 
     /**
