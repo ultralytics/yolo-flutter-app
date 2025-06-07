@@ -413,6 +413,33 @@ class YOLOViewController {
   }
 }
 
+  /// Stop camera and inference operations.
+  ///
+  /// This method stops the camera preview and inference processing,
+  /// but keeps the view in a state where it could potentially be
+  /// restarted. For complete cleanup, the widget disposal process
+  /// will call this automatically plus additional cleanup.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Stop camera and inference temporarily
+  /// await controller.stop();
+  /// ```
+  Future<void> stop() async {
+    if (_methodChannel == null) {
+      logInfo(
+        'YOLOViewController: Warning - Cannot stop, view not yet created',
+      );
+      return;
+    }
+    try {
+      await _methodChannel!.invokeMethod('stop');
+      logInfo('YOLOViewController: Camera and inference stopped successfully');
+    } catch (e) {
+      logInfo('YOLOViewController: Error stopping camera and inference: $e');
+    }
+  }
+
 /// A Flutter widget that displays a real-time camera preview with YOLO object detection.
 ///
 /// This widget creates a platform view that runs YOLO inference on camera frames
@@ -655,11 +682,10 @@ class YOLOViewState extends State<YOLOView> {
 
   @override
   void dispose() {
-    // TODO: Uncomment when stop() method is available
     // Stop camera and inference before disposing
-    // _effectiveController.stop().catchError((e) {
-    //   logInfo('YOLOView: Error stopping camera during dispose: $e');
-    // });
+    _effectiveController.stop().catchError((e) {
+      logInfo('YOLOView: Error stopping camera during dispose: $e');
+    });
 
     // Cancel event subscriptions
     _cancelResultSubscription();
