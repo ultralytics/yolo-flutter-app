@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -5,13 +7,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 /// Instance Segmentation Sample
-/// 
+///
 /// This sample demonstrates how to use YOLO for instance segmentation:
 /// 1. Load a YOLO segmentation model
 /// 2. Select an image from gallery
 /// 3. Detect objects and their pixel-perfect masks
 /// 4. Display results with colored masks overlay
-/// 
+///
 /// インスタンスセグメンテーションのサンプル
 /// YOLOを使ったインスタンスセグメンテーションの実装例：
 /// 1. YOLOセグメンテーションモデルの読み込み
@@ -169,7 +171,7 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
                       Text('${(_maskOpacity * 100).toStringAsFixed(0)}%'),
                     ],
                   ),
-                  
+
                   // Toggle switches / トグルスイッチ
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -229,7 +231,9 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
                   label: const Text('Select Image'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _imageFile == null || _isLoading ? null : _runSegmentation,
+                  onPressed: _imageFile == null || _isLoading
+                      ? null
+                      : _runSegmentation,
                   icon: _isLoading
                       ? const SizedBox(
                           width: 20,
@@ -237,7 +241,9 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.play_arrow),
-                  label: Text(_isLoading ? 'Processing...' : 'Run Segmentation'),
+                  label: Text(
+                    _isLoading ? 'Processing...' : 'Run Segmentation',
+                  ),
                 ),
               ],
             ),
@@ -267,10 +273,7 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
       fit: StackFit.expand,
       children: [
         // Original image / 元画像
-        Image.file(
-          _imageFile!,
-          fit: BoxFit.contain,
-        ),
+        Image.file(_imageFile!, fit: BoxFit.contain),
 
         // Segmentation masks and bounding boxes overlay
         // セグメンテーションマスクとバウンディングボックスのオーバーレイ
@@ -293,7 +296,7 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
   Widget _buildResultsSummary() {
     final uniqueClasses = _results!.map((r) => r.className).toSet();
     final classCounts = <String, int>{};
-    
+
     for (final result in _results!) {
       classCounts[result.className] = (classCounts[result.className] ?? 0) + 1;
     }
@@ -314,17 +317,19 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          ...classCounts.entries.map((entry) => Container(
-            margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: _getColorForIndex(
-                uniqueClasses.toList().indexOf(entry.key)
-              ).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(16),
+          ...classCounts.entries.map(
+            (entry) => Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _getColorForIndex(
+                  uniqueClasses.toList().indexOf(entry.key),
+                ).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text('${entry.key}: ${entry.value}'),
             ),
-            child: Text('${entry.key}: ${entry.value}'),
-          )),
+          ),
         ],
       ),
     );
@@ -368,16 +373,13 @@ class SegmentationPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.fill;
+    final paint = Paint()..style = PaintingStyle.fill;
 
     final boxPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
     // Colors for different objects / オブジェクトごとの色
     final colors = [
@@ -405,19 +407,19 @@ class SegmentationPainter extends CustomPainter {
       // Draw segmentation mask / セグメンテーションマスクを描画
       if (showMasks && result.mask != null) {
         paint.color = color.withOpacity(maskOpacity);
-        
+
         // Create path from mask data
         // マスクデータからパスを作成
         final path = Path();
         final maskData = result.mask!;
-        
+
         if (maskData.isNotEmpty) {
           // Convert mask points to canvas coordinates
           // マスクポイントをキャンバス座標に変換
           for (int j = 0; j < maskData.length; j++) {
             final x = maskData[j][0] * size.width;
             final y = maskData[j][1] * size.height;
-            
+
             if (j == 0) {
               path.moveTo(x, y);
             } else {
@@ -444,7 +446,8 @@ class SegmentationPainter extends CustomPainter {
         canvas.drawRect(rect, boxPaint);
 
         // Draw label / ラベルを描画
-        final label = '${result.className} ${(result.confidence * 100).toStringAsFixed(0)}%';
+        final label =
+            '${result.className} ${(result.confidence * 100).toStringAsFixed(0)}%';
         textPainter.text = TextSpan(
           text: label,
           style: const TextStyle(

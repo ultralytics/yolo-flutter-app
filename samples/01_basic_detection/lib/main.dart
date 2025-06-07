@@ -1,16 +1,18 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 /// Basic Object Detection Sample
-/// 
+///
 /// This sample demonstrates the simplest way to use YOLO for object detection:
 /// 1. Load a YOLO model
 /// 2. Select an image from gallery
 /// 3. Run inference
 /// 4. Display results with bounding boxes
-/// 
+///
 /// 基本的な物体検出のサンプル
 /// YOLOを使った最もシンプルな物体検出の実装例：
 /// 1. YOLOモデルの読み込み
@@ -171,7 +173,9 @@ class _DetectionScreenState extends State<DetectionScreen> {
                   label: const Text('Select Image'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _imageFile == null || _isLoading ? null : _runDetection,
+                  onPressed: _imageFile == null || _isLoading
+                      ? null
+                      : _runDetection,
                   icon: _isLoading
                       ? const SizedBox(
                           width: 20,
@@ -209,10 +213,7 @@ class _DetectionScreenState extends State<DetectionScreen> {
       fit: StackFit.expand,
       children: [
         // Original image / 元画像
-        Image.file(
-          _imageFile!,
-          fit: BoxFit.contain,
-        ),
+        Image.file(_imageFile!, fit: BoxFit.contain),
 
         // Bounding boxes overlay / バウンディングボックスのオーバーレイ
         if (_results != null)
@@ -234,11 +235,11 @@ class _DetectionScreenState extends State<DetectionScreen> {
       itemBuilder: (context, index) {
         final result = _results![index];
         return ListTile(
-          leading: CircleAvatar(
-            child: Text('${index + 1}'),
-          ),
+          leading: CircleAvatar(child: Text('${index + 1}')),
           title: Text(result.className),
-          subtitle: Text('Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%'),
+          subtitle: Text(
+            'Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%',
+          ),
         );
       },
     );
@@ -251,10 +252,7 @@ class BoundingBoxPainter extends CustomPainter {
   final List<YOLOResult> results;
   final File imageFile;
 
-  BoundingBoxPainter({
-    required this.results,
-    required this.imageFile,
-  });
+  BoundingBoxPainter({required this.results, required this.imageFile});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -262,9 +260,7 @@ class BoundingBoxPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
     // Colors for different objects / オブジェクトごとの色
     final colors = [
@@ -296,7 +292,8 @@ class BoundingBoxPainter extends CustomPainter {
       canvas.drawRect(rect, paint);
 
       // Draw label background / ラベル背景を描画
-      final label = '${result.className} ${(result.confidence * 100).toStringAsFixed(0)}%';
+      final label =
+          '${result.className} ${(result.confidence * 100).toStringAsFixed(0)}%';
       textPainter.text = TextSpan(
         text: label,
         style: TextStyle(
@@ -318,10 +315,7 @@ class BoundingBoxPainter extends CustomPainter {
       canvas.drawRect(labelBgRect, paint);
 
       // Draw label text / ラベルテキストを描画
-      textPainter.paint(
-        canvas,
-        Offset(left + 4, top - textPainter.height - 2),
-      );
+      textPainter.paint(canvas, Offset(left + 4, top - textPainter.height - 2));
 
       paint.style = PaintingStyle.stroke;
     }

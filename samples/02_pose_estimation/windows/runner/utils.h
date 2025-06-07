@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 #ifndef RUNNER_UTILS_H_
 #define RUNNER_UTILS_H_
 

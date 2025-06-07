@@ -14,6 +14,7 @@ This sample demonstrates how to use the Ultralytics YOLO Flutter plugin for huma
 ## Keypoints Detected
 
 The COCO pose format includes 17 keypoints:
+
 1. Nose
 2. Left Eye
 3. Right Eye
@@ -39,10 +40,12 @@ The COCO pose format includes 17 keypoints:
 Before running this sample, you need to add YOLO pose model files:
 
 **Android:**
+
 1. Create the assets directory: `android/app/src/main/assets/`
 2. Copy your `.tflite` pose model file (e.g., `yolo11n-pose.tflite`) to this directory
 
 **iOS:**
+
 1. Open `ios/Runner.xcworkspace` in Xcode
 2. Drag your `.mlmodel` pose file (e.g., `yolo11n-pose.mlmodel`) to the Runner target
 3. Make sure "Copy items if needed" is checked
@@ -126,10 +129,10 @@ static const List<List<int>> skeleton = [
 for (final connection in skeleton) {
   final startIdx = connection[0];
   final endIdx = connection[1];
-  
+
   if (confidences[startIdx] > 0.5 && confidences[endIdx] > 0.5) {
     canvas.drawLine(
-      Offset(keypoints[startIdx].x * size.width, 
+      Offset(keypoints[startIdx].x * size.width,
              keypoints[startIdx].y * size.height),
       Offset(keypoints[endIdx].x * size.width,
              keypoints[endIdx].y * size.height),
@@ -162,6 +165,7 @@ If you encounter issues:
 ## Next Steps
 
 After mastering pose estimation, try:
+
 - [03_segmentation](../03_segmentation/) - Instance segmentation
 - [06_camera_detection](../06_camera_detection/) - Real-time camera detection
 - Building a fitness app with pose analysis

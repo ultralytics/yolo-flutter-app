@@ -17,10 +17,12 @@ This sample demonstrates how to use the Ultralytics YOLO Flutter plugin for inst
 ## Getting Started
 
 1. **Add a segmentation model**:
+
    - For Android: Place your `yolo11n-seg.tflite` file in `android/app/src/main/assets/`
    - For iOS: Add your `yolo11n-seg.mlmodel` to the Xcode project
 
 2. **Run the app**:
+
    ```bash
    flutter pub get
    flutter run
@@ -36,6 +38,7 @@ This sample demonstrates how to use the Ultralytics YOLO Flutter plugin for inst
 ## Model Information
 
 This sample is configured to use `yolo11n-seg`, which provides a good balance between performance and accuracy:
+
 - Model size: ~7MB
 - Speed: 15-25 FPS on modern devices
 - 80 object classes (COCO dataset)

@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,27 +17,24 @@ void main() {
     log.clear();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      log.add(methodCall);
+          log.add(methodCall);
 
-      switch (methodCall.method) {
-        case 'loadModel':
-          return true;
-        case 'predictSingleImage':
-          // Return mock data based on task type
-          final args = methodCall.arguments as Map<dynamic, dynamic>;
-          return _getMockResultForTask(args);
-        default:
-          return null;
-      }
-    });
+          switch (methodCall.method) {
+            case 'loadModel':
+              return true;
+            case 'predictSingleImage':
+              // Return mock data based on task type
+              final args = methodCall.arguments as Map<dynamic, dynamic>;
+              return _getMockResultForTask(args);
+            default:
+              return null;
+          }
+        });
   });
 
   group('All YOLO Tasks Tests', () {
     test('Pose estimation with keypoints', () async {
-      final yolo = YOLO(
-        modelPath: 'yolo11n-pose',
-        task: YOLOTask.pose,
-      );
+      final yolo = YOLO(modelPath: 'yolo11n-pose', task: YOLOTask.pose);
 
       await yolo.loadModel();
       final imageBytes = Uint8List(100); // Mock image data
@@ -55,19 +54,19 @@ void main() {
       final firstDetection = YOLOResult.fromMap(detections[0]);
       expect(firstDetection.className, equals('person'));
       expect(firstDetection.keypoints, isNotNull);
-      expect(firstDetection.keypoints!.length, equals(17)); // COCO pose keypoints
+      expect(
+        firstDetection.keypoints!.length,
+        equals(17),
+      ); // COCO pose keypoints
       expect(firstDetection.keypointConfidences!.length, equals(17));
-      
+
       // Check normalized box
       expect(firstDetection.normalizedBox.left, greaterThanOrEqualTo(0));
       expect(firstDetection.normalizedBox.left, lessThanOrEqualTo(1));
     });
 
     test('Segmentation with masks', () async {
-      final yolo = YOLO(
-        modelPath: 'yolo11n-seg',
-        task: YOLOTask.segment,
-      );
+      final yolo = YOLO(modelPath: 'yolo11n-seg', task: YOLOTask.segment);
 
       await yolo.loadModel();
       final imageBytes = Uint8List(100);
@@ -87,10 +86,7 @@ void main() {
     });
 
     test('Classification task', () async {
-      final yolo = YOLO(
-        modelPath: 'yolo11n-cls',
-        task: YOLOTask.classify,
-      );
+      final yolo = YOLO(modelPath: 'yolo11n-cls', task: YOLOTask.classify);
 
       await yolo.loadModel();
       final imageBytes = Uint8List(100);
@@ -106,10 +102,7 @@ void main() {
     });
 
     test('OBB detection', () async {
-      final yolo = YOLO(
-        modelPath: 'yolo11n-obb',
-        task: YOLOTask.obb,
-      );
+      final yolo = YOLO(modelPath: 'yolo11n-obb', task: YOLOTask.obb);
 
       await yolo.loadModel();
       final imageBytes = Uint8List(100);
@@ -120,7 +113,7 @@ void main() {
 
       final obbList = results['obb'] as List<dynamic>;
       expect(obbList, isNotEmpty);
-      
+
       final firstObb = obbList[0] as Map<dynamic, dynamic>;
       expect(firstObb['points'], isNotNull);
       expect(firstObb['class'], equals('vehicle'));
@@ -128,10 +121,7 @@ void main() {
     });
 
     test('Regular detection', () async {
-      final yolo = YOLO(
-        modelPath: 'yolo11n',
-        task: YOLOTask.detect,
-      );
+      final yolo = YOLO(modelPath: 'yolo11n', task: YOLOTask.detect);
 
       await yolo.loadModel();
       final imageBytes = Uint8List(100);
@@ -143,7 +133,7 @@ void main() {
 
       final boxes = results['boxes'] as List<dynamic>;
       expect(boxes, isNotEmpty);
-      
+
       // Check normalized coordinates
       final firstBox = boxes[0] as Map<dynamic, dynamic>;
       expect(firstBox['x1_norm'], isNotNull);
@@ -169,7 +159,7 @@ Map<String, dynamic> _getMockResultForTask(Map<dynamic, dynamic> args) {
         'y2_norm': 0.41667,
         'class': 'person',
         'confidence': 0.85,
-      }
+      },
     ],
     'imageSize': {'width': 640, 'height': 480},
   };
@@ -179,17 +169,20 @@ Map<String, dynamic> _getMockResultForTask(Map<dynamic, dynamic> args) {
     case 'pose':
       base['keypoints'] = [
         {
-          'coordinates': List.generate(17, (i) => {
-            'x': 0.5 + i * 0.01,
-            'y': 0.5 + i * 0.01,
-            'confidence': 0.9 - i * 0.01,
-          }),
-        }
+          'coordinates': List.generate(
+            17,
+            (i) => {
+              'x': 0.5 + i * 0.01,
+              'y': 0.5 + i * 0.01,
+              'confidence': 0.9 - i * 0.01,
+            },
+          ),
+        },
       ];
       break;
     case 'segment':
       base['masks'] = [
-        List.generate(160, (_) => List.generate(160, (_) => 0.0))
+        List.generate(160, (_) => List.generate(160, (_) => 0.0)),
       ];
       break;
     case 'classify':
@@ -211,7 +204,7 @@ Map<String, dynamic> _getMockResultForTask(Map<dynamic, dynamic> args) {
           ],
           'class': 'vehicle',
           'confidence': 0.9,
-        }
+        },
       ];
       break;
   }

@@ -17,10 +17,12 @@ This sample demonstrates the simplest way to use the Ultralytics YOLO Flutter pl
 Before running this sample, you need to add YOLO model files:
 
 **Android:**
+
 1. Create the assets directory: `android/app/src/main/assets/`
 2. Copy your `.tflite` model file (e.g., `yolo11n.tflite`) to this directory
 
 **iOS:**
+
 1. Open `ios/Runner.xcworkspace` in Xcode
 2. Drag your `.mlmodel` file (e.g., `yolo11n.mlmodel`) to the Runner target
 3. Make sure "Copy items if needed" is checked
@@ -111,6 +113,7 @@ If you encounter issues:
 ## Next Steps
 
 After mastering this basic sample, try:
+
 - [02_pose_estimation](../02_pose_estimation/) - Detect human poses
 - [06_camera_detection](../06_camera_detection/) - Real-time camera detection
 - [07_multi_model](../07_multi_model/) - Switch between different models

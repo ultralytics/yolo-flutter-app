@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
@@ -7,13 +9,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 /// Human Pose Estimation Sample
-/// 
+///
 /// This sample demonstrates how to use YOLO for human pose estimation:
 /// 1. Load a YOLO pose model
 /// 2. Select an image from gallery
 /// 3. Detect human keypoints (17 points for COCO format)
 /// 4. Display results with skeleton visualization
-/// 
+///
 /// 人体姿勢推定のサンプル
 /// YOLOを使った人体姿勢推定の実装例：
 /// 1. YOLO poseモデルの読み込み
@@ -58,23 +60,23 @@ class _PoseEstimationScreenState extends State<PoseEstimationScreen> {
   /// COCO keypoint names for display
   /// COCOキーポイント名（表示用）
   static const List<String> keypointNames = [
-    'nose',           // 0
-    'left_eye',       // 1
-    'right_eye',      // 2
-    'left_ear',       // 3
-    'right_ear',      // 4
-    'left_shoulder',  // 5
+    'nose', // 0
+    'left_eye', // 1
+    'right_eye', // 2
+    'left_ear', // 3
+    'right_ear', // 4
+    'left_shoulder', // 5
     'right_shoulder', // 6
-    'left_elbow',     // 7
-    'right_elbow',    // 8
-    'left_wrist',     // 9
-    'right_wrist',    // 10
-    'left_hip',       // 11
-    'right_hip',      // 12
-    'left_knee',      // 13
-    'right_knee',     // 14
-    'left_ankle',     // 15
-    'right_ankle',    // 16
+    'left_elbow', // 7
+    'right_elbow', // 8
+    'left_wrist', // 9
+    'right_wrist', // 10
+    'left_hip', // 11
+    'right_hip', // 12
+    'left_knee', // 13
+    'right_knee', // 14
+    'left_ankle', // 15
+    'right_ankle', // 16
   ];
 
   /// Skeleton connections (pairs of keypoint indices)
@@ -224,7 +226,9 @@ class _PoseEstimationScreenState extends State<PoseEstimationScreen> {
                   label: const Text('Select Image'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _imageFile == null || _isLoading ? null : _runPoseEstimation,
+                  onPressed: _imageFile == null || _isLoading
+                      ? null
+                      : _runPoseEstimation,
                   icon: _isLoading
                       ? const SizedBox(
                           width: 20,
@@ -263,33 +267,27 @@ class _PoseEstimationScreenState extends State<PoseEstimationScreen> {
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
               return Center(
-                child: Image.file(
-                  _imageFile!,
-                  fit: BoxFit.contain,
-                ),
+                child: Image.file(_imageFile!, fit: BoxFit.contain),
               );
             }
-            
+
             final imageInfo = snapshot.data!;
             final imageSize = Size(
               imageInfo.image.width.toDouble(),
               imageInfo.image.height.toDouble(),
             );
-            
+
             // Calculate the actual display size of the image
             final displaySize = _calculateFittedImageSize(
               imageSize,
               Size(constraints.maxWidth, constraints.maxHeight),
             );
-            
+
             return Stack(
               alignment: Alignment.center,
               children: [
                 // Original image
-                Image.file(
-                  _imageFile!,
-                  fit: BoxFit.contain,
-                ),
+                Image.file(_imageFile!, fit: BoxFit.contain),
 
                 // Pose overlay with proper size
                 if (_results != null)
@@ -313,18 +311,20 @@ class _PoseEstimationScreenState extends State<PoseEstimationScreen> {
     final image = FileImage(_imageFile!);
     final completer = Completer<ImageInfo>();
     final stream = image.resolve(const ImageConfiguration());
-    
-    stream.addListener(ImageStreamListener((info, _) {
-      completer.complete(info);
-    }));
-    
+
+    stream.addListener(
+      ImageStreamListener((info, _) {
+        completer.complete(info);
+      }),
+    );
+
     return completer.future;
   }
 
   Size _calculateFittedImageSize(Size imageSize, Size containerSize) {
     final aspectRatio = imageSize.width / imageSize.height;
     final containerAspectRatio = containerSize.width / containerSize.height;
-    
+
     if (aspectRatio > containerAspectRatio) {
       // Image is wider than container
       final width = containerSize.width;
@@ -389,7 +389,7 @@ class PosePainter extends CustomPainter {
       final result = results[personIdx];
       final keypoints = result.keypoints;
       final confidences = result.keypointConfidences;
-      
+
       if (keypoints == null || confidences == null) continue;
 
       final color = colors[personIdx % colors.length];
@@ -406,11 +406,10 @@ class PosePainter extends CustomPainter {
           final endIdx = connection[1];
 
           // Check if both keypoints are visible (confidence > 0.5)
-          if (startIdx < keypoints.length && 
+          if (startIdx < keypoints.length &&
               endIdx < keypoints.length &&
-              confidences[startIdx] > 0.5 && 
+              confidences[startIdx] > 0.5 &&
               confidences[endIdx] > 0.5) {
-            
             final startPoint = keypoints[startIdx];
             final endPoint = keypoints[endIdx];
 
@@ -425,11 +424,11 @@ class PosePainter extends CustomPainter {
 
       // Draw keypoints
       if (showKeypoints) {
-        final keypointPaint = Paint()
-          ..style = PaintingStyle.fill;
+        final keypointPaint = Paint()..style = PaintingStyle.fill;
 
         for (int i = 0; i < keypoints.length && i < confidences.length; i++) {
-          if (confidences[i] > 0.5) {  // Only draw visible keypoints
+          if (confidences[i] > 0.5) {
+            // Only draw visible keypoints
             final keypoint = keypoints[i];
             final x = keypoint.x * size.width;
             final y = keypoint.y * size.height;

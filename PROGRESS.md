@@ -5,19 +5,23 @@
 ### Issues Fixed
 
 1. **Pose Estimation Keypoint Retrieval Issue**
+
    - Problem: Users couldn't access keypoint data from `YOLO.predict` method
    - Root cause: Data structure mismatch between native platforms and Dart
    - Solution: Modified `YOLO.predict` to transform data into YOLOResult-compatible format
 
 2. **Task-Specific Data Missing**
+
    - Problem: iOS wasn't sending task-specific data (keypoints, masks, etc.)
    - Solution: Updated iOS `convertToFlutterFormat` to include all task data
 
 3. **Type Compatibility Issues**
+
    - Problem: Various type mismatches for different YOLO tasks
    - Solution: Implemented proper data transformation for all task types
 
 4. **Segmentation Mask Format**
+
    - Problem: PNG data couldn't be parsed by YOLOResult
    - Solution: Native platforms now send raw mask data as List<List<Double>>
 
@@ -28,15 +32,18 @@
 ### Files Modified
 
 #### Core Plugin Files
+
 - `/lib/yolo.dart` - Added `detections` array and task-specific data transformation
 - `/android/src/main/kotlin/com/ultralytics/yolo/YOLOPlugin.kt` - Raw mask data, normalized coords
 - `/ios/Classes/YOLOInstanceManager.swift` - Fixed missing task data, added all fields
 
 #### Test Files
+
 - `/test/all_tasks_test.dart` - Comprehensive unit tests for all YOLO tasks
 - `/example/lib/test_all_tasks.dart` - Manual testing screen for real devices
 
 #### Sample Applications
+
 - `/samples/README.md` - Overview of all planned samples
 - `/samples/01_basic_detection/` - Complete basic object detection sample
 - `/samples/02_pose_estimation/` - Complete pose estimation sample with skeleton
@@ -51,12 +58,14 @@
 ### Pending Tasks
 
 1. **Sample Applications** (4 remaining):
+
    - 05_obb_detection - Oriented bounding boxes
    - 06_camera_detection - Real-time camera feed
    - 07_multi_model - Model switching
    - 08_custom_ui - Advanced visualizations
 
 2. **Documentation Updates**:
+
    - Update main README with new predict method usage
    - Add migration guide for existing users
    - Document normalized coordinates feature
@@ -69,10 +78,12 @@
 ### Technical Notes
 
 1. **Data Flow**: Native → Platform Channel → Dart
+
    - Native sends both legacy format (boxes) and new format (detections)
    - Maintains backward compatibility
 
 2. **Coordinate Systems**:
+
    - Pixel coordinates: Original detection coordinates
    - Normalized coordinates: 0-1 range for device-independent rendering
 

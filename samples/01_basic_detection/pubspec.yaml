@@ -1,6 +1,8 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 name: basic_detection
 description: "Basic object detection sample app demonstrating the simplest use of YOLO Flutter plugin"
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.0.0+1
 
@@ -14,10 +16,10 @@ dependencies:
   # YOLO Flutter plugin for object detection
   ultralytics_yolo:
     path: ../../
-  
+
   # Image picker for selecting photos from gallery
   image_picker: ^1.0.8
-  
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -38,7 +40,6 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

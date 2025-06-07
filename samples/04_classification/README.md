@@ -16,10 +16,12 @@ This sample demonstrates how to use the Ultralytics YOLO Flutter plugin for imag
 ## Getting Started
 
 1. **Add a classification model**:
+
    - For Android: Place your `yolo11n-cls.tflite` file in `android/app/src/main/assets/`
    - For iOS: Add your `yolo11n-cls.mlmodel` to the Xcode project
 
 2. **Run the app**:
+
    ```bash
    flutter pub get
    flutter run
@@ -34,6 +36,7 @@ This sample demonstrates how to use the Ultralytics YOLO Flutter plugin for imag
 ## Model Information
 
 This sample is configured to use `yolo11n-cls`, which provides excellent classification performance:
+
 - Model size: ~5MB
 - Speed: 30+ FPS on modern devices
 - 1000 classes (ImageNet dataset)
