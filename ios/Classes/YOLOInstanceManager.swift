@@ -286,52 +286,52 @@ class YOLOInstanceManager {
       "boxes": flutterBoxes,
       "imageSize": [
         "width": Int(imageWidth),
-        "height": Int(imageHeight)
-      ]
+        "height": Int(imageHeight),
+      ],
     ]
 
     // Add task-specific data based on what's available in result
-    
+
     // Pose estimation - keypoints
     if !result.keypointsList.isEmpty {
       var keypointsArray: [[String: Any]] = []
-      
+
       for keypoints in result.keypointsList {
         var coordinates: [[String: Any]] = []
-        
+
         for (index, (x, y)) in keypoints.xyn.enumerated() {
           if index < keypoints.conf.count {
             coordinates.append([
               "x": x,
               "y": y,
-              "confidence": keypoints.conf[index]
+              "confidence": keypoints.conf[index],
             ])
           }
         }
-        
+
         keypointsArray.append([
           "coordinates": coordinates
         ])
       }
-      
+
       resultDict["keypoints"] = keypointsArray
     }
-    
+
     // Classification - probs
     if let probs = result.probs {
       resultDict["classification"] = [
         "topClass": probs.top1,
         "topConfidence": probs.top1Conf,
         "top5Classes": probs.top5,
-        "top5Confidences": probs.top5Confs
+        "top5Confidences": probs.top5Confs,
       ]
     }
-    
+
     // Segmentation - masks
     if let masks = result.masks {
       // Send raw mask data for each detected instance
       var rawMasks: [[[Double]]] = []
-      
+
       for instanceMask in masks.masks {
         var mask2D: [[Double]] = []
         for row in instanceMask {
@@ -340,69 +340,70 @@ class YOLOInstanceManager {
         rawMasks.append(mask2D)
       }
       resultDict["masks"] = rawMasks
-      
+
       // Also send PNG for backward compatibility (optional)
       if let combinedMask = masks.combinedMask {
         let ciImage = CIImage(cgImage: combinedMask)
         let context = CIContext()
         if let cgImage = context.createCGImage(ciImage, from: ciImage.extent),
-           let uiImage = UIImage(cgImage: cgImage),
-           let maskData = uiImage.pngData() {
+          let uiImage = UIImage(cgImage: cgImage),
+          let maskData = uiImage.pngData()
+        {
           resultDict["maskPng"] = FlutterStandardTypedData(bytes: maskData)
         }
       }
     }
-    
+
     // OBB - oriented bounding boxes
     if !result.obb.isEmpty {
       var obbArray: [[String: Any]] = []
-      
+
       for obbResult in result.obb {
         let box = obbResult.box
-        
+
         // Calculate the 4 corner points of the OBB
         let angle = box.angle
         let cx = box.cx
         let cy = box.cy
         let w = box.w
         let h = box.h
-        
+
         let cos_a = cos(angle)
         let sin_a = sin(angle)
-        
+
         // Calculate corner points
-        let dx1 = w/2 * cos_a
-        let dy1 = w/2 * sin_a
-        let dx2 = h/2 * sin_a
-        let dy2 = h/2 * cos_a
-        
+        let dx1 = w / 2 * cos_a
+        let dy1 = w / 2 * sin_a
+        let dx2 = h / 2 * sin_a
+        let dy2 = h / 2 * cos_a
+
         let points = [
           ["x": cx - dx1 + dx2, "y": cy - dy1 - dy2],
           ["x": cx + dx1 + dx2, "y": cy + dy1 - dy2],
           ["x": cx + dx1 - dx2, "y": cy + dy1 + dy2],
-          ["x": cx - dx1 - dx2, "y": cy - dy1 + dy2]
+          ["x": cx - dx1 - dx2, "y": cy - dy1 + dy2],
         ]
-        
+
         obbArray.append([
           "points": points,
           "class": obbResult.cls,
-          "confidence": obbResult.confidence
+          "confidence": obbResult.confidence,
         ])
       }
-      
+
       resultDict["obb"] = obbArray
     }
-    
+
     // Include annotated image if available
     if let annotatedImage = result.annotatedImage {
       if let imageData = annotatedImage.pngData() {
         resultDict["annotatedImage"] = FlutterStandardTypedData(bytes: imageData)
       }
     }
-    
+
     // Include speed metric
     resultDict["speed"] = result.speed
-    
+
     return resultDict
   }
 }

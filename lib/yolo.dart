@@ -299,16 +299,16 @@ class YOLO {
         // Convert boxes list if it exists
         final List<Map<String, dynamic>> boxes = [];
         if (resultMap.containsKey('boxes') && resultMap['boxes'] is List) {
-          boxes.addAll((resultMap['boxes'] as List).map((item) {
-            if (item is Map) {
-              return Map<String, dynamic>.fromEntries(
-                item.entries.map(
-                  (e) => MapEntry(e.key.toString(), e.value),
-                ),
-              );
-            }
-            return <String, dynamic>{};
-          }));
+          boxes.addAll(
+            (resultMap['boxes'] as List).map((item) {
+              if (item is Map) {
+                return Map<String, dynamic>.fromEntries(
+                  item.entries.map((e) => MapEntry(e.key.toString(), e.value)),
+                );
+              }
+              return <String, dynamic>{};
+            }),
+          );
 
           resultMap['boxes'] = boxes;
         }
@@ -324,9 +324,11 @@ class YOLO {
               final keypointsList =
                   resultMap['keypoints'] as List<dynamic>? ?? [];
 
-              for (int i = 0;
-                  i < boxes.length && i < keypointsList.length;
-                  i++) {
+              for (
+                int i = 0;
+                i < boxes.length && i < keypointsList.length;
+                i++
+              ) {
                 final box = boxes[i];
                 final detection = _createDetectionMap(box);
 
@@ -340,12 +342,15 @@ class YOLO {
                   final flatKeypoints = <double>[];
                   for (final coord in coordinates) {
                     if (coord is Map) {
-                      flatKeypoints
-                          .add((coord['x'] as num?)?.toDouble() ?? 0.0);
-                      flatKeypoints
-                          .add((coord['y'] as num?)?.toDouble() ?? 0.0);
                       flatKeypoints.add(
-                          (coord['confidence'] as num?)?.toDouble() ?? 0.0);
+                        (coord['x'] as num?)?.toDouble() ?? 0.0,
+                      );
+                      flatKeypoints.add(
+                        (coord['y'] as num?)?.toDouble() ?? 0.0,
+                      );
+                      flatKeypoints.add(
+                        (coord['confidence'] as num?)?.toDouble() ?? 0.0,
+                      );
                     }
                   }
 
@@ -396,7 +401,7 @@ class YOLO {
                 'className': classification['topClass'] ?? '',
                 'confidence':
                     (classification['topConfidence'] as num?)?.toDouble() ??
-                        0.0,
+                    0.0,
                 'boundingBox': {
                   'left': 0.0,
                   'top': 0.0,
