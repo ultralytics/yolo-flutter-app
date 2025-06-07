@@ -1319,4 +1319,37 @@ class YOLOView @JvmOverloads constructor(
     }
     
     // endregion
+
+    /**
+     * Stop camera and inference (can be restarted later)
+     */
+    fun stop() {
+        Log.d(TAG, "YOLOView.stop() called - stopping camera and inference")
+
+        try {
+            // Stop camera operations
+            if (::cameraProviderFuture.isInitialized) {
+                Log.d(TAG, "Unbinding camera use cases")
+                val cameraProvider = cameraProviderFuture.get()
+                cameraProvider.unbindAll()
+                Log.d(TAG, "Camera successfully unbound")
+            }
+            camera = null
+
+            // Clear predictor (but keep it restartable)
+            Log.d(TAG, "Clearing predictor")
+            predictor = null
+
+            // Clear callbacks to prevent memory leaks
+            Log.d(TAG, "Clearing callbacks and result data")
+            inferenceCallback = null
+            streamCallback = null
+            inferenceResult = null
+
+            Log.d(TAG, "YOLOView stop completed successfully")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during YOLOView stop", e)
+        }
+    }
 }
