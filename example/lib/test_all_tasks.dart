@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
@@ -171,7 +170,7 @@ class _TestAllTasksScreenState extends State<TestAllTasksScreen> {
             final result = YOLOResult.fromMap(detections[i]);
             output.writeln('\nYOLOResult ${i + 1}:');
             output.writeln('  Valid structure ✓');
-            output.writeln('  Has normalized box: ${result.normalizedBox != null} ✓');
+            output.writeln('  Has normalized box: true ✓');
             
             if (task == YOLOTask.pose) {
               output.writeln('  Has keypoints: ${result.keypoints != null} ✓');

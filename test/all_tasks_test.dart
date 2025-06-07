@@ -1,8 +1,6 @@
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/yolo.dart';
-import 'package:ultralytics_yolo/yolo_result.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -55,9 +53,10 @@ void main() {
       final firstDetection = YOLOResult.fromMap(detections[0]);
       expect(firstDetection.className, equals('person'));
       expect(firstDetection.keypoints, isNotNull);
-      expect(firstDetection.keypoints!.length, equals(17)); // COCO pose keypoints
+      expect(
+          firstDetection.keypoints!.length, equals(17)); // COCO pose keypoints
       expect(firstDetection.keypointConfidences!.length, equals(17));
-      
+
       // Check normalized box
       expect(firstDetection.normalizedBox.left, greaterThanOrEqualTo(0));
       expect(firstDetection.normalizedBox.left, lessThanOrEqualTo(1));
@@ -120,7 +119,7 @@ void main() {
 
       final obbList = results['obb'] as List<dynamic>;
       expect(obbList, isNotEmpty);
-      
+
       final firstObb = obbList[0] as Map<dynamic, dynamic>;
       expect(firstObb['points'], isNotNull);
       expect(firstObb['class'], equals('vehicle'));
@@ -143,7 +142,7 @@ void main() {
 
       final boxes = results['boxes'] as List<dynamic>;
       expect(boxes, isNotEmpty);
-      
+
       // Check normalized coordinates
       final firstBox = boxes[0] as Map<dynamic, dynamic>;
       expect(firstBox['x1_norm'], isNotNull);
@@ -179,11 +178,13 @@ Map<String, dynamic> _getMockResultForTask(Map<dynamic, dynamic> args) {
     case 'pose':
       base['keypoints'] = [
         {
-          'coordinates': List.generate(17, (i) => {
-            'x': 0.5 + i * 0.01,
-            'y': 0.5 + i * 0.01,
-            'confidence': 0.9 - i * 0.01,
-          }),
+          'coordinates': List.generate(
+              17,
+              (i) => {
+                    'x': 0.5 + i * 0.01,
+                    'y': 0.5 + i * 0.01,
+                    'confidence': 0.9 - i * 0.01,
+                  }),
         }
       ];
       break;

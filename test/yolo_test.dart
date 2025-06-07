@@ -33,43 +33,43 @@ void main() {
     // Configure mock response for the channel
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          log.add(methodCall);
+      log.add(methodCall);
 
-          if (methodCall.method == 'loadModel') {
-            modelLoaded = true;
-            return true;
-          } else if (methodCall.method == 'createInstance') {
-            // Support for multi-instance creation
-            return true;
-          } else if (methodCall.method == 'disposeInstance') {
-            // Support for multi-instance disposal
-            return true;
-          } else if (methodCall.method == 'predictSingleImage') {
-            if (!modelLoaded) {
-              throw PlatformException(
-                code: 'MODEL_NOT_LOADED',
-                message: 'Model not loaded',
-              );
-            }
-            return {
-              'boxes': [
-                {
-                  'class': 'person',
-                  'confidence': 0.95,
-                  'x': 10,
-                  'y': 10,
-                  'width': 100,
-                  'height': 200,
-                },
-              ],
-              'annotatedImage': Uint8List.fromList(List.filled(100, 0)),
-            };
-          } else if (methodCall.method == 'setModel') {
-            // Support for model switching
-            return true;
-          }
-          return null;
-        });
+      if (methodCall.method == 'loadModel') {
+        modelLoaded = true;
+        return true;
+      } else if (methodCall.method == 'createInstance') {
+        // Support for multi-instance creation
+        return true;
+      } else if (methodCall.method == 'disposeInstance') {
+        // Support for multi-instance disposal
+        return true;
+      } else if (methodCall.method == 'predictSingleImage') {
+        if (!modelLoaded) {
+          throw PlatformException(
+            code: 'MODEL_NOT_LOADED',
+            message: 'Model not loaded',
+          );
+        }
+        return {
+          'boxes': [
+            {
+              'class': 'person',
+              'confidence': 0.95,
+              'x': 10,
+              'y': 10,
+              'width': 100,
+              'height': 200,
+            },
+          ],
+          'annotatedImage': Uint8List.fromList(List.filled(100, 0)),
+        };
+      } else if (methodCall.method == 'setModel') {
+        // Support for model switching
+        return true;
+      }
+      return null;
+    });
   });
 
   tearDown(() {
