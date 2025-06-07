@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
@@ -254,26 +256,86 @@ class _PoseEstimationScreenState extends State<PoseEstimationScreen> {
       );
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Original image
-        Image.file(
-          _imageFile!,
-          fit: BoxFit.contain,
-        ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return FutureBuilder<ImageInfo>(
+          future: _getImageInfo(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return Center(
+                child: Image.file(
+                  _imageFile!,
+                  fit: BoxFit.contain,
+                ),
+              );
+            }
+            
+            final imageInfo = snapshot.data!;
+            final imageSize = Size(
+              imageInfo.image.width.toDouble(),
+              imageInfo.image.height.toDouble(),
+            );
+            
+            // Calculate the actual display size of the image
+            final displaySize = _calculateFittedImageSize(
+              imageSize,
+              Size(constraints.maxWidth, constraints.maxHeight),
+            );
+            
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                // Original image
+                Image.file(
+                  _imageFile!,
+                  fit: BoxFit.contain,
+                ),
 
-        // Pose overlay
-        if (_results != null)
-          CustomPaint(
-            painter: PosePainter(
-              results: _results!,
-              showKeypoints: _showKeypoints,
-              showSkeleton: _showSkeleton,
-            ),
-          ),
-      ],
+                // Pose overlay with proper size
+                if (_results != null)
+                  CustomPaint(
+                    size: displaySize,
+                    painter: PosePainter(
+                      results: _results!,
+                      showKeypoints: _showKeypoints,
+                      showSkeleton: _showSkeleton,
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
     );
+  }
+
+  Future<ImageInfo> _getImageInfo() async {
+    final image = FileImage(_imageFile!);
+    final completer = Completer<ImageInfo>();
+    final stream = image.resolve(const ImageConfiguration());
+    
+    stream.addListener(ImageStreamListener((info, _) {
+      completer.complete(info);
+    }));
+    
+    return completer.future;
+  }
+
+  Size _calculateFittedImageSize(Size imageSize, Size containerSize) {
+    final aspectRatio = imageSize.width / imageSize.height;
+    final containerAspectRatio = containerSize.width / containerSize.height;
+    
+    if (aspectRatio > containerAspectRatio) {
+      // Image is wider than container
+      final width = containerSize.width;
+      final height = width / aspectRatio;
+      return Size(width, height);
+    } else {
+      // Image is taller than container
+      final height = containerSize.height;
+      final width = height * aspectRatio;
+      return Size(width, height);
+    }
   }
 
   Widget _buildResultsList() {

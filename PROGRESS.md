@@ -41,11 +41,16 @@
 - `/samples/01_basic_detection/` - Complete basic object detection sample
 - `/samples/02_pose_estimation/` - Complete pose estimation sample with skeleton
 
+### Completed Sample Applications
+
+1. **01_basic_detection** - Basic object detection with bounding boxes
+2. **02_pose_estimation** - Human pose estimation with skeleton visualization
+3. **03_segmentation** - Instance segmentation with adjustable mask opacity
+4. **04_classification** - Image classification with top-K predictions
+
 ### Pending Tasks
 
-1. **Sample Applications** (6 remaining):
-   - 03_segmentation - Instance segmentation with masks
-   - 04_classification - Image classification
+1. **Sample Applications** (4 remaining):
    - 05_obb_detection - Oriented bounding boxes
    - 06_camera_detection - Real-time camera feed
    - 07_multi_model - Model switching
