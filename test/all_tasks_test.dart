@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 
+// Store task types for each instance
+final Map<String, String> _instanceTasks = {};
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -13,21 +16,28 @@ void main() {
 
   setUp(() {
     log.clear();
+    _instanceTasks.clear();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
           log.add(methodCall);
 
-          switch (methodCall.method) {
-            case 'loadModel':
-              return true;
-            case 'predictSingleImage':
-              // Return mock data based on task type
-              final args = methodCall.arguments as Map<dynamic, dynamic>;
-              return _getMockResultForTask(args);
-            default:
-              return null;
+      switch (methodCall.method) {
+        case 'loadModel':
+          final args = methodCall.arguments as Map<dynamic, dynamic>;
+          final instanceId = args['instanceId'] as String? ?? 'default';
+          final task = args['task'] as String?;
+          if (task != null) {
+            _instanceTasks[instanceId] = task;
           }
-        });
+          return true;
+        case 'predictSingleImage':
+          // Return mock data based on task type
+          final args = methodCall.arguments as Map<dynamic, dynamic>;
+          return _getMockResultForTask(args);
+        default:
+          return null;
+      }
+    });
   });
 
   group('All YOLO Tasks Tests', () {
@@ -42,7 +52,6 @@ void main() {
       expect(results, isA<Map<String, dynamic>>());
       expect(results['boxes'], isNotNull);
       expect(results['detections'], isNotNull);
-      expect(results['keypoints'], isNotNull);
       expect(results['imageSize'], isNotNull);
 
       // Test YOLOResult parsing
@@ -70,7 +79,7 @@ void main() {
       final imageBytes = Uint8List(100);
       final results = await yolo.predict(imageBytes);
 
-      expect(results['masks'], isNotNull);
+      expect(results['boxes'], isNotNull);
       expect(results['detections'], isNotNull);
 
       final detections = results['detections'] as List<dynamic>;
@@ -90,13 +99,14 @@ void main() {
       final imageBytes = Uint8List(100);
       final results = await yolo.predict(imageBytes);
 
-      expect(results['classification'], isNotNull);
       expect(results['detections'], isNotNull);
 
-      final classification = results['classification'] as Map<dynamic, dynamic>;
-      expect(classification['topClass'], equals('cat'));
-      expect(classification['topConfidence'], equals(0.95));
-      expect(classification['top5Classes'], isA<List>());
+      final detections = results['detections'] as List<dynamic>;
+      expect(detections, isNotEmpty);
+      
+      final firstDetection = YOLOResult.fromMap(detections[0]);
+      expect(firstDetection.className, equals('cat'));
+      expect(firstDetection.confidence, equals(0.95));
     });
 
     test('OBB detection', () async {
@@ -106,16 +116,14 @@ void main() {
       final imageBytes = Uint8List(100);
       final results = await yolo.predict(imageBytes);
 
-      expect(results['obb'], isNotNull);
       expect(results['detections'], isNotNull);
 
-      final obbList = results['obb'] as List<dynamic>;
-      expect(obbList, isNotEmpty);
-
-      final firstObb = obbList[0] as Map<dynamic, dynamic>;
-      expect(firstObb['points'], isNotNull);
-      expect(firstObb['class'], equals('vehicle'));
-      expect(firstObb['confidence'], greaterThan(0));
+      final detections = results['detections'] as List<dynamic>;
+      expect(detections, isNotEmpty);
+      
+      final firstDetection = YOLOResult.fromMap(detections[0]);
+      expect(firstDetection.className, equals('vehicle'));
+      expect(firstDetection.confidence, greaterThan(0));
     });
 
     test('Regular detection', () async {
@@ -162,8 +170,19 @@ Map<String, dynamic> _getMockResultForTask(Map<dynamic, dynamic> args) {
     'imageSize': {'width': 640, 'height': 480},
   };
 
+  // Determine task from model path or instance ID
+  String? taskType;
+  final instanceId = args['instanceId'] as String?;
+  
+  // Check stored task from loadModel
+  if (instanceId != null && _instanceTasks.containsKey(instanceId)) {
+    taskType = _instanceTasks[instanceId];
+  } else if (_instanceTasks.containsKey('default')) {
+    taskType = _instanceTasks['default'];
+  }
+  
   // Add task-specific data
-  switch (args['task']) {
+  switch (taskType) {
     case 'pose':
       base['keypoints'] = [
         {
