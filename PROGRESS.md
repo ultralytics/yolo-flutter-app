@@ -4,6 +4,9 @@
 
 ### Branch: feat/sample-applications
 
+## Summary
+All changes have been committed without any model files (.mlpackage, .mlmodel, .tflite). Model files are properly excluded by .gitignore and are not tracked in the repository.
+
 ## Completed Tasks
 
 ### 1. Label Loading Improvements
