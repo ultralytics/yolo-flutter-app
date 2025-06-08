@@ -120,17 +120,25 @@ class _ClassificationScreenState extends State<ClassificationScreen> {
   List<MapEntry<String, double>> _getTopPredictions() {
     if (_classificationResult == null) return [];
 
-    final probs = _classificationResult!['probs'] as Map<String, dynamic>;
+    // Check if we have classification data
+    final classification = _classificationResult!['classification'] as Map<String, dynamic>?;
+    if (classification == null) return [];
+
+    // Get top 5 classes and confidences
+    final top5Classes = classification['top5Classes'] as List<dynamic>? ?? [];
+    final top5Confidences = classification['top5Confidences'] as List<dynamic>? ?? [];
     
-    // Convert to list of entries and sort by confidence
-    var entries = probs.entries
-        .map((e) => MapEntry(e.key, (e.value as num).toDouble()))
-        .toList();
+    // Combine classes with confidences
+    List<MapEntry<String, double>> entries = [];
+    for (int i = 0; i < top5Classes.length && i < top5Confidences.length; i++) {
+      entries.add(MapEntry(
+        top5Classes[i].toString(),
+        (top5Confidences[i] as num).toDouble(),
+      ));
+    }
     
-    entries.sort((a, b) => b.value.compareTo(a.value));
-    
-    // Return top K predictions
-    return entries.take(_topK).toList();
+    // Return all available predictions (already sorted by confidence)
+    return entries;
   }
 
   @override
