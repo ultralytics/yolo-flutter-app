@@ -420,8 +420,9 @@ class ObbPainter extends CustomPainter {
           final path = Path();
           for (int j = 0; j < points.length; j++) {
             final point = points[j] as Map<dynamic, dynamic>;
-            final x = (point['x'] as num).toDouble() * scaleX;
-            final y = (point['y'] as num).toDouble() * scaleY;
+            // Points are already in normalized coordinates (0-1)
+            final x = (point['x'] as num).toDouble() * size.width;
+            final y = (point['y'] as num).toDouble() * size.height;
             
             if (j == 0) {
               path.moveTo(x, y);
@@ -437,8 +438,9 @@ class ObbPainter extends CustomPainter {
 
           // Draw corners
           for (final point in points) {
-            final x = (point['x'] as num).toDouble() * scaleX;
-            final y = (point['y'] as num).toDouble() * scaleY;
+            // Points are already in normalized coordinates (0-1)
+            final x = (point['x'] as num).toDouble() * size.width;
+            final y = (point['y'] as num).toDouble() * size.height;
             canvas.drawCircle(
               Offset(x, y),
               4,
@@ -450,10 +452,10 @@ class ObbPainter extends CustomPainter {
         // Fallback to regular bounding box
         final normalizedBox = detection['normalizedBox'] as Map<String, dynamic>;
         final rect = Rect.fromLTRB(
-          normalizedBox['left'] * imageSize.width * scaleX,
-          normalizedBox['top'] * imageSize.height * scaleY,
-          normalizedBox['right'] * imageSize.width * scaleX,
-          normalizedBox['bottom'] * imageSize.height * scaleY,
+          normalizedBox['left'] * size.width,
+          normalizedBox['top'] * size.height,
+          normalizedBox['right'] * size.width,
+          normalizedBox['bottom'] * size.height,
         );
 
         final paint = Paint()
@@ -501,8 +503,8 @@ class ObbPainter extends CustomPainter {
 
         // Position label at top-left of the box
         final normalizedBox = detection['normalizedBox'] as Map<String, dynamic>;
-        final labelX = normalizedBox['left'] * imageSize.width * scaleX;
-        final labelY = normalizedBox['top'] * imageSize.height * scaleY - textPainter.height - 2;
+        final labelX = normalizedBox['left'] * size.width;
+        final labelY = normalizedBox['top'] * size.height - textPainter.height - 2;
 
         textPainter.paint(
           canvas,
