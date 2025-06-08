@@ -110,7 +110,11 @@ class Segmenter(
                                             labelsWereLoaded = true
                                             Log.d("Segmenter", "Loaded labels from metadata: $labels")
                                             return@fileLoop
+                                        } else {
+                                            Log.e("Segmenter", "Failed to parse YAML from metadata")
                                         }
+                                    } else {
+                                        Log.e("Segmenter", "Failed to parse YAML from metadata")
                                     }
                                 } catch (ex: Exception) {
                                     Log.e("Segmenter", "Failed to parse YAML from metadata: ${ex.message}")

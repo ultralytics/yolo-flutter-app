@@ -359,12 +359,25 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
     // Try to get angle from the raw OBB data if available
     if (_rawResults != null && _rawResults!['obb'] != null) {
       final obbList = _rawResults!['obb'] as List<dynamic>;
-      // Find matching OBB by comparing bounding boxes
+      // Find matching OBB by class name
       for (final obb in obbList) {
         if (obb is Map && obb['class'] == detection['className']) {
-          // In a real implementation, you would calculate angle from the points
-          // For now, return a mock angle
-          return 15.0 + (detection['className'].hashCode % 45);
+          // Get angle from OBB data if available
+          if (obb['angle'] != null) {
+            // Convert from radians to degrees
+            return (obb['angle'] as num).toDouble() * 180 / 3.14159;
+          }
+          // Otherwise calculate from points
+          else if (obb['points'] != null) {
+            final points = obb['points'] as List<dynamic>;
+            if (points.length >= 2) {
+              final p1 = points[0] as Map<dynamic, dynamic>;
+              final p2 = points[1] as Map<dynamic, dynamic>;
+              final dx = (p2['x'] as num).toDouble() - (p1['x'] as num).toDouble();
+              final dy = (p2['y'] as num).toDouble() - (p1['y'] as num).toDouble();
+              return math.atan2(dy, dx) * 180 / math.pi;
+            }
+          }
         }
       }
     }
@@ -394,23 +407,26 @@ class ObbPainter extends CustomPainter {
     final scaleX = size.width / imageSize.width;
     final scaleY = size.height / imageSize.height;
 
+    // Debug
+    print('ObbPainter - Canvas size: $size, Image size: $imageSize');
+    print('ObbPainter - Number of detections: ${detections.length}');
+
     // Get OBB data if available
     final obbList = rawResults['obb'] as List<dynamic>? ?? [];
+    print('ObbPainter - OBB list length: ${obbList.length}');
 
-    for (int i = 0; i < detections.length; i++) {
-      final detection = detections[i];
-      final color = _getColorForClass(detection['className'] ?? '');
-      
-      // Try to find corresponding OBB data
-      Map<String, dynamic>? obbData;
-      for (final obb in obbList) {
-        if (obb is Map && obb['class'] == detection['className']) {
-          obbData = obb as Map<String, dynamic>;
-          break;
-        }
-      }
+    // For OBB task, we should primarily use the OBB data, not detections
+    if (obbList.isNotEmpty) {
+      // Draw from OBB data directly
+      for (int i = 0; i < obbList.length; i++) {
+        final obbData = obbList[i] as Map<dynamic, dynamic>;
+        final className = obbData['class'] ?? 'Unknown';
+        final confidence = obbData['confidence'] ?? 0.0;
+        final color = _getColorForClass(className.toString());
+        
+        print('ObbPainter - Drawing OBB $i: class=$className, conf=$confidence');
 
-      if (obbData != null && obbData['points'] != null) {
+        if (obbData['points'] != null) {
         // Draw oriented bounding box using points
         final points = obbData['points'] as List<dynamic>;
         if (points.length >= 4) {
@@ -454,8 +470,53 @@ class ObbPainter extends CustomPainter {
               Paint()..color = color,
             );
           }
+          
+          // Draw label
+          if (showLabels || showConfidence || showAngle) {
+            final textPainter = TextPainter(
+              textDirection: TextDirection.ltr,
+            );
+
+            String label = '';
+            if (showLabels) label = className.toString();
+            if (showConfidence) {
+              if (label.isNotEmpty) label += ' ';
+              label += '${(confidence * 100).toStringAsFixed(0)}%';
+            }
+            if (showAngle && obbData['angle'] != null) {
+              final angleDeg = (obbData['angle'] as num).toDouble() * 180 / 3.14159;
+              if (label.isNotEmpty) label += ' ';
+              label += '${angleDeg.toStringAsFixed(0)}°';
+            }
+
+            textPainter.text = TextSpan(
+              text: label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                backgroundColor: color.withOpacity(0.7),
+              ),
+            );
+            textPainter.layout();
+
+            // Position label at first point
+            final firstPoint = points[0] as Map<dynamic, dynamic>;
+            final labelX = (firstPoint['x'] as num).toDouble() * size.width;
+            final labelY = (firstPoint['y'] as num).toDouble() * size.height - textPainter.height - 2;
+
+            textPainter.paint(
+              canvas,
+              Offset(labelX, labelY > 0 ? labelY : 0),
+            );
+          }
         }
-      } else {
+      }
+    } else if (detections.isNotEmpty) {
+      // Fallback to regular detection boxes if no OBB data
+      print('ObbPainter - No OBB data, falling back to regular boxes');
+      for (final detection in detections) {
+        final color = _getColorForClass(detection['className'] ?? '');
+        
         // Fallback to regular bounding box
         final normalizedBox = detection['normalizedBox'] as Map<String, dynamic>;
         final rect = Rect.fromLTRB(
@@ -476,47 +537,39 @@ class ObbPainter extends CustomPainter {
 
         canvas.drawRect(rect, paint);
         canvas.drawRect(rect, borderPaint);
-      }
 
-      // Draw label
-      if (showLabels || showConfidence || showAngle) {
-        final textPainter = TextPainter(
-          textDirection: TextDirection.ltr,
-        );
+        // Draw label
+        if (showLabels || showConfidence) {
+          final textPainter = TextPainter(
+            textDirection: TextDirection.ltr,
+          );
 
-        String label = '';
-        if (showLabels) label = detection['className'] ?? 'Unknown';
-        if (showConfidence) {
-          if (label.isNotEmpty) label += ' ';
-          label += '${((detection['confidence'] ?? 0) * 100).toStringAsFixed(0)}%';
-        }
-        if (showAngle) {
-          final angle = _calculateAngleFromObb(detection, obbData);
-          if (angle != null) {
+          String label = '';
+          if (showLabels) label = detection['className'] ?? 'Unknown';
+          if (showConfidence) {
             if (label.isNotEmpty) label += ' ';
-            label += '${angle.toStringAsFixed(0)}°';
+            label += '${((detection['confidence'] ?? 0) * 100).toStringAsFixed(0)}%';
           }
+
+          textPainter.text = TextSpan(
+            text: label,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              backgroundColor: color.withOpacity(0.7),
+            ),
+          );
+          textPainter.layout();
+
+          // Position label at top-left of the box
+          final labelX = normalizedBox['left'] * size.width;
+          final labelY = normalizedBox['top'] * size.height - textPainter.height - 2;
+
+          textPainter.paint(
+            canvas,
+            Offset(labelX, labelY > 0 ? labelY : 0),
+          );
         }
-
-        textPainter.text = TextSpan(
-          text: label,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            backgroundColor: color.withOpacity(0.7),
-          ),
-        );
-        textPainter.layout();
-
-        // Position label at top-left of the box
-        final normalizedBox = detection['normalizedBox'] as Map<String, dynamic>;
-        final labelX = normalizedBox['left'] * size.width;
-        final labelY = normalizedBox['top'] * size.height - textPainter.height - 2;
-
-        textPainter.paint(
-          canvas,
-          Offset(labelX, labelY > 0 ? labelY : 0),
-        );
       }
     }
   }
@@ -545,19 +598,4 @@ class ObbPainter extends CustomPainter {
     return colors[className.hashCode % colors.length];
   }
 
-  double? _calculateAngleFromObb(Map<String, dynamic> detection, Map<String, dynamic>? obbData) {
-    if (obbData != null && obbData['points'] != null) {
-      final points = obbData['points'] as List<dynamic>;
-      if (points.length >= 2) {
-        // Calculate angle from first two points
-        final p1 = points[0] as Map<dynamic, dynamic>;
-        final p2 = points[1] as Map<dynamic, dynamic>;
-        final dx = (p2['x'] as num).toDouble() - (p1['x'] as num).toDouble();
-        final dy = (p2['y'] as num).toDouble() - (p1['y'] as num).toDouble();
-        final angle = math.atan2(dy, dx) * 180 / math.pi;
-        return angle;
-      }
-    }
-    return null;
-  }
 }

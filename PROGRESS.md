@@ -62,8 +62,16 @@ Fixed multiple issues in the OBB (Oriented Bounding Box) detection sample.
 
 ## Current Issues to Investigate
 
-1. **OBB Visualization**: Need to verify if OBB polygons are being drawn correctly with the coordinate fixes
-2. **Debug Output**: Check console output for OBB data structure when running the sample
+1. **OBB Visualization**: Fixed drawing logic to use OBB data directly from rawResults
+   - Added extensive debug logging to trace data flow
+   - Fixed coordinate scaling (OBB points are normalized 0-1)
+   - Drawing now uses OBB data directly instead of trying to match with detections
+   - Added angle display from OBB data
+
+2. **Debug Output**: Added console logging for:
+   - Canvas and image sizes
+   - Number of detections and OBB items
+   - Individual OBB drawing operations
 
 ## Next Steps
 
