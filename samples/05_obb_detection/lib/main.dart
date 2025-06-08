@@ -427,87 +427,88 @@ class ObbPainter extends CustomPainter {
         print('ObbPainter - Drawing OBB $i: class=$className, conf=$confidence');
 
         if (obbData['points'] != null) {
-        // Draw oriented bounding box using points
-        final points = obbData['points'] as List<dynamic>;
-        if (points.length >= 4) {
-          final paint = Paint()
-            ..color = color.withOpacity(0.3)
-            ..style = PaintingStyle.fill;
+          // Draw oriented bounding box using points
+          final points = obbData['points'] as List<dynamic>;
+          if (points.length >= 4) {
+            final paint = Paint()
+              ..color = color.withOpacity(0.3)
+              ..style = PaintingStyle.fill;
 
-          final borderPaint = Paint()
-            ..color = color
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.0;
+            final borderPaint = Paint()
+              ..color = color
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.0;
 
-          // Convert points to Path
-          final path = Path();
-          for (int j = 0; j < points.length; j++) {
-            final point = points[j] as Map<dynamic, dynamic>;
-            // Points are already in normalized coordinates (0-1)
-            final x = (point['x'] as num).toDouble() * size.width;
-            final y = (point['y'] as num).toDouble() * size.height;
+            // Convert points to Path
+            final path = Path();
+            for (int j = 0; j < points.length; j++) {
+              final point = points[j] as Map<dynamic, dynamic>;
+              // Points are already in normalized coordinates (0-1)
+              final x = (point['x'] as num).toDouble() * size.width;
+              final y = (point['y'] as num).toDouble() * size.height;
+              
+              if (j == 0) {
+                path.moveTo(x, y);
+              } else {
+                path.lineTo(x, y);
+              }
+            }
+            path.close();
+
+            // Draw filled and border
+            canvas.drawPath(path, paint);
+            canvas.drawPath(path, borderPaint);
+
+            // Draw corners
+            for (final point in points) {
+              // Points are already in normalized coordinates (0-1)
+              final x = (point['x'] as num).toDouble() * size.width;
+              final y = (point['y'] as num).toDouble() * size.height;
+              canvas.drawCircle(
+                Offset(x, y),
+                4,
+                Paint()..color = color,
+              );
+            }
             
-            if (j == 0) {
-              path.moveTo(x, y);
-            } else {
-              path.lineTo(x, y);
+            // Draw label
+            if (showLabels || showConfidence || showAngle) {
+              final textPainter = TextPainter(
+                textDirection: TextDirection.ltr,
+              );
+
+              String label = '';
+              if (showLabels) label = className.toString();
+              if (showConfidence) {
+                if (label.isNotEmpty) label += ' ';
+                label += '${(confidence * 100).toStringAsFixed(0)}%';
+              }
+              if (showAngle && obbData['angle'] != null) {
+                final angleDeg = (obbData['angle'] as num).toDouble() * 180 / 3.14159;
+                if (label.isNotEmpty) label += ' ';
+                label += '${angleDeg.toStringAsFixed(0)}°';
+              }
+
+              textPainter.text = TextSpan(
+                text: label,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  backgroundColor: color.withOpacity(0.7),
+                ),
+              );
+              textPainter.layout();
+
+              // Position label at first point
+              final firstPoint = points[0] as Map<dynamic, dynamic>;
+              final labelX = (firstPoint['x'] as num).toDouble() * size.width;
+              final labelY = (firstPoint['y'] as num).toDouble() * size.height - textPainter.height - 2;
+
+              textPainter.paint(
+                canvas,
+                Offset(labelX, labelY > 0 ? labelY : 0),
+              );
             }
-          }
-          path.close();
-
-          // Draw filled and border
-          canvas.drawPath(path, paint);
-          canvas.drawPath(path, borderPaint);
-
-          // Draw corners
-          for (final point in points) {
-            // Points are already in normalized coordinates (0-1)
-            final x = (point['x'] as num).toDouble() * size.width;
-            final y = (point['y'] as num).toDouble() * size.height;
-            canvas.drawCircle(
-              Offset(x, y),
-              4,
-              Paint()..color = color,
-            );
-          }
-          
-          // Draw label
-          if (showLabels || showConfidence || showAngle) {
-            final textPainter = TextPainter(
-              textDirection: TextDirection.ltr,
-            );
-
-            String label = '';
-            if (showLabels) label = className.toString();
-            if (showConfidence) {
-              if (label.isNotEmpty) label += ' ';
-              label += '${(confidence * 100).toStringAsFixed(0)}%';
-            }
-            if (showAngle && obbData['angle'] != null) {
-              final angleDeg = (obbData['angle'] as num).toDouble() * 180 / 3.14159;
-              if (label.isNotEmpty) label += ' ';
-              label += '${angleDeg.toStringAsFixed(0)}°';
-            }
-
-            textPainter.text = TextSpan(
-              text: label,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                backgroundColor: color.withOpacity(0.7),
-              ),
-            );
-            textPainter.layout();
-
-            // Position label at first point
-            final firstPoint = points[0] as Map<dynamic, dynamic>;
-            final labelX = (firstPoint['x'] as num).toDouble() * size.width;
-            final labelY = (firstPoint['y'] as num).toDouble() * size.height - textPainter.height - 2;
-
-            textPainter.paint(
-              canvas,
-              Offset(labelX, labelY > 0 ? labelY : 0),
-            );
           }
         }
       }
