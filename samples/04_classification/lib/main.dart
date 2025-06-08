@@ -121,8 +121,11 @@ class _ClassificationScreenState extends State<ClassificationScreen> {
     if (_classificationResult == null) return [];
 
     // Check if we have classification data
-    final classification = _classificationResult!['classification'] as Map<String, dynamic>?;
-    if (classification == null) return [];
+    final classificationData = _classificationResult!['classification'];
+    if (classificationData == null || classificationData is! Map) return [];
+    
+    // Cast to Map<dynamic, dynamic> first to handle platform channel data
+    final classification = Map<String, dynamic>.from(classificationData as Map);
 
     // Get top 5 classes and confidences
     final top5Classes = classification['top5Classes'] as List<dynamic>? ?? [];
