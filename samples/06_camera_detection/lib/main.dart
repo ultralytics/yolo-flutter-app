@@ -30,8 +30,8 @@ class CameraDetectionScreen extends StatefulWidget {
 }
 
 class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
-  // YOLO instance
-  late final YOLOView _yoloView;
+  // YOLO controller
+  final YOLOViewController _controller = YOLOViewController();
   
   // Settings
   double _confidenceThreshold = 0.45;
@@ -39,7 +39,7 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
   bool _showLabels = true;
   bool _showConfidence = true;
   bool _showFPS = true;
-  bool _isCameraActive = false;
+  bool _isCameraActive = true;
   bool _modelLoaded = false;
   
   // Performance metrics
@@ -50,54 +50,8 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeYOLO();
     _checkPermissions();
-  }
-
-  void _initializeYOLO() {
-    _yoloView = YOLOView(
-      modelPath: 'yolo11n.tflite',
-      task: YOLOTask.detect,
-      streamingConfig: YOLOStreamingConfig(
-        confidenceThreshold: _confidenceThreshold,
-        iouThreshold: _iouThreshold,
-        showLabels: _showLabels,
-        showConfidence: _showConfidence,
-        showFPS: _showFPS,
-      ),
-      onLoad: () {
-        setState(() {
-          _modelLoaded = true;
-        });
-        print('YOLO model loaded successfully');
-      },
-      onError: (error) {
-        print('Error loading model: $error');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $error')),
-          );
-        }
-      },
-      onFPSUpdate: (fps) {
-        setState(() {
-          _currentFPS = fps;
-        });
-      },
-      onInferenceTimeUpdate: (time) {
-        setState(() {
-          _inferenceTime = time;
-        });
-      },
-      onResultsUpdate: (results) {
-        // Count detected objects
-        if (results['detections'] != null) {
-          setState(() {
-            _objectCount = (results['detections'] as List).length;
-          });
-        }
-      },
-    );
+    // Model will be loaded when YOLOView is built
   }
 
   Future<void> _checkPermissions() async {
@@ -115,32 +69,21 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
   }
 
   void _updateSettings() {
-    _yoloView.updateStreamingConfig(
-      YOLOStreamingConfig(
-        confidenceThreshold: _confidenceThreshold,
-        iouThreshold: _iouThreshold,
-        showLabels: _showLabels,
-        showConfidence: _showConfidence,
-        showFPS: _showFPS,
-      ),
-    );
+    _controller.setConfidenceThreshold(_confidenceThreshold);
+    _controller.setIoUThreshold(_iouThreshold);
+    // Note: showLabels, showConfidence, showFPS are UI-only settings in this sample
   }
 
   void _toggleCamera() {
     setState(() {
       _isCameraActive = !_isCameraActive;
     });
-    
-    if (_isCameraActive) {
-      _yoloView.startCamera();
-    } else {
-      _yoloView.stopCamera();
-    }
+    // Camera start/stop is handled by the visibility of YOLOView widget
   }
 
   @override
   void dispose() {
-    _yoloView.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -162,7 +105,38 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
               child: Stack(
                 children: [
                   // YOLO camera view
-                  _yoloView,
+                  if (_isCameraActive)
+                    YOLOView(
+                      modelPath: 'yolo11n.tflite',
+                      task: YOLOTask.detect,
+                      controller: _controller,
+                      confidenceThreshold: _confidenceThreshold,
+                      iouThreshold: _iouThreshold,
+                      streamingConfig: YOLOStreamingConfig(
+                        showLabels: _showLabels,
+                        showConfidence: _showConfidence,
+                        showFPS: _showFPS,
+                      ),
+                      onPerformanceMetrics: (metrics) {
+                        setState(() {
+                          _currentFPS = metrics.fps;
+                          _inferenceTime = metrics.inferenceTimeMs;
+                          _modelLoaded = true;
+                        });
+                      },
+                      onResult: (results) {
+                        setState(() {
+                          _objectCount = results.length;
+                        });
+                      },
+                    )
+                  else
+                    const Center(
+                      child: Text(
+                        'Camera is paused',
+                        style: TextStyle(fontSize: 20, color: Colors.grey),
+                      ),
+                    ),
                   
                   // Performance overlay
                   if (_isCameraActive)
@@ -223,7 +197,7 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
                 // Detection settings
                 Row(
                   children: [
-                    const Icon(Icons.confidence, size: 20),
+                    const Icon(Icons.assessment, size: 20),
                     const SizedBox(width: 8),
                     const Text('Confidence:'),
                     const SizedBox(width: 8),
