@@ -73,47 +73,64 @@ class Segmenter(
         // Load model file (automatic extension appending)
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
-        // ===== Load label information from metadata =====
-        try {
-            val metadataExtractor = MetadataExtractor(modelBuffer)
-            val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
-            if (modelMetadata != null) {
-                Log.d("Segmenter", "Model metadata retrieved successfully.")
-            }
-            val associatedFiles = metadataExtractor.associatedFileNames
-            if (!associatedFiles.isNullOrEmpty()) {
-                for (fileName in associatedFiles) {
-                    Log.d("Segmenter", "Found associated file: $fileName")
-                    val inputStream = metadataExtractor.getAssociatedFile(fileName)
-                    inputStream?.use { stream ->
-                        val fileContent = stream.readBytes()
-                        val fileString = fileContent.toString(Charsets.UTF_8)
-                        Log.d("Segmenter", "Associated file contents:\n$fileString")
-                        try {
-                            val yaml = Yaml()
-                            @Suppress("UNCHECKED_CAST")
-                            val data = yaml.load<Map<String, Any>>(fileString)
-                            if (data != null && data.containsKey("names")) {
-                                val namesMap = data["names"] as? Map<Int, String>
-                                if (namesMap != null) {
-                                    this.labels = namesMap.values.toList()
-                                    Log.d("Segmenter", "Loaded labels from metadata: $labels")
-                                } else {
+        // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
+        var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        var labelsWereLoaded = loadedLabels != null
 
+        if (labelsWereLoaded) {
+            this.labels = loadedLabels!!
+            Log.i("Segmenter", "Labels successfully loaded from appended ZIP.")
+        } else {
+            Log.w("Segmenter", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
+            // Try FlatBuffers as a fallback
+            try {
+                val metadataExtractor = MetadataExtractor(modelBuffer)
+                val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
+                if (modelMetadata != null) {
+                    Log.d("Segmenter", "Model metadata retrieved successfully.")
+                }
+                val associatedFiles = metadataExtractor.associatedFileNames
+                if (!associatedFiles.isNullOrEmpty()) {
+                    run fileLoop@{
+                        for (fileName in associatedFiles) {
+                            Log.d("Segmenter", "Found associated file: $fileName")
+                            val inputStream = metadataExtractor.getAssociatedFile(fileName)
+                            inputStream?.use { stream ->
+                                val fileContent = stream.readBytes()
+                                val fileString = fileContent.toString(Charsets.UTF_8)
+                                Log.d("Segmenter", "Associated file contents:\n$fileString")
+                                try {
+                                    val yaml = Yaml()
+                                    @Suppress("UNCHECKED_CAST")
+                                    val data = yaml.load<Map<String, Any>>(fileString)
+                                    if (data != null && data.containsKey("names")) {
+                                        val namesMap = data["names"] as? Map<Int, String>
+                                        if (namesMap != null) {
+                                            this.labels = namesMap.values.toList()
+                                            labelsWereLoaded = true
+                                            Log.d("Segmenter", "Loaded labels from metadata: $labels")
+                                            return@fileLoop
+                                        }
+                                    }
+                                } catch (ex: Exception) {
+                                    Log.e("Segmenter", "Failed to parse YAML from metadata: ${ex.message}")
                                 }
-                            } else {
-
                             }
-                        } catch (ex: Exception) {
-                            Log.e("Segmenter", "Failed to parse YAML from metadata: ${ex.message}")
                         }
                     }
+                } else {
+                    Log.d("Segmenter", "No associated files found in the metadata.")
                 }
-            } else {
-                Log.d("Segmenter", "No associated files found in the metadata.")
+            } catch (e: Exception) {
+                Log.e("Segmenter", "Failed to extract metadata: ${e.message}")
             }
-        } catch (e: Exception) {
-            Log.e("Segmenter", "Failed to extract metadata: ${e.message}")
+        }
+        
+        if (!labelsWereLoaded) {
+            Log.w("Segmenter", "No embedded labels found. Using labels passed via constructor: ${this.labels}")
+            if (this.labels.isEmpty()) {
+                Log.w("Segmenter", "Warning: No labels loaded and no labels provided. Detections will show 'Unknown'.")
+            }
         }
 
         // Create Interpreter
@@ -234,6 +251,8 @@ class Segmenter(
             )
             
             val label = labels.getOrElse(cls) { "Unknown" }
+            // Debug: Log class index and label
+            Log.d("Segmenter", "Class index: $cls, Label: $label, Labels size: ${labels.size}")
             // Use normRect for xywhn (normalized 0-1 coordinates) and rectF for xywh (pixel coordinates)
             boxes.add(Box(cls, label, score, rectF, normRect))
         }
