@@ -268,7 +268,7 @@ class YOLOInstanceManager {
     for box in result.boxes {
       var boxDict: [String: Any] = [
         "class": box.cls,
-        "className": box.cls, // Add className for compatibility with YOLOResult
+        "className": box.cls,  // Add className for compatibility with YOLOResult
         "confidence": box.conf,
         "x1": box.xywh.minX,
         "y1": box.xywh.minY,
