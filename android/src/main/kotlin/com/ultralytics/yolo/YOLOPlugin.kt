@@ -235,6 +235,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
               "x2_norm" to box.xywh.right / imageWidth,
               "y2_norm" to box.xywh.bottom / imageHeight,
               "class" to box.cls,
+              "className" to box.cls, // Add className for compatibility with YOLOResult
               "confidence" to box.conf
             )
           }
