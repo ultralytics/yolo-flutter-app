@@ -411,7 +411,7 @@ class YOLOViewController {
       logInfo('YOLOViewController: Error setting streaming config: $e');
     }
   }
-}
+
 
   /// Stop camera and inference operations.
   ///
@@ -439,7 +439,7 @@ class YOLOViewController {
       logInfo('YOLOViewController: Error stopping camera and inference: $e');
     }
   }
-
+}
 /// A Flutter widget that displays a real-time camera preview with YOLO object detection.
 ///
 /// This widget creates a platform view that runs YOLO inference on camera frames
