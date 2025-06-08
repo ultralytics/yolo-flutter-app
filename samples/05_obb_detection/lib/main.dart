@@ -151,7 +151,7 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
                     // Confidence Threshold
                     Row(
                       children: [
-                        const Icon(Icons.confidence, size: 20),
+                        const Icon(Icons.assessment, size: 20),
                         const SizedBox(width: 8),
                         const Text('Confidence:'),
                         const SizedBox(width: 8),
