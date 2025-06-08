@@ -109,6 +109,13 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
         _detectionResults = (results['detections'] as List<dynamic>?)
             ?.map((e) => Map<String, dynamic>.from(e))
             .toList();
+        
+        // Debug: Check what data we're receiving
+        print('Raw results keys: ${results.keys}');
+        print('Number of detections: ${_detectionResults?.length ?? 0}');
+        if (results.containsKey('obb')) {
+          print('OBB data present: ${(results['obb'] as List).length} items');
+        }
       });
     } catch (e) {
       print('Error during detection: $e');
