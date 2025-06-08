@@ -21,23 +21,23 @@ void main() {
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
           log.add(methodCall);
 
-      switch (methodCall.method) {
-        case 'loadModel':
-          final args = methodCall.arguments as Map<dynamic, dynamic>;
-          final instanceId = args['instanceId'] as String? ?? 'default';
-          final task = args['task'] as String?;
-          if (task != null) {
-            _instanceTasks[instanceId] = task;
+          switch (methodCall.method) {
+            case 'loadModel':
+              final args = methodCall.arguments as Map<dynamic, dynamic>;
+              final instanceId = args['instanceId'] as String? ?? 'default';
+              final task = args['task'] as String?;
+              if (task != null) {
+                _instanceTasks[instanceId] = task;
+              }
+              return true;
+            case 'predictSingleImage':
+              // Return mock data based on task type
+              final args = methodCall.arguments as Map<dynamic, dynamic>;
+              return _getMockResultForTask(args);
+            default:
+              return null;
           }
-          return true;
-        case 'predictSingleImage':
-          // Return mock data based on task type
-          final args = methodCall.arguments as Map<dynamic, dynamic>;
-          return _getMockResultForTask(args);
-        default:
-          return null;
-      }
-    });
+        });
   });
 
   group('All YOLO Tasks Tests', () {
@@ -103,7 +103,7 @@ void main() {
 
       final detections = results['detections'] as List<dynamic>;
       expect(detections, isNotEmpty);
-      
+
       final firstDetection = YOLOResult.fromMap(detections[0]);
       expect(firstDetection.className, equals('cat'));
       expect(firstDetection.confidence, equals(0.95));
@@ -120,7 +120,7 @@ void main() {
 
       final detections = results['detections'] as List<dynamic>;
       expect(detections, isNotEmpty);
-      
+
       final firstDetection = YOLOResult.fromMap(detections[0]);
       expect(firstDetection.className, equals('vehicle'));
       expect(firstDetection.confidence, greaterThan(0));
@@ -173,14 +173,14 @@ Map<String, dynamic> _getMockResultForTask(Map<dynamic, dynamic> args) {
   // Determine task from model path or instance ID
   String? taskType;
   final instanceId = args['instanceId'] as String?;
-  
+
   // Check stored task from loadModel
   if (instanceId != null && _instanceTasks.containsKey(instanceId)) {
     taskType = _instanceTasks[instanceId];
   } else if (_instanceTasks.containsKey('default')) {
     taskType = _instanceTasks['default'];
   }
-  
+
   // Add task-specific data
   switch (taskType) {
     case 'pose':
