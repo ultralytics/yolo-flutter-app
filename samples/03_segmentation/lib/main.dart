@@ -275,14 +275,24 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
         // Segmentation masks and bounding boxes overlay
         // セグメンテーションマスクとバウンディングボックスのオーバーレイ
         if (_results != null)
-          CustomPaint(
-            painter: SegmentationPainter(
-              results: _results!,
-              imageFile: _imageFile!,
-              maskOpacity: _maskOpacity,
-              showMasks: _showMasks,
-              showBoundingBoxes: _showBoundingBoxes,
-            ),
+          FutureBuilder<ui.Image>(
+            future: _getImageInfo(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox();
+              return CustomPaint(
+                painter: SegmentationPainter(
+                  results: _results!,
+                  imageFile: _imageFile!,
+                  imageSize: Size(
+                    snapshot.data!.width.toDouble(),
+                    snapshot.data!.height.toDouble(),
+                  ),
+                  maskOpacity: _maskOpacity,
+                  showMasks: _showMasks,
+                  showBoundingBoxes: _showBoundingBoxes,
+                ),
+              );
+            },
           ),
       ],
     );
@@ -347,6 +357,15 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
     ];
     return colors[index % colors.length];
   }
+
+  /// Get image information for proper scaling
+  /// 適切なスケーリングのための画像情報を取得
+  Future<ui.Image> _getImageInfo() async {
+    final bytes = await _imageFile!.readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    return frame.image;
+  }
 }
 
 /// Custom painter for drawing segmentation masks and bounding boxes
@@ -354,6 +373,7 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
 class SegmentationPainter extends CustomPainter {
   final List<YOLOResult> results;
   final File imageFile;
+  final Size imageSize;
   final double maskOpacity;
   final bool showMasks;
   final bool showBoundingBoxes;
@@ -361,6 +381,7 @@ class SegmentationPainter extends CustomPainter {
   SegmentationPainter({
     required this.results,
     required this.imageFile,
+    required this.imageSize,
     required this.maskOpacity,
     required this.showMasks,
     required this.showBoundingBoxes,
@@ -406,25 +427,61 @@ class SegmentationPainter extends CustomPainter {
       if (showMasks && result.mask != null) {
         paint.color = color.withOpacity(maskOpacity);
         
-        // Create path from mask data
-        // マスクデータからパスを作成
-        final path = Path();
+        // The mask is a 2D array representing a binary mask
+        // マスクは2次元配列のバイナリマスク
         final maskData = result.mask!;
         
-        if (maskData.isNotEmpty) {
-          // Convert mask points to canvas coordinates
-          // マスクポイントをキャンバス座標に変換
-          for (int j = 0; j < maskData.length; j++) {
-            final x = maskData[j][0] * size.width;
-            final y = maskData[j][1] * size.height;
-            
-            if (j == 0) {
-              path.moveTo(x, y);
-            } else {
-              path.lineTo(x, y);
+        if (maskData.isNotEmpty && maskData[0].isNotEmpty) {
+          final maskHeight = maskData.length;
+          final maskWidth = maskData[0].length;
+          
+          // Calculate the actual displayed image area considering BoxFit.contain
+          // BoxFit.containを考慮して実際に表示される画像領域を計算
+          final double imageAspectRatio = imageSize.width / imageSize.height;
+          final double canvasAspectRatio = size.width / size.height;
+          
+          double displayWidth, displayHeight;
+          double offsetX = 0, offsetY = 0;
+          
+          if (imageAspectRatio > canvasAspectRatio) {
+            // Image is wider than canvas
+            displayWidth = size.width;
+            displayHeight = size.width / imageAspectRatio;
+            offsetY = (size.height - displayHeight) / 2;
+          } else {
+            // Image is taller than canvas
+            displayHeight = size.height;
+            displayWidth = size.height * imageAspectRatio;
+            offsetX = (size.width - displayWidth) / 2;
+          }
+          
+          // Calculate scale factors from mask size to displayed image size
+          // マスクサイズから表示画像サイズへのスケールファクターを計算
+          final scaleX = displayWidth / maskWidth;
+          final scaleY = displayHeight / maskHeight;
+          
+          // Create a path for the mask
+          // マスクのパスを作成
+          final path = Path();
+          
+          // Draw mask pixels
+          // マスクのピクセルを描画
+          for (int y = 0; y < maskHeight; y++) {
+            for (int x = 0; x < maskWidth; x++) {
+              if (maskData[y][x] > 0.5) {
+                // This pixel is part of the mask
+                // このピクセルはマスクの一部
+                final rect = Rect.fromLTWH(
+                  offsetX + x * scaleX,
+                  offsetY + y * scaleY,
+                  scaleX + 0.5, // Add small overlap to avoid gaps
+                  scaleY + 0.5, // Add small overlap to avoid gaps
+                );
+                path.addRect(rect);
+              }
             }
           }
-          path.close();
+          
           canvas.drawPath(path, paint);
         }
       }
@@ -433,12 +490,32 @@ class SegmentationPainter extends CustomPainter {
       if (showBoundingBoxes) {
         boxPaint.color = color;
 
+        // Calculate the actual displayed image area considering BoxFit.contain
+        // BoxFit.containを考慮して実際に表示される画像領域を計算
+        final double imageAspectRatio = imageSize.width / imageSize.height;
+        final double canvasAspectRatio = size.width / size.height;
+        
+        double displayWidth, displayHeight;
+        double offsetX = 0, offsetY = 0;
+        
+        if (imageAspectRatio > canvasAspectRatio) {
+          // Image is wider than canvas
+          displayWidth = size.width;
+          displayHeight = size.width / imageAspectRatio;
+          offsetY = (size.height - displayHeight) / 2;
+        } else {
+          // Image is taller than canvas
+          displayHeight = size.height;
+          displayWidth = size.height * imageAspectRatio;
+          offsetX = (size.width - displayWidth) / 2;
+        }
+
         // Convert normalized coordinates to canvas coordinates
         // 正規化座標をキャンバス座標に変換
-        final left = result.normalizedBox.left * size.width;
-        final top = result.normalizedBox.top * size.height;
-        final right = result.normalizedBox.right * size.width;
-        final bottom = result.normalizedBox.bottom * size.height;
+        final left = offsetX + result.normalizedBox.left * displayWidth;
+        final top = offsetY + result.normalizedBox.top * displayHeight;
+        final right = offsetX + result.normalizedBox.right * displayWidth;
+        final bottom = offsetY + result.normalizedBox.bottom * displayHeight;
 
         final rect = Rect.fromLTRB(left, top, right, bottom);
         canvas.drawRect(rect, boxPaint);
