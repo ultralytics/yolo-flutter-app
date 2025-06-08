@@ -83,7 +83,8 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    // YOLOViewController doesn't have dispose method
+    // YOLOView widget handles cleanup automatically
     super.dispose();
   }
 
@@ -112,15 +113,12 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
                       controller: _controller,
                       confidenceThreshold: _confidenceThreshold,
                       iouThreshold: _iouThreshold,
-                      streamingConfig: YOLOStreamingConfig(
-                        showLabels: _showLabels,
-                        showConfidence: _showConfidence,
-                        showFPS: _showFPS,
-                      ),
+                      streamingConfig: const YOLOStreamingConfig.minimal(),
+                      // Note: showLabels, showConfidence, showFPS are UI-only in this sample
                       onPerformanceMetrics: (metrics) {
                         setState(() {
                           _currentFPS = metrics.fps;
-                          _inferenceTime = metrics.inferenceTimeMs;
+                          _inferenceTime = metrics.processingTimeMs;
                           _modelLoaded = true;
                         });
                       },
