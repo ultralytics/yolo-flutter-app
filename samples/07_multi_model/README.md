@@ -1,15 +1,15 @@
-# 07 Multi-Model Sample
+# 07 Multi-Instance Sample
 
-This sample demonstrates how to dynamically switch between different YOLO models and tasks within a single application. It showcases model loading, disposal, and performance comparison across all supported YOLO tasks.
+This sample demonstrates how to load and maintain multiple YOLO models simultaneously and run them on the same image. It showcases true multi-instance capabilities where multiple models are kept in memory and can be applied to images in sequence.
 
 ## Features
 
-- ✅ Dynamic model loading and switching
-- ✅ Support for all YOLO tasks (detect, segment, classify, pose, obb)
-- ✅ Performance metrics (load time, inference time)
-- ✅ Memory management with proper model disposal
-- ✅ Task-specific result visualization
-- ✅ Model comparison capabilities
+- ✅ **Multiple models loaded simultaneously** - Keep multiple YOLO instances in memory
+- ✅ **Sequential inference** - Apply all active models to the same image
+- ✅ **Model persistence** - Models stay loaded even when deactivated
+- ✅ **Performance comparison** - Compare inference times across models
+- ✅ **Memory efficient** - Activate/deactivate models without reloading
+- ✅ **Side-by-side results** - See results from all models at once
 
 ## Supported Models
 
@@ -33,49 +33,51 @@ This sample demonstrates how to dynamically switch between different YOLO models
    - Oriented bounding boxes
    - Rotated object detection
 
-## Code Structure
+## Key Differences from Single Model Approach
 
 ```dart
-// Model configuration
-class ModelConfig {
-  final String name;
-  final String modelPath;
-  final YOLOTask task;
-  final IconData icon;
-  final Color color;
+// Multi-instance approach - Multiple models in memory
+final Map<ModelConfig, YOLO> _loadedModels = {};
+final Set<ModelConfig> _activeModels = {};
+
+// Load model once, keep in memory
+if (!_loadedModels.containsKey(model)) {
+  final yolo = YOLO(
+    modelPath: model.modelPath,
+    task: model.task,
+  );
+  await yolo.loadModel();
+  _loadedModels[model] = yolo;
 }
 
-// Load a model
-await _currentYolo?.dispose(); // Dispose previous
-_currentYolo = YOLO(
-  modelPath: model.modelPath,
-  task: model.task,
-);
-await _currentYolo.loadModel();
-
-// Switch models dynamically
-void _loadModel(ModelConfig model) async {
-  // Properly dispose previous model
-  // Load new model
-  // Update UI
+// Run inference on all active models
+for (final model in _activeModels) {
+  final results = await _loadedModels[model]!.predict(imageBytes);
+  // Process results...
 }
 ```
 
 ## Memory Management
 
-The sample demonstrates proper memory management:
+The sample demonstrates multi-instance memory management:
 
 ```dart
-// Always dispose previous model before loading new one
-if (_currentYolo != null) {
-  await _currentYolo!.dispose();
-  _currentYolo = null;
+// Models persist in memory until app is closed
+final Map<ModelConfig, YOLO> _loadedModels = {};
+
+// Toggle model activation without reloading
+if (_activeModels.contains(model)) {
+  _activeModels.remove(model);  // Deactivate but keep loaded
+} else {
+  _activeModels.add(model);     // Reactivate instantly
 }
 
-// Clean up in dispose
+// Clean up ALL models on dispose
 @override
 void dispose() {
-  _currentYolo?.dispose();
+  for (final yolo in _loadedModels.values) {
+    yolo.dispose();
+  }
   super.dispose();
 }
 ```
@@ -90,56 +92,55 @@ The app tracks and displays:
 ## UI Components
 
 ### Model Selector
-Choice chips for easy model switching with visual indicators:
-- Icon representing task type
-- Color coding for different models
-- Selected state indication
+Filter chips showing model states:
+- **Active** (selected) - Model is loaded and will process images
+- **Loaded** (green check) - Model is in memory but not active
+- **Not loaded** - Model needs to be loaded first
 
-### Performance Dashboard
-Real-time metrics display:
-- Load time in milliseconds
-- Inference time in milliseconds
-- Model size in MB
+### Performance Comparison
+Shows all active models with:
+- Individual load times
+- Per-model inference times
+- Visual completion indicators
 
 ### Results View
-Task-specific result presentation:
-- Detection: List of objects with confidence
-- Segmentation: Chip view of detected instances
-- Classification: Top-5 predictions
-- Pose: Number of people and keypoints
-- OBB: Oriented detection results
+All active models' results displayed simultaneously:
+- Each model gets its own result card
+- Results appear in the order models were activated
+- Task-specific visualization for each model type
 
 ## Best Practices
 
-1. **Model Loading**:
-   - Show loading indicators
-   - Handle errors gracefully
-   - Dispose previous models
+1. **Multi-Instance Management**:
+   - Load models on-demand
+   - Keep frequently used models in memory
+   - Monitor total memory usage
 
 2. **Performance**:
-   - Use Stopwatch for accurate timing
-   - Display metrics to users
-   - Compare model performance
+   - Run inference sequentially to avoid memory spikes
+   - Compare inference times across models
+   - Consider model size vs accuracy tradeoffs
 
-3. **Memory**:
-   - Dispose models when switching
-   - Clear results between runs
-   - Monitor memory usage
+3. **User Experience**:
+   - Show clear model states (loaded/active)
+   - Allow quick toggling without reload delays
+   - Display all results together for comparison
 
 ## Use Cases
 
-- 🔄 Model A/B testing
-- 📊 Performance benchmarking
-- 🎯 Task selection based on use case
-- 🧪 Experimentation with different models
-- 📱 Adaptive model selection
+- 🔄 **Ensemble predictions** - Combine results from multiple models
+- 📊 **Model comparison** - See which model performs best on your data
+- 🎯 **Multi-task analysis** - Apply detection + classification on same image
+- 🧪 **Accuracy vs Speed testing** - Compare nano vs small vs medium models
+- 📱 **Redundancy** - Use multiple models for critical detections
 
 ## Tips
 
-- Start with lighter models (nano variants)
-- Monitor memory usage when switching models
-- Consider caching frequently used models
-- Implement model preloading for better UX
+- Start with 2-3 models to test memory limits
+- Activate models before selecting an image for faster results
+- Use the same image to compare model outputs fairly
+- Consider device memory when loading multiple large models
+- Deactivate unused models to free up processing power
 
 ## Screenshot
 
