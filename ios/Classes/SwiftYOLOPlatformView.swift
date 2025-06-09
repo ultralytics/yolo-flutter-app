@@ -336,6 +336,12 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
             ))
         }
 
+      case "stop":
+        // Method to stop camera and inference
+        print("SwiftYOLOPlatformView: Received stop call from Flutter")
+        self.stopCamera()
+        result(nil)  // Success
+
       // Additional methods can be added here in the future
 
       default:
@@ -412,8 +418,33 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   }
 
   // MARK: - Cleanup
+  
+  /// Stop camera and inference operations
+  private func stopCamera() {
+    print("SwiftYOLOPlatformView: Stopping camera and inference")
+    
+    // Stop the camera capture
+    yoloView?.stop()
+    
+    // Clear callbacks to prevent retain cycles
+    yoloView?.onDetection = nil
+    yoloView?.onZoomChanged = nil
+    yoloView?.setStreamCallback(nil)
+    
+    print("SwiftYOLOPlatformView: Camera stopped successfully")
+  }
 
   deinit {
+    print("SwiftYOLOPlatformView: deinit called for viewId: \(viewId)")
+    
+    // Stop camera before cleanup
+    // Use a synchronous approach to ensure camera is stopped
+    let capturedYoloView = yoloView
+    Task { @MainActor in
+      print("SwiftYOLOPlatformView: Calling stop() on YOLOView during deinit")
+      capturedYoloView?.stop()
+    }
+    
     // Clean up event channel
     eventSink = nil
     eventChannel.setStreamHandler(nil)
@@ -428,13 +459,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     }
 
     // Clean up YOLOView
-    // Only set to nil because MainActor-isolated methods can't be called directly
     yoloView = nil
-
-    // Note: stop() method call was removed due to MainActor issues
-    // If setting up later in a Task, use code like this:
-    // Task { @MainActor in
-    //    self.yoloView?.stop()
-    // }
+    
+    print("SwiftYOLOPlatformView: deinit completed")
   }
 }

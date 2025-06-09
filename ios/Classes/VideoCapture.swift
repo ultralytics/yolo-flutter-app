@@ -271,3 +271,27 @@ extension VideoCapture: ResultsListener, InferenceTimeListener {
     }
   }
 }
+
+extension VideoCapture {
+  deinit {
+    print("VideoCapture: deinit called - ensuring capture session is stopped")
+    if captureSession.isRunning {
+      captureSession.stopRunning()
+    }
+    
+    // Remove all inputs and outputs
+    if let inputs = captureSession.inputs as? [AVCaptureInput] {
+      for input in inputs {
+        captureSession.removeInput(input)
+      }
+    }
+    
+    if let outputs = captureSession.outputs as? [AVCaptureOutput] {
+      for output in outputs {
+        captureSession.removeOutput(output)
+      }
+    }
+    
+    print("VideoCapture: deinit completed")
+  }
+}

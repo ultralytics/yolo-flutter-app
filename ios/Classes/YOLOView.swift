@@ -1546,4 +1546,17 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
     let uiImage = UIImage(cgImage: cgImage)
     return uiImage.jpegData(compressionQuality: 0.9)
   }
+  
+  deinit {
+    print("YOLOView: deinit called - stopping camera capture")
+    // Ensure camera is stopped when view is deallocated
+    videoCapture.stop()
+    
+    // Clear all callbacks to prevent retain cycles
+    onDetection = nil
+    onStream = nil
+    onZoomChanged = nil
+    
+    print("YOLOView: deinit completed")
+  }
 }
