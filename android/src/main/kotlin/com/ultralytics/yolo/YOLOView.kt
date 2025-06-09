@@ -28,6 +28,8 @@ import kotlin.math.max
 import kotlin.math.min
 import android.widget.TextView
 import android.view.Gravity
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.TimeUnit
 
 class YOLOView @JvmOverloads constructor(
     context: Context,
@@ -40,6 +42,7 @@ class YOLOView @JvmOverloads constructor(
     companion object {
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
+        private var previewUseCase: Preview? = null
 
         private const val TAG = "YOLOView"
 
@@ -200,7 +203,11 @@ class YOLOView @JvmOverloads constructor(
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
     private var camera: Camera? = null
-    
+
+    // New fields for proper teardown:
+    private var cameraExecutor: ExecutorService? = null
+    private var imageAnalysisUseCase: ImageAnalysis? = null    
+
     // Zoom related
     private var currentZoomRatio = 1.0f
     private var minZoomRatio = 1.0f
@@ -431,23 +438,23 @@ class YOLOView @JvmOverloads constructor(
         Log.d(TAG, "Starting camera...")
 
         try {
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+            cameraProviderFuture = ProcessCameraProvider.getInstance(context)
             cameraProviderFuture.addListener({
                 try {
                     val cameraProvider = cameraProviderFuture.get()
                     Log.d(TAG, "Camera provider obtained")
 
-                    val preview = Preview.Builder()
+                    previewUseCase = Preview.Builder()
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                         .build()
 
-                    val imageAnalysis = ImageAnalysis.Builder()
+                    imageAnalysisUseCase = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                         .build()
 
-                    val executor = Executors.newSingleThreadExecutor()
-                    imageAnalysis.setAnalyzer(executor) { imageProxy ->
+                    cameraExecutor = Executors.newSingleThreadExecutor()
+                    imageAnalysisUseCase!!.setAnalyzer(cameraExecutor!!) { imageProxy ->
                         onFrame(imageProxy)
                     }
 
@@ -469,8 +476,8 @@ class YOLOView @JvmOverloads constructor(
                         camera = cameraProvider.bindToLifecycle(
                             owner,
                             cameraSelector,
-                            preview,
-                            imageAnalysis
+                            previewUseCase,
+                            imageAnalysisUseCase  // the field, not a local val
                         )
                         
                         // Reset zoom to 1.0x when camera starts
@@ -478,7 +485,7 @@ class YOLOView @JvmOverloads constructor(
                         onZoomChanged?.invoke(currentZoomRatio)
 
                         Log.d(TAG, "Setting surface provider to previewView")
-                        preview.setSurfaceProvider(previewView.surfaceProvider)
+                        previewUseCase?.setSurfaceProvider(previewView.surfaceProvider)
                         
                         // Initialize zoom
                         camera?.let { cam: Camera ->
@@ -1319,4 +1326,50 @@ class YOLOView @JvmOverloads constructor(
     }
     
     // endregion
+
+    /**
+     * Stop camera and inference (can be restarted later)
+     */
+    fun stop() {
+        Log.d(TAG, "YOLOView.stop() called - tearing down camera")
+
+        try {
+            // 1) Unbind all use-cases
+            if (::cameraProviderFuture.isInitialized) {
+                val cameraProvider = cameraProviderFuture.get()
+                Log.d(TAG, "Unbinding all camera use cases")
+                cameraProvider.unbindAll()
+            }
+
+            // 2) Clear the analyzer so no threads keep the camera alive
+            imageAnalysisUseCase?.clearAnalyzer()
+            imageAnalysisUseCase = null
+
+            // 3) Detach the PreviewView surface
+            previewUseCase?.setSurfaceProvider(null)
+
+            // 4) Shutdown the executor
+            cameraExecutor?.let { exec ->
+                Log.d(TAG, "Shutting down camera executor")
+                exec.shutdown()
+                if (!exec.awaitTermination(1, TimeUnit.SECONDS)) {
+                    Log.w(TAG, "Executor didn't shut down in time; forcing shutdown")
+                    exec.shutdownNow()
+                }
+            }
+            cameraExecutor = null
+
+            // 5) Null out camera and inference machinery
+            camera = null
+            predictor = null
+            inferenceCallback = null
+            streamCallback = null
+            inferenceResult = null
+
+            Log.d(TAG, "YOLOView stop completed successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during YOLOView stop", e)
+        }
+    }
+
 }
