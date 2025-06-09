@@ -3,39 +3,54 @@
 import Flutter
 import UIKit
 
+// Thread-safe view registry
+private class YOLOViewRegistry {
+  private var _views: [Int: YOLOView] = [:]
+  private let lock = NSLock()
+  
+  func get(for viewId: Int) -> YOLOView? {
+    lock.lock()
+    defer { lock.unlock() }
+    return _views[viewId]
+  }
+  
+  func set(_ view: YOLOView?, for viewId: Int) {
+    lock.lock()
+    defer { lock.unlock() }
+    _views[viewId] = view
+  }
+  
+  func remove(for viewId: Int) {
+    lock.lock()
+    defer { lock.unlock() }
+    _views.removeValue(forKey: viewId)
+  }
+}
+
 @MainActor
 public class SwiftYOLOPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
   private var messenger: FlutterBinaryMessenger
-  nonisolated static var yoloViews: [Int: YOLOView] = [:]
-  nonisolated static let yoloViewsLock = NSLock()
+  private static let viewRegistry = YOLOViewRegistry()
 
   init(messenger: FlutterBinaryMessenger) {
     self.messenger = messenger
     super.init()
   }
 
-  nonisolated static func getYOLOView(for viewId: Int) -> YOLOView? {
-    yoloViewsLock.lock()
-    defer { yoloViewsLock.unlock() }
-    return yoloViews[viewId]
+  static func getYOLOView(for viewId: Int) -> YOLOView? {
+    return viewRegistry.get(for: viewId)
   }
 
-  nonisolated static func register(_ yoloView: YOLOView, for viewId: Int) {
-    yoloViewsLock.lock()
-    defer { yoloViewsLock.unlock() }
-    yoloViews[viewId] = yoloView
+  static func register(_ yoloView: YOLOView, for viewId: Int) {
+    viewRegistry.set(yoloView, for: viewId)
   }
 
-  nonisolated static func unregister(for viewId: Int) {
-    yoloViewsLock.lock()
-    defer { yoloViewsLock.unlock() }
-    yoloViews.removeValue(forKey: viewId)
+  static func unregister(for viewId: Int) {
+    viewRegistry.remove(for: viewId)
   }
 
-  nonisolated static func unregisterSync(for viewId: Int) {
-    yoloViewsLock.lock()
-    defer { yoloViewsLock.unlock() }
-    yoloViews.removeValue(forKey: viewId)
+  static func unregisterSync(for viewId: Int) {
+    viewRegistry.remove(for: viewId)
   }
 
   public func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
