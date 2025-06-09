@@ -20,6 +20,7 @@ import org.tensorflow.lite.support.metadata.schema.ModelMetadata
 import org.yaml.snakeyaml.Yaml
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.MappedByteBuffer
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -69,40 +70,27 @@ class ObbDetector(
     init {
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
-        try {
-            val metadataExtractor = MetadataExtractor(modelBuffer)
-            val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
-            if (modelMetadata != null) {
-                Log.d("ObbDetector", "Model metadata retrieved successfully.")
+        /* --- Get labels from metadata (try Appended ZIP → FlatBuffers in order) --- */
+        var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        var labelsWereLoaded = loadedLabels != null
+
+        if (labelsWereLoaded) {
+            this.labels = loadedLabels!! // Use labels from appended ZIP
+            Log.i("ObbDetector", "Labels successfully loaded from appended ZIP.")
+        } else {
+            Log.w("ObbDetector", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
+            // Try FlatBuffers as a fallback
+            val labelsFromFlatBuffers = loadLabelsFromFlatbuffers(modelBuffer)
+            if (labelsFromFlatBuffers != null) {
+                this.labels = labelsFromFlatBuffers
+                labelsWereLoaded = true
+                Log.i("ObbDetector", "Labels successfully loaded from FlatBuffers metadata.")
             }
-            val associatedFiles = metadataExtractor.associatedFileNames
-            if (!associatedFiles.isNullOrEmpty()) {
-                for (fileName in associatedFiles) {
-                    Log.d("ObbDetector", "Found associated file: $fileName")
-                    metadataExtractor.getAssociatedFile(fileName)?.use { stream ->
-                        val fileContent = stream.readBytes()
-                        val fileString = fileContent.toString(Charsets.UTF_8)
-                        try {
-                            val yaml = Yaml()
-                            @Suppress("UNCHECKED_CAST")
-                            val data = yaml.load<Map<String, Any>>(fileString)
-                            if (data != null && data.containsKey("names")) {
-                                val namesMap = data["names"] as? Map<Int, String>
-                                if (namesMap != null) {
-                                    this.labels = namesMap.values.toList()
-                                    Log.d("ObbDetector", "Loaded labels from metadata: $labels")
-                                } else {}
-                            } else {}
-                        } catch (ex: Exception) {
-                            Log.e("ObbDetector", "Failed to parse YAML from metadata: ${ex.message}")
-                        }
-                    }
-                }
-            } else {
-                Log.d("ObbDetector", "No associated files found in the metadata.")
-            }
-        } catch (e: Exception) {
-            Log.e("ObbDetector", "Failed to extract metadata: ${e.message}")
+        }
+
+        if (!labelsWereLoaded) {
+            Log.w("ObbDetector", "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor.")
+            // Labels passed via constructor will be used
         }
 
         interpreter = Interpreter(modelBuffer, interpreterOptions)
@@ -429,6 +417,53 @@ class ObbDetector(
         }
         area += (poly.last().x * poly.first().y) - (poly.first().x * poly.last().y)
         return kotlin.math.abs(area) * 0.5f
+    }
+
+    private fun loadLabelsFromFlatbuffers(modelBuffer: MappedByteBuffer): List<String>? {
+        return try {
+            val metadataExtractor = MetadataExtractor(modelBuffer)
+            val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
+            if (modelMetadata != null) {
+                Log.d("ObbDetector", "Model metadata retrieved successfully.")
+            }
+            val associatedFiles = metadataExtractor.associatedFileNames
+            if (!associatedFiles.isNullOrEmpty()) {
+                for (fileName in associatedFiles) {
+                    Log.d("ObbDetector", "Found associated file: $fileName")
+                    val inputStream = metadataExtractor.getAssociatedFile(fileName)
+                    inputStream?.use { stream ->
+                        val fileContent = stream.readBytes()
+                        val fileString = fileContent.toString(Charsets.UTF_8)
+                        Log.d("ObbDetector", "Associated file contents:\n$fileString")
+                        try {
+                            val yaml = Yaml()
+                            @Suppress("UNCHECKED_CAST")
+                            val data = yaml.load<Map<String, Any>>(fileString)
+                            if (data != null && data.containsKey("names")) {
+                                val namesMap = data["names"] as? Map<Int, String>
+                                if (namesMap != null) {
+                                    val labels = namesMap.values.toList()
+                                    Log.d("ObbDetector", "Loaded labels from metadata: $labels")
+                                    return labels
+                                } else {
+                                    Log.d("ObbDetector", "Names map is null")
+                                }
+                            } else {
+                                Log.d("ObbDetector", "Data is null or doesn't contain 'names'")
+                            }
+                        } catch (ex: Exception) {
+                            Log.e("ObbDetector", "Failed to parse YAML from metadata: ${ex.message}")
+                        }
+                    }
+                }
+            } else {
+                Log.d("ObbDetector", "No associated files found in the metadata.")
+            }
+            null
+        } catch (e: Exception) {
+            Log.e("ObbDetector", "Failed to extract metadata: ${e.message}")
+            null
+        }
     }
 }
 

@@ -21,6 +21,7 @@ import org.tensorflow.lite.support.metadata.schema.ModelMetadata
 import org.yaml.snakeyaml.Yaml
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.MappedByteBuffer
 import kotlin.math.max
 import kotlin.math.min
 
@@ -83,50 +84,11 @@ class Segmenter(
         } else {
             Log.w("Segmenter", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
             // Try FlatBuffers as a fallback
-            try {
-                val metadataExtractor = MetadataExtractor(modelBuffer)
-                val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
-                if (modelMetadata != null) {
-                    Log.d("Segmenter", "Model metadata retrieved successfully.")
-                }
-                val associatedFiles = metadataExtractor.associatedFileNames
-                if (!associatedFiles.isNullOrEmpty()) {
-                    run breaking@{
-                        for (fileName in associatedFiles) {
-                            Log.d("Segmenter", "Found associated file: $fileName")
-                            val inputStream = metadataExtractor.getAssociatedFile(fileName)
-                            inputStream?.use { stream ->
-                                val fileContent = stream.readBytes()
-                                val fileString = fileContent.toString(Charsets.UTF_8)
-                                Log.d("Segmenter", "Associated file contents:\n$fileString")
-                                try {
-                                    val yaml = Yaml()
-                                    @Suppress("UNCHECKED_CAST")
-                                    val data = yaml.load<Map<String, Any>>(fileString)
-                                    if (data != null && data.containsKey("names")) {
-                                        val namesMap = data["names"] as? Map<Int, String>
-                                        if (namesMap != null) {
-                                            this.labels = namesMap.values.toList()
-                                            labelsWereLoaded = true
-                                            Log.d("Segmenter", "Loaded labels from metadata: $labels")
-                                            return@breaking
-                                        } else {
-                                            Log.d("Segmenter", "Names map is null")
-                                        }
-                                    } else {
-                                        Log.d("Segmenter", "Data is null or doesn't contain 'names'")
-                                    }
-                                } catch (ex: Exception) {
-                                    Log.e("Segmenter", "Failed to parse YAML from metadata: ${ex.message}")
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Log.d("Segmenter", "No associated files found in the metadata.")
-                }
-            } catch (e: Exception) {
-                Log.e("Segmenter", "Failed to extract metadata: ${e.message}")
+            val labelsFromFlatBuffers = loadLabelsFromFlatbuffers(modelBuffer)
+            if (labelsFromFlatBuffers != null) {
+                this.labels = labelsFromFlatBuffers
+                labelsWereLoaded = true
+                Log.i("Segmenter", "Labels successfully loaded from FlatBuffers metadata.")
             }
         }
 
@@ -423,4 +385,51 @@ class Segmenter(
         val score: Float,
         val maskCoeffs: FloatArray
     )
+
+    private fun loadLabelsFromFlatbuffers(modelBuffer: MappedByteBuffer): List<String>? {
+        return try {
+            val metadataExtractor = MetadataExtractor(modelBuffer)
+            val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
+            if (modelMetadata != null) {
+                Log.d("Segmenter", "Model metadata retrieved successfully.")
+            }
+            val associatedFiles = metadataExtractor.associatedFileNames
+            if (!associatedFiles.isNullOrEmpty()) {
+                for (fileName in associatedFiles) {
+                    Log.d("Segmenter", "Found associated file: $fileName")
+                    val inputStream = metadataExtractor.getAssociatedFile(fileName)
+                    inputStream?.use { stream ->
+                        val fileContent = stream.readBytes()
+                        val fileString = fileContent.toString(Charsets.UTF_8)
+                        Log.d("Segmenter", "Associated file contents:\n$fileString")
+                        try {
+                            val yaml = Yaml()
+                            @Suppress("UNCHECKED_CAST")
+                            val data = yaml.load<Map<String, Any>>(fileString)
+                            if (data != null && data.containsKey("names")) {
+                                val namesMap = data["names"] as? Map<Int, String>
+                                if (namesMap != null) {
+                                    val labels = namesMap.values.toList()
+                                    Log.d("Segmenter", "Loaded labels from metadata: $labels")
+                                    return labels
+                                } else {
+                                    Log.d("Segmenter", "Names map is null")
+                                }
+                            } else {
+                                Log.d("Segmenter", "Data is null or doesn't contain 'names'")
+                            }
+                        } catch (ex: Exception) {
+                            Log.e("Segmenter", "Failed to parse YAML from metadata: ${ex.message}")
+                        }
+                    }
+                }
+            } else {
+                Log.d("Segmenter", "No associated files found in the metadata.")
+            }
+            null
+        } catch (e: Exception) {
+            Log.e("Segmenter", "Failed to extract metadata: ${e.message}")
+            null
+        }
+    }
 }
