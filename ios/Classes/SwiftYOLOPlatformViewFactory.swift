@@ -25,6 +25,10 @@ public class SwiftYOLOPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
     yoloViews.removeValue(forKey: viewId)
   }
 
+  static func unregisterSync(for viewId: Int) {
+    yoloViews.removeValue(forKey: viewId)
+  }
+
   public func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
     return FlutterStandardMessageCodec.sharedInstance()
   }

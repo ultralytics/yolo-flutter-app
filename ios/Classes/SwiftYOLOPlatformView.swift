@@ -437,13 +437,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   deinit {
     print("SwiftYOLOPlatformView: deinit called for viewId: \(viewId)")
     
-    // Stop camera before cleanup
-    // Use a synchronous approach to ensure camera is stopped
-    let capturedYoloView = yoloView
-    Task { @MainActor in
-      print("SwiftYOLOPlatformView: Calling stop() on YOLOView during deinit")
-      capturedYoloView?.stop()
-    }
+    // Immediate cleanup without async operations in deinit
+    stopCamera()
     
     // Clean up event channel
     eventSink = nil
@@ -452,11 +447,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Clean up method channel
     methodChannel.setMethodCallHandler(nil)
 
-    // Unregister from factory using Task
-    let capturedViewId = Int(viewId)
-    Task { @MainActor in
-      SwiftYOLOPlatformViewFactory.unregister(for: capturedViewId)
-    }
+    // Immediate factory cleanup
+    SwiftYOLOPlatformViewFactory.unregisterSync(for: Int(viewId))
 
     // Clean up YOLOView
     yoloView = nil

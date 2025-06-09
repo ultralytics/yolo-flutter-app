@@ -1209,6 +1209,26 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   public func setInferenceFlag(ok: Bool) {
     videoCapture.inferenceOK = ok
   }
+
+  deinit {
+    print("YOLOView: deinit called - stopping camera capture")
+    
+    // Ensure camera is stopped when view is deallocated
+    videoCapture.stop()
+    
+    // Clear all callbacks to prevent retain cycles
+    onDetection = nil
+    onStream = nil
+    onZoomChanged = nil
+    
+    // Clear streaming callback
+    setStreamCallback(nil)
+    
+    // Remove notification observers
+    NotificationCenter.default.removeObserver(self)
+    
+    print("YOLOView: deinit completed")
+  }
 }
 
 extension YOLOView: AVCapturePhotoCaptureDelegate {
@@ -1545,18 +1565,5 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
     guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
     let uiImage = UIImage(cgImage: cgImage)
     return uiImage.jpegData(compressionQuality: 0.9)
-  }
-  
-  deinit {
-    print("YOLOView: deinit called - stopping camera capture")
-    // Ensure camera is stopped when view is deallocated
-    videoCapture.stop()
-    
-    // Clear all callbacks to prevent retain cycles
-    onDetection = nil
-    onStream = nil
-    onZoomChanged = nil
-    
-    print("YOLOView: deinit completed")
   }
 }
