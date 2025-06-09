@@ -437,15 +437,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   deinit {
     print("SwiftYOLOPlatformView: deinit called for viewId: \(viewId)")
     
-    // Direct cleanup without MainActor methods
-    // Stop the camera capture directly
-    yoloView?.stop()
-    
-    // Clear callbacks to prevent retain cycles
-    yoloView?.onDetection = nil
-    yoloView?.onZoomChanged = nil
-    yoloView?.setStreamCallback(nil)
-    
     // Clean up event channel
     eventSink = nil
     eventChannel.setStreamHandler(nil)
@@ -453,12 +444,9 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Clean up method channel
     methodChannel.setMethodCallHandler(nil)
 
-    // Immediate factory cleanup
-    SwiftYOLOPlatformViewFactory.unregisterSync(for: Int(viewId))
-
-    // Clean up YOLOView
+    // Clean up YOLOView reference - its own deinit will handle camera cleanup
     yoloView = nil
     
-    print("SwiftYOLOPlatformView: deinit completed")
+    print("SwiftYOLOPlatformView: deinit completed - camera cleanup delegated to YOLOView")
   }
 }

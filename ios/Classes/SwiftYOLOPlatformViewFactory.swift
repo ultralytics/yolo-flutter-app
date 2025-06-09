@@ -49,7 +49,7 @@ public class SwiftYOLOPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
     viewRegistry.remove(for: viewId)
   }
 
-  static func unregisterSync(for viewId: Int) {
+  nonisolated static func unregisterSync(for viewId: Int) {
     viewRegistry.remove(for: viewId)
   }
 
