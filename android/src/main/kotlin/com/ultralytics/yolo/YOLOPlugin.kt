@@ -219,6 +219,10 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           // Create response
           val response = HashMap<String, Any>()
           
+          // Get image dimensions for normalization
+          val imageWidth = bitmap.width.toFloat()
+          val imageHeight = bitmap.height.toFloat()
+          
           // Convert boxes to map for Flutter
           response["boxes"] = yoloResult.boxes.map { box ->
             mapOf(
@@ -226,10 +230,21 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
               "y1" to box.xywh.top,
               "x2" to box.xywh.right,
               "y2" to box.xywh.bottom,
+              "x1_norm" to box.xywh.left / imageWidth,
+              "y1_norm" to box.xywh.top / imageHeight,
+              "x2_norm" to box.xywh.right / imageWidth,
+              "y2_norm" to box.xywh.bottom / imageHeight,
               "class" to box.cls,
+              "className" to box.cls, // Add className for compatibility with YOLOResult
               "confidence" to box.conf
             )
           }
+          
+          // Include image size in response
+          response["imageSize"] = mapOf(
+            "width" to imageWidth.toInt(),
+            "height" to imageHeight.toInt()
+          )
           
           // Get instance to check task type
           val yolo = YOLOInstanceManager.shared.getInstance(instanceId)
@@ -237,11 +252,25 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           // Add task-specific data to response
           when (yolo?.task) {
             YOLOTask.SEGMENT -> {
-              // Include segmentation mask if available
-              yoloResult.masks?.combinedMask?.let { mask ->
-                val stream = ByteArrayOutputStream()
-                mask.compress(Bitmap.CompressFormat.PNG, 90, stream)
-                response["mask"] = stream.toByteArray()
+              // Include raw segmentation masks if available
+              yoloResult.masks?.let { masks ->
+                // Send raw mask data for each detected instance
+                val rawMasks = mutableListOf<List<List<Double>>>()
+                for (instanceMask in masks.masks) {
+                  val mask2D = mutableListOf<List<Double>>()
+                  for (row in instanceMask) {
+                    mask2D.add(row.map { it.toDouble() })
+                  }
+                  rawMasks.add(mask2D)
+                }
+                response["masks"] = rawMasks
+                
+                // Also send PNG for backward compatibility (optional)
+                masks.combinedMask?.let { combinedMask ->
+                  val stream = ByteArrayOutputStream()
+                  combinedMask.compress(Bitmap.CompressFormat.PNG, 90, stream)
+                  response["maskPng"] = stream.toByteArray()
+                }
               }
             }
             YOLOTask.CLASSIFY -> {
