@@ -682,6 +682,8 @@ class YOLOViewState extends State<YOLOView> {
 
   @override
   void dispose() {
+    print('🔴 YOLOView.dispose() called - starting cleanup');
+    
     // Stop camera and inference before disposing
     _effectiveController.stop().catchError((e) {
       logInfo('YOLOView: Error stopping camera during dispose: $e');
@@ -693,6 +695,7 @@ class YOLOViewState extends State<YOLOView> {
     // Clean up method channel handler
     _methodChannel.setMethodCallHandler(null);
 
+    print('🔴 YOLOView.dispose() completed - calling super.dispose()');
     super.dispose();
   }
 

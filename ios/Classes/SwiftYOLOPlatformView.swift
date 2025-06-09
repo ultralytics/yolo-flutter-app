@@ -431,6 +431,9 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     yoloView?.onZoomChanged = nil
     yoloView?.setStreamCallback(nil)
     
+    // Remove from factory registry
+    SwiftYOLOPlatformViewFactory.unregister(for: Int(viewId))
+    
     print("SwiftYOLOPlatformView: Camera stopped successfully")
   }
 

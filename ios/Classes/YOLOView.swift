@@ -375,6 +375,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   public func stop() {
     videoCapture.stop()
+    videoCapture.delegate = nil
   }
 
   public func resume() {
@@ -1215,6 +1216,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     
     // Ensure camera is stopped when view is deallocated
     videoCapture.stop()
+    
+    // Clear delegate to break retain cycle
+    videoCapture.delegate = nil
     
     // Clear all callbacks to prevent retain cycles
     onDetection = nil
