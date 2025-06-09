@@ -6,26 +6,35 @@ import UIKit
 @MainActor
 public class SwiftYOLOPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
   private var messenger: FlutterBinaryMessenger
-  static var yoloViews: [Int: YOLOView] = [:]
+  nonisolated static var yoloViews: [Int: YOLOView] = [:]
+  nonisolated static let yoloViewsLock = NSLock()
 
   init(messenger: FlutterBinaryMessenger) {
     self.messenger = messenger
     super.init()
   }
 
-  static func getYOLOView(for viewId: Int) -> YOLOView? {
+  nonisolated static func getYOLOView(for viewId: Int) -> YOLOView? {
+    yoloViewsLock.lock()
+    defer { yoloViewsLock.unlock() }
     return yoloViews[viewId]
   }
 
-  static func register(_ yoloView: YOLOView, for viewId: Int) {
+  nonisolated static func register(_ yoloView: YOLOView, for viewId: Int) {
+    yoloViewsLock.lock()
+    defer { yoloViewsLock.unlock() }
     yoloViews[viewId] = yoloView
   }
 
-  static func unregister(for viewId: Int) {
+  nonisolated static func unregister(for viewId: Int) {
+    yoloViewsLock.lock()
+    defer { yoloViewsLock.unlock() }
     yoloViews.removeValue(forKey: viewId)
   }
 
-  static func unregisterSync(for viewId: Int) {
+  nonisolated static func unregisterSync(for viewId: Int) {
+    yoloViewsLock.lock()
+    defer { yoloViewsLock.unlock() }
     yoloViews.removeValue(forKey: viewId)
   }
 
