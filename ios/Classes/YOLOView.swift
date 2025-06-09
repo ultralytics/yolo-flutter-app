@@ -1221,9 +1221,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     onStream = nil
     onZoomChanged = nil
     
-    // Clear streaming callback
-    setStreamCallback(nil)
-    
     // Remove notification observers
     NotificationCenter.default.removeObserver(self)
     
