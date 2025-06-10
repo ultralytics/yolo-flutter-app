@@ -1,3 +1,12 @@
+## 0.1.22
+
+- Fixed critical memory leaks in iOS YOLOView disposal and model switching
+- Added proper dispose implementation for YOLOView on both iOS and Android platforms
+- Fixed native rendering issues for detection visualization
+- Fixed Android model label loading issues
+- Enhanced single image inference result updates
+- Improved resource cleanup when switching between models or tasks
+
 ## 0.1.21
 
 - Merge example READMEs

@@ -85,8 +85,14 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   ///
   /// Cancels any pending vision requests and releases references to avoid memory leaks.
   deinit {
+    print("BasePredictor: deinit called - cleaning up resources")
     visionRequest?.cancel()
     visionRequest = nil
+    detector = nil
+    currentBuffer = nil
+    currentOnResultsListener = nil
+    currentOnInferenceTimeListener = nil
+    print("BasePredictor: deinit completed")
   }
 
   /// Factory method to asynchronously create and initialize a predictor with the specified model.

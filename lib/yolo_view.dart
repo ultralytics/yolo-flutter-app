@@ -349,7 +349,7 @@ class YOLOViewController {
     try {
       logInfo('YoloViewController: Switching model with viewId: $_viewId');
 
-      // Call the platform method to switch model
+      // Call the platform method to switch model using numeric viewId
       await const MethodChannel('yolo_single_image_channel').invokeMethod(
         'setModel',
         {'viewId': _viewId, 'modelPath': modelPath, 'task': task.name},
@@ -682,6 +682,8 @@ class YOLOViewState extends State<YOLOView> {
 
   @override
   void dispose() {
+    logInfo('YOLOView.dispose() called - starting cleanup');
+
     // Stop camera and inference before disposing
     _effectiveController.stop().catchError((e) {
       logInfo('YOLOView: Error stopping camera during dispose: $e');
@@ -693,6 +695,25 @@ class YOLOViewState extends State<YOLOView> {
     // Clean up method channel handler
     _methodChannel.setMethodCallHandler(null);
 
+    // Dispose YOLO model instance using viewId as instanceId
+    // This prevents memory leaks by ensuring the model is released from YOLOInstanceManager
+    if (_platformViewId != null) {
+      logInfo(
+        'YOLOView.dispose() - disposing model instance with viewId: $_viewId',
+      );
+      const MethodChannel('yolo_single_image_channel')
+          .invokeMethod('disposeInstance', {'instanceId': _viewId})
+          .then((_) {
+            logInfo(
+              'YOLOView.dispose() - model instance disposed successfully',
+            );
+          })
+          .catchError((e) {
+            logInfo('YOLOView: Error disposing model instance: $e');
+          });
+    }
+
+    logInfo('YOLOView.dispose() completed - calling super.dispose()');
     super.dispose();
   }
 
