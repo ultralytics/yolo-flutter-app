@@ -1,3 +1,8 @@
+## 0.1.23
+
+- Fixed iOS build error with UIImage optional binding in segmentation mask processing
+- Resolved Swift compiler error that prevented builds when installing via pub.dev
+
 ## 0.1.22
 
 - Fixed critical memory leaks in iOS YOLOView disposal and model switching
