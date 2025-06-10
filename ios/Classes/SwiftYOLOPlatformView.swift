@@ -15,6 +15,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   private let frame: CGRect
   private let viewId: Int64
   private let messenger: FlutterBinaryMessenger
+  private let flutterViewId: String
 
   // Event channel for sending detection results
   private let eventChannel: FlutterEventChannel
@@ -37,13 +38,12 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     self.messenger = messenger
 
     // Get viewId passed from Flutter (primarily a string ID)
-    let flutterViewId: String
     if let dict = args as? [String: Any], let viewIdStr = dict["viewId"] as? String {
-      flutterViewId = viewIdStr
+      self.flutterViewId = viewIdStr
       print("SwiftYOLOPlatformView: Using Flutter-provided viewId: \(flutterViewId)")
     } else {
       // Fallback: Convert numeric viewId to string
-      flutterViewId = "\(viewId)"
+      self.flutterViewId = "\(viewId)"
       print("SwiftYOLOPlatformView: Using fallback numeric viewId: \(flutterViewId)")
     }
 
@@ -438,7 +438,17 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   }
 
   deinit {
-    print("SwiftYOLOPlatformView: deinit called for viewId: \(viewId)")
+    print("SwiftYOLOPlatformView: deinit called for viewId: \(viewId), flutterViewId: \(flutterViewId)")
+    
+    // Dispose model instance from YOLOInstanceManager
+    // Since we're in deinit and YOLOInstanceManager is @MainActor, we need to dispatch
+    let instanceIdToRemove = flutterViewId
+    print("SwiftYOLOPlatformView: Scheduling disposal of model instance with id: \(instanceIdToRemove)")
+    
+    Task { @MainActor in
+      YOLOInstanceManager.shared.removeInstance(instanceId: instanceIdToRemove)
+      print("SwiftYOLOPlatformView: Model instance disposed: \(instanceIdToRemove)")
+    }
     
     // Clean up event channel
     eventSink = nil
@@ -450,6 +460,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Clean up YOLOView reference - its own deinit will handle camera cleanup
     yoloView = nil
     
-    print("SwiftYOLOPlatformView: deinit completed - camera cleanup delegated to YOLOView")
+    print("SwiftYOLOPlatformView: deinit completed - cleanup scheduled")
   }
 }

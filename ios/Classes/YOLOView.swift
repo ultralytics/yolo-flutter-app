@@ -274,6 +274,12 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     // Common success handling for all tasks
     func handleSuccess(predictor: Predictor) {
+      // Release old predictor before setting new one to prevent memory leak
+      if self.videoCapture.predictor != nil {
+        print("YOLOView: Releasing old predictor before setting new one")
+        self.videoCapture.predictor = nil
+      }
+      
       self.videoCapture.predictor = predictor
       self.activityIndicator.stopAnimating()
       self.labelName.text = modelName
@@ -376,6 +382,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   public func stop() {
     videoCapture.stop()
     videoCapture.delegate = nil
+    // Release predictor to prevent memory leak
+    videoCapture.predictor = nil
   }
 
   public func resume() {
@@ -1219,6 +1227,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     
     // Clear delegate to break retain cycle
     videoCapture.delegate = nil
+    
+    // Release predictor to prevent memory leak
+    videoCapture.predictor = nil
     
     // Clear all callbacks to prevent retain cycles
     onDetection = nil

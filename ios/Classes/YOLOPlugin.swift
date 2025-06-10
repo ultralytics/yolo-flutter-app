@@ -248,11 +248,13 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           return
         }
 
+        print("YOLOPlugin: disposeInstance called for instanceId: \(instanceId)")
         YOLOInstanceManager.shared.removeInstance(instanceId: instanceId)
 
         // Remove the channel for this instance
         YOLOPlugin.instanceChannels.removeValue(forKey: instanceId)
-
+        
+        print("YOLOPlugin: Instance \(instanceId) disposed successfully")
         result(nil)
 
       case "checkModelExists":
@@ -275,7 +277,6 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
 
       case "setModel":
         guard let args = call.arguments as? [String: Any],
-          let viewId = args["viewId"] as? Int,
           let modelPath = args["modelPath"] as? String,
           let taskString = args["task"] as? String
         else {
@@ -287,8 +288,43 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
 
         let task = YOLOTask.fromString(taskString)
 
+        // Handle both String viewId (from Flutter) and Int viewId
+        var viewIdInt: Int?
+        var instanceId: String = "default"
+        
+        if let flutterViewId = args["viewId"] as? String {
+          // This is the Flutter string viewId
+          instanceId = flutterViewId
+          // Try to extract numeric viewId from YOLOView registration
+          // This is a workaround - ideally we should store the mapping
+          viewIdInt = nil  // We'll search for it below
+        } else if let numericViewId = args["viewId"] as? Int {
+          viewIdInt = numericViewId
+          instanceId = String(numericViewId)
+        }
+        
+        // Remove existing instance before loading new model to prevent memory leaks
+        YOLOInstanceManager.shared.removeInstance(instanceId: instanceId)
+        
+        // Create instance if not exists
+        YOLOInstanceManager.shared.createInstance(instanceId: instanceId)
+
+        // Try to find the YOLOView - if we don't have viewIdInt, we need to search
+        if viewIdInt == nil {
+          // This is not ideal, but for now we'll load the model without the view
+          // The view will connect to the model when it's created
+          result(
+            FlutterError(
+              code: "NOT_IMPLEMENTED",
+              message: "Model switching with string viewId not fully implemented",
+              details: "Please use the default YOLO instance for now"
+            )
+          )
+          return
+        }
+
         // Get the YOLOView instance from the factory
-        if let yoloView = SwiftYOLOPlatformViewFactory.getYOLOView(for: viewId) {
+        if let yoloView = SwiftYOLOPlatformViewFactory.getYOLOView(for: viewIdInt!) {
           yoloView.setModel(modelPathOrName: modelPath, task: task) { modelResult in
             switch modelResult {
             case .success:
@@ -307,7 +343,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           result(
             FlutterError(
               code: "VIEW_NOT_FOUND",
-              message: "YOLOView with id \(viewId) not found",
+              message: "YOLOView with id \(viewIdInt ?? -1) not found",
               details: nil
             )
           )
