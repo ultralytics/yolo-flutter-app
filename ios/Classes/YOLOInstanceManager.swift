@@ -346,11 +346,11 @@ class YOLOInstanceManager {
       if let combinedMask = masks.combinedMask {
         let ciImage = CIImage(cgImage: combinedMask)
         let context = CIContext()
-        if let cgImage = context.createCGImage(ciImage, from: ciImage.extent),
-          let uiImage = UIImage(cgImage: cgImage),
-          let maskData = uiImage.pngData()
-        {
-          resultDict["maskPng"] = FlutterStandardTypedData(bytes: maskData)
+        if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
+          let uiImage = UIImage(cgImage: cgImage)
+          if let maskData = uiImage.pngData() {
+            resultDict["maskPng"] = FlutterStandardTypedData(bytes: maskData)
+          }
         }
       }
     }
