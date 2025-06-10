@@ -207,40 +207,45 @@ class YOLO {
   /// Runs inference on a single image.
   ///
   /// Takes raw image bytes as input and returns a map containing the inference results.
-  /// The structure of the returned map depends on the [task] type:
-  ///
-  /// - For detection: Contains 'boxes' with class, confidence, and bounding box coordinates.
-  /// - For segmentation: Contains 'boxes' with class, confidence, bounding box coordinates, and mask data.
-  /// - For classification: Contains class and confidence information.
-  /// - For pose estimation: Contains keypoints information for detected poses.
-  /// - For OBB: Contains oriented bounding box coordinates.
+  /// The returned map contains:
+  /// - 'boxes': List of detected objects with bounding box coordinates
+  /// - 'detections': List of detections in YOLOResult-compatible format
+  /// - Task-specific data (keypoints for pose, mask for segmentation, etc.)
   ///
   /// The model must be loaded with [loadModel] before calling this method.
   ///
   /// Example:
   /// ```dart
-  /// // Basic usage with default thresholds
+  /// // Basic detection usage
   /// final results = await yolo.predict(imageBytes);
-  ///
-  /// // Usage with custom thresholds
-  /// final results = await yolo.predict(
-  ///   imageBytes,
-  ///   confidenceThreshold: 0.6,
-  ///   iouThreshold: 0.5,
-  /// );
-  ///
-  /// final boxes = results['boxes'] as List<Map<String, dynamic>>;
+  /// final boxes = results['boxes'] as List<dynamic>;
   /// for (var box in boxes) {
   ///   print('Class: ${box['class']}, Confidence: ${box['confidence']}');
   /// }
-  /// ```
   ///
-  /// Returns a map containing the inference results. If inference fails, throws an exception.
+  /// // Pose estimation with YOLOResult
+  /// final results = await yolo.predict(imageBytes);
+  /// final detections = results['detections'] as List<dynamic>;
+  /// for (var detection in detections) {
+  ///   final result = YOLOResult.fromMap(detection);
+  ///   if (result.keypoints != null) {
+  ///     print('Found ${result.keypoints!.length} keypoints');
+  ///     for (int i = 0; i < result.keypoints!.length; i++) {
+  ///       final kp = result.keypoints![i];
+  ///       final conf = result.keypointConfidences![i];
+  ///       print('Keypoint $i: (${kp.x}, ${kp.y}) confidence: $conf');
+  ///     }
+  ///   }
+  /// }
+  /// ```
   ///
   /// @param imageBytes The raw image data as a Uint8List
   /// @param confidenceThreshold Optional confidence threshold (0.0-1.0). Defaults to 0.25 if not specified.
   /// @param iouThreshold Optional IoU threshold for NMS (0.0-1.0). Defaults to 0.4 if not specified.
-  /// @return A map containing the inference results
+  /// @return A map containing:
+  ///   - 'boxes': List of bounding boxes
+  ///   - 'detections': List of YOLOResult-compatible detection maps
+  ///   - 'keypoints': (pose only) Raw keypoints data from platform
   /// @throws [ModelNotLoadedException] if the model has not been loaded
   /// @throws [InferenceException] if there's an error during inference
   /// @throws [PlatformException] if there's an issue with the platform-specific code
@@ -292,22 +297,189 @@ class YOLO {
         );
 
         // Convert boxes list if it exists
+        final List<Map<String, dynamic>> boxes = [];
         if (resultMap.containsKey('boxes') && resultMap['boxes'] is List) {
-          final List<Map<String, dynamic>> boxes = (resultMap['boxes'] as List)
-              .map((item) {
-                if (item is Map) {
-                  return Map<String, dynamic>.fromEntries(
-                    item.entries.map(
-                      (e) => MapEntry(e.key.toString(), e.value),
-                    ),
-                  );
-                }
-                return <String, dynamic>{};
-              })
-              .toList();
+          boxes.addAll(
+            (resultMap['boxes'] as List).map((item) {
+              if (item is Map) {
+                return Map<String, dynamic>.fromEntries(
+                  item.entries.map((e) => MapEntry(e.key.toString(), e.value)),
+                );
+              }
+              return <String, dynamic>{};
+            }),
+          );
 
           resultMap['boxes'] = boxes;
         }
+
+        // Create detections array with YOLOResult-compatible structure
+        final List<Map<String, dynamic>> detections = [];
+
+        // Handle different task types
+        switch (task) {
+          case YOLOTask.pose:
+            // For pose estimation, merge boxes with keypoints
+            if (resultMap.containsKey('keypoints')) {
+              final keypointsList =
+                  resultMap['keypoints'] as List<dynamic>? ?? [];
+
+              for (
+                int i = 0;
+                i < boxes.length && i < keypointsList.length;
+                i++
+              ) {
+                final box = boxes[i];
+                final detection = _createDetectionMap(box);
+
+                // Convert keypoints to flat array format expected by YOLOResult
+                if (keypointsList[i] is Map) {
+                  final personKeypoints =
+                      keypointsList[i] as Map<dynamic, dynamic>;
+                  final coordinates =
+                      personKeypoints['coordinates'] as List<dynamic>? ?? [];
+
+                  final flatKeypoints = <double>[];
+                  for (final coord in coordinates) {
+                    if (coord is Map) {
+                      flatKeypoints.add(
+                        (coord['x'] as num?)?.toDouble() ?? 0.0,
+                      );
+                      flatKeypoints.add(
+                        (coord['y'] as num?)?.toDouble() ?? 0.0,
+                      );
+                      flatKeypoints.add(
+                        (coord['confidence'] as num?)?.toDouble() ?? 0.0,
+                      );
+                    }
+                  }
+
+                  if (flatKeypoints.isNotEmpty) {
+                    detection['keypoints'] = flatKeypoints;
+                  }
+                }
+
+                detections.add(detection);
+              }
+            }
+            break;
+
+          case YOLOTask.segment:
+            // For segmentation, include mask data with boxes
+            final masks = resultMap['masks'] as List<dynamic>? ?? [];
+
+            for (int i = 0; i < boxes.length; i++) {
+              final box = boxes[i];
+              final detection = _createDetectionMap(box);
+
+              // Add mask data if available for this detection
+              if (i < masks.length && masks[i] != null) {
+                // masks[i] is already in the correct List<List<double>> format
+                final maskData = masks[i] as List<dynamic>;
+                final mask = maskData.map((row) {
+                  return (row as List<dynamic>).map((val) {
+                    return (val as num).toDouble();
+                  }).toList();
+                }).toList();
+
+                detection['mask'] = mask;
+              }
+
+              detections.add(detection);
+            }
+            break;
+
+          case YOLOTask.classify:
+            // For classification, create a single detection with classification data
+            if (resultMap.containsKey('classification')) {
+              final classification =
+                  resultMap['classification'] as Map<dynamic, dynamic>;
+
+              // Classification doesn't have boxes, create a full-image detection
+              final detection = <String, dynamic>{
+                'classIndex': 0, // Would need class mapping
+                'className': classification['topClass'] ?? '',
+                'confidence':
+                    (classification['topConfidence'] as num?)?.toDouble() ??
+                    0.0,
+                'boundingBox': {
+                  'left': 0.0,
+                  'top': 0.0,
+                  'right': 1.0, // Full image
+                  'bottom': 1.0,
+                },
+                'normalizedBox': {
+                  'left': 0.0,
+                  'top': 0.0,
+                  'right': 1.0,
+                  'bottom': 1.0,
+                },
+              };
+
+              detections.add(detection);
+            }
+            break;
+
+          case YOLOTask.obb:
+            // For OBB, convert oriented bounding boxes
+            if (resultMap.containsKey('obb')) {
+              final obbList = resultMap['obb'] as List<dynamic>? ?? [];
+
+              for (final obb in obbList) {
+                if (obb is Map) {
+                  final points = obb['points'] as List<dynamic>? ?? [];
+
+                  // Calculate bounding box from OBB points
+                  double minX = double.infinity, minY = double.infinity;
+                  double maxX = double.negativeInfinity,
+                      maxY = double.negativeInfinity;
+
+                  for (final point in points) {
+                    if (point is Map) {
+                      final x = (point['x'] as num?)?.toDouble() ?? 0.0;
+                      final y = (point['y'] as num?)?.toDouble() ?? 0.0;
+                      minX = minX > x ? x : minX;
+                      minY = minY > y ? y : minY;
+                      maxX = maxX < x ? x : maxX;
+                      maxY = maxY < y ? y : maxY;
+                    }
+                  }
+
+                  final detection = <String, dynamic>{
+                    'classIndex': 0, // Would need class mapping
+                    'className': obb['class'] ?? '',
+                    'confidence':
+                        (obb['confidence'] as num?)?.toDouble() ?? 0.0,
+                    'boundingBox': {
+                      'left': minX,
+                      'top': minY,
+                      'right': maxX,
+                      'bottom': maxY,
+                    },
+                    'normalizedBox': {
+                      'left': minX,
+                      'top': minY,
+                      'right': maxX,
+                      'bottom': maxY,
+                    },
+                  };
+
+                  detections.add(detection);
+                }
+              }
+            }
+            break;
+
+          case YOLOTask.detect:
+            // For detection, just convert boxes
+            for (final box in boxes) {
+              detections.add(_createDetectionMap(box));
+            }
+            break;
+        }
+
+        // Add detections to result map
+        resultMap['detections'] = detections;
 
         return resultMap;
       }
@@ -332,6 +504,27 @@ class YOLO {
     } catch (e) {
       throw InferenceException('Unknown error during inference: $e');
     }
+  }
+
+  /// Helper method to create a detection map from a box
+  Map<String, dynamic> _createDetectionMap(Map<String, dynamic> box) {
+    return {
+      'classIndex': 0, // Would need class mapping for proper index
+      'className': box['class'] ?? '',
+      'confidence': box['confidence'] ?? 0.0,
+      'boundingBox': {
+        'left': box['x1'] ?? 0.0,
+        'top': box['y1'] ?? 0.0,
+        'right': box['x2'] ?? 0.0,
+        'bottom': box['y2'] ?? 0.0,
+      },
+      'normalizedBox': {
+        'left': box['x1_norm'] ?? 0.0,
+        'top': box['y1_norm'] ?? 0.0,
+        'right': box['x2_norm'] ?? 0.0,
+        'bottom': box['y2_norm'] ?? 0.0,
+      },
+    };
   }
 
   /// Checks if a model exists at the specified path.

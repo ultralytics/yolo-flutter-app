@@ -49,7 +49,7 @@ class Classifier(
     init {
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
-        /* --- Get labels from metadata (try Appended ZIP → FlatBuffers in order) --- */
+        // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
         var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         var labelsWereLoaded = loadedLabels != null
 
@@ -59,17 +59,17 @@ class Classifier(
         } else {
             Log.w(TAG, "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
             // Try FlatBuffers as a fallback
-            val labelsFromFlatBuffers = loadLabelsFromFlatbuffers(modelBuffer)
-            if (labelsFromFlatBuffers != null) {
-                this.labels = labelsFromFlatBuffers
+            if (loadLabelsFromFlatbuffers(modelBuffer)) {
                 labelsWereLoaded = true
                 Log.i(TAG, "Labels successfully loaded from FlatBuffers metadata.")
             }
         }
 
         if (!labelsWereLoaded) {
-            Log.w(TAG, "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor.")
-            // Labels passed via constructor will be used
+            Log.w(TAG, "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
+            if (this.labels.isEmpty()) {
+                Log.w(TAG, "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names.")
+            }
         }
 
         interpreter = Interpreter(modelBuffer, interpreterOptions)
@@ -172,51 +172,39 @@ class Classifier(
         private const val INPUT_MEAN = 0f
         private const val INPUT_STD = 255f
     }
+    
+    /**
+     * Load labels from FlatBuffers metadata
+     */
+    private fun loadLabelsFromFlatbuffers(buf: MappedByteBuffer): Boolean = try {
+        val extractor = MetadataExtractor(buf)
+        val files = extractor.associatedFileNames
+        if (!files.isNullOrEmpty()) {
+            for (fileName in files) {
+                Log.d(TAG, "Found associated file: $fileName")
+                extractor.getAssociatedFile(fileName)?.use { stream ->
+                    val fileString = String(stream.readBytes(), Charsets.UTF_8)
+                    Log.d(TAG, "Associated file contents:\n$fileString")
 
-    private fun loadLabelsFromFlatbuffers(modelBuffer: MappedByteBuffer): List<String>? {
-        return try {
-            val metadataExtractor = MetadataExtractor(modelBuffer)
-            val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
-            if (modelMetadata != null) {
-                Log.d(TAG, "Model metadata retrieved successfully.")
-            }
-            val associatedFiles = metadataExtractor.associatedFileNames
-            if (!associatedFiles.isNullOrEmpty()) {
-                for (fileName in associatedFiles) {
-                    Log.d(TAG, "Found associated file: $fileName")
-                    val inputStream = metadataExtractor.getAssociatedFile(fileName)
-                    inputStream?.use { stream ->
-                        val fileContent = stream.readBytes()
-                        val fileString = fileContent.toString(Charsets.UTF_8)
-                        Log.d(TAG, "Associated file contents:\n$fileString")
-                        try {
-                            val yaml = Yaml()
-                            @Suppress("UNCHECKED_CAST")
-                            val data = yaml.load<Map<String, Any>>(fileString)
-                            if (data != null && data.containsKey("names")) {
-                                val namesMap = data["names"] as? Map<Int, String>
-                                if (namesMap != null) {
-                                    val labels = namesMap.values.toList()
-                                    Log.d(TAG, "Loaded labels from metadata: $labels")
-                                    return labels
-                                } else {
-                                    Log.d(TAG, "Names map is null")
-                                }
-                            } else {
-                                Log.d(TAG, "Data is null or doesn't contain 'names'")
-                            }
-                        } catch (ex: Exception) {
-                            Log.e(TAG, "Failed to parse YAML from metadata: ${ex.message}")
+                    val yaml = Yaml()
+                    @Suppress("UNCHECKED_CAST")
+                    val data = yaml.load<Map<String, Any>>(fileString)
+                    if (data != null && data.containsKey("names")) {
+                        val namesMap = data["names"] as? Map<Int, String>
+                        if (namesMap != null) {
+                            labels = namesMap.values.toList()
+                            Log.d(TAG, "Loaded labels from metadata: $labels")
+                            return true
                         }
                     }
                 }
-            } else {
-                Log.d(TAG, "No associated files found in the metadata.")
             }
-            null
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to extract metadata: ${e.message}")
-            null
+        } else {
+            Log.d(TAG, "No associated files found in the metadata.")
         }
+        false
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to extract metadata: ${e.message}")
+        false
     }
 }

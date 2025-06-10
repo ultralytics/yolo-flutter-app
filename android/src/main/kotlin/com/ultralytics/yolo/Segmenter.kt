@@ -74,7 +74,7 @@ class Segmenter(
         // Load model file (automatic extension appending)
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
-        /* --- Get labels from metadata (try Appended ZIP → FlatBuffers in order) --- */
+        // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
         var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         var labelsWereLoaded = loadedLabels != null
 
@@ -84,32 +84,16 @@ class Segmenter(
         } else {
             Log.w("Segmenter", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
             // Try FlatBuffers as a fallback
-            val labelsFromFlatBuffers = loadLabelsFromFlatbuffers(modelBuffer)
-            if (labelsFromFlatBuffers != null) {
-                this.labels = labelsFromFlatBuffers
+            if (loadLabelsFromFlatbuffers(modelBuffer)) {
                 labelsWereLoaded = true
                 Log.i("Segmenter", "Labels successfully loaded from FlatBuffers metadata.")
             }
         }
 
         if (!labelsWereLoaded) {
-            Log.w("Segmenter", "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor or COCO fallback.")
-            // If labels were passed via constructor and not overridden, they will be used.
+            Log.w("Segmenter", "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
             if (this.labels.isEmpty()) {
-                Log.w("Segmenter", "Warning: No labels loaded and no labels provided via constructor. Using COCO classes as fallback.")
-                // Use COCO dataset's 80 classes as a fallback
-                this.labels = listOf(
-                    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
-                    "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog",
-                    "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
-                    "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite",
-                    "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle",
-                    "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich",
-                    "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
-                    "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote",
-                    "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book",
-                    "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
-                )
+                Log.w("Segmenter", "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names.")
             }
         }
 
@@ -385,51 +369,39 @@ class Segmenter(
         val score: Float,
         val maskCoeffs: FloatArray
     )
+    
+    /**
+     * Load labels from FlatBuffers metadata
+     */
+    private fun loadLabelsFromFlatbuffers(buf: MappedByteBuffer): Boolean = try {
+        val extractor = MetadataExtractor(buf)
+        val files = extractor.associatedFileNames
+        if (!files.isNullOrEmpty()) {
+            for (fileName in files) {
+                Log.d("Segmenter", "Found associated file: $fileName")
+                extractor.getAssociatedFile(fileName)?.use { stream ->
+                    val fileString = String(stream.readBytes(), Charsets.UTF_8)
+                    Log.d("Segmenter", "Associated file contents:\n$fileString")
 
-    private fun loadLabelsFromFlatbuffers(modelBuffer: MappedByteBuffer): List<String>? {
-        return try {
-            val metadataExtractor = MetadataExtractor(modelBuffer)
-            val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
-            if (modelMetadata != null) {
-                Log.d("Segmenter", "Model metadata retrieved successfully.")
-            }
-            val associatedFiles = metadataExtractor.associatedFileNames
-            if (!associatedFiles.isNullOrEmpty()) {
-                for (fileName in associatedFiles) {
-                    Log.d("Segmenter", "Found associated file: $fileName")
-                    val inputStream = metadataExtractor.getAssociatedFile(fileName)
-                    inputStream?.use { stream ->
-                        val fileContent = stream.readBytes()
-                        val fileString = fileContent.toString(Charsets.UTF_8)
-                        Log.d("Segmenter", "Associated file contents:\n$fileString")
-                        try {
-                            val yaml = Yaml()
-                            @Suppress("UNCHECKED_CAST")
-                            val data = yaml.load<Map<String, Any>>(fileString)
-                            if (data != null && data.containsKey("names")) {
-                                val namesMap = data["names"] as? Map<Int, String>
-                                if (namesMap != null) {
-                                    val labels = namesMap.values.toList()
-                                    Log.d("Segmenter", "Loaded labels from metadata: $labels")
-                                    return labels
-                                } else {
-                                    Log.d("Segmenter", "Names map is null")
-                                }
-                            } else {
-                                Log.d("Segmenter", "Data is null or doesn't contain 'names'")
-                            }
-                        } catch (ex: Exception) {
-                            Log.e("Segmenter", "Failed to parse YAML from metadata: ${ex.message}")
+                    val yaml = Yaml()
+                    @Suppress("UNCHECKED_CAST")
+                    val data = yaml.load<Map<String, Any>>(fileString)
+                    if (data != null && data.containsKey("names")) {
+                        val namesMap = data["names"] as? Map<Int, String>
+                        if (namesMap != null) {
+                            labels = namesMap.values.toList()
+                            Log.d("Segmenter", "Loaded labels from metadata: $labels")
+                            return true
                         }
                     }
                 }
-            } else {
-                Log.d("Segmenter", "No associated files found in the metadata.")
             }
-            null
-        } catch (e: Exception) {
-            Log.e("Segmenter", "Failed to extract metadata: ${e.message}")
-            null
+        } else {
+            Log.d("Segmenter", "No associated files found in the metadata.")
         }
+        false
+    } catch (e: Exception) {
+        Log.e("Segmenter", "Failed to extract metadata: ${e.message}")
+        false
     }
 }
