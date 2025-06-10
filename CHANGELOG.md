@@ -1,3 +1,7 @@
+## 0.1.23
+
+- Add Support for Landscape Mode
+
 ## 0.1.22
 
 - Fixed critical memory leaks in iOS YOLOView disposal and model switching
