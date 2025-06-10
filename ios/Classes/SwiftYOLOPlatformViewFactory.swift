@@ -7,19 +7,19 @@ import UIKit
 private class YOLOViewRegistry {
   private var _views: [Int: YOLOView] = [:]
   private let lock = NSLock()
-  
+
   func get(for viewId: Int) -> YOLOView? {
     lock.lock()
     defer { lock.unlock() }
     return _views[viewId]
   }
-  
+
   func set(_ view: YOLOView?, for viewId: Int) {
     lock.lock()
     defer { lock.unlock() }
     _views[viewId] = view
   }
-  
+
   func remove(for viewId: Int) {
     lock.lock()
     defer { lock.unlock() }

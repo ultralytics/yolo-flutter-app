@@ -418,38 +418,40 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   }
 
   // MARK: - Cleanup
-  
+
   /// Stop camera and inference operations
   private func stopCamera() {
     print("SwiftYOLOPlatformView: Stopping camera and inference")
-    
+
     // Stop the camera capture
     yoloView?.stop()
-    
+
     // Clear callbacks to prevent retain cycles
     yoloView?.onDetection = nil
     yoloView?.onZoomChanged = nil
     yoloView?.setStreamCallback(nil)
-    
+
     // Remove from factory registry
     SwiftYOLOPlatformViewFactory.unregister(for: Int(viewId))
-    
+
     print("SwiftYOLOPlatformView: Camera stopped successfully")
   }
 
   deinit {
-    print("SwiftYOLOPlatformView: deinit called for viewId: \(viewId), flutterViewId: \(flutterViewId)")
-    
+    print(
+      "SwiftYOLOPlatformView: deinit called for viewId: \(viewId), flutterViewId: \(flutterViewId)")
+
     // Dispose model instance from YOLOInstanceManager
     // Since we're in deinit and YOLOInstanceManager is @MainActor, we need to dispatch
     let instanceIdToRemove = flutterViewId
-    print("SwiftYOLOPlatformView: Scheduling disposal of model instance with id: \(instanceIdToRemove)")
-    
+    print(
+      "SwiftYOLOPlatformView: Scheduling disposal of model instance with id: \(instanceIdToRemove)")
+
     Task { @MainActor in
       YOLOInstanceManager.shared.removeInstance(instanceId: instanceIdToRemove)
       print("SwiftYOLOPlatformView: Model instance disposed: \(instanceIdToRemove)")
     }
-    
+
     // Clean up event channel
     eventSink = nil
     eventChannel.setStreamHandler(nil)
@@ -459,7 +461,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
     // Clean up YOLOView reference - its own deinit will handle camera cleanup
     yoloView = nil
-    
+
     print("SwiftYOLOPlatformView: deinit completed - cleanup scheduled")
   }
 }

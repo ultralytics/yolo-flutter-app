@@ -253,7 +253,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
 
         // Remove the channel for this instance
         YOLOPlugin.instanceChannels.removeValue(forKey: instanceId)
-        
+
         print("YOLOPlugin: Instance \(instanceId) disposed successfully")
         result(nil)
 
@@ -291,7 +291,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         // Handle both String viewId (from Flutter) and Int viewId
         var viewIdInt: Int?
         var instanceId: String = "default"
-        
+
         if let flutterViewId = args["viewId"] as? String {
           // This is the Flutter string viewId
           instanceId = flutterViewId
@@ -302,10 +302,10 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           viewIdInt = numericViewId
           instanceId = String(numericViewId)
         }
-        
+
         // Remove existing instance before loading new model to prevent memory leaks
         YOLOInstanceManager.shared.removeInstance(instanceId: instanceId)
-        
+
         // Create instance if not exists
         YOLOInstanceManager.shared.createInstance(instanceId: instanceId)
 
