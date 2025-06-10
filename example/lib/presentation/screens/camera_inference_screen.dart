@@ -127,6 +127,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final orientation = MediaQuery.of(context).orientation;
+    final isLandscape = orientation == Orientation.landscape;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -199,33 +202,38 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              '${(_downloadProgress * 100).toInt()}%',
+                              '${(_downloadProgress * 100).toStringAsFixed(1)}%',
                               style: const TextStyle(
-                                color: Colors.white70,
+                                color: Colors.white,
                                 fontSize: 14,
                               ),
                             ),
                           ],
-                        )
-                      else
-                        const CircularProgressIndicator(color: Colors.white),
+                        ),
                     ],
                   ),
                 ),
+              ),
+            )
+          else
+            const Center(
+              child: Text(
+                'No model loaded',
+                style: TextStyle(color: Colors.white),
               ),
             ),
 
           // Top info pills (detection, FPS, and current threshold)
           Positioned(
-            top: MediaQuery.of(context).padding.top + 16, // Safe area + spacing
-            left: 16,
-            right: 16,
+            top: MediaQuery.of(context).padding.top + (isLandscape ? 8 : 16),
+            left: isLandscape ? 8 : 16,
+            right: isLandscape ? 8 : 16,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Model selector
                 _buildModelSelector(),
-                const SizedBox(height: 12),
+                SizedBox(height: isLandscape ? 8 : 12),
                 IgnorePointer(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -270,8 +278,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                 child: Align(
                   alignment: Alignment.center,
                   child: FractionallySizedBox(
-                    widthFactor: 0.5,
-                    heightFactor: 0.5,
+                    widthFactor: isLandscape ? 0.3 : 0.5,
+                    heightFactor: isLandscape ? 0.3 : 0.5,
                     child: Image.asset(
                       'assets/logo.png',
                       color: Colors.white.withValues(alpha: 0.4),
@@ -283,8 +291,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
           // Control buttons
           Positioned(
-            bottom: 32,
-            right: 16,
+            bottom: isLandscape ? 16 : 32,
+            right: isLandscape ? 8 : 16,
             child: Column(
               children: [
                 if (!_isFrontCamera) ...[
@@ -303,20 +311,20 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                       _setZoomLevel(nextZoom);
                     },
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: isLandscape ? 8 : 12),
                 ],
                 _buildIconButton(Icons.layers, () {
                   _toggleSlider(SliderType.numItems);
                 }),
-                const SizedBox(height: 12),
+                SizedBox(height: isLandscape ? 8 : 12),
                 _buildIconButton(Icons.adjust, () {
                   _toggleSlider(SliderType.confidence);
                 }),
-                const SizedBox(height: 12),
+                SizedBox(height: isLandscape ? 8 : 12),
                 _buildIconButton('assets/iou.png', () {
                   _toggleSlider(SliderType.iou);
                 }),
-                const SizedBox(height: 40),
+                SizedBox(height: isLandscape ? 16 : 40),
               ],
             ),
           ),
@@ -328,9 +336,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               right: 0,
               bottom: 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isLandscape ? 16 : 24,
+                  vertical: isLandscape ? 8 : 12,
                 ),
                 color: Colors.black.withValues(alpha: 0.8),
                 child: SliderTheme(
@@ -355,12 +363,13 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                 ),
               ),
             ),
+
           // Camera flip top-right
           Positioned(
-            bottom: MediaQuery.of(context).padding.top + 16,
-            left: 16,
+            top: MediaQuery.of(context).padding.top + (isLandscape ? 8 : 16),
+            right: isLandscape ? 8 : 16,
             child: CircleAvatar(
-              radius: 24,
+              radius: isLandscape ? 20 : 24,
               backgroundColor: Colors.black.withValues(alpha: 0.5),
               child: IconButton(
                 icon: const Icon(Icons.flip_camera_ios, color: Colors.white),

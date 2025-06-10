@@ -666,8 +666,8 @@ class YOLOView @JvmOverloads constructor(
                 // ----------------------------------------
                 YOLOTask.DETECT -> {
                     Log.d(TAG, "Drawing DETECT boxes: ${result.boxes.size}")
+                    val isLandscape = vw > vh
                     for (box in result.boxes) {
-                        // Adjust alpha based on confidence
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
                         val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
                         val newColor = Color.argb(
@@ -677,21 +677,54 @@ class YOLOView @JvmOverloads constructor(
                             Color.blue(baseColor)
                         )
 
-                        // Log the original box.xywh values
-                        Log.d(TAG, "Box raw coords: L=${box.xywh.left}, T=${box.xywh.top}, R=${box.xywh.right}, B=${box.xywh.bottom}, cls=${box.cls}, conf=${box.conf}")
+                        var left: Float
+                        var top: Float
+                        var right: Float
+                        var bottom: Float
+
+                        if (isLandscape) {
+                            // Swap image width/height for scaling
+                            val scaleX = vw / ih
+                            val scaleY = vh / iw
+                            val scale = Math.max(scaleX, scaleY)
+                            val scaledW = ih * scale
+                            val scaledH = iw * scale
+                            val dx = (vw - scaledW) / 2f
+                            val dy = (vh - scaledH) / 2f
+
+                            // Swap and flip coordinates for landscape
+                            left = box.xywh.top * scale + dx
+                            top = (iw - box.xywh.right) * scale + dy
+                            right = box.xywh.bottom * scale + dx
+                            bottom = (iw - box.xywh.left) * scale + dy
+                        } else {
+                            // Portrait (original logic)
+                            left = box.xywh.left * scale + dx
+                            top = box.xywh.top * scale + dy
+                            right = box.xywh.right * scale + dx
+                            bottom = box.xywh.bottom * scale + dy
+                        }
                         
-                        // Draw bounding box like in the original code
-                        var left   = box.xywh.left   * scale + dx
-                        var top    = box.xywh.top    * scale + dy
-                        var right  = box.xywh.right  * scale + dx
-                        var bottom = box.xywh.bottom * scale + dy
+                        // Ensure coordinates are within view bounds and maintain aspect ratio
+                        val boxWidth = right - left
+                        val boxHeight = bottom - top
                         
-                        // Flip vertically for front camera
-                        if (isFrontCamera) {
-                            val flippedTop = vh - bottom
-                            val flippedBottom = vh - top
-                            top = flippedTop
-                            bottom = flippedBottom
+                        // Adjust coordinates to maintain aspect ratio and stay within bounds
+                        if (left < 0) {
+                            left = 0f
+                            right = left + boxWidth
+                        }
+                        if (right > vw) {
+                            right = vw.toFloat()
+                            left = right - boxWidth
+                        }
+                        if (top < 0) {
+                            top = 0f
+                            bottom = top + boxHeight
+                        }
+                        if (bottom > vh) {
+                            bottom = vh.toFloat()
+                            top = bottom - boxHeight
                         }
                         
                         Log.d(TAG, "Drawing box for ${box.cls}: L=$left, T=$top, R=$right, B=$bottom, conf=${box.conf}")
@@ -735,10 +768,7 @@ class YOLOView @JvmOverloads constructor(
                         val centerY = (labelTop + labelBottom) / 2
                         // Baseline = centerY - (fm.descent + fm.ascent)/2
                         val baseline = centerY - (fm.descent + fm.ascent) / 2
-                        // X coordinate is left-aligned plus padding
-                        val textX = labelLeft + pad
-
-                        canvas.drawText(labelText, textX, baseline, paint)
+                        canvas.drawText(labelText, labelLeft + pad, baseline, paint)
                     }
                 }
                 // ----------------------------------------

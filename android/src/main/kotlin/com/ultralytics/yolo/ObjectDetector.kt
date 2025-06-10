@@ -322,10 +322,10 @@ class ObjectDetector(
             if (boxArray.size >= 6) {
                 // Create xywh (absolute pixel coordinates)
                 val rect = RectF(
-                    boxArray[0] * origWidth,
-                    boxArray[1] * origHeight,
-                    boxArray[0] * origWidth + boxArray[2] * origWidth,
-                    boxArray[1] * origHeight + boxArray[3] * origHeight
+                    boxArray[0] * origWidth,                    // x
+                    boxArray[1] * origHeight,                   // y
+                    (boxArray[0] + boxArray[2]) * origWidth,    // right
+                    (boxArray[1] + boxArray[3]) * origHeight    // bottom
                 )
                 
                 // Create xywhn (normalized coordinates 0-1)
@@ -336,9 +336,15 @@ class ObjectDetector(
                     boxArray[1] + boxArray[3]       // normalized bottom
                 )
                 
-                val classIdx = boxArray[5].toInt()
-                val label = if (classIdx in labels.indices) labels[classIdx] else "Unknown"
-                boxes.add(Box(classIdx, label, boxArray[4], rect, normRect))
+                // Ensure coordinates are valid
+                if (rect.left >= 0 && rect.top >= 0 && 
+                    rect.right <= origWidth && rect.bottom <= origHeight &&
+                    rect.width() > 0 && rect.height() > 0) {
+                    
+                    val classIdx = boxArray[5].toInt()
+                    val label = if (classIdx in labels.indices) labels[classIdx] else "Unknown"
+                    boxes.add(Box(classIdx, label, boxArray[4], rect, normRect))
+                }
             }
         }
 

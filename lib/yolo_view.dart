@@ -204,18 +204,17 @@ class YOLOViewController {
 
   /// Sets the maximum number of items to detect per frame.
   ///
-  /// Limiting the number of detections can improve performance,
-  /// especially on lower-end devices. The value is automatically
-  /// clamped between 1 and 100.
+  /// Limits the number of detections returned to improve
+  /// performance. The value is automatically clamped between 1 and 100.
   ///
   /// Example:
   /// ```dart
-  /// // Only detect up to 10 objects per frame
+  /// // Limit to 10 detections per frame
   /// await controller.setNumItemsThreshold(10);
   /// ```
   Future<void> setNumItemsThreshold(int numItems) async {
-    final clampedValue = numItems.clamp(1, 100);
-    _numItemsThreshold = clampedValue;
+    final clampedNumItems = numItems.clamp(1, 100);
+    _numItemsThreshold = clampedNumItems;
     if (_methodChannel == null) {
       logInfo(
         'YOLOViewController: Warning - Cannot apply numItems threshold, view not yet created',
@@ -224,28 +223,79 @@ class YOLOViewController {
     }
     try {
       await _methodChannel!.invokeMethod('setNumItemsThreshold', {
-        'numItems': clampedValue,
+        'numItems': clampedNumItems,
       });
       logInfo(
         'YOLOViewController: Applied numItems threshold: $_numItemsThreshold',
       );
-      return _applyThresholds();
     } catch (e) {
       logInfo('YOLOViewController: Error applying numItems threshold: $e');
+      return _applyThresholds();
     }
   }
 
-  /// Sets multiple thresholds at once.
+  /// Zooms in the camera view.
   ///
-  /// This method allows updating multiple thresholds in a single call,
-  /// which is more efficient than setting them individually.
+  /// Increases the zoom level by a fixed amount.
+  /// The actual zoom factor depends on the device's camera capabilities.
   ///
   /// Example:
   /// ```dart
+  /// // Zoom in
+  /// await controller.zoomIn();
+  /// ```
+  Future<void> zoomIn() async {
+    if (_methodChannel == null) {
+      logInfo(
+        'YOLOViewController: Warning - Cannot zoom in, view not yet created',
+      );
+      return;
+    }
+    try {
+      await _methodChannel!.invokeMethod('zoomIn');
+      logInfo('YOLOViewController: Zoomed in');
+    } catch (e) {
+      logInfo('YOLOViewController: Error zooming in: $e');
+    }
+  }
+
+  /// Zooms out the camera view.
+  ///
+  /// Decreases the zoom level by a fixed amount.
+  /// The actual zoom factor depends on the device's camera capabilities.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Zoom out
+  /// await controller.zoomOut();
+  /// ```
+  Future<void> zoomOut() async {
+    if (_methodChannel == null) {
+      logInfo(
+        'YOLOViewController: Warning - Cannot zoom out, view not yet created',
+      );
+      return;
+    }
+    try {
+      await _methodChannel!.invokeMethod('zoomOut');
+      logInfo('YOLOViewController: Zoomed out');
+    } catch (e) {
+      logInfo('YOLOViewController: Error zooming out: $e');
+    }
+  }
+
+  /// Sets all thresholds at once.
+  ///
+  /// This is more efficient than setting each threshold individually
+  /// as it only makes one platform channel call.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Set all thresholds at once
   /// await controller.setThresholds(
-  ///   confidenceThreshold: 0.6,
-  ///   iouThreshold: 0.4,
-  ///   numItemsThreshold: 20,
+  ///   confidenceThreshold: 0.7,
+  ///   iouThreshold: 0.3,
+  ///   numItemsThreshold: 10,
   /// );
   /// ```
   Future<void> setThresholds({
@@ -265,17 +315,15 @@ class YOLOViewController {
     return _applyThresholds();
   }
 
-  /// Switches between front and back camera.
+  /// Switches between front and back cameras.
   ///
-  /// This method toggles the camera between front-facing and back-facing modes.
-  /// Returns a [Future] that completes when the camera has been switched.
+  /// Toggles the active camera between the front-facing and
+  /// back-facing cameras. The camera state is maintained by
+  /// the platform view.
   ///
   /// Example:
   /// ```dart
-  /// // Create a controller
-  /// final controller = YOLOViewController();
-  ///
-  /// // Switch between front and back camera
+  /// // Switch to the other camera
   /// await controller.switchCamera();
   /// ```
   Future<void> switchCamera() async {
@@ -287,7 +335,7 @@ class YOLOViewController {
     }
     try {
       await _methodChannel!.invokeMethod('switchCamera');
-      logInfo('YOLOViewController: Camera switched successfully');
+      logInfo('YOLOViewController: Switched camera');
     } catch (e) {
       logInfo('YOLOViewController: Error switching camera: $e');
     }
