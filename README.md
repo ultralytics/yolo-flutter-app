@@ -70,7 +70,7 @@ YOLOView(
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.1.5
+  ultralytics_yolo: ^0.2.0
 ```
 
 ### 2. Install dependencies
