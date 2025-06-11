@@ -1,3 +1,10 @@
+## 0.1.24
+
+- Fix Android landscape orientation coordinate mapping issue
+- Add device orientation detection for proper image rotation
+- Implement separate image processors for portrait/landscape modes
+- Correct aspect ratio calculations for all YOLO tasks in landscape mode
+
 ## 0.1.23
 
 - Add Support for Landscape Mode

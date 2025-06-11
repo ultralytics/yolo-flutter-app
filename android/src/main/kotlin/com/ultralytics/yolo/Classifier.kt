@@ -43,7 +43,8 @@ class Classifier(
 
     var numClass: Int = 0
 
-    private lateinit var imageProcessorCamera: ImageProcessor
+    private lateinit var imageProcessorCameraPortrait: ImageProcessor
+    private lateinit var imageProcessorCameraLandscape: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
 
     init {
@@ -92,9 +93,16 @@ class Classifier(
         numClass = outputShape[1]
         Log.d(TAG, "Model output shape = [1, $numClass]")
 
-        // For camera feed (with rotation)
-        imageProcessorCamera = ImageProcessor.Builder()
-            .add(Rot90Op(3))  // Rotate as needed
+        // For camera feed in portrait mode (with rotation)
+        imageProcessorCameraPortrait = ImageProcessor.Builder()
+            .add(Rot90Op(3))  // 270-degree rotation
+            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
+            .add(NormalizeOp(INPUT_MEAN, INPUT_STD))
+            .add(CastOp(DataType.FLOAT32))
+            .build()
+            
+        // For camera feed in landscape mode (no rotation)
+        imageProcessorCameraLandscape = ImageProcessor.Builder()
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(INPUT_MEAN, INPUT_STD))
             .add(CastOp(DataType.FLOAT32))
@@ -110,16 +118,20 @@ class Classifier(
         Log.d(TAG, "Classifier initialized.")
     }
 
-    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
+    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         t0 = System.nanoTime()
 
         val tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bitmap)
         
-        // Choose appropriate processor based on input source
+        // Choose appropriate processor based on input source and orientation
         val processedImage = if (rotateForCamera) {
-            // Apply rotation for camera feed
-            imageProcessorCamera.process(tensorImage)
+            // Apply appropriate rotation based on device orientation
+            if (isLandscape) {
+                imageProcessorCameraLandscape.process(tensorImage)
+            } else {
+                imageProcessorCameraPortrait.process(tensorImage)
+            }
         } else {
             // No rotation for single image
             imageProcessorSingleImage.process(tensorImage)
@@ -158,7 +170,7 @@ class Classifier(
         val fpsVal = if (t4 > 0) 1.0 / t4 else 0.0
 
         return YOLOResult(
-            origShape = Size(bitmap.width, bitmap.height),
+            origShape = Size(origWidth, origHeight),
             probs = probs,
             speed = t2,
             fps = fpsVal,

@@ -82,7 +82,7 @@ class YOLO(
      * @param rotateForCamera Whether to rotate the image for camera processing, defaults to false for standard bitmap inference
      */
     fun predict(bitmap: Bitmap, rotateForCamera: Boolean = false): YOLOResult {
-        val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera)
+        val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera, isLandscape = false)
         return result.copy(
             originalImage = bitmap,
             annotatedImage = drawAnnotations(bitmap, result, rotateForCamera)
@@ -95,7 +95,7 @@ class YOLO(
      */
     fun predict(imageProxy: ImageProxy): YOLOResult? {
         val bitmap = ImageUtils.toBitmap(imageProxy) ?: return null
-        val result = predictor.predict(bitmap, imageProxy.width, imageProxy.height, rotateForCamera = true)
+        val result = predictor.predict(bitmap, imageProxy.width, imageProxy.height, rotateForCamera = true, isLandscape = false)
         return result.copy(
             originalImage = bitmap,
             annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = true)
@@ -109,7 +109,7 @@ class YOLO(
     fun predict(imageUri: Uri): YOLOResult? {
         try {
             val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, imageUri)
-            val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false)
+            val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false, isLandscape = false)
             return result.copy(
                 originalImage = bitmap,
                 annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false)
@@ -127,7 +127,7 @@ class YOLO(
     suspend fun predict(imageUrl: String): YOLOResult? = withContext(Dispatchers.IO) {
         try {
             val bitmap = BitmapFactory.decodeStream(URL(imageUrl).openStream())
-            val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false)
+            val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false, isLandscape = false)
             return@withContext result.copy(
                 originalImage = bitmap,
                 annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false)

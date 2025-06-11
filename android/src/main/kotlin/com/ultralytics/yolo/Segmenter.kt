@@ -59,8 +59,9 @@ class Segmenter(
         }
     }
 
-    /** ImageProcessor for image preprocessing - one for camera and one for single images */
-    private lateinit var imageProcessorCamera: ImageProcessor
+    /** ImageProcessor for image preprocessing - separate ones for camera portrait/landscape and single images */
+    private lateinit var imageProcessorCameraPortrait: ImageProcessor
+    private lateinit var imageProcessorCameraLandscape: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
     
     // Reuse ByteBuffer for input to reduce allocations
@@ -135,17 +136,24 @@ class Segmenter(
             order(ByteOrder.nativeOrder())
         }
 
-        // Initialize ImageProcessor - both with and without rotation
+        // Initialize ImageProcessor - separate ones for camera portrait/landscape and single images
         
-        // 1. For camera feed (with rotation)
-        imageProcessorCamera = ImageProcessor.Builder()
-            .add(Rot90Op(3)) // Rotate as needed
+        // 1. For camera feed in portrait mode (with rotation)
+        imageProcessorCameraPortrait = ImageProcessor.Builder()
+            .add(Rot90Op(3)) // 270-degree rotation
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))
             .add(CastOp(DataType.FLOAT32))
             .build()
             
-        // 2. For single images (no rotation)
+        // 2. For camera feed in landscape mode (no rotation)
+        imageProcessorCameraLandscape = ImageProcessor.Builder()
+            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
+            .add(NormalizeOp(0f, 255f))
+            .add(CastOp(DataType.FLOAT32))
+            .build()
+            
+        // 3. For single images (no rotation)
         imageProcessorSingleImage = ImageProcessor.Builder()
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))
@@ -153,17 +161,21 @@ class Segmenter(
             .build()
     }
 
-    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
+    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         t0 = System.nanoTime()
 
         // (1) Preprocess with TensorImage
         val tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bitmap)
         
-        // Choose appropriate processor based on whether we're processing camera feed or single image
+        // Choose appropriate processor based on input source and orientation
         val processedImage = if (rotateForCamera) {
-            // Use camera processor (with rotation) for camera feed
-            imageProcessorCamera.process(tensorImage)
+            // Use appropriate camera processor based on device orientation
+            if (isLandscape) {
+                imageProcessorCameraLandscape.process(tensorImage)
+            } else {
+                imageProcessorCameraPortrait.process(tensorImage)
+            }
         } else {
             // Use single image processor (no rotation) for regular images
             imageProcessorSingleImage.process(tensorImage)
@@ -185,7 +197,7 @@ class Segmenter(
             Log.e("Segmenter", "Inference error: ${e.message}")
             val fpsDouble: Double = if (t4 > 0f) (1f / t4).toDouble() else 0.0
             return YOLOResult(
-                origShape = com.ultralytics.yolo.Size(bitmap.width, bitmap.height),
+                origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
                 boxes = emptyList(),
                 speed = t2,
                 fps = fpsDouble,
@@ -229,7 +241,7 @@ class Segmenter(
         val masks = Masks(probMasks ?: emptyList(), combinedMask)
         val fpsDouble: Double = if (t4 > 0f) (1f / t4).toDouble() else 0.0
         return YOLOResult(
-            origShape = com.ultralytics.yolo.Size(bitmap.height, bitmap.width),
+            origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
             masks = masks,
             speed = t2,
