@@ -1189,7 +1189,7 @@ void main() {
       );
 
       final state = key.currentState!;
-      
+
       // Set up the mock handler for the state's method channel
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(state.methodChannel, (
