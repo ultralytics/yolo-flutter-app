@@ -424,6 +424,100 @@ void main() {
     expect(controller.confidenceThreshold, 0.7);
   });
 
+  test('zoomIn calls platform method', () async {
+    final controller = YOLOViewController();
+    const testChannel = MethodChannel('test_channel');
+    
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(testChannel, (methodCall) async {
+          if (methodCall.method == 'zoomIn') {
+            return null;
+          } else if (methodCall.method == 'setThresholds') {
+            return null;
+          }
+          return null;
+        });
+
+    controller.init(testChannel, 1);
+    await controller.zoomIn();
+  });
+
+  test('zoomOut calls platform method', () async {
+    final controller = YOLOViewController();
+    const testChannel = MethodChannel('test_channel');
+    
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(testChannel, (methodCall) async {
+          if (methodCall.method == 'zoomOut') {
+            return null;
+          } else if (methodCall.method == 'setThresholds') {
+            return null;
+          }
+          return null;
+        });
+
+    controller.init(testChannel, 1);
+    await controller.zoomOut();
+  });
+
+  test('setZoomLevel calls platform method', () async {
+    final controller = YOLOViewController();
+    const testChannel = MethodChannel('test_channel');
+    
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(testChannel, (methodCall) async {
+          if (methodCall.method == 'setZoomLevel') {
+            expect(methodCall.arguments['zoomLevel'], 2.0);
+            return null;
+          } else if (methodCall.method == 'setThresholds') {
+            return null;
+          }
+          return null;
+        });
+
+    controller.init(testChannel, 1);
+    await controller.setZoomLevel(2.0);
+  });
+
+  test('stop calls platform method', () async {
+    final controller = YOLOViewController();
+    const testChannel = MethodChannel('test_channel');
+    
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(testChannel, (methodCall) async {
+          if (methodCall.method == 'stop') {
+            return null;
+          } else if (methodCall.method == 'setThresholds') {
+            return null;
+          }
+          return null;
+        });
+
+    controller.init(testChannel, 1);
+    await controller.stop();
+  });
+
+  test('setStreamingConfig calls platform method', () async {
+    final controller = YOLOViewController();
+    const testChannel = MethodChannel('test_channel');
+    
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(testChannel, (methodCall) async {
+          if (methodCall.method == 'setStreamingConfig') {
+            expect(methodCall.arguments['includeDetections'], true);
+            expect(methodCall.arguments['maxFPS'], 15);
+            return null;
+          } else if (methodCall.method == 'setThresholds') {
+            return null;
+          }
+          return null;
+        });
+
+    controller.init(testChannel, 1);
+    final config = YOLOStreamingConfig.throttled(maxFPS: 15);
+    await controller.setStreamingConfig(config);
+  });
+
   test('switchModel applies model switch with valid viewId', () async {
     final controller = YOLOViewController();
     const dummyChannel = MethodChannel('dummy');

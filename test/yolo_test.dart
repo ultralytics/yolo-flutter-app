@@ -115,6 +115,26 @@ void main() {
         throwsA(isA<ModelNotLoadedException>()),
       );
     });
+
+    test('loadModel handles initialization failure', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+              const MethodChannel('yolo_single_image_channel'),
+              (MethodCall methodCall) async {
+        if (methodCall.method == 'setModel') {
+          throw Exception('Initialization failed');
+        }
+        return {'success': true};
+      });
+
+      final yolo = YOLO(modelPath: 'bad_model.tflite', task: YOLOTask.detect);
+      
+      expect(
+        () => yolo.loadModel(),
+        throwsA(isA<ModelLoadingException>()
+            .having((e) => e.message, 'message', contains('Failed to initialize YOLO instance'))),
+      );
+    });
   });
   group('YOLOTask', () {
     test('All task types can be converted to string', () {
@@ -267,6 +287,102 @@ void main() {
     expect(
       () => yolo.switchModel('other_model.tflite', YOLOTask.detect),
       throwsA(isA<StateError>()),
+    );
+  });
+
+  test('switchModel handles MODEL_NOT_FOUND error', () async {
+    final yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
+    yolo.setViewId(1);
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('yolo_single_image_channel'),
+            (MethodCall methodCall) async {
+      if (methodCall.method == 'setModel') {
+        throw PlatformException(
+          code: 'MODEL_NOT_FOUND',
+          message: 'Model not found',
+        );
+      }
+      return {'success': true};
+    });
+
+    expect(
+      () => yolo.switchModel('missing.tflite', YOLOTask.detect),
+      throwsA(isA<ModelLoadingException>()
+          .having((e) => e.message, 'message', contains('Model file not found'))),
+    );
+  });
+
+  test('switchModel handles INVALID_MODEL error', () async {
+    final yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
+    yolo.setViewId(1);
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('yolo_single_image_channel'),
+            (MethodCall methodCall) async {
+      if (methodCall.method == 'setModel') {
+        throw PlatformException(
+          code: 'INVALID_MODEL',
+          message: 'Invalid model',
+        );
+      }
+      return {'success': true};
+    });
+
+    expect(
+      () => yolo.switchModel('invalid.tflite', YOLOTask.detect),
+      throwsA(isA<ModelLoadingException>()
+          .having((e) => e.message, 'message', contains('Invalid model format'))),
+    );
+  });
+
+  test('switchModel handles UNSUPPORTED_TASK error', () async {
+    final yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
+    yolo.setViewId(1);
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('yolo_single_image_channel'),
+            (MethodCall methodCall) async {
+      if (methodCall.method == 'setModel') {
+        throw PlatformException(
+          code: 'UNSUPPORTED_TASK',
+          message: 'Unsupported task',
+        );
+      }
+      return {'success': true};
+    });
+
+    expect(
+      () => yolo.switchModel('model.tflite', YOLOTask.pose),
+      throwsA(isA<ModelLoadingException>()
+          .having((e) => e.message, 'message', contains('Unsupported task type'))),
+    );
+  });
+
+  test('switchModel handles generic platform error', () async {
+    final yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
+    yolo.setViewId(1);
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('yolo_single_image_channel'),
+            (MethodCall methodCall) async {
+      if (methodCall.method == 'setModel') {
+        throw PlatformException(
+          code: 'UNKNOWN_ERROR',
+          message: 'Something went wrong',
+        );
+      }
+      return {'success': true};
+    });
+
+    expect(
+      () => yolo.switchModel('model.tflite', YOLOTask.detect),
+      throwsA(isA<ModelLoadingException>()
+          .having((e) => e.message, 'message', contains('Failed to switch model'))),
     );
   });
 
