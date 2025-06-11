@@ -217,6 +217,28 @@ class YOLOPlatformView(
                         result.error("stop_error", "Error stopping YOLOView: ${e.message}", null)
                     }
                 }
+                "setModel" -> {
+                    val modelPath = call.argument<String>("modelPath")
+                    val taskString = call.argument<String>("task")
+                    
+                    if (modelPath == null || taskString == null) {
+                        result.error("invalid_args", "modelPath and task are required", null)
+                        return
+                    }
+                    
+                    val task = YOLOTask.valueOf(taskString.uppercase())
+                    Log.d(TAG, "Received setModel call with modelPath: $modelPath, task: $task")
+                    
+                    yoloView.setModel(modelPath, task) { success ->
+                        if (success) {
+                            Log.d(TAG, "Model switched successfully")
+                            result.success(null)
+                        } else {
+                            Log.e(TAG, "Failed to switch model")
+                            result.error("MODEL_NOT_FOUND", "Failed to load model: $modelPath", null)
+                        }
+                    }
+                }
                 else -> {
                     Log.w(TAG, "Method not implemented: ${call.method}")
                     result.notImplemented()
