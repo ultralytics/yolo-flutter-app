@@ -312,6 +312,30 @@ Switch between front and back camera.
 Future<void> switchCamera()
 ```
 
+##### `switchModel()`
+
+Dynamically switch to a different model without restarting the camera.
+
+```dart
+Future<void> switchModel(String modelPath, YOLOTask task)
+```
+
+Parameters:
+- `modelPath`: Path to the new model file
+- `task`: The YOLO task type for the new model
+
+Example:
+```dart
+// Switch to a different model
+await controller.switchModel('yolo11s', YOLOTask.detect);
+
+// Platform-specific paths
+await controller.switchModel(
+  Platform.isIOS ? 'yolo11s' : 'yolo11s.tflite',
+  YOLOTask.detect,
+);
+```
+
 ##### `setStreamingConfig()`
 
 Configure streaming behavior.

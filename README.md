@@ -30,6 +30,7 @@ Welcome to the Ultralytics YOLO Flutter plugin! Integrate cutting-edge [Ultralyt
 - **5 AI Tasks** - Detection, Segmentation, Classification, Pose, OBB
 - **Cross-platform** - iOS & Android with single codebase
 - **Production Ready** - Performance controls & optimization built-in
+- **Dynamic Model Loading** - Switch models on-the-fly without restarting camera
 
 ## ⚡ Quick Start (2 minutes)
 
