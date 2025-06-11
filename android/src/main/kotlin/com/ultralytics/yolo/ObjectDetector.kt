@@ -46,8 +46,9 @@ class ObjectDetector(
     // Inference output dimensions
     private var out1 = 0
     private var out2 = 0
-    // Two image processors: one for camera feed (with rotation) and one for single images (no rotation)
-    private lateinit var imageProcessorCamera: ImageProcessor
+    // Three image processors: camera portrait, camera landscape, and single images
+    private lateinit var imageProcessorCameraPortrait: ImageProcessor
+    private lateinit var imageProcessorCameraLandscape: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
 
 
@@ -154,17 +155,24 @@ class ObjectDetector(
         rawOutput = Array(1) { Array(out1) { FloatArray(out2) } }
         predictions = Array(out2) { FloatArray(out1) }
         
-        // Initialize two image processors:
+        // Initialize three image processors:
         
-        // 1. For camera feed - includes 90-degree rotation
-        imageProcessorCamera = ImageProcessor.Builder()
+        // 1. For camera feed in portrait mode - includes 270-degree rotation
+        imageProcessorCameraPortrait = ImageProcessor.Builder()
             .add(Rot90Op(3))  // 270-degree rotation (3 * 90 degrees)
             .add(ResizeOp(inputSize.height, inputSize.width, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
             .add(CastOp(INPUT_IMAGE_TYPE))
             .build()
             
-        // 2. For single images - no rotation needed
+        // 2. For camera feed in landscape mode - no rotation needed
+        imageProcessorCameraLandscape = ImageProcessor.Builder()
+            .add(ResizeOp(inputSize.height, inputSize.width, ResizeOp.ResizeMethod.BILINEAR))
+            .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+            .add(CastOp(INPUT_IMAGE_TYPE))
+            .build()
+            
+        // 3. For single images - no rotation needed
         imageProcessorSingleImage = ImageProcessor.Builder()
             .add(ResizeOp(inputSize.height, inputSize.width, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
@@ -246,7 +254,7 @@ class ObjectDetector(
      * @param rotateForCamera Whether this is a camera feed that requires rotation (true) or a single image (false)
      * @return YOLOResult containing detection results
      */
-    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
+    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         val overallStartTime = System.nanoTime()
         var stageStartTime = System.nanoTime()
 
@@ -265,8 +273,12 @@ class ObjectDetector(
         inputBuffer.clear()
         
         val processedImage = if (rotateForCamera) {
-            // Use camera processor (with rotation) for camera feed
-            imageProcessorCamera.process(tensorImage)
+            // Use appropriate camera processor based on orientation
+            if (isLandscape) {
+                imageProcessorCameraLandscape.process(tensorImage)
+            } else {
+                imageProcessorCameraPortrait.process(tensorImage)
+            }
         } else {
             // Use single image processor (no rotation) for regular images
             imageProcessorSingleImage.process(tensorImage)
@@ -358,7 +370,7 @@ class ObjectDetector(
         updateTiming() // This updates t0, t1, t2, t3, t4 based on its own logic
 
         return YOLOResult(
-            origShape = com.ultralytics.yolo.Size(bitmap.height, bitmap.width),
+            origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
             speed = totalMs, // Actual processing time in milliseconds for this frame
             fps = if (t4 > 0.0) 1.0 / t4 else 0.0, // Smoothed FPS from BasePredictor (t4 is smoothed dt)

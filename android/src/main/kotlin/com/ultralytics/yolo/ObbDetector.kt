@@ -49,8 +49,9 @@ class ObbDetector(
         }
     }
 
-    // Similar to PoseEstimator, use ImageProcessor - one for camera and one for single images
-    private lateinit var imageProcessorCamera: ImageProcessor
+    // Similar to PoseEstimator, use ImageProcessor - separate ones for camera portrait/landscape and single images
+    private lateinit var imageProcessorCameraPortrait: ImageProcessor
+    private lateinit var imageProcessorCameraLandscape: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
     
     // Reuse ByteBuffer for input to reduce allocations
@@ -123,9 +124,16 @@ class ObbDetector(
         }
 
         
-        // For camera feed (with rotation)
-        imageProcessorCamera = ImageProcessor.Builder()
-            .add(Rot90Op(3))
+        // For camera feed in portrait mode (with rotation)
+        imageProcessorCameraPortrait = ImageProcessor.Builder()
+            .add(Rot90Op(3))  // 270-degree rotation
+            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
+            .add(NormalizeOp(0f, 255f))  // Normalize to 0~1
+            .add(CastOp(DataType.FLOAT32))
+            .build()
+            
+        // For camera feed in landscape mode (no rotation)
+        imageProcessorCameraLandscape = ImageProcessor.Builder()
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))  // Normalize to 0~1
             .add(CastOp(DataType.FLOAT32))
@@ -139,16 +147,20 @@ class ObbDetector(
             .build()
     }
 
-    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
+    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         t0 = System.nanoTime()
 
         val tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bitmap)
         
-        // Choose appropriate processor based on input source
+        // Choose appropriate processor based on input source and orientation
         val processedImage = if (rotateForCamera) {
-            // Apply rotation for camera feed
-            imageProcessorCamera.process(tensorImage)
+            // Apply appropriate rotation based on device orientation
+            if (isLandscape) {
+                imageProcessorCameraLandscape.process(tensorImage)
+            } else {
+                imageProcessorCameraPortrait.process(tensorImage)
+            }
         } else {
             // No rotation for single image
             imageProcessorSingleImage.process(tensorImage)
@@ -176,7 +188,7 @@ class ObbDetector(
         val annotatedImage = drawOBBsOnBitmap(bitmap, obbDetections)
 
         return YOLOResult(
-            origShape = Size(bitmap.height, bitmap.width),
+            origShape = Size(origWidth, origHeight),
             obb = obbDetections,
             annotatedImage = annotatedImage,
             speed = t2,

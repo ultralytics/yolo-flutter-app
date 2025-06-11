@@ -99,7 +99,8 @@ class PoseEstimator(
         }
     }
 
-    private lateinit var imageProcessorCamera: ImageProcessor
+    private lateinit var imageProcessorCameraPortrait: ImageProcessor
+    private lateinit var imageProcessorCameraLandscape: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
     
     // Reuse ByteBuffer for input to reduce allocations
@@ -167,8 +168,16 @@ class PoseEstimator(
         }
         Log.d("PoseEstimator", "Direct ByteBuffer allocated with native ordering: $inputBytes bytes")
         
-        imageProcessorCamera = ImageProcessor.Builder()
-            .add(Rot90Op(3))
+        // For camera feed in portrait mode (with rotation)
+        imageProcessorCameraPortrait = ImageProcessor.Builder()
+            .add(Rot90Op(3))  // 270-degree rotation
+            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
+            .add(NormalizeOp(0f, 255f))
+            .add(CastOp(DataType.FLOAT32))
+            .build()
+            
+        // For camera feed in landscape mode (no rotation)
+        imageProcessorCameraLandscape = ImageProcessor.Builder()
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))
             .add(CastOp(DataType.FLOAT32))
@@ -182,15 +191,19 @@ class PoseEstimator(
             .build()
     }
 
-    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
+    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         t0 = System.nanoTime()
         val tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bitmap)
         
-        // Choose the appropriate processor based on input source
+        // Choose the appropriate processor based on input source and orientation
         val processedImage = if (rotateForCamera) {
-            // Apply rotation for camera feed
-            imageProcessorCamera.process(tensorImage)
+            // Apply appropriate rotation based on device orientation
+            if (isLandscape) {
+                imageProcessorCameraLandscape.process(tensorImage)
+            } else {
+                imageProcessorCameraPortrait.process(tensorImage)
+            }
         } else {
             // No rotation for single image
             imageProcessorSingleImage.process(tensorImage)
@@ -221,7 +234,7 @@ class PoseEstimator(
         val fpsDouble: Double = if (t4 > 0) (1.0 / t4) else 0.0
         // Pack into YOLOResult and return
         return YOLOResult(
-            origShape = com.ultralytics.yolo.Size(bitmap.height, bitmap.width),
+            origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
             keypointsList = keypointsList,
 //            annotatedImage = annotatedImage,

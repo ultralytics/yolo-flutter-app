@@ -30,6 +30,7 @@ import android.widget.TextView
 import android.view.Gravity
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
+import android.content.res.Configuration
 
 class YOLOView @JvmOverloads constructor(
     context: Context,
@@ -538,7 +539,11 @@ class YOLOView @JvmOverloads constructor(
     private fun onFrame(imageProxy: ImageProxy) {
         val w = imageProxy.width
         val h = imageProxy.height
-        Log.d(TAG, "Processing frame: ${w}x${h}")
+        val orientation = context.resources.configuration.orientation
+        val isLandscapeDevice = orientation == Configuration.ORIENTATION_LANDSCAPE
+        Log.d(TAG, "=== onFrame Debug ===")
+        Log.d(TAG, "ImageProxy size: ${w}x${h}")
+        Log.d(TAG, "Device orientation: ${if (isLandscapeDevice) "LANDSCAPE" else "PORTRAIT"}")
 
         val bitmap = ImageUtils.toBitmap(imageProxy) ?: run {
             Log.e(TAG, "Failed to convert ImageProxy to Bitmap")
@@ -555,8 +560,18 @@ class YOLOView @JvmOverloads constructor(
             }
             
             try {
+                // Get device orientation
+                val orientation = context.resources.configuration.orientation
+                val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
+                
                 // For camera feed, we typically rotate the bitmap
-                val result = p.predict(bitmap, h, w, rotateForCamera = true)
+                // In landscape mode, we don't rotate, so width/height should match actual bitmap dimensions
+                val result = if (isLandscape) {
+                    p.predict(bitmap, w, h, rotateForCamera = true, isLandscape = isLandscape)
+                } else {
+                    // In portrait mode, keep the original behavior (h, w)
+                    p.predict(bitmap, h, w, rotateForCamera = true, isLandscape = isLandscape)
+                }
                 
                 // Apply originalImage if streaming config requires it
                 val resultWithOriginalImage = if (streamConfig?.includeOriginalImage == true) {
@@ -642,12 +657,18 @@ class YOLOView @JvmOverloads constructor(
             val vw = width.toFloat()
             val vh = height.toFloat()
             
-            Log.d(TAG, "OverlayView dimensions: View(${vw}x${vh}), Image(${iw}x${ih})")
+            // Get device orientation for debugging
+            val orientation = context.resources.configuration.orientation
+            val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
+            
+            Log.d(TAG, "OverlayView dimensions: View(${vw}x${vh}), Image(${iw}x${ih}), isLandscape=$isLandscape")
 
             // Scale factor from camera image to view
             val scaleX = vw / iw
             val scaleY = vh / ih
             val scale = max(scaleX, scaleY)
+            
+            Log.d(TAG, "Scale factors: scaleX=$scaleX, scaleY=$scaleY, chosen scale=$scale")
 
             val scaledW = iw * scale
             val scaledH = ih * scale
@@ -666,7 +687,15 @@ class YOLOView @JvmOverloads constructor(
                 // ----------------------------------------
                 YOLOTask.DETECT -> {
                     Log.d(TAG, "Drawing DETECT boxes: ${result.boxes.size}")
-                    val isLandscape = vw > vh
+                    
+                    // Debug first box coordinates
+                    if (result.boxes.isNotEmpty()) {
+                        val firstBox = result.boxes[0]
+                        Log.d(TAG, "=== First Box Debug ===")
+                        Log.d(TAG, "Box normalized coords: (${firstBox.xywhn.left}, ${firstBox.xywhn.top}, ${firstBox.xywhn.right}, ${firstBox.xywhn.bottom})")
+                        Log.d(TAG, "Box pixel coords: (${firstBox.xywh.left}, ${firstBox.xywh.top}, ${firstBox.xywh.right}, ${firstBox.xywh.bottom})")
+                    }
+                    
                     for (box in result.boxes) {
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
                         val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
@@ -677,33 +706,12 @@ class YOLOView @JvmOverloads constructor(
                             Color.blue(baseColor)
                         )
 
-                        var left: Float
-                        var top: Float
-                        var right: Float
-                        var bottom: Float
-
-                        if (isLandscape) {
-                            // Swap image width/height for scaling
-                            val scaleX = vw / ih
-                            val scaleY = vh / iw
-                            val scale = Math.max(scaleX, scaleY)
-                            val scaledW = ih * scale
-                            val scaledH = iw * scale
-                            val dx = (vw - scaledW) / 2f
-                            val dy = (vh - scaledH) / 2f
-
-                            // Swap and flip coordinates for landscape
-                            left = box.xywh.top * scale + dx
-                            top = (iw - box.xywh.right) * scale + dy
-                            right = box.xywh.bottom * scale + dx
-                            bottom = (iw - box.xywh.left) * scale + dy
-                        } else {
-                            // Portrait (original logic)
-                            left = box.xywh.left * scale + dx
-                            top = box.xywh.top * scale + dy
-                            right = box.xywh.right * scale + dx
-                            bottom = box.xywh.bottom * scale + dy
-                        }
+                        // Use same coordinate calculation for all orientations
+                        // since the image is now correctly oriented before inference
+                        var left = box.xywh.left * scale + dx
+                        var top = box.xywh.top * scale + dy
+                        var right = box.xywh.right * scale + dx
+                        var bottom = box.xywh.bottom * scale + dy
                         
                         // Ensure coordinates are within view bounds and maintain aspect ratio
                         val boxWidth = right - left
