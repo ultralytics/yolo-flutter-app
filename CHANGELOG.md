@@ -1,4 +1,4 @@
-## 0.2.0
+## 0.1.25
 
 - **Breaking**: None - fully backward compatible
 - **New Feature**: Enable camera preview without valid model path

@@ -287,7 +287,7 @@ await controller.switchModel(modelPath, YOLOTask.detect);
 - Model loading failed silently
 - Invalid model format
 
-**Solution**: As of version 0.2.0, the plugin supports camera-only mode. If model loading fails, camera will continue without inference. Check logs for model loading errors:
+**Solution**: As of version 0.1.25, the plugin supports camera-only mode. If model loading fails, camera will continue without inference. Check logs for model loading errors:
 ```
 iOS: "YOLOView Warning: Model file not found"
 Android: "Failed to load model: [path]. Camera will run without inference."
@@ -649,7 +649,7 @@ class DebugProfiler {
 Future<Map<String, dynamic>> collectDebugInfo() async {
   return {
     'flutter_version': 'Run: flutter --version',
-    'plugin_version': '0.2.0',
+    'plugin_version': '0.1.25',
     'platform': Platform.isIOS ? 'iOS' : 'Android',
     'model_path': 'yolo11n',
     'model_exists': await YOLO.checkModelExists('yolo11n'),

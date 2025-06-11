@@ -239,7 +239,7 @@ YOLOView(
   },
 )
 
-// Camera-only mode (v0.2.0+): starts even with invalid model path
+// Camera-only mode (v0.1.25+): starts even with invalid model path
 YOLOView(
   modelPath: 'model_not_yet_downloaded.tflite',  // Model doesn't exist yet
   task: YOLOTask.detect,
@@ -342,7 +342,7 @@ Parameters:
 **Throws**:
 - `PlatformException` - If model file cannot be found or loaded
 
-**Note**: As of v0.2.0, YOLOView can start with an invalid model path (camera-only mode). Use this method to load a valid model later.
+**Note**: As of v0.1.25, YOLOView can start with an invalid model path (camera-only mode). Use this method to load a valid model later.
 
 Example:
 ```dart
