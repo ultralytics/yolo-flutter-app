@@ -426,16 +426,22 @@ void main() {
 
   test('switchModel applies model switch with valid viewId', () async {
     final controller = YOLOViewController();
-    const modelChannel = MethodChannel('yolo_single_image_channel');
+    const dummyChannel = MethodChannel('dummy');
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(modelChannel, (methodCall) async {
-          expect(methodCall.method, 'setModel');
-          expect(methodCall.arguments['modelPath'], 'my_model.tflite');
+        .setMockMethodCallHandler(dummyChannel, (methodCall) async {
+          if (methodCall.method == 'setModel') {
+            expect(methodCall.arguments['modelPath'], 'my_model.tflite');
+            expect(methodCall.arguments['task'], 'detect');
+            return null;
+          } else if (methodCall.method == 'setThresholds') {
+            // Mock setThresholds which is called during init
+            return null;
+          }
           return null;
         });
 
-    controller.init(const MethodChannel('dummy'), 42);
+    controller.init(dummyChannel, 42);
     await controller.switchModel('my_model.tflite', YOLOTask.detect);
   });
 
