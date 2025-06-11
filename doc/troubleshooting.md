@@ -250,6 +250,7 @@ class MemoryAwareYOLO {
 **Solutions**:
 
 1. **Verify model path**:
+
 ```dart
 // iOS: Use model name without extension or with .mlpackage
 await controller.switchModel('yolo11n', YOLOTask.detect);
@@ -261,6 +262,7 @@ await controller.switchModel('yolo11n.tflite', YOLOTask.detect);
 ```
 
 2. **Check model availability**:
+
 ```dart
 try {
   await controller.switchModel(modelPath, task);
@@ -271,6 +273,7 @@ try {
 ```
 
 3. **Platform-specific paths**:
+
 ```dart
 import 'dart:io' show Platform;
 
@@ -283,11 +286,13 @@ await controller.switchModel(modelPath, YOLOTask.detect);
 **Problem**: YOLOView shows camera but no detection results.
 
 **Possible causes**:
+
 - Model file doesn't exist at specified path
 - Model loading failed silently
 - Invalid model format
 
 **Solution**: As of version 0.1.25, the plugin supports camera-only mode. If model loading fails, camera will continue without inference. Check logs for model loading errors:
+
 ```
 iOS: "YOLOView Warning: Model file not found"
 Android: "Failed to load model: [path]. Camera will run without inference."

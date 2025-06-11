@@ -211,18 +211,18 @@ class YOLOView extends StatefulWidget {
 
 #### Constructor Parameters
 
-| Parameter              | Type                                | Required | Default  | Description                      |
-| ---------------------- | ----------------------------------- | -------- | -------- | -------------------------------- |
+| Parameter              | Type                                | Required | Default  | Description                                             |
+| ---------------------- | ----------------------------------- | -------- | -------- | ------------------------------------------------------- |
 | `modelPath`            | `String`                            | ✅       | -        | Path to YOLO model file (camera starts even if invalid) |
-| `task`                 | `YOLOTask`                          | ✅       | -        | YOLO task type                   |
-| `controller`           | `YOLOViewController?`               | ❌       | `null`   | Custom view controller           |
-| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`   | Detection results callback       |
-| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`   | Performance metrics callback     |
-| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`   | Comprehensive streaming callback |
-| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`   | Zoom level change callback       |
-| `cameraResolution`     | `String`                            | ❌       | `"720p"` | Camera resolution                |
-| `showNativeUI`         | `bool`                              | ❌       | `true`   | Show native camera UI            |
-| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`   | Streaming configuration          |
+| `task`                 | `YOLOTask`                          | ✅       | -        | YOLO task type                                          |
+| `controller`           | `YOLOViewController?`               | ❌       | `null`   | Custom view controller                                  |
+| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`   | Detection results callback                              |
+| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`   | Performance metrics callback                            |
+| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`   | Comprehensive streaming callback                        |
+| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`   | Zoom level change callback                              |
+| `cameraResolution`     | `String`                            | ❌       | `"720p"` | Camera resolution                                       |
+| `showNativeUI`         | `bool`                              | ❌       | `true`   | Show native camera UI                                   |
+| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`   | Streaming configuration                                 |
 
 #### Example
 
@@ -336,15 +336,18 @@ Future<void> switchModel(String modelPath, YOLOTask task)
 ```
 
 Parameters:
+
 - `modelPath`: Path to the new model file
 - `task`: The YOLO task type for the new model
 
 **Throws**:
+
 - `PlatformException` - If model file cannot be found or loaded
 
 **Note**: As of v0.1.25, YOLOView can start with an invalid model path (camera-only mode). Use this method to load a valid model later.
 
 Example:
+
 ```dart
 // Switch to a different model
 await controller.switchModel('yolo11s', YOLOTask.detect);

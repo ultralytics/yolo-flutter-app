@@ -349,8 +349,10 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           let taskString = args["task"] as? String
         {
           let task = YOLOTask.fromString(taskString)
-          print("SwiftYOLOPlatformView: Received setModel call with modelPath: \(modelPath), task: \(taskString)")
-          
+          print(
+            "SwiftYOLOPlatformView: Received setModel call with modelPath: \(modelPath), task: \(taskString)"
+          )
+
           // Use YOLOView's setModel method to switch the model
           self.yoloView?.setModel(modelPathOrName: modelPath, task: task) { modelResult in
             switch modelResult {

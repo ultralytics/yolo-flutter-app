@@ -398,10 +398,10 @@ class YOLOViewController {
       logInfo('YoloViewController: Switching model with viewId: $_viewId');
 
       // Call the platform method on the view's specific method channel
-      await _methodChannel!.invokeMethod(
-        'setModel',
-        {'modelPath': modelPath, 'task': task.name},
-      );
+      await _methodChannel!.invokeMethod('setModel', {
+        'modelPath': modelPath,
+        'task': task.name,
+      });
 
       logInfo(
         'YoloViewController: Model switched successfully to $modelPath with task ${task.name}',

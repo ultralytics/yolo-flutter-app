@@ -488,7 +488,7 @@ class _DynamicModelExampleState extends State<DynamicModelExample> {
               print('Detected ${results.length} objects');
             },
           ),
-          
+
           // Model switching UI
           Positioned(
             bottom: 50,
@@ -516,22 +516,22 @@ class _DynamicModelExampleState extends State<DynamicModelExample> {
       ),
     );
   }
-  
+
   Future<void> switchToModel(String modelName) async {
     setState(() => isLoading = true);
-    
+
     try {
       // Switch model without restarting camera
       await controller.switchModel(
         Platform.isIOS ? modelName : '$modelName.tflite',
         YOLOTask.detect,
       );
-      
+
       setState(() {
         currentModel = modelName;
         isLoading = false;
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Switched to $modelName')),
       );
@@ -568,13 +568,13 @@ class _DeferredModelLoadingExampleState extends State<DeferredModelLoadingExampl
   Future<void> downloadAndLoadModel() async {
     // Simulate model download
     await Future.delayed(Duration(seconds: 3));
-    
+
     // Load model after download completes
     await controller.switchModel(
       'downloaded_model.tflite',
       YOLOTask.detect,
     );
-    
+
     setState(() => isModelReady = true);
   }
 
@@ -592,7 +592,7 @@ class _DeferredModelLoadingExampleState extends State<DeferredModelLoadingExampl
             print('Detection active: ${results.length} objects');
           },
         ),
-        
+
         if (!isModelReady)
           Center(
             child: Container(
