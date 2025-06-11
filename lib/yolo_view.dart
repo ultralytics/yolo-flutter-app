@@ -397,11 +397,11 @@ class YOLOViewController {
     try {
       logInfo('YoloViewController: Switching model with viewId: $_viewId');
 
-      // Call the platform method to switch model using numeric viewId
-      await const MethodChannel('yolo_single_image_channel').invokeMethod(
-        'setModel',
-        {'viewId': _viewId, 'modelPath': modelPath, 'task': task.name},
-      );
+      // Call the platform method on the view's specific method channel
+      await _methodChannel!.invokeMethod('setModel', {
+        'modelPath': modelPath,
+        'task': task.name,
+      });
 
       logInfo(
         'YoloViewController: Model switched successfully to $modelPath with task ${task.name}',

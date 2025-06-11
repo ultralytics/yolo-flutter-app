@@ -266,8 +266,16 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
 
     guard let unwrappedModelURL = modelURL else {
-      let error = PredictorError.modelFileNotFound
-      fatalError(error.localizedDescription)
+      // Model not found - allow camera preview without inference
+      print(
+        "YOLOView Warning: Model file not found: \(modelPathOrName). Camera will run without inference."
+      )
+      self.videoCapture.predictor = nil
+      self.activityIndicator.stopAnimating()
+      self.labelName.text = "No Model"
+      // Call completion with success to allow camera to start
+      completion?(.success(()))
+      return
     }
 
     modelName = unwrappedModelURL.deletingPathExtension().lastPathComponent

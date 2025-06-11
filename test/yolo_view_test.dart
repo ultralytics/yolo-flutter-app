@@ -426,16 +426,22 @@ void main() {
 
   test('switchModel applies model switch with valid viewId', () async {
     final controller = YOLOViewController();
-    const modelChannel = MethodChannel('yolo_single_image_channel');
+    const dummyChannel = MethodChannel('dummy');
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(modelChannel, (methodCall) async {
-          expect(methodCall.method, 'setModel');
-          expect(methodCall.arguments['modelPath'], 'my_model.tflite');
+        .setMockMethodCallHandler(dummyChannel, (methodCall) async {
+          if (methodCall.method == 'setModel') {
+            expect(methodCall.arguments['modelPath'], 'my_model.tflite');
+            expect(methodCall.arguments['task'], 'detect');
+            return null;
+          } else if (methodCall.method == 'setThresholds') {
+            // Mock setThresholds which is called during init
+            return null;
+          }
           return null;
         });
 
-    controller.init(const MethodChannel('dummy'), 42);
+    controller.init(dummyChannel, 42);
     await controller.switchModel('my_model.tflite', YOLOTask.detect);
   });
 
@@ -1174,18 +1180,7 @@ void main() {
     testWidgets('model/task changes trigger switchModel', (tester) async {
       final key = GlobalKey<YOLOViewState>();
       final controller = YOLOViewController();
-
-      // Mock the method channel for switchModel
-      const methodChannel = MethodChannel('yolo_single_image_channel');
       final List<MethodCall> log = [];
-
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (
-            MethodCall methodCall,
-          ) async {
-            log.add(methodCall);
-            return null;
-          });
 
       // Initial widget
       await tester.pumpWidget(
@@ -1200,7 +1195,20 @@ void main() {
       );
 
       final state = key.currentState!;
+
+      // Set up the mock handler for the state's method channel
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(state.methodChannel, (
+            MethodCall methodCall,
+          ) async {
+            log.add(methodCall);
+            return null;
+          });
+
       state.triggerPlatformViewCreated(1);
+
+      // Clear any initialization calls
+      log.clear();
 
       // Update widget with different model
       await tester.pumpWidget(

@@ -241,6 +241,83 @@ class MemoryAwareYOLO {
 }
 ```
 
+### Model Loading Issues
+
+#### Model Not Loading After switchModel()
+
+**Problem**: Calling `controller.switchModel()` doesn't seem to work.
+
+**Solutions**:
+
+1. **Verify model path**:
+
+```dart
+// iOS: Use model name without extension or with .mlpackage
+await controller.switchModel('yolo11n', YOLOTask.detect);
+// or
+await controller.switchModel('yolo11n.mlpackage', YOLOTask.detect);
+
+// Android: Use full filename with .tflite extension
+await controller.switchModel('yolo11n.tflite', YOLOTask.detect);
+```
+
+2. **Check model availability**:
+
+```dart
+try {
+  await controller.switchModel(modelPath, task);
+} catch (e) {
+  print('Model switch failed: $e');
+  // Model file might not exist or be in wrong location
+}
+```
+
+3. **Platform-specific paths**:
+
+```dart
+import 'dart:io' show Platform;
+
+final modelPath = Platform.isIOS ? 'yolo11n' : 'yolo11n.tflite';
+await controller.switchModel(modelPath, YOLOTask.detect);
+```
+
+#### Camera Starts But No Detections
+
+**Problem**: YOLOView shows camera but no detection results.
+
+**Possible causes**:
+
+- Model file doesn't exist at specified path
+- Model loading failed silently
+- Invalid model format
+
+**Solution**: As of version 0.1.25, the plugin supports camera-only mode. If model loading fails, camera will continue without inference. Check logs for model loading errors:
+
+```
+iOS: "YOLOView Warning: Model file not found"
+Android: "Failed to load model: [path]. Camera will run without inference."
+```
+
+This is now an intentional feature - you can start YOLOView with an invalid model path and load a valid model later using `switchModel()`:
+
+```dart
+final controller = YOLOViewController();
+
+// Start with camera-only mode (model doesn't exist yet)
+YOLOView(
+  modelPath: 'model_downloading.tflite',  // Not available yet
+  task: YOLOTask.detect,
+  controller: controller,
+  onResult: (results) {
+    // Will receive empty results until model is loaded
+    print('Detections: ${results.length}');
+  },
+)
+
+// Later, when model is downloaded
+await controller.switchModel('yolo11n', YOLOTask.detect);
+```
+
 ### Performance Issues
 
 #### Low FPS / Slow Inference
@@ -577,7 +654,7 @@ class DebugProfiler {
 Future<Map<String, dynamic>> collectDebugInfo() async {
   return {
     'flutter_version': 'Run: flutter --version',
-    'plugin_version': '0.1.18',
+    'plugin_version': '0.1.25',
     'platform': Platform.isIOS ? 'iOS' : 'Android',
     'model_path': 'yolo11n',
     'model_exists': await YOLO.checkModelExists('yolo11n'),

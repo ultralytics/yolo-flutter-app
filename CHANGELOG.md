@@ -1,3 +1,15 @@
+## 0.1.25
+
+- **Breaking**: None - fully backward compatible
+- **New Feature**: Enable camera preview without valid model path
+  - YOLOView now starts with camera-only mode when model is unavailable
+  - Graceful error handling instead of crashes on both iOS and Android
+- **New Feature**: Add dynamic model switching via `switchModel()` method
+  - Switch between different models without restarting camera
+  - Enables progressive model loading and A/B testing scenarios
+- **Enhancement**: Improved error messages and logging for model loading failures
+- **Documentation**: Added comprehensive examples for new features
+
 ## 0.1.24
 
 - Fix Android landscape orientation coordinate mapping issue

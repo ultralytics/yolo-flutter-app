@@ -90,8 +90,9 @@ class YOLOPlatformView(
                     // Mark that the full initialization sequence (including model load) is complete.
                     initialized = true
                 } else {
-                    Log.e(TAG, "Failed to load model: $modelPath")
-                    // initialized remains false, or handle error state appropriately
+                    Log.w(TAG, "Failed to load model: $modelPath. Camera will run without inference.")
+                    // Still mark as initialized since camera can work without model
+                    initialized = true
                 }
             }
             
@@ -214,6 +215,28 @@ class YOLOPlatformView(
                     } catch (e: Exception) {
                         Log.e(TAG, "Error stopping YOLOView via method call", e)
                         result.error("stop_error", "Error stopping YOLOView: ${e.message}", null)
+                    }
+                }
+                "setModel" -> {
+                    val modelPath = call.argument<String>("modelPath")
+                    val taskString = call.argument<String>("task")
+                    
+                    if (modelPath == null || taskString == null) {
+                        result.error("invalid_args", "modelPath and task are required", null)
+                        return
+                    }
+                    
+                    val task = YOLOTask.valueOf(taskString.uppercase())
+                    Log.d(TAG, "Received setModel call with modelPath: $modelPath, task: $task")
+                    
+                    yoloView.setModel(modelPath, task) { success ->
+                        if (success) {
+                            Log.d(TAG, "Model switched successfully")
+                            result.success(null)
+                        } else {
+                            Log.e(TAG, "Failed to switch model")
+                            result.error("MODEL_NOT_FOUND", "Failed to load model: $modelPath", null)
+                        }
                     }
                 }
                 else -> {

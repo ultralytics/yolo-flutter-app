@@ -342,6 +342,40 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         self.stopCamera()
         result(nil)  // Success
 
+      case "setModel":
+        // Method to dynamically switch models
+        if let args = call.arguments as? [String: Any],
+          let modelPath = args["modelPath"] as? String,
+          let taskString = args["task"] as? String
+        {
+          let task = YOLOTask.fromString(taskString)
+          print(
+            "SwiftYOLOPlatformView: Received setModel call with modelPath: \(modelPath), task: \(taskString)"
+          )
+
+          // Use YOLOView's setModel method to switch the model
+          self.yoloView?.setModel(modelPathOrName: modelPath, task: task) { modelResult in
+            switch modelResult {
+            case .success:
+              print("SwiftYOLOPlatformView: Model switched successfully")
+              result(nil)  // Success
+            case .failure(let error):
+              print("SwiftYOLOPlatformView: Failed to switch model: \(error.localizedDescription)")
+              result(
+                FlutterError(
+                  code: "MODEL_NOT_FOUND",
+                  message: "Failed to load model: \(modelPath) - \(error.localizedDescription)",
+                  details: nil
+                )
+              )
+            }
+          }
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for setModel", details: nil))
+        }
+
       // Additional methods can be added here in the future
 
       default:
