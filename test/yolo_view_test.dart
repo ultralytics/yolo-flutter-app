@@ -1174,18 +1174,7 @@ void main() {
     testWidgets('model/task changes trigger switchModel', (tester) async {
       final key = GlobalKey<YOLOViewState>();
       final controller = YOLOViewController();
-
-      // Mock the method channel for switchModel
-      const methodChannel = MethodChannel('yolo_single_image_channel');
       final List<MethodCall> log = [];
-
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(methodChannel, (
-            MethodCall methodCall,
-          ) async {
-            log.add(methodCall);
-            return null;
-          });
 
       // Initial widget
       await tester.pumpWidget(
@@ -1200,7 +1189,20 @@ void main() {
       );
 
       final state = key.currentState!;
+      
+      // Set up the mock handler for the state's method channel
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(state.methodChannel, (
+            MethodCall methodCall,
+          ) async {
+            log.add(methodCall);
+            return null;
+          });
+
       state.triggerPlatformViewCreated(1);
+
+      // Clear any initialization calls
+      log.clear();
 
       // Update widget with different model
       await tester.pumpWidget(
