@@ -90,8 +90,9 @@ class YOLOPlatformView(
                     // Mark that the full initialization sequence (including model load) is complete.
                     initialized = true
                 } else {
-                    Log.e(TAG, "Failed to load model: $modelPath")
-                    // initialized remains false, or handle error state appropriately
+                    Log.w(TAG, "Failed to load model: $modelPath. Camera will run without inference.")
+                    // Still mark as initialized since camera can work without model
+                    initialized = true
                 }
             }
             
