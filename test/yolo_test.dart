@@ -121,7 +121,7 @@ void main() {
           .setMockMethodCallHandler(
             const MethodChannel('yolo_single_image_channel'),
             (MethodCall methodCall) async {
-              if (methodCall.method == 'setModel') {
+              if (methodCall.method == 'loadModel') {
                 throw Exception('Initialization failed');
               }
               return {'success': true};
@@ -136,7 +136,7 @@ void main() {
           isA<ModelLoadingException>().having(
             (e) => e.message,
             'message',
-            contains('Failed to initialize YOLO instance'),
+            contains('Failed to load model'),
           ),
         ),
       );

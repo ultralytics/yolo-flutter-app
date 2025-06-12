@@ -24,29 +24,25 @@ void main() {
               return {
                 'boxes': [
                   {
-                    'classIndex': 0,
-                    'className': 'person',
+                    'class': 'person',
                     'confidence': 0.95,
-                    'boundingBox': {
-                      'left': 10.0,
-                      'top': 20.0,
-                      'right': 110.0,
-                      'bottom': 220.0,
-                    },
-                    'normalizedBox': {
-                      'left': 0.1,
-                      'top': 0.1,
-                      'right': 0.9,
-                      'bottom': 0.9,
-                    },
-                    'mask': [
-                      [0.0, 0.5, 1.0],
-                      [0.2, 0.8, 0.3],
-                      [1.0, 0.5, 0.0],
-                    ],
+                    'x1': 10.0,
+                    'y1': 20.0,
+                    'x2': 110.0,
+                    'y2': 220.0,
+                    'x1_norm': 0.1,
+                    'y1_norm': 0.1,
+                    'x2_norm': 0.9,
+                    'y2_norm': 0.9,
                   },
                 ],
-                'detections': [],
+                'masks': [
+                  [
+                    [0.0, 0.5, 1.0],
+                    [0.2, 0.8, 0.3],
+                    [1.0, 0.5, 0.0],
+                  ],
+                ],
               };
             }
             return null;
@@ -59,10 +55,11 @@ void main() {
       final result = await yolo.predict(image);
 
       expect(result['boxes'], hasLength(1));
-      final box = result['boxes'][0] as YOLOResult;
-      expect(box.mask, isNotNull);
-      expect(box.mask!.length, 3);
-      expect(box.mask![0].length, 3);
+      expect(result['detections'], hasLength(1));
+      final detection = result['detections'][0] as Map<String, dynamic>;
+      expect(detection['mask'], isNotNull);
+      expect(detection['mask'].length, 3);
+      expect(detection['mask'][0].length, 3);
     });
 
     test(
@@ -76,29 +73,27 @@ void main() {
                 return {
                   'boxes': [
                     {
-                      'classIndex': 0,
-                      'className': 'person',
+                      'class': 'person',
                       'confidence': 0.95,
-                      'boundingBox': {
-                        'left': 10.0,
-                        'top': 20.0,
-                        'right': 110.0,
-                        'bottom': 220.0,
-                      },
-                      'normalizedBox': {
-                        'left': 0.1,
-                        'top': 0.1,
-                        'right': 0.9,
-                        'bottom': 0.9,
-                      },
-                      'keypoints': [
-                        100.0, 50.0, 0.9, // nose
-                        95.0, 55.0, 0.85, // left eye
-                        105.0, 55.0, 0.87, // right eye
+                      'x1': 10.0,
+                      'y1': 20.0,
+                      'x2': 110.0,
+                      'y2': 220.0,
+                      'x1_norm': 0.1,
+                      'y1_norm': 0.1,
+                      'x2_norm': 0.9,
+                      'y2_norm': 0.9,
+                    },
+                  ],
+                  'keypoints': [
+                    {
+                      'coordinates': [
+                        {'x': 100.0, 'y': 50.0, 'confidence': 0.9}, // nose
+                        {'x': 95.0, 'y': 55.0, 'confidence': 0.85}, // left eye
+                        {'x': 105.0, 'y': 55.0, 'confidence': 0.87}, // right eye
                       ],
                     },
                   ],
-                  'detections': [],
                 };
               }
               return null;
@@ -111,11 +106,11 @@ void main() {
         final result = await yolo.predict(image);
 
         expect(result['boxes'], hasLength(1));
-        final box = result['boxes'][0] as YOLOResult;
-        expect(box.keypoints, isNotNull);
-        expect(box.keypoints!.length, 3);
-        expect(box.keypointConfidences, isNotNull);
-        expect(box.keypointConfidences!.length, 3);
+        expect(result['detections'], hasLength(1));
+        final detection = result['detections'][0] as Map<String, dynamic>;
+        expect(detection['keypoints'], isNotNull);
+        final keypoints = detection['keypoints'] as List<double>;
+        expect(keypoints.length, 9); // 3 keypoints * 3 values each
       },
     );
 
@@ -162,7 +157,7 @@ void main() {
           isA<ModelLoadingException>().having(
             (e) => e.message,
             'message',
-            contains('Error reading model file: Corrupted model file'),
+            contains('Failed to load model: Corrupted model file'),
           ),
         ),
       );
@@ -190,10 +185,10 @@ void main() {
       expect(
         () => yolo.predict(image),
         throwsA(
-          isA<InvalidInputException>().having(
+          isA<InferenceException>().having(
             (e) => e.message,
             'message',
-            contains('Failed to process image: Failed to decode image'),
+            contains('Platform error during inference: Failed to decode image'),
           ),
         ),
       );
@@ -224,7 +219,7 @@ void main() {
           isA<InferenceException>().having(
             (e) => e.message,
             'message',
-            contains('Inference failed: GPU out of memory'),
+            contains('Error during inference: GPU out of memory'),
           ),
         ),
       );
@@ -261,15 +256,7 @@ void main() {
 
       expect(
         () => yolo.switchModel('new.tflite', YOLOTask.detect),
-        throwsA(
-          isA<YOLOException>().having(
-            (e) => e.message,
-            'message',
-            contains(
-              'ViewId not set. Make sure this YOLO instance is attached to a YOLOView',
-            ),
-          ),
-        ),
+        throwsStateError,
       );
     });
   });
