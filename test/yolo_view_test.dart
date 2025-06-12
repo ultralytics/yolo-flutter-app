@@ -427,7 +427,7 @@ void main() {
   test('zoomIn calls platform method', () async {
     final controller = YOLOViewController();
     const testChannel = MethodChannel('test_channel');
-    
+
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(testChannel, (methodCall) async {
           if (methodCall.method == 'zoomIn') {
@@ -445,7 +445,7 @@ void main() {
   test('zoomOut calls platform method', () async {
     final controller = YOLOViewController();
     const testChannel = MethodChannel('test_channel');
-    
+
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(testChannel, (methodCall) async {
           if (methodCall.method == 'zoomOut') {
@@ -463,7 +463,7 @@ void main() {
   test('setZoomLevel calls platform method', () async {
     final controller = YOLOViewController();
     const testChannel = MethodChannel('test_channel');
-    
+
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(testChannel, (methodCall) async {
           if (methodCall.method == 'setZoomLevel') {
@@ -482,7 +482,7 @@ void main() {
   test('stop calls platform method', () async {
     final controller = YOLOViewController();
     const testChannel = MethodChannel('test_channel');
-    
+
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(testChannel, (methodCall) async {
           if (methodCall.method == 'stop') {
@@ -500,7 +500,7 @@ void main() {
   test('setStreamingConfig calls platform method', () async {
     final controller = YOLOViewController();
     const testChannel = MethodChannel('test_channel');
-    
+
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(testChannel, (methodCall) async {
           if (methodCall.method == 'setStreamingConfig') {

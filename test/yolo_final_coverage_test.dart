@@ -19,15 +19,15 @@ void main() {
     test('getStoragePaths returns paths correctly', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        if (methodCall.method == 'getStoragePaths') {
-          return {
-            'documents': '/data/documents',
-            'cache': '/data/cache',
-            'external': '/storage/external',
-          };
-        }
-        return null;
-      });
+            if (methodCall.method == 'getStoragePaths') {
+              return {
+                'documents': '/data/documents',
+                'cache': '/data/cache',
+                'external': '/storage/external',
+              };
+            }
+            return null;
+          });
 
       final paths = await YOLO.getStoragePaths();
       expect(paths['documents'], '/data/documents');
@@ -38,11 +38,11 @@ void main() {
     test('checkModelExists returns true when model exists', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        if (methodCall.method == 'checkModelExists') {
-          return {'exists': true, 'path': '/path/to/model.tflite'};
-        }
-        return null;
-      });
+            if (methodCall.method == 'checkModelExists') {
+              return {'exists': true, 'path': '/path/to/model.tflite'};
+            }
+            return null;
+          });
 
       final result = await YOLO.checkModelExists('model.tflite');
       expect(result['exists'], true);
@@ -52,22 +52,22 @@ void main() {
     test('predict handles missing confidenceThreshold in args', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        if (methodCall.method == 'loadModel') {
-          return true;
-        } else if (methodCall.method == 'predictSingleImage') {
-          // Verify confidenceThreshold is not in args when not provided
-          expect(methodCall.arguments.containsKey('confidenceThreshold'), false);
-          return {
-            'boxes': [],
-            'detections': [],
-          };
-        }
-        return null;
-      });
+            if (methodCall.method == 'loadModel') {
+              return true;
+            } else if (methodCall.method == 'predictSingleImage') {
+              // Verify confidenceThreshold is not in args when not provided
+              expect(
+                methodCall.arguments.containsKey('confidenceThreshold'),
+                false,
+              );
+              return {'boxes': [], 'detections': []};
+            }
+            return null;
+          });
 
       final yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
       await yolo.loadModel();
-      
+
       final image = Uint8List.fromList([1, 2, 3]);
       await yolo.predict(image); // No thresholds provided
     });
@@ -75,22 +75,19 @@ void main() {
     test('predict handles missing iouThreshold in args', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-        if (methodCall.method == 'loadModel') {
-          return true;
-        } else if (methodCall.method == 'predictSingleImage') {
-          // Verify iouThreshold is not in args when not provided
-          expect(methodCall.arguments.containsKey('iouThreshold'), false);
-          return {
-            'boxes': [],
-            'detections': [],
-          };
-        }
-        return null;
-      });
+            if (methodCall.method == 'loadModel') {
+              return true;
+            } else if (methodCall.method == 'predictSingleImage') {
+              // Verify iouThreshold is not in args when not provided
+              expect(methodCall.arguments.containsKey('iouThreshold'), false);
+              return {'boxes': [], 'detections': []};
+            }
+            return null;
+          });
 
       final yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
       await yolo.loadModel();
-      
+
       final image = Uint8List.fromList([1, 2, 3]);
       await yolo.predict(image); // No thresholds provided
     });

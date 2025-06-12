@@ -119,20 +119,26 @@ void main() {
     test('loadModel handles initialization failure', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-              const MethodChannel('yolo_single_image_channel'),
-              (MethodCall methodCall) async {
-        if (methodCall.method == 'setModel') {
-          throw Exception('Initialization failed');
-        }
-        return {'success': true};
-      });
+            const MethodChannel('yolo_single_image_channel'),
+            (MethodCall methodCall) async {
+              if (methodCall.method == 'setModel') {
+                throw Exception('Initialization failed');
+              }
+              return {'success': true};
+            },
+          );
 
       final yolo = YOLO(modelPath: 'bad_model.tflite', task: YOLOTask.detect);
-      
+
       expect(
         () => yolo.loadModel(),
-        throwsA(isA<ModelLoadingException>()
-            .having((e) => e.message, 'message', contains('Failed to initialize YOLO instance'))),
+        throwsA(
+          isA<ModelLoadingException>().having(
+            (e) => e.message,
+            'message',
+            contains('Failed to initialize YOLO instance'),
+          ),
+        ),
       );
     });
   });
@@ -296,21 +302,27 @@ void main() {
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-            const MethodChannel('yolo_single_image_channel'),
-            (MethodCall methodCall) async {
-      if (methodCall.method == 'setModel') {
-        throw PlatformException(
-          code: 'MODEL_NOT_FOUND',
-          message: 'Model not found',
+          const MethodChannel('yolo_single_image_channel'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'setModel') {
+              throw PlatformException(
+                code: 'MODEL_NOT_FOUND',
+                message: 'Model not found',
+              );
+            }
+            return {'success': true};
+          },
         );
-      }
-      return {'success': true};
-    });
 
     expect(
       () => yolo.switchModel('missing.tflite', YOLOTask.detect),
-      throwsA(isA<ModelLoadingException>()
-          .having((e) => e.message, 'message', contains('Model file not found'))),
+      throwsA(
+        isA<ModelLoadingException>().having(
+          (e) => e.message,
+          'message',
+          contains('Model file not found'),
+        ),
+      ),
     );
   });
 
@@ -320,21 +332,27 @@ void main() {
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-            const MethodChannel('yolo_single_image_channel'),
-            (MethodCall methodCall) async {
-      if (methodCall.method == 'setModel') {
-        throw PlatformException(
-          code: 'INVALID_MODEL',
-          message: 'Invalid model',
+          const MethodChannel('yolo_single_image_channel'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'setModel') {
+              throw PlatformException(
+                code: 'INVALID_MODEL',
+                message: 'Invalid model',
+              );
+            }
+            return {'success': true};
+          },
         );
-      }
-      return {'success': true};
-    });
 
     expect(
       () => yolo.switchModel('invalid.tflite', YOLOTask.detect),
-      throwsA(isA<ModelLoadingException>()
-          .having((e) => e.message, 'message', contains('Invalid model format'))),
+      throwsA(
+        isA<ModelLoadingException>().having(
+          (e) => e.message,
+          'message',
+          contains('Invalid model format'),
+        ),
+      ),
     );
   });
 
@@ -344,21 +362,27 @@ void main() {
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-            const MethodChannel('yolo_single_image_channel'),
-            (MethodCall methodCall) async {
-      if (methodCall.method == 'setModel') {
-        throw PlatformException(
-          code: 'UNSUPPORTED_TASK',
-          message: 'Unsupported task',
+          const MethodChannel('yolo_single_image_channel'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'setModel') {
+              throw PlatformException(
+                code: 'UNSUPPORTED_TASK',
+                message: 'Unsupported task',
+              );
+            }
+            return {'success': true};
+          },
         );
-      }
-      return {'success': true};
-    });
 
     expect(
       () => yolo.switchModel('model.tflite', YOLOTask.pose),
-      throwsA(isA<ModelLoadingException>()
-          .having((e) => e.message, 'message', contains('Unsupported task type'))),
+      throwsA(
+        isA<ModelLoadingException>().having(
+          (e) => e.message,
+          'message',
+          contains('Unsupported task type'),
+        ),
+      ),
     );
   });
 
@@ -368,21 +392,27 @@ void main() {
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-            const MethodChannel('yolo_single_image_channel'),
-            (MethodCall methodCall) async {
-      if (methodCall.method == 'setModel') {
-        throw PlatformException(
-          code: 'UNKNOWN_ERROR',
-          message: 'Something went wrong',
+          const MethodChannel('yolo_single_image_channel'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'setModel') {
+              throw PlatformException(
+                code: 'UNKNOWN_ERROR',
+                message: 'Something went wrong',
+              );
+            }
+            return {'success': true};
+          },
         );
-      }
-      return {'success': true};
-    });
 
     expect(
       () => yolo.switchModel('model.tflite', YOLOTask.detect),
-      throwsA(isA<ModelLoadingException>()
-          .having((e) => e.message, 'message', contains('Failed to switch model'))),
+      throwsA(
+        isA<ModelLoadingException>().having(
+          (e) => e.message,
+          'message',
+          contains('Failed to switch model'),
+        ),
+      ),
     );
   });
 
