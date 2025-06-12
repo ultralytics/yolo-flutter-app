@@ -90,7 +90,11 @@ void main() {
                       'coordinates': [
                         {'x': 100.0, 'y': 50.0, 'confidence': 0.9}, // nose
                         {'x': 95.0, 'y': 55.0, 'confidence': 0.85}, // left eye
-                        {'x': 105.0, 'y': 55.0, 'confidence': 0.87}, // right eye
+                        {
+                          'x': 105.0,
+                          'y': 55.0,
+                          'confidence': 0.87,
+                        }, // right eye
                       ],
                     },
                   ],
