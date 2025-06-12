@@ -1,7 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
@@ -123,7 +122,7 @@ void main() {
 
       // Should not throw
       await controller.switchCamera();
-      await controller.setStreamingConfig(YOLOStreamingConfig.minimal());
+      await controller.setStreamingConfig(const YOLOStreamingConfig.minimal());
       await controller.stop();
     });
 
@@ -135,11 +134,11 @@ void main() {
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(testChannel, (methodCall) async {
-            if (methodCall.method == 'setModel') {
-              throw Exception('Test error');
-            }
-            return null;
-          });
+        if (methodCall.method == 'setModel') {
+          throw PlatformException(code: 'ERROR', message: 'Test error');
+        }
+        return null;
+      });
 
       controller.init(testChannel, 1);
 

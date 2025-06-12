@@ -2,7 +2,6 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/yolo.dart';
-import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
@@ -606,7 +605,7 @@ void main() {
 
   group('YOLOStreamingConfig Coverage', () {
     test('custom configuration with specific settings', () {
-      final config = YOLOStreamingConfig.custom(
+      const config = YOLOStreamingConfig.custom(
         includeDetections: false,
         includeClassifications: true,
         includeProcessingTimeMs: false,
@@ -647,7 +646,7 @@ void main() {
     });
 
     test('custom configuration with inference control', () {
-      final config = YOLOStreamingConfig.custom(
+      const config = YOLOStreamingConfig.custom(
         inferenceFrequency: 3,
         skipFrames: 2,
       );
@@ -672,7 +671,7 @@ void main() {
       await controller.zoomOut();
       await controller.setZoomLevel(2.0);
       await controller.switchModel('model.tflite', YOLOTask.detect);
-      await controller.setStreamingConfig(YOLOStreamingConfig.minimal());
+      await controller.setStreamingConfig(const YOLOStreamingConfig.minimal());
       await controller.stop();
     });
 
