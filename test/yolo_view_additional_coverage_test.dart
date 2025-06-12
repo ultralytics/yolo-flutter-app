@@ -134,11 +134,11 @@ void main() {
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(testChannel, (methodCall) async {
-        if (methodCall.method == 'setModel') {
-          throw PlatformException(code: 'ERROR', message: 'Test error');
-        }
-        return null;
-      });
+            if (methodCall.method == 'setModel') {
+              throw PlatformException(code: 'ERROR', message: 'Test error');
+            }
+            return null;
+          });
 
       controller.init(testChannel, 1);
 
