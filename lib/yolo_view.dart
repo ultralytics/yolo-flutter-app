@@ -653,6 +653,14 @@ class YOLOViewState extends State<YOLOView> {
   final String _viewId = UniqueKey().toString();
   int? _platformViewId;
 
+  // Stream connection management
+  bool _isStreamConnected = false;
+  int _streamRetryCount = 0;
+  final int _maxStreamRetries = 5;
+  Timer? _connectionCheckTimer;
+  Timer? _handshakeTimer;
+  bool _handshakeCompleted = false;
+
   @override
   void initState() {
     super.initState();
@@ -669,13 +677,6 @@ class YOLOViewState extends State<YOLOView> {
         widget.onPerformanceMetrics != null ||
         widget.onStreamingData != null) {
       _subscribeToResults();
-    }
-
-    // Apply initial streaming config if provided
-    if (widget.streamingConfig != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _effectiveController.setStreamingConfig(widget.streamingConfig!);
-      });
     }
   }
 
@@ -723,14 +724,18 @@ class YOLOViewState extends State<YOLOView> {
       _effectiveController
           .switchModel(widget.modelPath, widget.task)
           .catchError((e) {
-            logInfo('YoloView: Error switching model in didUpdateWidget: $e');
-          });
+        logInfo('YoloView: Error switching model in didUpdateWidget: $e');
+      });
     }
   }
 
   @override
   void dispose() {
     logInfo('YOLOView.dispose() called - starting cleanup');
+
+    // Cancel all timers
+    _connectionCheckTimer?.cancel();
+    _handshakeTimer?.cancel();
 
     // Stop camera and inference before disposing
     _effectiveController.stop().catchError((e) {
@@ -752,13 +757,13 @@ class YOLOViewState extends State<YOLOView> {
       const MethodChannel('yolo_single_image_channel')
           .invokeMethod('disposeInstance', {'instanceId': _viewId})
           .then((_) {
-            logInfo(
-              'YOLOView.dispose() - model instance disposed successfully',
-            );
-          })
+        logInfo(
+          'YOLOView.dispose() - model instance disposed successfully',
+        );
+      })
           .catchError((e) {
-            logInfo('YOLOView: Error disposing model instance: $e');
-          });
+        logInfo('YOLOView: Error disposing model instance: $e');
+      });
     }
 
     logInfo('YOLOView.dispose() completed - calling super.dispose()');
@@ -781,19 +786,46 @@ class YOLOViewState extends State<YOLOView> {
   Future<dynamic> handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'recreateEventChannel':
+        final arguments = call.arguments as Map?;
+        final viewId = arguments?['viewId'] as String?;
+        final retryCount = arguments?['retryCount'] as int?;
+
         logInfo(
-          'YOLOView: Platform requested recreation of event channel for $_viewId',
+          'YOLOView: Platform requested recreation of event channel for $_viewId (retry: $retryCount)',
         );
+
+        _isStreamConnected = false;
+        _streamRetryCount = retryCount ?? 0;
+
+        // Cancel existing subscription
         _cancelResultSubscription();
-        Future.delayed(const Duration(milliseconds: 100), () {
+
+        // Wait a bit before resubscribing to allow native side to stabilize
+        Future.delayed(const Duration(milliseconds: 200), () {
           if (mounted &&
               (widget.onResult != null ||
-                  widget.onPerformanceMetrics != null)) {
+                  widget.onPerformanceMetrics != null ||
+                  widget.onStreamingData != null)) {
             _subscribeToResults();
+            _initiateHandshake();
             logInfo('YOLOView: Event channel recreated for $_viewId');
           }
         });
         return null;
+
+      case 'streamConnectionFailed':
+        final arguments = call.arguments as Map?;
+        final reason = arguments?['reason'] as String?;
+
+        logInfo(
+          'YOLOView: Stream connection failed permanently: $reason',
+        );
+
+        _isStreamConnected = false;
+        _handshakeCompleted = false;
+        _cancelResultSubscription();
+        return null;
+
       case 'onZoomChanged':
         final zoomLevel = call.arguments as double?;
         if (zoomLevel != null && widget.onZoomChanged != null) {
@@ -801,6 +833,7 @@ class YOLOViewState extends State<YOLOView> {
           widget.onZoomChanged!(zoomLevel);
         }
         return null;
+
       default:
         logInfo('YOLOView: Unknown method call: ${call.method}');
         return null;
@@ -815,8 +848,15 @@ class YOLOViewState extends State<YOLOView> {
     );
 
     _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
-      (dynamic event) {
+          (dynamic event) {
         logInfo('YOLOView: Received event from native platform: $event');
+
+        // Mark stream as connected on first successful event
+        if (!_isStreamConnected) {
+          _isStreamConnected = true;
+          _confirmStreamConnection();
+          logInfo('YOLOView: Stream connection established');
+        }
 
         if (event is Map && event.containsKey('test')) {
           logInfo('YOLOView: Received test message: ${event['test']}');
@@ -909,28 +949,39 @@ class YOLOViewState extends State<YOLOView> {
         }
       },
       onError: (dynamic error, StackTrace stackTrace) {
-        // Added StackTrace
         logInfo('Error from detection results stream: $error');
         logInfo('Stack trace from stream error: $stackTrace');
 
-        Future.delayed(const Duration(seconds: 2), () {
-          if (_resultSubscription != null && mounted) {
-            // Check mounted before resubscribing
-            logInfo('YOLOView: Attempting to resubscribe after error');
-            _subscribeToResults();
-          } else {
-            logInfo(
-              'YOLOView: Not resubscribing (stream already null or widget disposed)',
-            );
-          }
-        });
+        _isStreamConnected = false;
+        _streamRetryCount++;
+
+        if (_streamRetryCount <= _maxStreamRetries) {
+          Future.delayed(Duration(seconds: _streamRetryCount), () {
+            if (_resultSubscription != null && mounted) {
+              logInfo('YOLOView: Attempting to resubscribe after error (retry $_streamRetryCount)');
+              _subscribeToResults();
+              _initiateHandshake();
+            } else {
+              logInfo(
+                'YOLOView: Not resubscribing (stream already null or widget disposed)',
+              );
+            }
+          });
+        } else {
+          logInfo('YOLOView: Max stream retries exceeded, stopping attempts');
+        }
       },
       onDone: () {
         logInfo('YOLOView: Event stream closed for $_viewId');
+        _isStreamConnected = false;
         _resultSubscription = null;
       },
     );
+
     logInfo('YOLOView: Event stream listener setup complete for $_viewId');
+
+    // Start handshake process
+    _initiateHandshake();
   }
 
   @visibleForTesting
@@ -1006,9 +1057,9 @@ class YOLOViewState extends State<YOLOView> {
       creationParams['streamingConfig'] = {
         'includeDetections': widget.streamingConfig!.includeDetections,
         'includeClassifications':
-            widget.streamingConfig!.includeClassifications,
+        widget.streamingConfig!.includeClassifications,
         'includeProcessingTimeMs':
-            widget.streamingConfig!.includeProcessingTimeMs,
+        widget.streamingConfig!.includeProcessingTimeMs,
         'includeFps': widget.streamingConfig!.includeFps,
         'includeMasks': widget.streamingConfig!.includeMasks,
         'includePoses': widget.streamingConfig!.includePoses,
@@ -1016,16 +1067,9 @@ class YOLOViewState extends State<YOLOView> {
         'includeOriginalImage': widget.streamingConfig!.includeOriginalImage,
         'maxFPS': widget.streamingConfig!.maxFPS,
         'throttleInterval':
-            widget.streamingConfig!.throttleInterval?.inMilliseconds,
+        widget.streamingConfig!.throttleInterval?.inMilliseconds,
       };
     }
-
-    // This was causing issues in initState/didUpdateWidget, better to call once after view created.
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   if (mounted) { // Ensure widget is still mounted
-    //    _methodChannel.invokeMethod('setShowUIControls', {'show': widget.showNativeUI});
-    //   }
-    // });
 
     Widget platformView;
     if (defaultTargetPlatform == TargetPlatform.android) {
@@ -1064,7 +1108,9 @@ class YOLOViewState extends State<YOLOView> {
 
     // _cancelResultSubscription(); // Already called in _subscribeToResults if needed
 
-    if (widget.onResult != null || widget.onPerformanceMetrics != null) {
+    if (widget.onResult != null ||
+        widget.onPerformanceMetrics != null ||
+        widget.onStreamingData != null) {
       logInfo(
         'YOLOView: Re-subscribing to results after platform view creation for $_viewId',
       );
@@ -1082,6 +1128,92 @@ class YOLOViewState extends State<YOLOView> {
     });
 
     _methodChannel.setMethodCallHandler(handleMethodCall);
+
+    // Apply initial streaming config AFTER controller is fully initialized
+    if (widget.streamingConfig != null) {
+      _effectiveController.setStreamingConfig(widget.streamingConfig!);
+    }
+
+    // Start connection monitoring
+    _startConnectionMonitoring();
+  }
+
+  /// Initiate handshake with native platform to ensure connection is established
+  void _initiateHandshake() {
+    if (_handshakeCompleted) {
+      return;
+    }
+
+    _handshakeTimer?.cancel();
+    _handshakeTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted && !_handshakeCompleted) {
+        logInfo('YOLOView: Initiating handshake with native platform');
+        _methodChannel.invokeMethod('getStreamConnectionStatus').then((response) {
+          if (response is Map) {
+            final connected = response['connected'] as bool? ?? false;
+            final retryCount = response['retryCount'] as int? ?? 0;
+
+            logInfo('YOLOView: Native stream status - connected: $connected, retries: $retryCount');
+
+            if (connected) {
+              _isStreamConnected = true;
+              _handshakeCompleted = true;
+              _confirmStreamConnection();
+            } else if (retryCount < _maxStreamRetries) {
+              // Retry handshake
+              Future.delayed(const Duration(milliseconds: 1000), () {
+                if (mounted && !_handshakeCompleted) {
+                  _initiateHandshake();
+                }
+              });
+            }
+          }
+        }).catchError((e) {
+          logInfo('YOLOView: Error during handshake: $e');
+        });
+      }
+    });
+  }
+
+  /// Confirm stream connection with native platform
+  void _confirmStreamConnection() {
+    if (_handshakeCompleted) {
+      return;
+    }
+
+    _methodChannel.invokeMethod('confirmStreamConnection').then((response) {
+      if (response is Map) {
+        final connected = response['connected'] as bool? ?? false;
+        if (connected) {
+          _handshakeCompleted = true;
+          _streamRetryCount = 0;
+          logInfo('YOLOView: Stream connection confirmed with native platform');
+        }
+      }
+    }).catchError((e) {
+      logInfo('YOLOView: Error confirming stream connection: $e');
+    });
+  }
+
+  /// Start periodic connection monitoring
+  void _startConnectionMonitoring() {
+    _connectionCheckTimer?.cancel();
+    _connectionCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (!_isStreamConnected && !_handshakeCompleted) {
+        logInfo('YOLOView: Connection check - stream disconnected, attempting reconnection');
+        _methodChannel.invokeMethod('resetStreamConnection').then((_) {
+          _subscribeToResults();
+          _initiateHandshake();
+        }).catchError((e) {
+          logInfo('YOLOView: Error resetting stream connection: $e');
+        });
+      }
+    });
   }
 
   // Methods to be called via GlobalKey
