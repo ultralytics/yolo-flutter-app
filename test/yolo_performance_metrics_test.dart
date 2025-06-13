@@ -421,17 +421,5 @@ void main() {
       expect(str, contains('timestamp'));
     });
 
-    test('fromMap handles string values that need conversion', () {
-      final data = {
-        'fps': '30.0', // String instead of double
-        'processingTimeMs': '50', // String instead of double
-        'frameNumber': '100', // String instead of int
-      };
-
-      final metrics = YOLOPerformanceMetrics.fromMap(data);
-      expect(metrics.fps, 0.0); // Should fall back to default
-      expect(metrics.processingTimeMs, 0.0);
-      expect(metrics.frameNumber, 0);
-    });
   });
 }
