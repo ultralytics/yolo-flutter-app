@@ -239,6 +239,16 @@ class YOLOPlatformView(
                         }
                     }
                 }
+                "listen" -> {
+                    Log.d(TAG, "EventChannel listen method called")
+                    // Called when EventChannel starts the stream
+                    result.success(null)
+                }
+                "cancel" -> {
+                    Log.d(TAG, "EventChannel cancel method called")
+                    // Called when EventChannel cancels the stream
+                    result.success(null)
+                }
                 else -> {
                     Log.w(TAG, "Method not implemented: ${call.method}")
                     result.notImplemented()
