@@ -1381,4 +1381,373 @@ void main() {
       expect(testEvent.containsKey('detections'), isFalse);
     });
   });
+
+  group('YOLOViewController Error Handling', () {
+    testWidgets('handles threshold method errors with fallback', (
+      tester,
+    ) async {
+      final controller = YOLOViewController();
+      const testChannel = MethodChannel('test_channel');
+
+      // Mock channel that throws on individual methods but succeeds on combined
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(testChannel, (methodCall) async {
+            if (methodCall.method == 'setConfidenceThreshold' ||
+                methodCall.method == 'setIoUThreshold' ||
+                methodCall.method == 'setNumItemsThreshold') {
+              throw PlatformException(code: 'ERROR');
+            } else if (methodCall.method == 'setThresholds') {
+              return null; // Success
+            }
+            return null;
+          });
+
+      controller.init(testChannel, 1);
+
+      // Should fall back to _applyThresholds
+      await controller.setConfidenceThreshold(0.7);
+      expect(controller.confidenceThreshold, 0.7);
+
+      await controller.setIoUThreshold(0.3);
+      expect(controller.iouThreshold, 0.3);
+
+      await controller.setNumItemsThreshold(20);
+      expect(controller.numItemsThreshold, 20);
+    });
+
+    testWidgets('handles errors in zoom methods gracefully', (
+      tester,
+    ) async {
+      final controller = YOLOViewController();
+      const testChannel = MethodChannel('test_channel');
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(testChannel, (methodCall) async {
+            if (methodCall.method == 'zoomIn' ||
+                methodCall.method == 'zoomOut' ||
+                methodCall.method == 'setZoomLevel') {
+              throw PlatformException(code: 'ERROR');
+            }
+            return null;
+          });
+
+      controller.init(testChannel, 1);
+
+      // Should not throw
+      await controller.zoomIn();
+      await controller.zoomOut();
+      await controller.setZoomLevel(2.0);
+    });
+
+    testWidgets('handles errors in other control methods', (
+      tester,
+    ) async {
+      final controller = YOLOViewController();
+      const testChannel = MethodChannel('test_channel');
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(testChannel, (methodCall) async {
+            if (methodCall.method == 'switchCamera' ||
+                methodCall.method == 'setStreamingConfig' ||
+                methodCall.method == 'stop') {
+              throw PlatformException(code: 'ERROR');
+            }
+            return null;
+          });
+
+      controller.init(testChannel, 1);
+
+      // Should not throw
+      await controller.switchCamera();
+      await controller.setStreamingConfig(const YOLOStreamingConfig.minimal());
+      await controller.stop();
+    });
+
+    testWidgets('switchModel rethrows exceptions', (
+      tester,
+    ) async {
+      final controller = YOLOViewController();
+      const testChannel = MethodChannel('test_channel');
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(testChannel, (methodCall) async {
+            if (methodCall.method == 'setModel') {
+              throw PlatformException(code: 'ERROR', message: 'Test error');
+            }
+            return null;
+          });
+
+      controller.init(testChannel, 1);
+
+      expect(
+        () => controller.switchModel('model.tflite', YOLOTask.detect),
+        throwsException,
+      );
+    });
+
+    testWidgets('_applyThresholds handles errors in batch mode', (
+      tester,
+    ) async {
+      final controller = YOLOViewController();
+      const testChannel = MethodChannel('test_channel');
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(testChannel, (methodCall) async {
+            if (methodCall.method == 'applyThresholds') {
+              throw PlatformException(code: 'ERROR', message: 'Batch error');
+            }
+            return null;
+          });
+
+      controller.init(testChannel, 1);
+
+      // Should not throw - it catches and handles errors
+      await controller.setConfidenceThreshold(0.7);
+      await controller.setIoUThreshold(0.5);
+      await controller.setNumItemsThreshold(30);
+    });
+
+    testWidgets('threshold setters apply successfully', (tester) async {
+      final controller = YOLOViewController();
+      const testChannel = MethodChannel('test_channel');
+      bool confidenceSet = false;
+      bool iouSet = false;
+      bool numItemsSet = false;
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(testChannel, (methodCall) async {
+            if (methodCall.method == 'applyThresholds') {
+              // Handle the batch apply call
+              return null;
+            } else if (methodCall.method == 'setConfidenceThreshold') {
+              confidenceSet = true;
+              expect(methodCall.arguments['threshold'], 0.7);
+            } else if (methodCall.method == 'setIoUThreshold') {
+              iouSet = true;
+              expect(methodCall.arguments['threshold'], 0.5);
+            } else if (methodCall.method == 'setNumItemsThreshold') {
+              numItemsSet = true;
+              expect(methodCall.arguments['threshold'], 30);
+            }
+            return null;
+          });
+
+      controller.init(testChannel, 1);
+
+      await controller.setConfidenceThreshold(0.7);
+      await controller.setIoUThreshold(0.5);
+      await controller.setNumItemsThreshold(30);
+
+      expect(confidenceSet, true);
+      expect(iouSet, true);
+      expect(numItemsSet, true);
+    });
+
+    testWidgets('switchCamera succeeds', (tester) async {
+      final controller = YOLOViewController();
+      const testChannel = MethodChannel('test_channel');
+      bool switchCameraCalledSuccess = false;
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(testChannel, (methodCall) async {
+            if (methodCall.method == 'switchCamera') {
+              switchCameraCalledSuccess = true;
+              return null; // Success
+            }
+            return null;
+          });
+
+      controller.init(testChannel, 1);
+
+      await controller.switchCamera();
+      expect(switchCameraCalledSuccess, true);
+    });
+
+    testWidgets('zoom methods succeed', (tester) async {
+      final controller = YOLOViewController();
+      const testChannel = MethodChannel('test_channel');
+      bool zoomInCalled = false;
+      bool zoomOutCalled = false;
+      bool setZoomCalled = false;
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(testChannel, (methodCall) async {
+            if (methodCall.method == 'zoomIn') {
+              zoomInCalled = true;
+              return null;
+            } else if (methodCall.method == 'zoomOut') {
+              zoomOutCalled = true;
+              return null;
+            } else if (methodCall.method == 'setZoomLevel') {
+              setZoomCalled = true;
+              expect(methodCall.arguments['zoomLevel'], 2.0);
+              return null;
+            }
+            return null;
+          });
+
+      controller.init(testChannel, 1);
+
+      await controller.zoomIn();
+      await controller.zoomOut();
+      await controller.setZoomLevel(2.0);
+
+      expect(zoomInCalled, true);
+      expect(zoomOutCalled, true);
+      expect(setZoomCalled, true);
+    });
+
+    testWidgets('switchModel handles null channel gracefully', (tester) async {
+      final controller = YOLOViewController();
+      // Don't initialize the controller, so _methodChannel remains null
+
+      // Should not throw, just log warning
+      await controller.switchModel('model.tflite', YOLOTask.detect);
+    });
+
+    testWidgets('stop method succeeds', (tester) async {
+      final controller = YOLOViewController();
+      const testChannel = MethodChannel('test_channel');
+      bool stopCalled = false;
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(testChannel, (methodCall) async {
+            if (methodCall.method == 'stop') {
+              stopCalled = true;
+              return null;
+            }
+            return null;
+          });
+
+      controller.init(testChannel, 1);
+
+      await controller.stop();
+      expect(stopCalled, true);
+    });
+
+    testWidgets('setStreamingConfig succeeds', (tester) async {
+      final controller = YOLOViewController();
+      const testChannel = MethodChannel('test_channel');
+      bool configSet = false;
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(testChannel, (methodCall) async {
+            if (methodCall.method == 'setStreamingConfig') {
+              configSet = true;
+              return null;
+            }
+            return null;
+          });
+
+      controller.init(testChannel, 1);
+
+      await controller.setStreamingConfig(const YOLOStreamingConfig.minimal());
+      expect(configSet, true);
+    });
+  });
+
+  group('YOLOView Widget Updates', () {
+    testWidgets('handles callback changes in didUpdateWidget', (tester) async {
+      bool result1Called = false;
+      bool result2Called = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            onResult: (_) => result1Called = true,
+          ),
+        ),
+      );
+
+      // Update widget with different callback
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            onResult: (_) => result2Called = true,
+          ),
+        ),
+      );
+
+      expect(find.byType(YOLOView), findsOneWidget);
+    });
+
+    testWidgets('handles showNativeUI changes', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            showNativeUI: true,
+          ),
+        ),
+      );
+
+      // Change showNativeUI
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            showNativeUI: false,
+          ),
+        ),
+      );
+
+      expect(find.byType(YOLOView), findsOneWidget);
+    });
+
+    testWidgets('handles model path changes', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            modelPath: 'model1.tflite',
+            task: YOLOTask.detect,
+          ),
+        ),
+      );
+
+      // Change model path
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            modelPath: 'model2.tflite',
+            task: YOLOTask.detect,
+          ),
+        ),
+      );
+
+      expect(find.byType(YOLOView), findsOneWidget);
+    });
+
+    testWidgets('handles null callbacks removal', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            onResult: (_) {},
+            onPerformanceMetrics: (_) {},
+            onStreamingData: (_) {},
+          ),
+        ),
+      );
+
+      // Remove all callbacks
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            // No callbacks - should cancel subscription
+          ),
+        ),
+      );
+
+      expect(find.byType(YOLOView), findsOneWidget);
+    });
+  });
 }

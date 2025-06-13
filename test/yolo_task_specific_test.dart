@@ -7,7 +7,7 @@ import 'package:ultralytics_yolo/yolo.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('YOLO Edge Cases Coverage', () {
+  group('YOLO Task-Specific Features', () {
     const MethodChannel channel = MethodChannel('yolo_single_image_channel');
 
     tearDown(() {

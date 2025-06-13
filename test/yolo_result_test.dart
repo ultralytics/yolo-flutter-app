@@ -621,4 +621,156 @@ void main() {
       expect(restored.y, original.y);
     });
   });
+
+  group('YOLOResult toString formatting', () {
+    test('toString formats with all fields correctly', () {
+      final result = YOLOResult(
+        classIndex: 0,
+        className: 'person',
+        confidence: 0.95,
+        boundingBox: const Rect.fromLTRB(10.0, 20.0, 110.0, 220.0),
+        normalizedBox: const Rect.fromLTRB(0.1, 0.1, 0.9, 0.9),
+        keypoints: [Point(50, 60), Point(55, 65)],
+        mask: [
+          [0.0, 1.0],
+          [1.0, 0.0],
+        ],
+      );
+
+      final str = result.toString();
+      expect(str, contains('YOLOResult'));
+      expect(str, contains('person'));
+      expect(str, contains('0.95'));
+      expect(str, contains('Rect.fromLTRB(10.0, 20.0, 110.0, 220.0)'));
+      // toString doesn't include keypoints or mask
+      expect(result.keypoints!.length, 2);
+      expect(result.mask!.length, 2);
+    });
+
+    test('toString formats without optional fields', () {
+      final result = YOLOResult(
+        classIndex: 0,
+        className: 'car',
+        confidence: 0.85,
+        boundingBox: const Rect.fromLTRB(0.0, 0.0, 100.0, 100.0),
+        normalizedBox: const Rect.fromLTRB(0.0, 0.0, 1.0, 1.0),
+      );
+
+      final str = result.toString();
+      expect(str, contains('YOLOResult'));
+      expect(str, contains('car'));
+      expect(str, contains('0.85'));
+      expect(str, isNot(contains('keypoints')));
+      expect(str, isNot(contains('mask')));
+    });
+
+    test('toString with different values', () {
+      final result = YOLOResult(
+        classIndex: 2,
+        className: 'car',
+        confidence: 0.87,
+        boundingBox: const Rect.fromLTRB(50.0, 75.0, 250.0, 225.0),
+        normalizedBox: const Rect.fromLTRB(0.2, 0.3, 0.4, 0.5),
+      );
+
+      final str = result.toString();
+      expect(
+        str,
+        'YOLOResult{classIndex: 2, className: car, confidence: 0.87, boundingBox: Rect.fromLTRB(50.0, 75.0, 250.0, 225.0)}',
+      );
+    });
+  });
+
+  group('YOLOResult edge cases', () {
+    test('fromMap handles missing optional fields', () {
+      final map = {
+        'classIndex': 0,
+        'className': 'person',
+        'confidence': 0.95,
+        'boundingBox': {
+          'left': 10.0,
+          'top': 20.0,
+          'right': 110.0,
+          'bottom': 220.0,
+        },
+        'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.9, 'bottom': 0.9},
+        // No optional fields
+      };
+
+      final result = YOLOResult.fromMap(map);
+      expect(result.classIndex, 0);
+      expect(result.className, 'person');
+      expect(result.confidence, 0.95);
+      expect(result.keypoints, isNull);
+      expect(result.keypointConfidences, isNull);
+      expect(result.mask, isNull);
+    });
+
+    test('BoundingBox getters calculate correctly', () {
+      final map = {
+        'classIndex': 0,
+        'className': 'test',
+        'confidence': 0.9,
+        'boundingBox': {
+          'left': 10.0,
+          'top': 20.0,
+          'right': 110.0,
+          'bottom': 220.0,
+        },
+        'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.9, 'bottom': 0.9},
+      };
+
+      final result = YOLOResult.fromMap(map);
+      final box = result.boundingBox;
+
+      expect(box.left, 10);
+      expect(box.top, 20);
+      expect(box.width, 100);
+      expect(box.height, 200);
+      expect(box.center.dx, 60);
+      expect(box.center.dy, 120);
+    });
+
+    test('Keypoint parsing from flat array', () {
+      final map = {
+        'classIndex': 0,
+        'className': 'person',
+        'confidence': 0.9,
+        'boundingBox': {
+          'left': 0.0,
+          'top': 0.0,
+          'right': 100.0,
+          'bottom': 100.0,
+        },
+        'normalizedBox': {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0},
+        'keypoints': [10.5, 20.5, 0.9], // x, y, confidence format
+      };
+
+      final result = YOLOResult.fromMap(map);
+      expect(result.keypoints, isNotNull);
+      expect(result.keypoints!.length, 1);
+      final keypoint = result.keypoints!.first;
+      expect(keypoint.x, 10.5);
+      expect(keypoint.y, 20.5);
+    });
+
+    test('BoundingBox toString formats correctly', () {
+      final map = {
+        'classIndex': 0,
+        'className': 'test',
+        'confidence': 0.9,
+        'boundingBox': {
+          'left': 10.0,
+          'top': 20.0,
+          'right': 110.0,
+          'bottom': 220.0,
+        },
+        'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.9, 'bottom': 0.9},
+      };
+
+      final result = YOLOResult.fromMap(map);
+      final str = result.boundingBox.toString();
+      expect(str, contains('Rect.fromLTRB(10.0, 20.0, 110.0, 220.0)'));
+    });
+  });
 }
