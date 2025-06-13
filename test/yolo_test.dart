@@ -988,8 +988,16 @@ void main() {
     });
 
     test('multi-instance predict includes instanceId in args', () async {
+      final yolo = YOLO(
+        modelPath: 'model.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+      
+      // Set up mock for the specific instance channel
+      final instanceChannel = MethodChannel('yolo_single_image_channel_${yolo.instanceId}');
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          .setMockMethodCallHandler(instanceChannel, (MethodCall methodCall) async {
             if (methodCall.method == 'createInstance') {
               return true;
             } else if (methodCall.method == 'loadModel') {
@@ -1006,11 +1014,6 @@ void main() {
             return null;
           });
 
-      final yolo = YOLO(
-        modelPath: 'model.tflite',
-        task: YOLOTask.detect,
-        useMultiInstance: true,
-      );
       await yolo.loadModel();
 
       final image = Uint8List.fromList([1, 2, 3]);
