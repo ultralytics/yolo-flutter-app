@@ -420,6 +420,5 @@ void main() {
       expect(str, contains('frame: 100'));
       expect(str, contains('timestamp'));
     });
-
   });
 }
