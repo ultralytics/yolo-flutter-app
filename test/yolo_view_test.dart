@@ -1642,15 +1642,12 @@ void main() {
 
   group('YOLOView Widget Updates', () {
     testWidgets('handles callback changes in didUpdateWidget', (tester) async {
-      bool result1Called = false;
-      bool result2Called = false;
-
       await tester.pumpWidget(
         MaterialApp(
           home: YOLOView(
             modelPath: 'test_model.tflite',
             task: YOLOTask.detect,
-            onResult: (_) => result1Called = true,
+            onResult: (_) {},
           ),
         ),
       );
@@ -1661,7 +1658,7 @@ void main() {
           home: YOLOView(
             modelPath: 'test_model.tflite',
             task: YOLOTask.detect,
-            onResult: (_) => result2Called = true,
+            onResult: (_) {},
           ),
         ),
       );
@@ -1671,7 +1668,7 @@ void main() {
 
     testWidgets('handles showNativeUI changes', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: YOLOView(
             modelPath: 'test_model.tflite',
             task: YOLOTask.detect,
@@ -1682,7 +1679,7 @@ void main() {
 
       // Change showNativeUI
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: YOLOView(
             modelPath: 'test_model.tflite',
             task: YOLOTask.detect,
@@ -1696,14 +1693,14 @@ void main() {
 
     testWidgets('handles model path changes', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: YOLOView(modelPath: 'model1.tflite', task: YOLOTask.detect),
         ),
       );
 
       // Change model path
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: YOLOView(modelPath: 'model2.tflite', task: YOLOTask.detect),
         ),
       );
@@ -1726,7 +1723,7 @@ void main() {
 
       // Remove all callbacks
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: YOLOView(
             modelPath: 'test_model.tflite',
             task: YOLOTask.detect,
