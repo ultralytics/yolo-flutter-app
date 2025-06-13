@@ -652,6 +652,11 @@ class YOLOViewState extends State<YOLOView> {
 
   final String _viewId = UniqueKey().toString();
   int? _platformViewId;
+  
+  // Timer to track the delayed subscription timer
+  Timer? _subscriptionTimer;
+  Timer? _recreateTimer;
+  Timer? _errorRetryTimer;
 
   @override
   void initState() {
@@ -737,11 +742,28 @@ class YOLOViewState extends State<YOLOView> {
       logInfo('YOLOView: Error stopping camera during dispose: $e');
     });
 
-    // Cancel event subscriptions
+    // Cancel event subscriptions with error handling
     _cancelResultSubscription();
+    
+    // Cancel any pending subscription timer
+    _subscriptionTimer?.cancel();
+    _subscriptionTimer = null;
+    
+    // Cancel any pending recreate timer
+    _recreateTimer?.cancel();
+    _recreateTimer = null;
+    
+    // Cancel any pending error retry timer
+    _errorRetryTimer?.cancel();
+    _errorRetryTimer = null;
 
     // Clean up method channel handler
-    _methodChannel.setMethodCallHandler(null);
+    try {
+      _methodChannel.setMethodCallHandler(null);
+      logInfo('YOLOView: Method channel handler cleared');
+    } catch (e) {
+      logInfo('YOLOView: Error clearing method channel handler: $e');
+    }
 
     // Dispose YOLO model instance using viewId as instanceId
     // This prevents memory leaks by ensuring the model is released from YOLOInstanceManager
@@ -785,7 +807,8 @@ class YOLOViewState extends State<YOLOView> {
           'YOLOView: Platform requested recreation of event channel for $_viewId',
         );
         _cancelResultSubscription();
-        Future.delayed(const Duration(milliseconds: 100), () {
+        _recreateTimer?.cancel();
+        _recreateTimer = Timer(const Duration(milliseconds: 100), () {
           if (mounted &&
               (widget.onResult != null ||
                   widget.onPerformanceMetrics != null)) {
@@ -814,12 +837,15 @@ class YOLOViewState extends State<YOLOView> {
       'YOLOView: Setting up event stream listener for channel: ${_resultEventChannel.name}',
     );
 
+    // Cancel any existing subscription timer
+    _subscriptionTimer?.cancel();
+
     // Add short delay to wait for EventChannel to be ready on native side
-    Future.delayed(const Duration(milliseconds: 200), () {
+    _subscriptionTimer = Timer(const Duration(milliseconds: 200), () {
       if (!mounted) return;
 
       _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
-            (dynamic event) {
+        (dynamic event) {
           logInfo('YOLOView: Received event from native platform: $event');
 
           if (event is Map && event.containsKey('test')) {
@@ -917,7 +943,8 @@ class YOLOViewState extends State<YOLOView> {
           logInfo('Error from detection results stream: $error');
           logInfo('Stack trace from stream error: $stackTrace');
 
-          Future.delayed(const Duration(seconds: 2), () {
+          _errorRetryTimer?.cancel();
+          _errorRetryTimer = Timer(const Duration(seconds: 2), () {
             if (_resultSubscription != null && mounted) {
               // Check mounted before resubscribing
               logInfo('YOLOView: Attempting to resubscribe after error');
@@ -949,6 +976,10 @@ class YOLOViewState extends State<YOLOView> {
       _resultSubscription!.cancel();
       _resultSubscription = null;
     }
+    
+    // Also cancel any pending subscription timer
+    _subscriptionTimer?.cancel();
+    _subscriptionTimer = null;
   }
 
   @visibleForTesting
