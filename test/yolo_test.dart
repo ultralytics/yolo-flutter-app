@@ -993,11 +993,15 @@ void main() {
         task: YOLOTask.detect,
         useMultiInstance: true,
       );
-      
+
       // Set up mock for the specific instance channel
-      final instanceChannel = MethodChannel('yolo_single_image_channel_${yolo.instanceId}');
+      final instanceChannel = MethodChannel(
+        'yolo_single_image_channel_${yolo.instanceId}',
+      );
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(instanceChannel, (MethodCall methodCall) async {
+          .setMockMethodCallHandler(instanceChannel, (
+            MethodCall methodCall,
+          ) async {
             if (methodCall.method == 'createInstance') {
               return true;
             } else if (methodCall.method == 'loadModel') {
