@@ -997,7 +997,10 @@ void main() {
             } else if (methodCall.method == 'predictSingleImage') {
               // Verify instanceId is included for multi-instance
               expect(methodCall.arguments.containsKey('instanceId'), true);
-              expect(methodCall.arguments['instanceId'], isNot(equals('default')));
+              expect(
+                methodCall.arguments['instanceId'],
+                isNot(equals('default')),
+              );
               return {'boxes': [], 'detections': []};
             }
             return null;
@@ -1077,7 +1080,7 @@ void main() {
 
       final image = Uint8List.fromList([1, 2, 3]);
       final result = await yolo.predict(image);
-      
+
       // Should handle gracefully and return empty boxes
       expect(result['boxes'], isA<List>());
       expect((result['boxes'] as List).length, 0);

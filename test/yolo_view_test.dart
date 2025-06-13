@@ -1415,9 +1415,7 @@ void main() {
       expect(controller.numItemsThreshold, 20);
     });
 
-    testWidgets('handles errors in zoom methods gracefully', (
-      tester,
-    ) async {
+    testWidgets('handles errors in zoom methods gracefully', (tester) async {
       final controller = YOLOViewController();
       const testChannel = MethodChannel('test_channel');
 
@@ -1439,9 +1437,7 @@ void main() {
       await controller.setZoomLevel(2.0);
     });
 
-    testWidgets('handles errors in other control methods', (
-      tester,
-    ) async {
+    testWidgets('handles errors in other control methods', (tester) async {
       final controller = YOLOViewController();
       const testChannel = MethodChannel('test_channel');
 
@@ -1463,9 +1459,7 @@ void main() {
       await controller.stop();
     });
 
-    testWidgets('switchModel rethrows exceptions', (
-      tester,
-    ) async {
+    testWidgets('switchModel rethrows exceptions', (tester) async {
       final controller = YOLOViewController();
       const testChannel = MethodChannel('test_channel');
 
@@ -1703,20 +1697,14 @@ void main() {
     testWidgets('handles model path changes', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: YOLOView(
-            modelPath: 'model1.tflite',
-            task: YOLOTask.detect,
-          ),
+          home: YOLOView(modelPath: 'model1.tflite', task: YOLOTask.detect),
         ),
       );
 
       // Change model path
       await tester.pumpWidget(
         MaterialApp(
-          home: YOLOView(
-            modelPath: 'model2.tflite',
-            task: YOLOTask.detect,
-          ),
+          home: YOLOView(modelPath: 'model2.tflite', task: YOLOTask.detect),
         ),
       );
 

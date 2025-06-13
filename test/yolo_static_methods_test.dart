@@ -215,14 +215,17 @@ void main() {
     test('checkModelExists handles PlatformException', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
-        const MethodChannel('yolo_single_image_channel'),
-        (MethodCall methodCall) async {
-          if (methodCall.method == 'checkModelExists') {
-            throw PlatformException(code: 'ERROR', message: 'Platform error');
-          }
-          return null;
-        },
-      );
+            const MethodChannel('yolo_single_image_channel'),
+            (MethodCall methodCall) async {
+              if (methodCall.method == 'checkModelExists') {
+                throw PlatformException(
+                  code: 'ERROR',
+                  message: 'Platform error',
+                );
+              }
+              return null;
+            },
+          );
 
       final result = await YOLO.checkModelExists('model.tflite');
       expect(result['exists'], false);
