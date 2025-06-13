@@ -723,8 +723,8 @@ class YOLOViewState extends State<YOLOView> {
       _effectiveController
           .switchModel(widget.modelPath, widget.task)
           .catchError((e) {
-            logInfo('YoloView: Error switching model in didUpdateWidget: $e');
-          });
+        logInfo('YoloView: Error switching model in didUpdateWidget: $e');
+      });
     }
   }
 
@@ -752,13 +752,13 @@ class YOLOViewState extends State<YOLOView> {
       const MethodChannel('yolo_single_image_channel')
           .invokeMethod('disposeInstance', {'instanceId': _viewId})
           .then((_) {
-            logInfo(
-              'YOLOView.dispose() - model instance disposed successfully',
-            );
-          })
+        logInfo(
+          'YOLOView.dispose() - model instance disposed successfully',
+        );
+      })
           .catchError((e) {
-            logInfo('YOLOView: Error disposing model instance: $e');
-          });
+        logInfo('YOLOView: Error disposing model instance: $e');
+      });
     }
 
     logInfo('YOLOView.dispose() completed - calling super.dispose()');
@@ -814,123 +814,128 @@ class YOLOViewState extends State<YOLOView> {
       'YOLOView: Setting up event stream listener for channel: ${_resultEventChannel.name}',
     );
 
-    _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
-      (dynamic event) {
-        logInfo('YOLOView: Received event from native platform: $event');
+    // Add short delay to wait for EventChannel to be ready on native side
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
 
-        if (event is Map && event.containsKey('test')) {
-          logInfo('YOLOView: Received test message: ${event['test']}');
-          return;
-        }
+      _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
+            (dynamic event) {
+          logInfo('YOLOView: Received event from native platform: $event');
 
-        if (event is Map) {
-          // Priority system: onStreamingData takes precedence
-          if (widget.onStreamingData != null) {
-            try {
-              // Comprehensive mode: Pass all data via onStreamingData
-              final streamData = Map<String, dynamic>.from(event);
-              widget.onStreamingData!(streamData);
-              logInfo(
-                'YOLOView: Called onStreamingData callback (comprehensive mode) with keys: ${streamData.keys.toList()}',
-              );
-            } catch (e, s) {
-              logInfo('Error processing streaming data: $e');
-              logInfo('Stack trace for streaming error: $s');
-            }
-          } else {
-            // Separated mode: Use individual callbacks
-            logInfo('YOLOView: Using separated callback mode');
+          if (event is Map && event.containsKey('test')) {
+            logInfo('YOLOView: Received test message: ${event['test']}');
+            return;
+          }
 
-            // Handle detection results
-            if (widget.onResult != null && event.containsKey('detections')) {
+          if (event is Map) {
+            // Priority system: onStreamingData takes precedence
+            if (widget.onStreamingData != null) {
               try {
-                final List<dynamic> detections = event['detections'] ?? [];
-                logInfo('YOLOView: Received ${detections.length} detections');
-
-                for (var i = 0; i < detections.length && i < 3; i++) {
-                  final detection = detections[i];
-                  final className = detection['className'] ?? 'unknown';
-                  final confidence = detection['confidence'] ?? 0.0;
-                  logInfo(
-                    'YOLOView: Detection $i - $className (${(confidence * 100).toStringAsFixed(1)}%)',
-                  );
-                }
-
-                final results = _parseDetectionResults(event);
-                logInfo('YOLOView: Parsed results count: ${results.length}');
-                widget.onResult!(results);
-                logInfo('YOLOView: Called onResult callback with results');
-              } catch (e, s) {
-                logInfo('Error parsing detection results: $e');
-                logInfo('Stack trace for detection error: $s');
+                // Comprehensive mode: Pass all data via onStreamingData
+                final streamData = Map<String, dynamic>.from(event);
+                widget.onStreamingData!(streamData);
                 logInfo(
-                  'YOLOView: Event keys for detection error: ${event.keys.toList()}',
+                  'YOLOView: Called onStreamingData callback (comprehensive mode) with keys: ${streamData.keys.toList()}',
                 );
-                if (event.containsKey('detections')) {
-                  final detections = event['detections'];
-                  logInfo(
-                    'YOLOView: Detections type for error: ${detections.runtimeType}',
-                  );
-                  if (detections is List && detections.isNotEmpty) {
+              } catch (e, s) {
+                logInfo('Error processing streaming data: $e');
+                logInfo('Stack trace for streaming error: $s');
+              }
+            } else {
+              // Separated mode: Use individual callbacks
+              logInfo('YOLOView: Using separated callback mode');
+
+              // Handle detection results
+              if (widget.onResult != null && event.containsKey('detections')) {
+                try {
+                  final List<dynamic> detections = event['detections'] ?? [];
+                  logInfo('YOLOView: Received ${detections.length} detections');
+
+                  for (var i = 0; i < detections.length && i < 3; i++) {
+                    final detection = detections[i];
+                    final className = detection['className'] ?? 'unknown';
+                    final confidence = detection['confidence'] ?? 0.0;
                     logInfo(
-                      'YOLOView: First detection keys for error: ${detections.first?.keys?.toList()}',
+                      'YOLOView: Detection $i - $className (${(confidence * 100).toStringAsFixed(1)}%)',
                     );
+                  }
+
+                  final results = _parseDetectionResults(event);
+                  logInfo('YOLOView: Parsed results count: ${results.length}');
+                  widget.onResult!(results);
+                  logInfo('YOLOView: Called onResult callback with results');
+                } catch (e, s) {
+                  logInfo('Error parsing detection results: $e');
+                  logInfo('Stack trace for detection error: $s');
+                  logInfo(
+                    'YOLOView: Event keys for detection error: ${event.keys.toList()}',
+                  );
+                  if (event.containsKey('detections')) {
+                    final detections = event['detections'];
+                    logInfo(
+                      'YOLOView: Detections type for error: ${detections.runtimeType}',
+                    );
+                    if (detections is List && detections.isNotEmpty) {
+                      logInfo(
+                        'YOLOView: First detection keys for error: ${detections.first?.keys?.toList()}',
+                      );
+                    }
                   }
                 }
               }
-            }
 
-            // Handle performance metrics
-            if (widget.onPerformanceMetrics != null) {
-              try {
-                logInfo(
-                  'YOLOView: 🔍 Raw event data for performance metrics: $event',
-                );
-                final metrics = YOLOPerformanceMetrics.fromMap(
-                  Map<String, dynamic>.from(event),
-                );
-                widget.onPerformanceMetrics!(metrics);
-                logInfo(
-                  'YOLOView: Called onPerformanceMetrics callback: ${metrics.toString()}',
-                );
-              } catch (e, s) {
-                logInfo('Error parsing performance metrics: $e');
-                logInfo('Stack trace for metrics error: $s');
-                logInfo(
-                  'YOLOView: Event keys for metrics error: ${event.keys.toList()}',
-                );
+              // Handle performance metrics
+              if (widget.onPerformanceMetrics != null) {
+                try {
+                  logInfo(
+                    'YOLOView: 🔍 Raw event data for performance metrics: $event',
+                  );
+                  final metrics = YOLOPerformanceMetrics.fromMap(
+                    Map<String, dynamic>.from(event),
+                  );
+                  widget.onPerformanceMetrics!(metrics);
+                  logInfo(
+                    'YOLOView: Called onPerformanceMetrics callback: ${metrics.toString()}',
+                  );
+                } catch (e, s) {
+                  logInfo('Error parsing performance metrics: $e');
+                  logInfo('Stack trace for metrics error: $s');
+                  logInfo(
+                    'YOLOView: Event keys for metrics error: ${event.keys.toList()}',
+                  );
+                }
               }
             }
-          }
-        } else {
-          logInfo(
-            'YOLOView: Received invalid event format or no relevant callbacks are set. Event type: ${event.runtimeType}',
-          );
-        }
-      },
-      onError: (dynamic error, StackTrace stackTrace) {
-        // Added StackTrace
-        logInfo('Error from detection results stream: $error');
-        logInfo('Stack trace from stream error: $stackTrace');
-
-        Future.delayed(const Duration(seconds: 2), () {
-          if (_resultSubscription != null && mounted) {
-            // Check mounted before resubscribing
-            logInfo('YOLOView: Attempting to resubscribe after error');
-            _subscribeToResults();
           } else {
             logInfo(
-              'YOLOView: Not resubscribing (stream already null or widget disposed)',
+              'YOLOView: Received invalid event format or no relevant callbacks are set. Event type: ${event.runtimeType}',
             );
           }
-        });
-      },
-      onDone: () {
-        logInfo('YOLOView: Event stream closed for $_viewId');
-        _resultSubscription = null;
-      },
-    );
-    logInfo('YOLOView: Event stream listener setup complete for $_viewId');
+        },
+        onError: (dynamic error, StackTrace stackTrace) {
+          // Added StackTrace
+          logInfo('Error from detection results stream: $error');
+          logInfo('Stack trace from stream error: $stackTrace');
+
+          Future.delayed(const Duration(seconds: 2), () {
+            if (_resultSubscription != null && mounted) {
+              // Check mounted before resubscribing
+              logInfo('YOLOView: Attempting to resubscribe after error');
+              _subscribeToResults();
+            } else {
+              logInfo(
+                'YOLOView: Not resubscribing (stream already null or widget disposed)',
+              );
+            }
+          });
+        },
+        onDone: () {
+          logInfo('YOLOView: Event stream closed for $_viewId');
+          _resultSubscription = null;
+        },
+      );
+      logInfo('YOLOView: Event stream listener setup complete for $_viewId');
+    });
   }
 
   @visibleForTesting
