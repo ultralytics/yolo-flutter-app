@@ -652,7 +652,7 @@ class YOLOViewState extends State<YOLOView> {
 
   final String _viewId = UniqueKey().toString();
   int? _platformViewId;
-  
+
   // Timer to track the delayed subscription timer
   Timer? _subscriptionTimer;
   Timer? _recreateTimer;
@@ -728,8 +728,8 @@ class YOLOViewState extends State<YOLOView> {
       _effectiveController
           .switchModel(widget.modelPath, widget.task)
           .catchError((e) {
-        logInfo('YoloView: Error switching model in didUpdateWidget: $e');
-      });
+            logInfo('YoloView: Error switching model in didUpdateWidget: $e');
+          });
     }
   }
 
@@ -744,15 +744,15 @@ class YOLOViewState extends State<YOLOView> {
 
     // Cancel event subscriptions with error handling
     _cancelResultSubscription();
-    
+
     // Cancel any pending subscription timer
     _subscriptionTimer?.cancel();
     _subscriptionTimer = null;
-    
+
     // Cancel any pending recreate timer
     _recreateTimer?.cancel();
     _recreateTimer = null;
-    
+
     // Cancel any pending error retry timer
     _errorRetryTimer?.cancel();
     _errorRetryTimer = null;
@@ -774,13 +774,13 @@ class YOLOViewState extends State<YOLOView> {
       const MethodChannel('yolo_single_image_channel')
           .invokeMethod('disposeInstance', {'instanceId': _viewId})
           .then((_) {
-        logInfo(
-          'YOLOView.dispose() - model instance disposed successfully',
-        );
-      })
+            logInfo(
+              'YOLOView.dispose() - model instance disposed successfully',
+            );
+          })
           .catchError((e) {
-        logInfo('YOLOView: Error disposing model instance: $e');
-      });
+            logInfo('YOLOView: Error disposing model instance: $e');
+          });
     }
 
     logInfo('YOLOView.dispose() completed - calling super.dispose()');
@@ -852,13 +852,12 @@ class YOLOViewState extends State<YOLOView> {
     // This prevents sink connection failures and MissingPluginException in real app usage
     _subscriptionTimer = Timer(const Duration(milliseconds: 200), () {
       if (!mounted) return;
-      
+
       // Cancel the dummy subscription and create the real one
       _resultSubscription?.cancel();
-      
+
       _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
         (dynamic event) {
-
           if (event is Map && event.containsKey('test')) {
             logInfo('YOLOView: Received test message: ${event['test']}');
             return;
@@ -980,7 +979,7 @@ class YOLOViewState extends State<YOLOView> {
       _resultSubscription!.cancel();
       _resultSubscription = null;
     }
-    
+
     // Also cancel any pending subscription timer
     _subscriptionTimer?.cancel();
     _subscriptionTimer = null;
