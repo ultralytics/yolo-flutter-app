@@ -858,7 +858,6 @@ class YOLOViewState extends State<YOLOView> {
       
       _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
         (dynamic event) {
-          logInfo('YOLOView: Received event from native platform: $event');
 
           if (event is Map && event.containsKey('test')) {
             logInfo('YOLOView: Received test message: ${event['test']}');
@@ -881,13 +880,11 @@ class YOLOViewState extends State<YOLOView> {
               }
             } else {
               // Separated mode: Use individual callbacks
-              logInfo('YOLOView: Using separated callback mode');
 
               // Handle detection results
               if (widget.onResult != null && event.containsKey('detections')) {
                 try {
                   final List<dynamic> detections = event['detections'] ?? [];
-                  logInfo('YOLOView: Received ${detections.length} detections');
 
                   for (var i = 0; i < detections.length && i < 3; i++) {
                     final detection = detections[i];
@@ -899,9 +896,7 @@ class YOLOViewState extends State<YOLOView> {
                   }
 
                   final results = _parseDetectionResults(event);
-                  logInfo('YOLOView: Parsed results count: ${results.length}');
                   widget.onResult!(results);
-                  logInfo('YOLOView: Called onResult callback with results');
                 } catch (e, s) {
                   logInfo('Error parsing detection results: $e');
                   logInfo('Stack trace for detection error: $s');
@@ -925,16 +920,10 @@ class YOLOViewState extends State<YOLOView> {
               // Handle performance metrics
               if (widget.onPerformanceMetrics != null) {
                 try {
-                  logInfo(
-                    'YOLOView: 🔍 Raw event data for performance metrics: $event',
-                  );
                   final metrics = YOLOPerformanceMetrics.fromMap(
                     Map<String, dynamic>.from(event),
                   );
                   widget.onPerformanceMetrics!(metrics);
-                  logInfo(
-                    'YOLOView: Called onPerformanceMetrics callback: ${metrics.toString()}',
-                  );
                 } catch (e, s) {
                   logInfo('Error parsing performance metrics: $e');
                   logInfo('Stack trace for metrics error: $s');
@@ -1004,7 +993,6 @@ class YOLOViewState extends State<YOLOView> {
 
   List<YOLOResult> _parseDetectionResults(Map<dynamic, dynamic> event) {
     final List<dynamic> detectionsData = event['detections'] ?? [];
-    logInfo('YOLOView: Parsing ${detectionsData.length} detections');
 
     if (detectionsData.isNotEmpty) {
       final first = detectionsData.first;
@@ -1032,7 +1020,6 @@ class YOLOViewState extends State<YOLOView> {
         }
       }).toList();
 
-      logInfo('YOLOView: Successfully parsed ${results.length} results');
       return results;
     } catch (e) {
       logInfo('YOLOView: Error parsing detections list: $e');
