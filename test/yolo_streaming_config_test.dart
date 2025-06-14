@@ -301,5 +301,58 @@ void main() {
       expect(config.includeOBB, isFalse);
       expect(config.includeOriginalImage, isFalse);
     });
+
+    test('custom configuration with specific settings', () {
+      const config = YOLOStreamingConfig.custom(
+        includeDetections: false,
+        includeClassifications: true,
+        includeProcessingTimeMs: false,
+        includeFps: true,
+        includeMasks: false,
+        includePoses: true,
+        includeOBB: false,
+        includeOriginalImage: true,
+        maxFPS: 15,
+      );
+
+      expect(config.includeDetections, false);
+      expect(config.includeClassifications, true);
+      expect(config.includeProcessingTimeMs, false);
+      expect(config.includeFps, true);
+      expect(config.includeMasks, false);
+      expect(config.includePoses, true);
+      expect(config.includeOBB, false);
+      expect(config.includeOriginalImage, true);
+      expect(config.maxFPS, 15);
+    });
+
+    test('throttled config has correct settings', () {
+      final config = YOLOStreamingConfig.throttled(maxFPS: 10);
+
+      expect(config.includeDetections, true);
+      expect(config.includeClassifications, true);
+      expect(config.includeProcessingTimeMs, true);
+      expect(config.includeFps, true);
+      expect(config.includeMasks, false);
+      expect(config.includePoses, false);
+      expect(config.includeOBB, false);
+      expect(config.includeOriginalImage, false);
+      expect(config.maxFPS, 10);
+      expect(config.throttleInterval, null);
+      expect(config.inferenceFrequency, null);
+      expect(config.skipFrames, null);
+    });
+
+    test('custom configuration with inference control', () {
+      const config = YOLOStreamingConfig.custom(
+        inferenceFrequency: 3,
+        skipFrames: 2,
+      );
+
+      expect(config.inferenceFrequency, 3);
+      expect(config.skipFrames, 2);
+      expect(config.maxFPS, null);
+      expect(config.throttleInterval, isNull);
+    });
   });
 }

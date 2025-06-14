@@ -300,13 +300,10 @@ class YOLO {
         final List<Map<String, dynamic>> boxes = [];
         if (resultMap.containsKey('boxes') && resultMap['boxes'] is List) {
           boxes.addAll(
-            (resultMap['boxes'] as List).map((item) {
-              if (item is Map) {
-                return Map<String, dynamic>.fromEntries(
-                  item.entries.map((e) => MapEntry(e.key.toString(), e.value)),
-                );
-              }
-              return <String, dynamic>{};
+            (resultMap['boxes'] as List).whereType<Map>().map((item) {
+              return Map<String, dynamic>.fromEntries(
+                item.entries.map((e) => MapEntry(e.key.toString(), e.value)),
+              );
             }),
           );
 
