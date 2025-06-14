@@ -830,12 +830,7 @@ void main() {
           'right': 110.0,
           'bottom': 220.0,
         },
-        'normalizedBox': {
-          'left': 0.1,
-          'top': 0.1,
-          'right': 0.9,
-          'bottom': 0.9,
-        },
+        'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.9, 'bottom': 0.9},
         'mask': [
           [0.0, 0.5, 1.0],
           [0.2, 0.8, 0.3],
@@ -863,15 +858,10 @@ void main() {
           'right': 110.0,
           'bottom': 220.0,
         },
-        'normalizedBox': {
-          'left': 0.1,
-          'top': 0.1,
-          'right': 0.9,
-          'bottom': 0.9,
-        },
+        'normalizedBox': {'left': 0.1, 'top': 0.1, 'right': 0.9, 'bottom': 0.9},
         'keypoints': [
-          100.0, 50.0, 0.9,  // nose
-          95.0, 55.0, 0.85,  // left eye
+          100.0, 50.0, 0.9, // nose
+          95.0, 55.0, 0.85, // left eye
           105.0, 55.0, 0.87, // right eye
         ],
       };
@@ -881,7 +871,7 @@ void main() {
       expect(result.keypoints!.length, 3);
       expect(result.keypointConfidences, isNotNull);
       expect(result.keypointConfidences!.length, 3);
-      
+
       // Check first keypoint
       expect(result.keypoints![0].x, 100.0);
       expect(result.keypoints![0].y, 50.0);
