@@ -652,7 +652,7 @@ class YOLOViewState extends State<YOLOView> {
 
   final String _viewId = UniqueKey().toString();
   int? _platformViewId;
-  
+
   // Timer to track the delayed subscription timer
   Timer? _subscriptionTimer;
   Timer? _recreateTimer;
@@ -728,8 +728,8 @@ class YOLOViewState extends State<YOLOView> {
       _effectiveController
           .switchModel(widget.modelPath, widget.task)
           .catchError((e) {
-        logInfo('YoloView: Error switching model in didUpdateWidget: $e');
-      });
+            logInfo('YoloView: Error switching model in didUpdateWidget: $e');
+          });
     }
   }
 
@@ -744,15 +744,15 @@ class YOLOViewState extends State<YOLOView> {
 
     // Cancel event subscriptions with error handling
     _cancelResultSubscription();
-    
+
     // Cancel any pending subscription timer
     _subscriptionTimer?.cancel();
     _subscriptionTimer = null;
-    
+
     // Cancel any pending recreate timer
     _recreateTimer?.cancel();
     _recreateTimer = null;
-    
+
     // Cancel any pending error retry timer
     _errorRetryTimer?.cancel();
     _errorRetryTimer = null;
@@ -774,13 +774,13 @@ class YOLOViewState extends State<YOLOView> {
       const MethodChannel('yolo_single_image_channel')
           .invokeMethod('disposeInstance', {'instanceId': _viewId})
           .then((_) {
-        logInfo(
-          'YOLOView.dispose() - model instance disposed successfully',
-        );
-      })
+            logInfo(
+              'YOLOView.dispose() - model instance disposed successfully',
+            );
+          })
           .catchError((e) {
-        logInfo('YOLOView: Error disposing model instance: $e');
-      });
+            logInfo('YOLOView: Error disposing model instance: $e');
+          });
     }
 
     logInfo('YOLOView.dispose() completed - calling super.dispose()');
@@ -852,14 +852,12 @@ class YOLOViewState extends State<YOLOView> {
     // This prevents sink connection failures and MissingPluginException in real app usage
     _subscriptionTimer = Timer(const Duration(milliseconds: 200), () {
       if (!mounted) return;
-      
+
       // Cancel the dummy subscription and create the real one
       _resultSubscription?.cancel();
-      
+
       _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
         (dynamic event) {
-          logInfo('YOLOView: Received event from native platform: $event');
-
           if (event is Map && event.containsKey('test')) {
             logInfo('YOLOView: Received test message: ${event['test']}');
             return;
@@ -881,13 +879,11 @@ class YOLOViewState extends State<YOLOView> {
               }
             } else {
               // Separated mode: Use individual callbacks
-              logInfo('YOLOView: Using separated callback mode');
 
               // Handle detection results
               if (widget.onResult != null && event.containsKey('detections')) {
                 try {
                   final List<dynamic> detections = event['detections'] ?? [];
-                  logInfo('YOLOView: Received ${detections.length} detections');
 
                   for (var i = 0; i < detections.length && i < 3; i++) {
                     final detection = detections[i];
@@ -899,9 +895,7 @@ class YOLOViewState extends State<YOLOView> {
                   }
 
                   final results = _parseDetectionResults(event);
-                  logInfo('YOLOView: Parsed results count: ${results.length}');
                   widget.onResult!(results);
-                  logInfo('YOLOView: Called onResult callback with results');
                 } catch (e, s) {
                   logInfo('Error parsing detection results: $e');
                   logInfo('Stack trace for detection error: $s');
@@ -925,16 +919,10 @@ class YOLOViewState extends State<YOLOView> {
               // Handle performance metrics
               if (widget.onPerformanceMetrics != null) {
                 try {
-                  logInfo(
-                    'YOLOView: 🔍 Raw event data for performance metrics: $event',
-                  );
                   final metrics = YOLOPerformanceMetrics.fromMap(
                     Map<String, dynamic>.from(event),
                   );
                   widget.onPerformanceMetrics!(metrics);
-                  logInfo(
-                    'YOLOView: Called onPerformanceMetrics callback: ${metrics.toString()}',
-                  );
                 } catch (e, s) {
                   logInfo('Error parsing performance metrics: $e');
                   logInfo('Stack trace for metrics error: $s');
@@ -991,7 +979,7 @@ class YOLOViewState extends State<YOLOView> {
       _resultSubscription!.cancel();
       _resultSubscription = null;
     }
-    
+
     // Also cancel any pending subscription timer
     _subscriptionTimer?.cancel();
     _subscriptionTimer = null;
@@ -1004,7 +992,6 @@ class YOLOViewState extends State<YOLOView> {
 
   List<YOLOResult> _parseDetectionResults(Map<dynamic, dynamic> event) {
     final List<dynamic> detectionsData = event['detections'] ?? [];
-    logInfo('YOLOView: Parsing ${detectionsData.length} detections');
 
     if (detectionsData.isNotEmpty) {
       final first = detectionsData.first;
@@ -1032,7 +1019,6 @@ class YOLOViewState extends State<YOLOView> {
         }
       }).toList();
 
-      logInfo('YOLOView: Successfully parsed ${results.length} results');
       return results;
     } catch (e) {
       logInfo('YOLOView: Error parsing detections list: $e');
