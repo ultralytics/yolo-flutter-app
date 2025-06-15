@@ -486,7 +486,7 @@ class YOLOViewController {
       logInfo('YOLOViewController: Error stopping camera and inference: $e');
     }
   }
-  
+
   /// Captures the current camera frame with detection overlays.
   ///
   /// Returns the captured image as a Uint8List (JPEG format) that includes
@@ -510,12 +510,18 @@ class YOLOViewController {
       return null;
     }
     try {
-      final result = await _methodChannel!.invokeMethod<dynamic>('captureFrame');
+      final result = await _methodChannel!.invokeMethod<dynamic>(
+        'captureFrame',
+      );
       if (result is Uint8List) {
-        logInfo('YOLOViewController: Frame captured successfully: ${result.length} bytes');
+        logInfo(
+          'YOLOViewController: Frame captured successfully: ${result.length} bytes',
+        );
         return result;
       } else {
-        logInfo('YOLOViewController: Unexpected capture result type: ${result.runtimeType}');
+        logInfo(
+          'YOLOViewController: Unexpected capture result type: ${result.runtimeType}',
+        );
         return null;
       }
     } catch (e) {

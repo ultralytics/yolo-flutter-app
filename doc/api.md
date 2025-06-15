@@ -397,7 +397,7 @@ if (imageData != null) {
   final directory = await getTemporaryDirectory();
   final file = File('${directory.path}/capture_${DateTime.now().millisecondsSinceEpoch}.jpg');
   await file.writeAsBytes(imageData);
-  
+
   // Or display in UI
   showDialog(
     context: context,
@@ -407,6 +407,7 @@ if (imageData != null) {
 ```
 
 **Note**: The captured image includes:
+
 - Camera frame
 - Detection bounding boxes with labels
 - Segmentation masks (for segment task)

@@ -902,7 +902,7 @@ class CaptureExample extends StatefulWidget {
 
 class _CaptureExampleState extends State<CaptureExample> {
   final controller = YOLOViewController();
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -916,7 +916,7 @@ class _CaptureExampleState extends State<CaptureExample> {
               // Handle results
             },
           ),
-          
+
           // Capture button
           Positioned(
             bottom: 80,
@@ -929,18 +929,18 @@ class _CaptureExampleState extends State<CaptureExample> {
       ),
     );
   }
-  
+
   Future<void> captureAndShare() async {
     // Capture current frame with overlays
     final imageData = await controller.captureFrame();
-    
+
     if (imageData != null) {
       // Save to temporary file
       final directory = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final file = File('${directory.path}/yolo_capture_$timestamp.jpg');
       await file.writeAsBytes(imageData);
-      
+
       // Share the captured image
       await Share.shareXFiles(
         [XFile(file.path)],
@@ -957,21 +957,21 @@ class _CaptureExampleState extends State<CaptureExample> {
 class AdvancedCaptureExample {
   final controller = YOLOViewController();
   final List<YOLOResult> currentResults = [];
-  
+
   Future<Map<String, dynamic>> captureWithMetadata() async {
     final imageData = await controller.captureFrame();
-    
+
     if (imageData == null) {
       throw Exception('Failed to capture frame');
     }
-    
+
     // Save image with metadata
     final directory = await getApplicationDocumentsDirectory();
     final timestamp = DateTime.now();
     final fileName = 'capture_${timestamp.millisecondsSinceEpoch}.jpg';
     final file = File('${directory.path}/$fileName');
     await file.writeAsBytes(imageData);
-    
+
     // Create metadata JSON
     final metadata = {
       'timestamp': timestamp.toIso8601String(),
@@ -988,11 +988,11 @@ class AdvancedCaptureExample {
       'image_path': file.path,
       'image_size': imageData.length,
     };
-    
+
     // Save metadata
     final metadataFile = File('${directory.path}/${fileName}.json');
     await metadataFile.writeAsString(jsonEncode(metadata));
-    
+
     return metadata;
   }
 }

@@ -1299,7 +1299,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
         // Calculate the correct frame relative to the main view
         let overlayFrame = self.overlayLayer.frame
         let maskFrame = maskLayer.frame
-        
+
         // Adjust mask frame to be relative to the main view, not overlayLayer
         tempLayer.frame = CGRect(
           x: overlayFrame.origin.x + maskFrame.origin.x,
@@ -1318,14 +1318,14 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
         self.layer.insertSublayer(tempLayer, above: imageLayer)
         tempMaskLayer = tempLayer
       }
-      
+
       // Add pose layer if present (for pose task)
       var tempPoseLayer: CALayer?
       if let poseLayer = self.poseLayer {
         // Create a temporary copy of the pose layer including all sublayers
         let tempLayer = CALayer()
         let overlayFrame = self.overlayLayer.frame
-        
+
         // Set frame relative to main view
         tempLayer.frame = CGRect(
           x: overlayFrame.origin.x,
@@ -1334,7 +1334,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
           height: overlayFrame.height
         )
         tempLayer.opacity = poseLayer.opacity
-        
+
         // Copy all sublayers (keypoints and skeleton lines)
         if let sublayers = poseLayer.sublayers {
           for sublayer in sublayers {
@@ -1343,7 +1343,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
             copyLayer.backgroundColor = sublayer.backgroundColor
             copyLayer.cornerRadius = sublayer.cornerRadius
             copyLayer.opacity = sublayer.opacity
-            
+
             // If it's a shape layer (for lines), copy the path
             if let shapeLayer = sublayer as? CAShapeLayer {
               let copyShapeLayer = CAShapeLayer()
@@ -1359,18 +1359,18 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
             }
           }
         }
-        
+
         self.layer.insertSublayer(tempLayer, above: imageLayer)
         tempPoseLayer = tempLayer
       }
-      
+
       // Add OBB layer if present (for OBB task)
       var tempObbLayer: CALayer?
       if let obbLayer = self.obbLayer, !obbLayer.isHidden {
         // Create a temporary copy of the OBB layer including all sublayers
         let tempLayer = CALayer()
         let overlayFrame = self.overlayLayer.frame
-        
+
         tempLayer.frame = CGRect(
           x: overlayFrame.origin.x,
           y: overlayFrame.origin.y,
@@ -1378,7 +1378,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
           height: overlayFrame.height
         )
         tempLayer.opacity = obbLayer.opacity
-        
+
         // Copy all sublayers
         if let sublayers = obbLayer.sublayers {
           for sublayer in sublayers {
@@ -1405,7 +1405,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
             }
           }
         }
-        
+
         self.layer.insertSublayer(tempLayer, above: imageLayer)
         tempObbLayer = tempLayer
       }
@@ -1424,7 +1424,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
       self.drawHierarchy(in: bounds, afterScreenUpdates: true)
       let img = UIGraphicsGetImageFromCurrentImageContext()
       UIGraphicsEndImageContext()
-      
+
       // Clean up temporary layers and views
       imageLayer.removeFromSuperlayer()
       tempMaskLayer?.removeFromSuperlayer()
