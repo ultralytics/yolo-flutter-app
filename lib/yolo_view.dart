@@ -486,6 +486,43 @@ class YOLOViewController {
       logInfo('YOLOViewController: Error stopping camera and inference: $e');
     }
   }
+  
+  /// Captures the current camera frame with detection overlays.
+  ///
+  /// Returns the captured image as a Uint8List (JPEG format) that includes
+  /// the camera frame with detection bounding boxes and labels overlaid.
+  /// Returns null if capture fails.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Capture frame with detection overlays
+  /// final imageData = await controller.captureFrame();
+  /// if (imageData != null) {
+  ///   // Save to file or display
+  ///   final image = Image.memory(imageData);
+  /// }
+  /// ```
+  Future<Uint8List?> captureFrame() async {
+    if (_methodChannel == null) {
+      logInfo(
+        'YOLOViewController: Warning - Cannot capture frame, view not yet created',
+      );
+      return null;
+    }
+    try {
+      final result = await _methodChannel!.invokeMethod<dynamic>('captureFrame');
+      if (result is Uint8List) {
+        logInfo('YOLOViewController: Frame captured successfully: ${result.length} bytes');
+        return result;
+      } else {
+        logInfo('YOLOViewController: Unexpected capture result type: ${result.runtimeType}');
+        return null;
+      }
+    } catch (e) {
+      logInfo('YOLOViewController: Error capturing frame: $e');
+      return null;
+    }
+  }
 }
 
 /// A Flutter widget that displays a real-time camera preview with YOLO object detection.

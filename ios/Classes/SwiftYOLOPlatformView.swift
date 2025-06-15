@@ -376,6 +376,36 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
               code: "invalid_args", message: "Invalid arguments for setModel", details: nil))
         }
 
+      case "captureFrame":
+        // Method to capture current camera frame with detection overlays
+        print("SwiftYOLOPlatformView: Received captureFrame call")
+        self.yoloView?.capturePhoto { [weak self] image in
+          if let image = image {
+            // Convert UIImage to byte array (JPEG format)
+            if let imageData = image.jpegData(compressionQuality: 0.9) {
+              // Convert to FlutterStandardTypedData for efficient transfer
+              let flutterData = FlutterStandardTypedData(bytes: imageData)
+              result(flutterData)
+            } else {
+              result(
+                FlutterError(
+                  code: "conversion_failed",
+                  message: "Failed to convert captured image to JPEG data",
+                  details: nil
+                )
+              )
+            }
+          } else {
+            result(
+              FlutterError(
+                code: "capture_failed",
+                message: "Failed to capture photo from camera",
+                details: nil
+              )
+            )
+          }
+        }
+
       // Additional methods can be added here in the future
 
       default:

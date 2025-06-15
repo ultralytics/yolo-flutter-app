@@ -887,4 +887,115 @@ class SecuritySystem {
 }
 ```
 
+### Frame Capture with Overlays
+
+Capture camera frames with detection visualizations for sharing or saving:
+
+```dart
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+
+class CaptureExample extends StatefulWidget {
+  @override
+  _CaptureExampleState createState() => _CaptureExampleState();
+}
+
+class _CaptureExampleState extends State<CaptureExample> {
+  final controller = YOLOViewController();
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          YOLOView(
+            modelPath: 'yolo11n',
+            task: YOLOTask.detect,
+            controller: controller,
+            onResult: (results) {
+              // Handle results
+            },
+          ),
+          
+          // Capture button
+          Positioned(
+            bottom: 80,
+            child: FloatingActionButton(
+              onPressed: captureAndShare,
+              child: Icon(Icons.camera_alt),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Future<void> captureAndShare() async {
+    // Capture current frame with overlays
+    final imageData = await controller.captureFrame();
+    
+    if (imageData != null) {
+      // Save to temporary file
+      final directory = await getTemporaryDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final file = File('${directory.path}/yolo_capture_$timestamp.jpg');
+      await file.writeAsBytes(imageData);
+      
+      // Share the captured image
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'YOLO Detection Result',
+      );
+    }
+  }
+}
+```
+
+#### Advanced Capture with Metadata
+
+```dart
+class AdvancedCaptureExample {
+  final controller = YOLOViewController();
+  final List<YOLOResult> currentResults = [];
+  
+  Future<Map<String, dynamic>> captureWithMetadata() async {
+    final imageData = await controller.captureFrame();
+    
+    if (imageData == null) {
+      throw Exception('Failed to capture frame');
+    }
+    
+    // Save image with metadata
+    final directory = await getApplicationDocumentsDirectory();
+    final timestamp = DateTime.now();
+    final fileName = 'capture_${timestamp.millisecondsSinceEpoch}.jpg';
+    final file = File('${directory.path}/$fileName');
+    await file.writeAsBytes(imageData);
+    
+    // Create metadata JSON
+    final metadata = {
+      'timestamp': timestamp.toIso8601String(),
+      'detections': currentResults.map((r) => {
+        'class': r.className,
+        'confidence': r.confidence,
+        'bbox': {
+          'x': r.boundingBox.left,
+          'y': r.boundingBox.top,
+          'width': r.boundingBox.width,
+          'height': r.boundingBox.height,
+        },
+      }).toList(),
+      'image_path': file.path,
+      'image_size': imageData.length,
+    };
+    
+    // Save metadata
+    final metadataFile = File('${directory.path}/${fileName}.json');
+    await metadataFile.writeAsString(jsonEncode(metadata));
+    
+    return metadata;
+  }
+}
+```
+
 This comprehensive usage guide covers all major patterns and use cases for the YOLO Flutter plugin. For specific API details, check the [API Reference](api.md), and for performance optimization, see the [Performance Guide](performance.md).
