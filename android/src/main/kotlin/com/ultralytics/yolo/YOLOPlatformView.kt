@@ -99,7 +99,6 @@ class YOLOPlatformView(
             // YOLOView streaming is now configured separately
             // Keep simple inference callback for compatibility
             yoloView.setOnInferenceCallback { result ->
-                Log.d(TAG, "*** Inference result received with ${result.boxes.size} detections ***")
             }
             
             // Load model with the specified path and task
@@ -326,19 +325,16 @@ class YOLOPlatformView(
      */
     private fun sendStreamDataToFlutter(streamData: Map<String, Any>) {
         try {
-            Log.d(TAG, "Sending stream data to Flutter: ${streamData.keys.joinToString()}")
             
             // Create a runnable to ensure we're on the main thread
             val sendResults = Runnable {
                 try {
                     if (streamHandler is CustomStreamHandler) {
                         val customHandler = streamHandler as CustomStreamHandler
-                        Log.d(TAG, "Using CustomStreamHandler - is sink valid: ${customHandler.isSinkValid()}")
                         
                         // Use the safe send method
                         val sent = customHandler.safelySend(streamData)
                         if (sent) {
-                            Log.d(TAG, "Successfully sent stream data via CustomStreamHandler")
                         } else {
                             Log.w(TAG, "Failed to send stream data via CustomStreamHandler")
                             // Notify Flutter to recreate the channel
@@ -355,9 +351,7 @@ class YOLOPlatformView(
                         val sink = sinkField.get(streamHandler) as? EventChannel.EventSink
                         
                         if (sink != null) {
-                            Log.d(TAG, "Sending stream data to Flutter via event sink (reflection)")
                             sink.success(streamData)
-                            Log.d(TAG, "Successfully sent stream data via reflection")
                         } else {
                             Log.w(TAG, "Event sink is NOT available via reflection, skipping data")
                             // Try alternative approach - recreate the event channel

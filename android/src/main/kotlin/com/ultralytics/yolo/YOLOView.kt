@@ -544,9 +544,6 @@ class YOLOView @JvmOverloads constructor(
         val h = imageProxy.height
         val orientation = context.resources.configuration.orientation
         val isLandscapeDevice = orientation == Configuration.ORIENTATION_LANDSCAPE
-        Log.d(TAG, "=== onFrame Debug ===")
-        Log.d(TAG, "ImageProxy size: ${w}x${h}")
-        Log.d(TAG, "Device orientation: ${if (isLandscapeDevice) "LANDSCAPE" else "PORTRAIT"}")
 
         val bitmap = ImageUtils.toBitmap(imageProxy) ?: run {
             Log.e(TAG, "Failed to convert ImageProxy to Bitmap")
@@ -586,7 +583,6 @@ class YOLOView @JvmOverloads constructor(
                 inferenceResult = resultWithOriginalImage
 
                 // Log
-                Log.d(TAG, "Inference complete: ${result.boxes.size} boxes detected")
                 
                 // Callback
                 inferenceCallback?.invoke(resultWithOriginalImage)
@@ -604,7 +600,6 @@ class YOLOView @JvmOverloads constructor(
                         enhancedStreamData["frameNumber"] = frameNumberCounter++
                         
                         callback.invoke(enhancedStreamData)
-                        Log.d(TAG, "Sent streaming data with ${result.boxes.size} detections")
                     } else {
                         Log.d(TAG, "Skipping frame output due to throttling")
                     }
@@ -613,7 +608,6 @@ class YOLOView @JvmOverloads constructor(
                 // Update overlay
                 post {
                     overlayView.invalidate()
-                    Log.d(TAG, "Overlay invalidated for redraw")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error during prediction", e)
@@ -652,7 +646,6 @@ class YOLOView @JvmOverloads constructor(
             super.onDraw(canvas)
             val result = inferenceResult ?: return
             
-            Log.d(TAG, "OverlayView onDraw: Drawing result with ${result.boxes.size} boxes")
 
             val iw = result.origShape.width.toFloat()
             val ih = result.origShape.height.toFloat()
@@ -664,14 +657,12 @@ class YOLOView @JvmOverloads constructor(
             val orientation = context.resources.configuration.orientation
             val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
             
-            Log.d(TAG, "OverlayView dimensions: View(${vw}x${vh}), Image(${iw}x${ih}), isLandscape=$isLandscape")
 
             // Scale factor from camera image to view
             val scaleX = vw / iw
             val scaleY = vh / ih
             val scale = max(scaleX, scaleY)
             
-            Log.d(TAG, "Scale factors: scaleX=$scaleX, scaleY=$scaleY, chosen scale=$scale")
 
             val scaledW = iw * scale
             val scaledH = ih * scale
@@ -682,7 +673,6 @@ class YOLOView @JvmOverloads constructor(
             // Check if using front camera
             val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
             
-            Log.d(TAG, "OverlayView scaling: scale=${scale}, dx=${dx}, dy=${dy}, frontCamera=${isFrontCamera}")
 
             when (task) {
                 // ----------------------------------------
@@ -1336,14 +1326,12 @@ class YOLOView @JvmOverloads constructor(
             }
             
             map["detections"] = detections
-            Log.d(TAG, "Converted ${detections.size} detections to stream data")
         }
         
         // Add performance metrics (if enabled)
         if (config.includeProcessingTimeMs) {
             val processingTimeMs = result.speed.toDouble()
             map["processingTimeMs"] = processingTimeMs
-            Log.d(TAG, "📊 Including processingTimeMs: $processingTimeMs ms (includeProcessingTimeMs=${config.includeProcessingTimeMs})")
         } else {
             Log.d(TAG, "⚠️ Skipping processingTimeMs (includeProcessingTimeMs=${config.includeProcessingTimeMs})")
         }
