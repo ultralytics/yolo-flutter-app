@@ -238,6 +238,17 @@ class YOLOPlatformView(
                         }
                     }
                 }
+                "captureFrame" -> {
+                    Log.d(TAG, "Received captureFrame call")
+                    val imageData = yoloView.captureFrame()
+                    if (imageData != null) {
+                        Log.d(TAG, "Frame captured successfully: ${imageData.size} bytes")
+                        result.success(imageData)
+                    } else {
+                        Log.e(TAG, "Failed to capture frame")
+                        result.error("capture_failed", "Failed to capture frame from camera", null)
+                    }
+                }
                 "listen" -> {
                     Log.d(TAG, "EventChannel listen method called")
                     // Called when EventChannel starts the stream

@@ -374,6 +374,47 @@ Configure streaming behavior.
 Future<void> setStreamingConfig(YOLOStreamingConfig config)
 ```
 
+##### `captureFrame()`
+
+Capture the current camera frame with detection overlays.
+
+```dart
+Future<Uint8List?> captureFrame()
+```
+
+**Returns**: `Future<Uint8List?>` - JPEG image data with detection overlays, or `null` if capture fails
+
+**Description**: Captures the current camera frame including all detection visualizations (bounding boxes, masks, keypoints, etc.) as a JPEG image.
+
+**Example**:
+
+```dart
+// Capture frame with overlays
+final imageData = await controller.captureFrame();
+
+if (imageData != null) {
+  // Save to file
+  final directory = await getTemporaryDirectory();
+  final file = File('${directory.path}/capture_${DateTime.now().millisecondsSinceEpoch}.jpg');
+  await file.writeAsBytes(imageData);
+
+  // Or display in UI
+  showDialog(
+    context: context,
+    builder: (context) => Image.memory(imageData),
+  );
+}
+```
+
+**Note**: The captured image includes:
+
+- Camera frame
+- Detection bounding boxes with labels
+- Segmentation masks (for segment task)
+- Pose keypoints and skeleton (for pose task)
+- OBB rotated boxes (for OBB task)
+- Classification results (for classify task)
+
 ---
 
 ### YOLOResult Class

@@ -1,3 +1,15 @@
+## 0.1.26
+
+- **Breaking**: None - fully backward compatible
+- **New Feature**: Add frame capture functionality with detection overlays
+  - Capture camera frames with bounding boxes, masks, poses, and other overlays
+  - Save captured images to device gallery or share with other apps
+  - Support for all YOLO tasks (detect, segment, pose, classify, OBB)
+  - New `captureFrame()` method in YOLOViewController returns JPEG image data
+- **Enhancement**: iOS capture includes all overlay types (masks, poses, OBB)
+- **Enhancement**: Android capture with multiple fallback methods for reliability
+- **Documentation**: Added comprehensive frame capture API documentation
+
 ## 0.1.25
 
 - **Breaking**: None - fully backward compatible
