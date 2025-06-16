@@ -1289,13 +1289,63 @@ class YOLOView @JvmOverloads constructor(
                     Log.d(TAG, "Added keypoints data (${keypoints.xy.size} points) for detection $detectionIndex")
                 }
                 
-                // Add OBB data (if available and enabled)
-                if (config.includeOBB && detectionIndex < result.obb.size) {
-                    val obbResult = result.obb[detectionIndex]
-                    val obbBox = obbResult.box
-                    
-                    // Convert OBB to 4 corner points
-                    val polygon = obbBox.toPolygon()
+                detections.add(detection)
+            }
+            
+            // Handle OBB results directly (same pattern as overlay: for obbRes in result.obb)
+            for (obbRes in result.obb) {
+                val detection = HashMap<String, Any>()
+                detection["classIndex"] = obbRes.index
+                detection["className"] = obbRes.cls
+                detection["confidence"] = obbRes.confidence.toDouble()
+                
+                // Get OBB polygon points (4 corners of rotated rectangle)
+                val polygon = obbRes.box.toPolygon()
+                val imgWidth = result.origShape.width.toFloat()
+                val imgHeight = result.origShape.height.toFloat()
+                
+                // Convert polygon points to pixel coordinates  
+                val polygonPixels = polygon.map { point ->
+                    mapOf(
+                        "x" to (point.x * imgWidth).toDouble(),
+                        "y" to (point.y * imgHeight).toDouble()
+                    )
+                }
+                
+                // Store polygon points directly for precise OBB cropping
+                detection["polygon"] = polygonPixels
+                
+                // Also calculate AABB as fallback for compatibility (but Flutter should use polygon)
+                var minX = Float.MAX_VALUE
+                var maxX = Float.MIN_VALUE  
+                var minY = Float.MAX_VALUE
+                var maxY = Float.MIN_VALUE
+                
+                for (point in polygon) {
+                    if (point.x < minX) minX = point.x
+                    if (point.x > maxX) maxX = point.x
+                    if (point.y < minY) minY = point.y
+                    if (point.y > maxY) maxY = point.y
+                }
+                
+                // Fallback bounding box (enlarged) - only use if polygon cropping fails
+                val boundingBox = HashMap<String, Any>()
+                boundingBox["left"] = (minX * imgWidth).toDouble()
+                boundingBox["top"] = (minY * imgHeight).toDouble()
+                boundingBox["right"] = (maxX * imgWidth).toDouble()
+                boundingBox["bottom"] = (maxY * imgHeight).toDouble()
+                detection["boundingBox"] = boundingBox
+                
+                // Normalized bounding box (0-1) - fallback
+                val normalizedBox = HashMap<String, Any>()
+                normalizedBox["left"] = minX.toDouble()
+                normalizedBox["top"] = minY.toDouble()
+                normalizedBox["right"] = maxX.toDouble()
+                normalizedBox["bottom"] = maxY.toDouble()
+                detection["normalizedBox"] = normalizedBox
+                
+                // Add OBB-specific data
+                if (config.includeOBB) {
                     val points = polygon.map { point ->
                         mapOf(
                             "x" to point.x.toDouble(),
@@ -1303,29 +1353,29 @@ class YOLOView @JvmOverloads constructor(
                         )
                     }
                     
-                    // Create comprehensive OBB data map
                     val obbDataMap = mapOf(
-                        "centerX" to obbBox.cx.toDouble(),
-                        "centerY" to obbBox.cy.toDouble(),
-                        "width" to obbBox.w.toDouble(),
-                        "height" to obbBox.h.toDouble(),
-                        "angle" to obbBox.angle.toDouble(), // radians
-                        "angleDegrees" to (obbBox.angle * 180.0 / Math.PI), // degrees for convenience
-                        "area" to obbBox.area.toDouble(),
-                        "points" to points, // 4 corner points
-                        "confidence" to obbResult.confidence.toDouble(),
-                        "className" to obbResult.cls,
-                        "classIndex" to obbResult.index
+                        "centerX" to obbRes.box.cx.toDouble(),
+                        "centerY" to obbRes.box.cy.toDouble(),
+                        "width" to obbRes.box.w.toDouble(),
+                        "height" to obbRes.box.h.toDouble(),
+                        "angle" to obbRes.box.angle.toDouble(),
+                        "angleDegrees" to (obbRes.box.angle * 180.0 / Math.PI),
+                        "area" to obbRes.box.area.toDouble(),
+                        "points" to points,
+                        "confidence" to obbRes.confidence.toDouble(),
+                        "className" to obbRes.cls,
+                        "classIndex" to obbRes.index
                     )
                     
                     detection["obb"] = obbDataMap
-                    Log.d(TAG, "✅ Added OBB data: ${obbResult.cls} (${String.format("%.1f", obbBox.angle * 180.0 / Math.PI)}° rotation)")
+                    Log.d(TAG, "✅ Added OBB data: ${obbRes.cls} (${String.format("%.1f", obbRes.box.angle * 180.0 / Math.PI)}° rotation)")
                 }
                 
                 detections.add(detection)
             }
             
             map["detections"] = detections
+            Log.d(TAG, "✅ Total detections in stream: ${detections.size} (boxes: ${result.boxes.size}, obb: ${result.obb.size})")
         }
         
         // Add performance metrics (if enabled)
