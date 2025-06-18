@@ -135,6 +135,24 @@ class YOLOViewController {
     }
   }
 
+  Future<void> zoomIn() async {
+    if (_methodChannel == null) return;
+    try {
+      await _methodChannel!.invokeMethod('zoomIn');
+    } catch (e) {
+      logInfo('YoloViewController: Error zooming in: $e');
+    }
+  }
+
+  Future<void> zoomOut() async {
+    if (_methodChannel == null) return;
+    try {
+      await _methodChannel!.invokeMethod('zoomOut');
+    } catch (e) {
+      logInfo('YoloViewController: Error zooming out: $e');
+    }
+  }
+
   Future<void> switchModel(String modelPath, YOLOTask task) async {
     if (_methodChannel == null || _viewId == null) {
       logInfo(
@@ -504,4 +522,6 @@ class YOLOViewState extends State<YOLOView> {
   Future<void> switchCamera() => _effectiveController.switchCamera();
   Future<void> setZoomLevel(double zoomLevel) =>
       _effectiveController.setZoomLevel(zoomLevel);
+  Future<void> zoomIn() => _effectiveController.zoomIn();
+  Future<void> zoomOut() => _effectiveController.zoomOut();
 }
