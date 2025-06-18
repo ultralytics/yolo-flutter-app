@@ -51,4 +51,36 @@ void main() {
       expect(exception.toString(), 'ModelNotLoadedException: $message');
     });
   });
+
+  group('InferenceException', () {
+    test('constructor creates instance with message', () {
+      const message = 'Inference failed';
+      final exception = InferenceException(message);
+
+      expect(exception.message, message);
+    });
+
+    test('toString returns formatted message', () {
+      const message = 'Inference failed';
+      final exception = InferenceException(message);
+
+      expect(exception.toString(), 'InferenceException: $message');
+    });
+  });
+
+  group('InvalidInputException', () {
+    test('constructor creates instance with message', () {
+      const message = 'Invalid input data';
+      final exception = InvalidInputException(message);
+
+      expect(exception.message, message);
+    });
+
+    test('toString returns formatted message', () {
+      const message = 'Invalid input data';
+      final exception = InvalidInputException(message);
+
+      expect(exception.toString(), 'InvalidInputException: $message');
+    });
+  });
 }
