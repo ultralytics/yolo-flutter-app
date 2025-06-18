@@ -213,7 +213,7 @@ class VideoCapture: NSObject, @unchecked Sendable {
       //                imageOrientation = .up
       //            }
 
-      predictor.predict(sampleBuffer: sampleBuffer, onResultsListener: self, onInferenceTime: self)
+      predictor.predict(pixelBuffer: pixelBuffer, onResultsListener: self, onInferenceTime: self)
       currentBuffer = nil
     }
   }

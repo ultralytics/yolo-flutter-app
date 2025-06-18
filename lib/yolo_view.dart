@@ -344,9 +344,7 @@ class YOLOViewState extends State<YOLOView> {
         widget.onStreamingData == null) {
       return;
     }
-    logInfo(
-      'YOLOView: Setting up event stream listener for channel: com.ultralytics.yolo/detectionResults_$_viewId',
-    );
+
     final eventChannel =
         testEventChannel ??
         EventChannel('com.ultralytics.yolo/detectionResults_$_viewId');
@@ -374,7 +372,6 @@ class YOLOViewState extends State<YOLOView> {
         logInfo('YOLOView: Event stream closed for $_viewId');
       },
     );
-    logInfo('YOLOView: Event stream listener setup complete for $_viewId');
   }
 
   void cancelResultSubscription() {
