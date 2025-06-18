@@ -870,9 +870,6 @@ class YOLOViewState extends State<YOLOView> {
                 // Comprehensive mode: Pass all data via onStreamingData
                 final streamData = Map<String, dynamic>.from(event);
                 widget.onStreamingData!(streamData);
-                logInfo(
-                  'YOLOView: Called onStreamingData callback (comprehensive mode) with keys: ${streamData.keys.toList()}',
-                );
               } catch (e, s) {
                 logInfo('Error processing streaming data: $e');
                 logInfo('Stack trace for streaming error: $s');
