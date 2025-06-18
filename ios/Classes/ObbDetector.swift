@@ -22,13 +22,20 @@ import Vision
 class ObbDetector: BasePredictor, @unchecked Sendable {
 
   override func processObservations(for request: VNRequest, error: Error?) {
+    // ADDED: Retrieve the original image from the instance variable `currentBuffer`
+    var originalImage: UIImage? = nil
+    if let pixelBuffer = self.currentBuffer {
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        originalImage = UIImage(ciImage: ciImage)
+    }
+      
     if let results = request.results as? [VNCoreMLFeatureValueObservation] {
 
       if let prediction = results.first?.featureValue.multiArrayValue {
         let nmsResults = postProcessOBB(
-          feature: prediction,  // your MLMultiArray
-          confidenceThreshold: 0.25,
-          iouThreshold: 0.45
+          feature: prediction,
+          confidenceThreshold: Float(self.confidenceThreshold),
+          iouThreshold: Float(self.iouThreshold)
         )
 
         var obbResults: [OBBResult] = []
@@ -40,12 +47,16 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
           obbResults.append(obbResult)
         }
 
-        self.currentOnResultsListener?.on(
-          result: YOLOResult(
-            orig_shape: inputSize, boxes: [], obb: obbResults, speed: 0, names: labels))
+        // MODIFIED: Include the originalImage in the YOLOResult
+        let result = YOLOResult(
+          orig_shape: inputSize, boxes: [], obb: obbResults, speed: 0, originalImage: originalImage, names: labels)
+        self.currentOnResultsListener?.on(result: result)
         self.updateTime()
       }
     }
+      
+    // ADDED: Clear the buffer to allow the next frame to be processed.
+    self.currentBuffer = nil
   }
 
   private func updateTime() {
@@ -77,9 +88,9 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
 
         if let prediction = results.first?.featureValue.multiArrayValue {
           let nmsResults = postProcessOBB(
-            feature: prediction,  // your MLMultiArray
-            confidenceThreshold: 0.25,
-            iouThreshold: 0.45
+            feature: prediction,
+            confidenceThreshold: Float(self.confidenceThreshold),
+            iouThreshold: Float(self.iouThreshold)
           )
 
           var obbResults: [OBBResult] = []
@@ -395,43 +406,6 @@ func obbIoU(_ box1: OBB, _ box2: OBB) -> Float {
   return iou
 }
 
-/// Perform NMS for oriented bounding boxes.
-/// - Parameters:
-///   - boxes: Array of OBB (cx, cy, w, h, angle)
-///   - scores: Confidence scores parallel to `boxes`
-///   - iouThreshold: Intersection-over-Union threshold
-/// - Returns: Array of kept indices
-//public func nonMaxSuppressionOBB(
-//    boxes: [OBB],
-//    scores: [Float],
-//    iouThreshold: Float
-//) -> [Int] {
-//    // Sort by descending scores
-//    let sortedIndices = scores.enumerated()
-//        .sorted(by: { $0.element > $1.element })
-//        .map { $0.offset }
-//
-//    var selectedIndices = [Int]()
-//    var active = [Bool](repeating: true, count: boxes.count)
-//
-//    for i in 0..<sortedIndices.count {
-//        let idx = sortedIndices[i]
-//        if !active[idx] { continue }  // already suppressed
-//        selectedIndices.append(idx)
-//
-//        for j in (i+1)..<sortedIndices.count {
-//            let otherIdx = sortedIndices[j]
-//            if active[otherIdx] {
-//                // Compute IoU for oriented boxes
-//                let iouVal = obbIoU(boxes[idx], boxes[otherIdx])
-//                if iouVal > iouThreshold {
-//                    active[otherIdx] = false
-//                }
-//            }
-//        }
-//    }
-//    return selectedIndices
-//}
 /// Store cached geometry for faster OBB IoU checks.
 struct OBBInfo {
   let box: OBB
