@@ -1289,13 +1289,63 @@ class YOLOView @JvmOverloads constructor(
                     Log.d(TAG, "Added keypoints data (${keypoints.xy.size} points) for detection $detectionIndex")
                 }
                 
-                // Add OBB data (if available and enabled)
-                if (config.includeOBB && detectionIndex < result.obb.size) {
-                    val obbResult = result.obb[detectionIndex]
-                    val obbBox = obbResult.box
-                    
-                    // Convert OBB to 4 corner points
-                    val polygon = obbBox.toPolygon()
+                detections.add(detection)
+            }
+            
+            // Handle OBB results directly (same pattern as overlay: for obbRes in result.obb)
+            for (obbRes in result.obb) {
+                val detection = HashMap<String, Any>()
+                detection["classIndex"] = obbRes.index
+                detection["className"] = obbRes.cls
+                detection["confidence"] = obbRes.confidence.toDouble()
+                
+                // Get OBB polygon points (4 corners of rotated rectangle)
+                val polygon = obbRes.box.toPolygon()
+                val imgWidth = result.origShape.width.toFloat()
+                val imgHeight = result.origShape.height.toFloat()
+                
+                // Convert polygon points to pixel coordinates  
+                val polygonPixels = polygon.map { point ->
+                    mapOf(
+                        "x" to (point.x * imgWidth).toDouble(),
+                        "y" to (point.y * imgHeight).toDouble()
+                    )
+                }
+                
+                // Store polygon points directly for precise OBB cropping
+                detection["polygon"] = polygonPixels
+                
+                // Also calculate AABB as fallback for compatibility (but Flutter should use polygon)
+                var minX = Float.MAX_VALUE
+                var maxX = Float.MIN_VALUE  
+                var minY = Float.MAX_VALUE
+                var maxY = Float.MIN_VALUE
+                
+                for (point in polygon) {
+                    if (point.x < minX) minX = point.x
+                    if (point.x > maxX) maxX = point.x
+                    if (point.y < minY) minY = point.y
+                    if (point.y > maxY) maxY = point.y
+                }
+                
+                // Fallback bounding box (enlarged) - only use if polygon cropping fails
+                val boundingBox = HashMap<String, Any>()
+                boundingBox["left"] = (minX * imgWidth).toDouble()
+                boundingBox["top"] = (minY * imgHeight).toDouble()
+                boundingBox["right"] = (maxX * imgWidth).toDouble()
+                boundingBox["bottom"] = (maxY * imgHeight).toDouble()
+                detection["boundingBox"] = boundingBox
+                
+                // Normalized bounding box (0-1) - fallback
+                val normalizedBox = HashMap<String, Any>()
+                normalizedBox["left"] = minX.toDouble()
+                normalizedBox["top"] = minY.toDouble()
+                normalizedBox["right"] = maxX.toDouble()
+                normalizedBox["bottom"] = maxY.toDouble()
+                detection["normalizedBox"] = normalizedBox
+                
+                // Add OBB-specific data
+                if (config.includeOBB) {
                     val points = polygon.map { point ->
                         mapOf(
                             "x" to point.x.toDouble(),
@@ -1303,29 +1353,29 @@ class YOLOView @JvmOverloads constructor(
                         )
                     }
                     
-                    // Create comprehensive OBB data map
                     val obbDataMap = mapOf(
-                        "centerX" to obbBox.cx.toDouble(),
-                        "centerY" to obbBox.cy.toDouble(),
-                        "width" to obbBox.w.toDouble(),
-                        "height" to obbBox.h.toDouble(),
-                        "angle" to obbBox.angle.toDouble(), // radians
-                        "angleDegrees" to (obbBox.angle * 180.0 / Math.PI), // degrees for convenience
-                        "area" to obbBox.area.toDouble(),
-                        "points" to points, // 4 corner points
-                        "confidence" to obbResult.confidence.toDouble(),
-                        "className" to obbResult.cls,
-                        "classIndex" to obbResult.index
+                        "centerX" to obbRes.box.cx.toDouble(),
+                        "centerY" to obbRes.box.cy.toDouble(),
+                        "width" to obbRes.box.w.toDouble(),
+                        "height" to obbRes.box.h.toDouble(),
+                        "angle" to obbRes.box.angle.toDouble(),
+                        "angleDegrees" to (obbRes.box.angle * 180.0 / Math.PI),
+                        "area" to obbRes.box.area.toDouble(),
+                        "points" to points,
+                        "confidence" to obbRes.confidence.toDouble(),
+                        "className" to obbRes.cls,
+                        "classIndex" to obbRes.index
                     )
                     
                     detection["obb"] = obbDataMap
-                    Log.d(TAG, "✅ Added OBB data: ${obbResult.cls} (${String.format("%.1f", obbBox.angle * 180.0 / Math.PI)}° rotation)")
+                    Log.d(TAG, "✅ Added OBB data: ${obbRes.cls} (${String.format("%.1f", obbRes.box.angle * 180.0 / Math.PI)}° rotation)")
                 }
                 
                 detections.add(detection)
             }
             
             map["detections"] = detections
+            Log.d(TAG, "✅ Total detections in stream: ${detections.size} (boxes: ${result.boxes.size}, obb: ${result.obb.size})")
         }
         
         // Add performance metrics (if enabled)
@@ -1355,6 +1405,78 @@ class YOLOView @JvmOverloads constructor(
     }
     
     // endregion
+    
+    /**
+     * Capture current camera frame with detection overlays
+     * Returns the captured image as a ByteArray (JPEG format)
+     */
+    fun captureFrame(): ByteArray? {
+        try {
+            // Create bitmap to hold the captured frame
+            val width = width
+            val height = height
+            if (width <= 0 || height <= 0) {
+                Log.e(TAG, "Invalid view dimensions for capture: ${width}x${height}")
+                return null
+            }
+            
+            // Create bitmap and canvas
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            
+            // Method 1: Try to get bitmap from PreviewView directly
+            var cameraFrameCaptured = false
+            previewView.bitmap?.let { cameraBitmap ->
+                Log.d(TAG, "Got camera bitmap from PreviewView: ${cameraBitmap.width}x${cameraBitmap.height}")
+                // Draw the camera bitmap scaled to fit
+                val matrix = Matrix()
+                val scaleX = width.toFloat() / cameraBitmap.width
+                val scaleY = height.toFloat() / cameraBitmap.height
+                matrix.setScale(scaleX, scaleY)
+                canvas.drawBitmap(cameraBitmap, matrix, null)
+                cameraFrameCaptured = true
+            }
+            
+            if (!cameraFrameCaptured) {
+                // Method 2: Use hardware acceleration to capture the view
+                Log.w(TAG, "PreviewView.bitmap is null, trying hardware capture")
+                
+                // Enable drawing cache temporarily
+                isDrawingCacheEnabled = true
+                buildDrawingCache()
+                drawingCache?.let { cache ->
+                    canvas.drawBitmap(cache, 0f, 0f, null)
+                    cameraFrameCaptured = true
+                }
+                isDrawingCacheEnabled = false
+                
+                if (!cameraFrameCaptured) {
+                    // Method 3: Last resort - draw the entire view hierarchy
+                    Log.w(TAG, "Drawing cache failed, using draw method")
+                    // Draw PreviewView first
+                    previewView.draw(canvas)
+                }
+            }
+            
+            // Always draw the overlay on top
+            overlayView.draw(canvas)
+            
+            // Convert bitmap to JPEG byte array
+            val outputStream = java.io.ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+            val imageData = outputStream.toByteArray()
+            
+            // Clean up
+            outputStream.close()
+            bitmap.recycle()
+            
+            Log.d(TAG, "Frame captured successfully: ${imageData.size} bytes, camera captured: $cameraFrameCaptured")
+            return imageData
+        } catch (e: Exception) {
+            Log.e(TAG, "Error capturing frame", e)
+            return null
+        }
+    }
 
     /**
      * Stop camera and inference (can be restarted later)
