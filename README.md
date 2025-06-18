@@ -31,6 +31,7 @@ Welcome to the Ultralytics YOLO Flutter plugin! Integrate cutting-edge [Ultralyt
 - **Cross-platform** - iOS & Android with single codebase
 - **Production Ready** - Performance controls & optimization built-in
 - **Dynamic Model Loading** - Switch models on-the-fly without restarting camera
+- **Frame Capture** - Capture frames with detection overlays for sharing or saving
 
 ## ⚡ Quick Start (2 minutes)
 
@@ -70,7 +71,7 @@ YOLOView(
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.1.25
+  ultralytics_yolo: ^0.1.26
 ```
 
 ### 2. Install dependencies
