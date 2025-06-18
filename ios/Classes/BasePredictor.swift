@@ -206,27 +206,28 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     }
   }
 
-  /// Processes a camera frame buffer and delivers results via callbacks.
+  // MODIFIED: This is the corrected `predict` method.
+  /// Processes a camera frame's pixel buffer and delivers results via callbacks.
   ///
-  /// This method takes a camera sample buffer, performs inference using the Vision framework,
+  /// This method takes a camera pixel buffer, performs inference using the Vision framework,
   /// and notifies listeners with the results and performance metrics. It's designed to be
   /// called repeatedly with frames from a camera feed.
   ///
   /// - Parameters:
-  ///   - sampleBuffer: The camera frame buffer to process.
+  ///   - pixelBuffer: The camera frame's CVPixelBuffer to process.
   ///   - onResultsListener: Optional listener to receive prediction results.
   ///   - onInferenceTime: Optional listener to receive performance metrics.
   func predict(
-    sampleBuffer: CMSampleBuffer, onResultsListener: ResultsListener?,
+    pixelBuffer: CVPixelBuffer, onResultsListener: ResultsListener?,
     onInferenceTime: InferenceTimeListener?
   ) {
-    if currentBuffer == nil, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
+    // This check prevents a new frame from being processed while the previous one is still in flight.
+    if currentBuffer == nil {
       currentBuffer = pixelBuffer
       inputSize = CGSize(
         width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
       currentOnResultsListener = onResultsListener
       currentOnInferenceTimeListener = onInferenceTime
-      //            currentOnFpsRateListener = onFpsRate
 
       /// - Tag: MappingOrientation
       // The frame is always oriented based on the camera sensor,
@@ -238,15 +239,16 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         cvPixelBuffer: pixelBuffer, orientation: imageOrientation, options: [:])
       t0 = CACurrentMediaTime()  // inference start
       do {
-        if visionRequest != nil {
-          try handler.perform([visionRequest!])
+        if let visionRequest = visionRequest {
+          try handler.perform([visionRequest])
         }
       } catch {
         print(error)
       }
       t1 = CACurrentMediaTime() - t0  // inference dt
 
-      currentBuffer = nil
+      // We no longer set currentBuffer to nil here. This will be done in the `processObservations`
+      // method of the subclasses after the results have been fully processed.
     }
   }
 

@@ -15,10 +15,15 @@
 import AVFoundation
 import UIKit
 import Vision
+import Flutter // ADDED: Import Flutter to use FlutterStandardTypedData
+
 
 /// A UIView component that provides real-time object detection, segmentation, and pose estimation capabilities.
 @MainActor
 public class YOLOView: UIView, VideoCaptureDelegate {
+  private let dataProcessingQueue: DispatchQueue = DispatchQueue(label: "com.ultralytics.yolo.dataProcessingQueue")
+
+  
   func onInferenceTime(speed: Double, fps: Double) {
     // Store performance data for streaming
     self.currentFps = fps
@@ -30,77 +35,74 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   func onPredict(result: YOLOResult) {
+    // This method is called from a background thread by the predictor.
 
-    // Check if we should process inference result based on frequency control
+    // Check if we should process this frame based on throttling/frequency settings.
     if !shouldRunInference() {
-      print("YOLOView: Skipping inference result due to frequency control")
+      // print("YOLOView: Skipping inference result due to frequency control")
       return
     }
+    updateLastInferenceTime()
 
-    showBoxes(predictions: result)
-    onDetection?(result)
-
-    // Streaming callback (with output throttling)
+    // --- Prepare Data for Flutter ---
+    // This part is now done first, on the current background thread, to avoid memory issues.
+    var streamData: [String: Any]? = nil
     if let streamCallback = onStream {
-      if shouldProcessFrame() {
-        updateLastInferenceTime()
-
-        // Convert to stream data and send
-        let streamData = convertResultToStreamData(result)
+        // Convert the result to a dictionary. This is where the expensive image conversion happens.
+        streamData = self.convertResultToStreamData(result)
+        
         // Add timestamp and frame info
-        var enhancedStreamData = streamData
-        enhancedStreamData["timestamp"] = Int64(Date().timeIntervalSince1970 * 1000)  // milliseconds
-        enhancedStreamData["frameNumber"] = frameNumberCounter
-        frameNumberCounter += 1
-
-        streamCallback(enhancedStreamData)
-        print("YOLOView: Sent streaming data with \(result.boxes.count) detections")
-      } else {
-        print("YOLOView: Skipping frame output due to throttling")
-      }
+        streamData?["timestamp"] = Int64(Date().timeIntervalSince1970 * 1000)
+        streamData?["frameNumber"] = self.frameNumberCounter
     }
 
-    if task == .segment {
-      DispatchQueue.main.async {
-        if let maskImage = result.masks?.combinedMask {
+    // --- Dispatch UI Updates and Data Sending to the Main Thread ---
+    DispatchQueue.main.async {
+      // Update UI elements like bounding boxes and labels
+      self.showBoxes(predictions: result)
+      self.onDetection?(result) // Call the simple detection callback if provided
 
-          guard let maskLayer = self.maskLayer else { return }
+      // Send the prepared data to Flutter via the event channel
+      if let finalStreamData = streamData {
+          self.frameNumberCounter += 1
+          self.onStream?(finalStreamData)
+      }
 
+      // Handle task-specific UI layer updates (masks, poses, etc.)
+      if self.task == .segment {
+        if let maskImage = result.masks?.combinedMask, let maskLayer = self.maskLayer {
           maskLayer.isHidden = false
           maskLayer.frame = self.overlayLayer.bounds
           maskLayer.contents = maskImage
-
-          self.videoCapture.predictor.isUpdating = false
-        } else {
-          self.videoCapture.predictor.isUpdating = false
+        }
+        self.videoCapture.predictor.isUpdating = false
+      } else if self.task == .classify {
+        self.overlayYOLOClassificationsCALayer(on: self, result: result)
+      } else if self.task == .pose {
+        self.removeAllSubLayers(parentLayer: self.poseLayer)
+        if let poseLayer = self.poseLayer {
+            var keypointList = [[(x: Float, y: Float)]]()
+            var confsList = [[Float]]()
+            for keypoint in result.keypointsList {
+                keypointList.append(keypoint.xyn)
+                confsList.append(keypoint.conf)
+            }
+            drawKeypoints(
+                keypointsList: keypointList, confsList: confsList, boundingBoxes: result.boxes,
+                on: poseLayer, imageViewSize: self.overlayLayer.frame.size, originalImageSize: result.orig_shape)
+        }
+      } else if self.task == .obb {
+        if let obbLayer = self.obbLayer {
+            let obbDetections = result.obb
+            self.obbRenderer.drawObbDetectionsWithReuse(
+                obbDetections: obbDetections,
+                on: obbLayer,
+                imageViewSize: self.overlayLayer.frame.size,
+                originalImageSize: result.orig_shape,
+                lineWidth: 3
+            )
         }
       }
-    } else if task == .classify {
-      self.overlayYOLOClassificationsCALayer(on: self, result: result)
-    } else if task == .pose {
-      self.removeAllSubLayers(parentLayer: poseLayer)
-      var keypointList = [[(x: Float, y: Float)]]()
-      var confsList = [[Float]]()
-
-      for keypoint in result.keypointsList {
-        keypointList.append(keypoint.xyn)
-        confsList.append(keypoint.conf)
-      }
-      guard let poseLayer = poseLayer else { return }
-      drawKeypoints(
-        keypointsList: keypointList, confsList: confsList, boundingBoxes: result.boxes,
-        on: poseLayer, imageViewSize: overlayLayer.frame.size, originalImageSize: result.orig_shape)
-    } else if task == .obb {
-      //            self.setupObbLayerIfNeeded()
-      guard let obbLayer = self.obbLayer else { return }
-      let obbDetections = result.obb
-      self.obbRenderer.drawObbDetectionsWithReuse(
-        obbDetections: obbDetections,
-        on: obbLayer,
-        imageViewSize: self.overlayLayer.frame.size,
-        originalImageSize: result.orig_shape,  // 例
-        lineWidth: 3
-      )
     }
   }
 
@@ -1691,12 +1693,22 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
     }
 
     // Add original image (if available and enabled)
+    // if config.includeOriginalImage {
+    //   if let pixelBuffer = currentBuffer {
+    //     if let imageData = convertPixelBufferToJPEGData(pixelBuffer) {
+    //       map["originalImage"] = imageData
+    //       print("YOLOView: ✅ Added original image data (\(imageData.count) bytes)")
+    //     }
+    //   }
+    // }
+
+
     if config.includeOriginalImage {
-      if let pixelBuffer = currentBuffer {
-        if let imageData = convertPixelBufferToJPEGData(pixelBuffer) {
-          map["originalImage"] = imageData
-          print("YOLOView: ✅ Added original image data (\(imageData.count) bytes)")
-        }
+      // MODIFIED: Access the originalImage directly from the result object
+      if let originalImage = result.originalImage, let imageData = originalImage.jpegData(compressionQuality: 0.9) {
+        // MODIFIED: Wrap the data in FlutterStandardTypedData for the channel
+        map["originalImage"] = FlutterStandardTypedData(bytes: imageData)
+        print("YOLOView: ✅ Added original image data (\(imageData.count) bytes)")
       }
     }
 

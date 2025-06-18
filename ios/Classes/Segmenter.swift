@@ -23,14 +23,26 @@ class Segmenter: BasePredictor, @unchecked Sendable {
   var colorsForMask: [(red: UInt8, green: UInt8, blue: UInt8)] = []
 
   override func processObservations(for request: VNRequest, error: Error?) {
+    // ADDED: Retrieve the original image from the instance variable `currentBuffer`
+    var originalImage: UIImage? = nil
+    if let pixelBuffer = self.currentBuffer {
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        originalImage = UIImage(ciImage: ciImage)
+    }
+      
     if let results = request.results as? [VNCoreMLFeatureValueObservation] {
-      //            DispatchQueue.main.async { [self] in
-      guard results.count == 2 else { return }
+      guard results.count == 2 else {
+        self.currentBuffer = nil // Release buffer on early exit
+        return
+      }
       var pred: MLMultiArray
       var masks: MLMultiArray
       guard let out0 = results[0].featureValue.multiArrayValue,
         let out1 = results[1].featureValue.multiArrayValue
-      else { return }
+      else {
+        self.currentBuffer = nil // Release buffer on early exit
+        return
+      }
       let out0dim = checkShapeDimensions(of: out0)
       let out1dim = checkShapeDimensions(of: out1)
       if out0dim == 4 {
@@ -73,17 +85,25 @@ class Segmenter: BasePredictor, @unchecked Sendable {
 
           ) as? (CGImage?, [[[Float]]])
         else {
-          DispatchQueue.main.async { self.isUpdating = false }
+          DispatchQueue.main.async {
+            self.isUpdating = false
+            self.currentBuffer = nil // Release buffer on failure
+          }
           return
         }
-        var maskResults = Masks(masks: procceessedMasks.1, combinedMask: procceessedMasks.0)
+        let maskResults = Masks(masks: procceessedMasks.1, combinedMask: procceessedMasks.0)
+        
+        // MODIFIED: Include the originalImage in the YOLOResult
         let result = YOLOResult(
           orig_shape: self.inputSize, boxes: boxes, masks: maskResults, speed: self.t2,
-          fps: 1 / self.t4, names: self.labels)
+          fps: 1 / self.t4, originalImage: originalImage, names: self.labels)
         self.updateTime()
         self.currentOnResultsListener?.on(result: result)
       }
     }
+    // ADDED: Clear the buffer to allow the next frame to be processed.
+    // Note: For segmentation, this is cleared after the async block is dispatched.
+    self.currentBuffer = nil
   }
 
   private func updateTime() {
@@ -113,7 +133,6 @@ class Segmenter: BasePredictor, @unchecked Sendable {
     do {
       try requestHandler.perform([request])
       if let results = request.results as? [VNCoreMLFeatureValueObservation] {
-        //                DispatchQueue.main.async { [self] in
         guard results.count == 2 else {
           return YOLOResult(orig_shape: .zero, boxes: [], speed: 0, names: labels)
         }
@@ -131,13 +150,10 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           masks = out1
           pred = out0
         }
-        let a = Date()
-
+        
         let detectedObjects = postProcessSegment(
           feature: pred, confidenceThreshold: 0.25, iouThreshold: 0.4)
         var boxes: [Box] = []
-        var colorMasks: [CGImage?] = []
-        var alhaMasks: [CGImage?] = []
         var alphas = [CGFloat]()
         for p in detectedObjects {
           let box = p.0
@@ -172,7 +188,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         let cgImage = CIContext().createCGImage(image, from: image.extent)!
         var annotatedImage = composeImageWithMask(
           baseImage: cgImage, maskImage: procceessedMasks.0!)
-        var maskResults: Masks = Masks(masks: procceessedMasks.1, combinedMask: procceessedMasks.0)
+        let maskResults: Masks = Masks(masks: procceessedMasks.1, combinedMask: procceessedMasks.0)
         if self.t1 < 10.0 {  // valid dt
           self.t2 = self.t1 * 0.05 + self.t2 * 0.95  // smoothed inference time
         }
@@ -184,8 +200,6 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         annotatedImage = drawYOLODetections(on: CIImage(image: annotatedImage!)!, result: result)
         result.annotatedImage = annotatedImage
         return result
-
-        //                }
       }
     } catch {
       print(error)
