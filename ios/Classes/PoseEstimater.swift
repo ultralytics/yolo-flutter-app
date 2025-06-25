@@ -23,6 +23,13 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
   var colorsForMask: [(red: UInt8, green: UInt8, blue: UInt8)] = []
 
   override func processObservations(for request: VNRequest, error: Error?) {
+    // ADDED: Retrieve the original image from the instance variable `currentBuffer`
+    var originalImage: UIImage? = nil
+    if let pixelBuffer = self.currentBuffer {
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        originalImage = UIImage(ciImage: ciImage)
+    }
+      
     if let results = request.results as? [VNCoreMLFeatureValueObservation] {
 
       if let prediction = results.first?.featureValue.multiArrayValue {
@@ -37,13 +44,18 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
           boxes.append(person.box)
           keypointsList.append(person.keypoints)
         }
+        
+        // MODIFIED: Include the originalImage in the YOLOResult
         let result = YOLOResult(
           orig_shape: inputSize, boxes: boxes, masks: nil, probs: nil, keypointsList: keypointsList,
-          annotatedImage: nil, speed: 0, fps: 0, originalImage: nil, names: labels)
+          annotatedImage: nil, speed: self.t2, fps: 1 / self.t4, originalImage: originalImage, names: labels)
         self.currentOnResultsListener?.on(result: result)
         self.updateTime()
       }
     }
+      
+    // ADDED: Clear the buffer to allow the next frame to be processed.
+    self.currentBuffer = nil
   }
 
   private func updateTime() {

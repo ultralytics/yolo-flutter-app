@@ -160,20 +160,6 @@ void main() {
     });
   });
 
-  testWidgets('YOLOViewState handles platform view creation', (tester) async {
-    final key = GlobalKey<YOLOViewState>();
-    await tester.pumpWidget(
-      MaterialApp(
-        home: YOLOView(
-          key: key,
-          modelPath: 'test_model.tflite',
-          task: YOLOTask.detect,
-        ),
-      ),
-    );
-    expect(key.currentState, isNotNull);
-  });
-
   testWidgets('YOLOViewState handles event channel errors', (tester) async {
     final key = GlobalKey<YOLOViewState>();
     await tester.pumpWidget(

@@ -50,14 +50,15 @@ protocol InferenceTimeListener: AnyObject {
 /// It provides methods for processing both camera frames and static images, and managing prediction state.
 /// Specialized implementations exist for different model types (detection, segmentation, etc.).
 protocol Predictor {
-  /// Processes a camera frame buffer and delivers results via callback.
+  // MODIFIED: Changed method signature to accept CVPixelBuffer directly
+  /// Processes a camera frame's pixel buffer and delivers results via callback.
   ///
   /// - Parameters:
-  ///   - sampleBuffer: The camera frame buffer to process.
+  ///   - pixelBuffer: The camera frame's CVPixelBuffer to process.
   ///   - onResultsListener: Optional listener to receive prediction results.
   ///   - onInferenceTime: Optional listener to receive performance metrics.
   func predict(
-    sampleBuffer: CMSampleBuffer, onResultsListener: ResultsListener?,
+    pixelBuffer: CVPixelBuffer, onResultsListener: ResultsListener?,
     onInferenceTime: InferenceTimeListener?)
 
   /// Processes a static image and returns results synchronously.

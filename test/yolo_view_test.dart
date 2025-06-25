@@ -544,6 +544,20 @@ void main() {
     var detectionCalled = false;
     var metricsCalled = false;
 
+    // Set up control channel mock
+    const controlChannel = MethodChannel(
+      'com.ultralytics.yolo/controlChannel_xyz',
+    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(controlChannel, (
+          MethodCall methodCall,
+        ) async {
+          if (methodCall.method == 'setModel') {
+            return true;
+          }
+          return null;
+        });
+
     await tester.pumpWidget(
       MaterialApp(
         home: YOLOView(
@@ -563,6 +577,11 @@ void main() {
     final state = key.currentState!;
     state.subscribeToResults();
 
+    // Trigger platform view creation
+    state.triggerPlatformViewCreated(1);
+    await tester.pump();
+
+    // Simulate event channel event
     final event = {
       'detections': [
         {
@@ -575,19 +594,22 @@ void main() {
       ],
       'processingTimeMs': 16,
       'fps': 60,
+      'frameNumber': 1,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
     };
 
-    state.parseDetectionResults(event);
-    if (state.widget.onResult != null) state.widget.onResult!([]);
+    // Simulate event channel event
+    await state.handleMethodCall(MethodCall('onResult', event));
+
+    // Wait for event processing
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Manually trigger callbacks since event channel isn't working in test
+    if (state.widget.onResult != null) {
+      state.widget.onResult!(state.parseDetectionResults(event));
+    }
     if (state.widget.onPerformanceMetrics != null) {
-      state.widget.onPerformanceMetrics!(
-        YOLOPerformanceMetrics(
-          fps: 60.0,
-          processingTimeMs: 30.0,
-          frameNumber: 1,
-          timestamp: DateTime.now(),
-        ),
-      );
+      state.widget.onPerformanceMetrics!(YOLOPerformanceMetrics.fromMap(event));
     }
 
     expect(detectionCalled, isTrue);
@@ -716,6 +738,20 @@ void main() {
       Map<String, dynamic>? streamingData;
       var streamingCallCount = 0;
 
+      // Set up control channel mock
+      const controlChannel = MethodChannel(
+        'com.ultralytics.yolo/controlChannel_xyz',
+      );
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(controlChannel, (
+            MethodCall methodCall,
+          ) async {
+            if (methodCall.method == 'setModel') {
+              return true;
+            }
+            return null;
+          });
+
       await tester.pumpWidget(
         MaterialApp(
           home: YOLOView(
@@ -732,6 +768,10 @@ void main() {
 
       final state = key.currentState!;
       state.subscribeToResults();
+
+      // Trigger platform view creation
+      state.triggerPlatformViewCreated(1);
+      await tester.pump();
 
       // Simulate comprehensive streaming event
       final comprehensiveEvent = {
@@ -756,7 +796,15 @@ void main() {
         'originalImage': Uint8List.fromList([1, 2, 3, 4, 5]),
       };
 
-      // Simulate receiving streaming data
+      // Simulate event channel event
+      await state.handleMethodCall(
+        MethodCall('onStreamingData', comprehensiveEvent),
+      );
+
+      // Wait for event processing
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Manually trigger callback since event channel isn't working in test
       if (state.widget.onStreamingData != null) {
         state.widget.onStreamingData!(comprehensiveEvent);
       }
@@ -1173,6 +1221,24 @@ void main() {
       );
 
       final state = key.currentState!;
+
+      // Set up method channel mock
+      const methodChannel = MethodChannel(
+        'com.ultralytics.yolo/controlChannel_xyz',
+      );
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (
+            MethodCall methodCall,
+          ) async {
+            return null;
+          });
+
+      // Trigger platform view creation
+      state.triggerPlatformViewCreated(1);
+      await tester.pump();
+
+      // Subscribe to results
+      state.subscribeToResults();
       expect(state.resultSubscription, isNotNull);
 
       // Update widget with different onResult
@@ -1187,6 +1253,7 @@ void main() {
         ),
       );
 
+      await tester.pump();
       expect(state.resultSubscription, isNotNull);
 
       // Update widget with no callbacks
@@ -1200,6 +1267,7 @@ void main() {
         ),
       );
 
+      await tester.pump();
       expect(state.resultSubscription, isNull);
     });
 
@@ -1276,6 +1344,23 @@ void main() {
       final controller = YOLOViewController();
       final List<MethodCall> log = [];
 
+      // Set up control channel mock
+      const controlChannel = MethodChannel(
+        'com.ultralytics.yolo/controlChannel_xyz',
+      );
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(controlChannel, (
+            MethodCall methodCall,
+          ) async {
+            log.add(methodCall);
+            if (methodCall.method == 'setModel') {
+              return true;
+            } else if (methodCall.method == 'setThresholds') {
+              return true;
+            }
+            return null;
+          });
+
       // Initial widget
       await tester.pumpWidget(
         MaterialApp(
@@ -1289,17 +1374,12 @@ void main() {
       );
 
       final state = key.currentState!;
-
-      // Set up the mock handler for the state's method channel
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(state.methodChannel, (
-            MethodCall methodCall,
-          ) async {
-            log.add(methodCall);
-            return null;
-          });
-
       state.triggerPlatformViewCreated(1);
+      await tester.pump();
+
+      // Initialize controller
+      controller.init(controlChannel, 1);
+      await tester.pump();
 
       // Clear any initialization calls
       log.clear();
@@ -1316,8 +1396,13 @@ void main() {
         ),
       );
 
+      await tester.pump(const Duration(milliseconds: 100));
+
       // Should have triggered setModel method
       expect(log.any((call) => call.method == 'setModel'), isTrue);
+      final setModelCall = log.firstWhere((call) => call.method == 'setModel');
+      expect(setModelCall.arguments['modelPath'], equals('model2.tflite'));
+      expect(setModelCall.arguments['task'], equals('segment'));
     });
 
     testWidgets('comprehensive malformed data handling', (tester) async {

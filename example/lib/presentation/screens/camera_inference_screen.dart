@@ -299,7 +299,6 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                   _buildCircleButton(
                     '${_currentZoomLevel.toStringAsFixed(1)}x',
                     onPressed: () {
-                      // Cycle through zoom levels: 0.5x -> 1.0x -> 3.0x -> 0.5x
                       double nextZoom;
                       if (_currentZoomLevel < 0.75) {
                         nextZoom = 1.0;
@@ -364,10 +363,10 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               ),
             ),
 
-          // Camera flip top-right
+          // Camera flip button - bottom left
           Positioned(
-            top: MediaQuery.of(context).padding.top + (isLandscape ? 8 : 16),
-            right: isLandscape ? 8 : 16,
+            bottom: isLandscape ? 40 : 70,
+            left: isLandscape ? 32 : 16,
             child: CircleAvatar(
               radius: isLandscape ? 20 : 24,
               backgroundColor: Colors.black.withValues(alpha: 0.5),
@@ -427,7 +426,15 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       backgroundColor: Colors.black.withValues(alpha: 0.2),
       child: TextButton(
         onPressed: onPressed,
-        child: Text(label, style: const TextStyle(color: Colors.white)),
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.zero,
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+        ),
       ),
     );
   }

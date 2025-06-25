@@ -62,6 +62,13 @@ class ObjectDetector: BasePredictor {
   ///   - request: The completed Vision request containing object detection results.
   ///   - error: Any error that occurred during the Vision request.
   override func processObservations(for request: VNRequest, error: Error?) {
+    // ADDED: Retrieve the original image from the instance variable `currentBuffer`
+    var originalImage: UIImage? = nil
+    if let pixelBuffer = self.currentBuffer {
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        originalImage = UIImage(ciImage: ciImage)
+    }
+      
     if let results = request.results as? [VNRecognizedObjectObservation] {
       var boxes = [Box]()
 
@@ -93,13 +100,17 @@ class ObjectDetector: BasePredictor {
       self.t3 = CACurrentMediaTime()
 
       self.currentOnInferenceTimeListener?.on(inferenceTime: self.t2 * 1000, fpsRate: 1 / self.t4)  // t2 seconds to ms
-      //                self.currentOnFpsRateListener?.on(fpsRate: 1 / self.t4)
+      
+      // MODIFIED: Include the originalImage in the YOLOResult
       let result = YOLOResult(
-        orig_shape: inputSize, boxes: boxes, speed: self.t2, fps: 1 / self.t4, names: labels)
+        orig_shape: inputSize, boxes: boxes, speed: self.t2, fps: 1 / self.t4, originalImage: originalImage, names: labels)
 
       self.currentOnResultsListener?.on(result: result)
 
     }
+      
+    // ADDED: Clear the buffer to allow the next frame to be processed.
+    self.currentBuffer = nil
   }
 
   /// Processes a static image and returns object detection results.
