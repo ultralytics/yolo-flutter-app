@@ -133,6 +133,24 @@ class YOLOViewController {
     }
   }
 
+  Future<void> zoomIn() async {
+    if (_methodChannel == null) return;
+    try {
+      await _methodChannel!.invokeMethod('zoomIn');
+    } catch (e) {
+      logInfo('YoloViewController: Error zooming in: $e');
+    }
+  }
+
+  Future<void> zoomOut() async {
+    if (_methodChannel == null) return;
+    try {
+      await _methodChannel!.invokeMethod('zoomOut');
+    } catch (e) {
+      logInfo('YoloViewController: Error zooming out: $e');
+    }
+  }
+
   Future<void> switchModel(String modelPath, YOLOTask task) async {
     if (_methodChannel == null || _viewId == null) {
       logInfo(
@@ -188,6 +206,34 @@ class YOLOViewController {
       await _methodChannel!.invokeMethod('stop');
     } catch (e) {
       logInfo('YOLOViewController: Error stopping camera and inference: $e');
+    }
+  }
+
+  Future<Uint8List?> captureFrame() async {
+    if (_methodChannel == null) {
+      logInfo(
+        'YOLOViewController: Warning - Cannot capture frame, view not yet created',
+      );
+      return null;
+    }
+    try {
+      final result = await _methodChannel!.invokeMethod<dynamic>(
+        'captureFrame',
+      );
+      if (result is Uint8List) {
+        logInfo(
+          'YOLOViewController: Frame captured successfully: ${result.length} bytes',
+        );
+        return result;
+      } else {
+        logInfo(
+          'YOLOViewController: Unexpected capture result type: ${result.runtimeType}',
+        );
+        return null;
+      }
+    } catch (e) {
+      logInfo('YOLOViewController: Error capturing frame: $e');
+      return null;
     }
   }
 }
@@ -427,6 +473,12 @@ class YOLOViewState extends State<YOLOView> {
           widget.onZoomChanged?.call(zoomLevel);
         }
         break;
+      case 'recreateEventChannel':
+        logInfo(
+          'YOLOView: Platform requested recreation of event channel for $_viewId',
+        );
+        _subscribeToResults();
+        break;
       default:
         logInfo('YOLOView: Unknown method call from native: ${call.method}');
     }
@@ -450,4 +502,6 @@ class YOLOViewState extends State<YOLOView> {
   Future<void> switchCamera() => _effectiveController.switchCamera();
   Future<void> setZoomLevel(double zoomLevel) =>
       _effectiveController.setZoomLevel(zoomLevel);
+  Future<void> zoomIn() => _effectiveController.zoomIn();
+  Future<void> zoomOut() => _effectiveController.zoomOut();
 }
