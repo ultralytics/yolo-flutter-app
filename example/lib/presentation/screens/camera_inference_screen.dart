@@ -366,8 +366,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
           // Camera flip top-right
           Positioned(
-            top: MediaQuery.of(context).padding.top + (isLandscape ? 8 : 16),
-            right: isLandscape ? 8 : 16,
+            bottom:
+                MediaQuery.of(context).padding.top + (isLandscape ? 32 : 16),
+            left: isLandscape ? 32 : 16,
             child: CircleAvatar(
               radius: isLandscape ? 20 : 24,
               backgroundColor: Colors.black.withValues(alpha: 0.5),
@@ -427,7 +428,10 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       backgroundColor: Colors.black.withValues(alpha: 0.2),
       child: TextButton(
         onPressed: onPressed,
-        child: Text(label, style: const TextStyle(color: Colors.white)),
+        child: Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+        ),
       ),
     );
   }
