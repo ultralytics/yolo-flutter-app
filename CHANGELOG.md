@@ -1,3 +1,13 @@
+## 0.1.27
+
+- **Breaking**: None - fully backward compatible
+- **Bug Fix**: Fix iOS segmentation mask alignment issue
+  - Masks now correctly align with detected objects in both portrait and landscape modes
+  - Removed explicit `contentsGravity` settings that caused mask stretching
+  - Simplified mask positioning to match yolo-ios-app reference implementation
+- **Enhancement**: Add mask layer frame update during orientation changes
+- **Internal**: Remove unnecessary margin calculations for mask positioning
+
 ## 0.1.26
 
 - **Breaking**: None - fully backward compatible
