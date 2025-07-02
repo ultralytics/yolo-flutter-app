@@ -67,7 +67,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
           guard let maskLayer = self.maskLayer else { return }
 
           maskLayer.isHidden = false
-          
+
           maskLayer.frame = self.overlayLayer.bounds
           maskLayer.contents = maskImage
 
@@ -430,7 +430,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       self.overlayLayer.frame = CGRect(
         x: 0, y: -margin, width: self.bounds.width, height: offSet)
     }
-    
+
     // Update mask layer frame to match overlay layer bounds
     if let maskLayer = self.maskLayer {
       maskLayer.frame = self.overlayLayer.bounds
