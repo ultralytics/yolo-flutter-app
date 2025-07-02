@@ -152,12 +152,21 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           var modelPath = args?.get("modelPath") as? String ?: "yolo11n"
           val taskString = args?.get("task") as? String ?: "detect"
           val instanceId = args?.get("instanceId") as? String ?: "default"
+          val classifierOptionsMap = args?.get("classifierOptions") as? Map<String, Any>
           
           // Resolve the model path (handling absolute paths, internal:// scheme, or asset paths)
           modelPath = resolveModelPath(modelPath)
           
           // Convert task string to enum
           val task = YOLOTask.valueOf(taskString.uppercase())
+          
+          // Use classifier options map directly (follows existing pattern)
+          val classifierOptions = classifierOptionsMap
+          
+          // Log classifier options for debugging
+          if (classifierOptions != null) {
+            Log.d(TAG, "Parsed classifier options: $classifierOptions")
+          }
           
           // Load labels (in real implementation, you would load from metadata)
           val labels = loadLabels(modelPath)
@@ -167,10 +176,11 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             instanceId = instanceId,
             context = applicationContext,
             modelPath = modelPath,
-            task = task
+            task = task,
+            classifierOptions = classifierOptions
           ) { loadResult ->
             if (loadResult.isSuccess) {
-              Log.d(TAG, "Model loaded successfully: $modelPath for task: $task, instance: $instanceId")
+              Log.d(TAG, "Model loaded successfully: $modelPath for task: $task, instance: $instanceId ${if (classifierOptions != null) "with classifier options" else ""}")
               result.success(true)
             } else {
               Log.e(TAG, "Failed to load model for instance $instanceId", loadResult.exceptionOrNull())
@@ -274,14 +284,43 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
               }
             }
             YOLOTask.CLASSIFY -> {
+              Log.d(TAG, "Processing CLASSIFY task result")
               // Include classification results if available
               yoloResult.probs?.let { probs ->
+                Log.d(TAG, "Found probs: top1=${probs.top1}, top1Conf=${probs.top1Conf}, top1Index=${probs.top1Index}")
+                
+                // Use the original labels from the model (no hardcoded mapping)
+                val topClass = probs.top1
+                val top5Classes = probs.top5
+                
                 response["classification"] = mapOf(
-                  "topClass" to probs.top1,
-                  "topConfidence" to probs.top1Conf,
-                  "top5Classes" to probs.top5,
-                  "top5Confidences" to probs.top5Confs
+                  "topClass" to topClass,
+                  "topConfidence" to probs.top1Conf.toDouble(),
+                  "top5Classes" to top5Classes,
+                  "top5Confidences" to probs.top5Confs.map { it.toDouble() },
+                  "top1Index" to probs.top1Index
                 )
+                
+                // Also add classification data to the boxes array for compatibility
+                response["boxes"] = listOf(
+                  mapOf(
+                    "class" to topClass,
+                    "className" to topClass,
+                    "confidence" to probs.top1Conf.toDouble(),
+                    "classIndex" to probs.top1Index,
+                    "x1" to 0.0,
+                    "y1" to 0.0,
+                    "x2" to imageWidth.toDouble(),
+                    "y2" to imageHeight.toDouble(),
+                    "x1_norm" to 0.0,
+                    "y1_norm" to 0.0,
+                    "x2_norm" to 1.0,
+                    "y2_norm" to 1.0
+                  )
+                )
+                Log.d(TAG, "Added classification data to response")
+              } ?: run {
+                Log.w(TAG, "YOLOResult.probs is null for CLASSIFY task")
               }
             }
             YOLOTask.POSE -> {

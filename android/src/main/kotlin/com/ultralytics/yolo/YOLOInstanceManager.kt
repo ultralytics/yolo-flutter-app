@@ -19,6 +19,7 @@ class YOLOInstanceManager {
     
     private val instances = mutableMapOf<String, YOLO>()
     private val loadingStates = mutableMapOf<String, Boolean>()
+    private val instanceOptions = mutableMapOf<String, Map<String, Any>>()
     
     init {
         // Initialize default instance for backward compatibility
@@ -50,6 +51,20 @@ class YOLOInstanceManager {
         task: YOLOTask,
         callback: (Result<Unit>) -> Unit
     ) {
+        loadModel(instanceId, context, modelPath, task, null, callback)
+    }
+    
+    /**
+     * Loads a model for a specific instance with classifier options
+     */
+    fun loadModel(
+        instanceId: String,
+        context: Context,
+        modelPath: String,
+        task: YOLOTask,
+        classifierOptions: Map<String, Any>?,
+        callback: (Result<Unit>) -> Unit
+    ) {
         // Check if already loaded
         if (instances[instanceId] != null) {
             callback(Result.success(Unit))
@@ -67,14 +82,21 @@ class YOLOInstanceManager {
         loadingStates[instanceId] = true
         
         try {
+            // Store classifier options if provided
+            classifierOptions?.let { options ->
+                instanceOptions[instanceId] = options
+                Log.d(TAG, "Stored classifier options for instance $instanceId: $options")
+            }
+            
             // Get labels from model metadata or use default
-            val yolo = YOLO(context, modelPath, task)
+            val yolo = YOLO(context, modelPath, task, emptyList(), true, classifierOptions)
             instances[instanceId] = yolo
             loadingStates[instanceId] = false
-            Log.d(TAG, "Model loaded successfully for instance: $instanceId")
+            Log.d(TAG, "Model loaded successfully for instance: $instanceId ${if (classifierOptions != null) "with classifier options" else ""}")
             callback(Result.success(Unit))
         } catch (e: Exception) {
             loadingStates[instanceId] = false
+            instanceOptions.remove(instanceId) // Clean up options on failure
             Log.e(TAG, "Failed to load model for instance $instanceId: ${e.message}")
             callback(Result.failure(e))
         }
@@ -115,6 +137,7 @@ class YOLOInstanceManager {
     fun removeInstance(instanceId: String) {
         instances.remove(instanceId)
         loadingStates.remove(instanceId)
+        instanceOptions.remove(instanceId)
         Log.d(TAG, "Removed instance: $instanceId")
     }
     
@@ -133,11 +156,19 @@ class YOLOInstanceManager {
     }
     
     /**
+     * Gets classifier options for a specific instance
+     */
+    fun getClassifierOptions(instanceId: String): Map<String, Any>? {
+        return instanceOptions[instanceId]
+    }
+    
+    /**
      * Clears all instances
      */
     fun clearAll() {
         instances.clear()
         loadingStates.clear()
+        instanceOptions.clear()
         Log.d(TAG, "Cleared all instances")
     }
 }

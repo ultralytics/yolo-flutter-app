@@ -26,10 +26,18 @@ class Classifier(
     context: Context,
     modelPath: String,
     override var labels: List<String> = emptyList(),
-    private val useGpu: Boolean = true
+    private val useGpu: Boolean = true,
+    private val customOptions: Interpreter.Options? = null,
+    private val classifierOptions: Map<String, Any>? = null
 ) : BasePredictor() {
 
-    private val interpreterOptions: Interpreter.Options = Interpreter.Options().apply {
+    private val interpreterOptions: Interpreter.Options = (customOptions ?: Interpreter.Options()).apply {
+        // If no custom options provided, use default threads
+        if (customOptions == null) {
+            setNumThreads(4)
+        }
+        
+        // Add GPU delegate if requested
         if (useGpu) {
             try {
                 addDelegate(GpuDelegate())
@@ -38,10 +46,11 @@ class Classifier(
                 Log.e(TAG, "GPU delegate error: ${e.message}")
             }
         }
-        setNumThreads(4)
     }
 
     var numClass: Int = 0
+    private var modelInputChannels: Int = 3  // Default to 3-channel, will be detected
+    private var isGrayscaleModel: Boolean = false
 
     private lateinit var imageProcessorCameraPortrait: ImageProcessor
     private lateinit var imageProcessorCameraLandscape: ImageProcessor
@@ -68,8 +77,14 @@ class Classifier(
 
         if (!labelsWereLoaded) {
             Log.w(TAG, "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
-            if (this.labels.isEmpty()) {
-                Log.w(TAG, "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names.")
+            
+            // Check if labels are provided via classifierOptions
+            val optionsLabels = classifierOptions?.get("labels") as? List<*>
+            if (optionsLabels != null) {
+                this.labels = optionsLabels.map { it.toString() }
+                Log.i(TAG, "Using labels from classifierOptions (${this.labels.size} classes): ${this.labels}")
+            } else if (this.labels.isEmpty()) {
+                Log.w(TAG, "Warning: No labels loaded and no labels provided via constructor or classifierOptions. Detections might lack class names.")
             }
         }
 
@@ -80,19 +95,45 @@ class Classifier(
         val inHeight = inputShape[1]
         val inWidth = inputShape[2]
         val inChannels = inputShape[3]
-        require(inBatch == 1 && inChannels == 3) {
-            "Unexpected input tensor shape. Expect [1,H,W,3], but got ${inputShape.joinToString()}"
+        
+        // Detect model input channels and configure accordingly
+        modelInputChannels = inChannels
+        
+        // Check if 1-channel support is enabled via classifier options
+        val enable1ChannelSupport = classifierOptions?.get("enable1ChannelSupport") as? Boolean ?: false
+        isGrayscaleModel = (inChannels == 1) || (enable1ChannelSupport && inChannels == 1)
+        
+        // Validate input shape based on detected or expected channels
+        val expectedChannels = classifierOptions?.get("expectedChannels") as? Int ?: inChannels
+        require(inBatch == 1) {
+            "Unexpected batch size. Expect batch=1, but got batch=$inBatch"
         }
+        require(inChannels == expectedChannels || (expectedChannels == 1 && inChannels == 1) || (expectedChannels == 3 && inChannels == 3)) {
+            "Unexpected input channels. Expected $expectedChannels channels, but got $inChannels channels. Input shape: ${inputShape.joinToString()}"
+        }
+        
+        Log.d(TAG, "Model configuration: ${inChannels}-channel input, grayscale mode: $isGrayscaleModel")
 
         inputSize = Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
         Log.d(TAG, "Model input size = $inWidth x $inHeight")
 
         val outputShape = interpreter.getOutputTensor(0).shape()
-        // e.g. outputShape = [1, 1000]
+        // e.g. outputShape = [1, 1000] for ImageNet, [1, 12] for EMNIST
         numClass = outputShape[1]
-        Log.d(TAG, "Model output shape = [1, $numClass]")
+        
+        // Validate expected classes if specified
+        (classifierOptions?.get("expectedClasses") as? Int)?.let { expectedClasses ->
+            if (numClass != expectedClasses) {
+                Log.w(TAG, "Warning: Expected $expectedClasses output classes, but model has $numClass classes")
+            }
+        }
+        
+        Log.d(TAG, "Model output shape = [1, $numClass] (${if (isGrayscaleModel) "grayscale" else "RGB"} model)")
 
+        // Setup ImageProcessors only for RGB models (3-channel)
+        // For grayscale models (1-channel), we'll use custom processing
+        if (!isGrayscaleModel) {
         // For camera feed in portrait mode (with rotation)
         imageProcessorCameraPortrait = ImageProcessor.Builder()
             .add(Rot90Op(3))  // 270-degree rotation
@@ -114,6 +155,7 @@ class Classifier(
             .add(NormalizeOp(INPUT_MEAN, INPUT_STD))
             .add(CastOp(DataType.FLOAT32))
             .build()
+        }
 
         Log.d(TAG, "Classifier initialized.")
     }
@@ -121,6 +163,30 @@ class Classifier(
     override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         t0 = System.nanoTime()
 
+        val inputBuffer: ByteBuffer
+        
+        if (isGrayscaleModel && classifierOptions != null) {
+            // Use custom grayscale processing for 1-channel models
+            val modelInputSize = inputSize
+            
+            // Extract options from classifierOptions map
+            val enableColorInversion = classifierOptions["enableColorInversion"] as? Boolean ?: false
+            val enableMaxNormalization = classifierOptions["enableMaxNormalization"] as? Boolean ?: false
+            val inputMean = (classifierOptions["inputMean"] as? Number)?.toFloat() ?: 0f
+            val inputStd = (classifierOptions["inputStd"] as? Number)?.toFloat() ?: 255f
+            
+            inputBuffer = ImageUtils.processGrayscaleImage(
+                bitmap = bitmap,
+                targetWidth = modelInputSize.width,
+                targetHeight = modelInputSize.height,
+                enableColorInversion = enableColorInversion,
+                enableMaxNormalization = enableMaxNormalization,
+                inputMean = inputMean,
+                inputStd = inputStd
+            )
+            Log.d(TAG, "Using grayscale processing for 1-channel model")
+        } else {
+            // Use standard RGB processing for 3-channel models
         val tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bitmap)
         
@@ -136,7 +202,9 @@ class Classifier(
             // No rotation for single image
             imageProcessorSingleImage.process(tensorImage)
         }
-        val inputBuffer = processedImage.buffer
+            inputBuffer = processedImage.buffer
+            Log.d(TAG, "Using RGB processing for 3-channel model")
+        }
 
         val outputArray = Array(1) { FloatArray(numClass) }
         interpreter.run(inputBuffer, outputArray)
@@ -168,6 +236,10 @@ class Classifier(
         )
 
         val fpsVal = if (t4 > 0) 1.0 / t4 else 0.0
+
+        Log.d(TAG, "Classification result: top1=${probs.top1}, top1Conf=${probs.top1Conf}, top1Index=${probs.top1Index}")
+        Log.d(TAG, "Labels: ${labels}")
+        Log.d(TAG, "Prediction completed successfully")
 
         return YOLOResult(
             origShape = Size(origWidth, origHeight),

@@ -55,6 +55,9 @@ class YOLO {
   /// The type of task this YOLO model will perform (detection, segmentation, etc.)
   final YOLOTask task;
 
+  /// Classifier options for customizing preprocessing (1-channel support, etc.)
+  final Map<String, dynamic>? classifierOptions;
+
   /// The view ID of the associated YoloView (used for model switching)
   int? _viewId;
 
@@ -69,6 +72,7 @@ class YOLO {
     required this.modelPath,
     required this.task,
     bool useMultiInstance = false,
+    this.classifierOptions,
   }) {
     if (useMultiInstance) {
       // Generate unique instance ID
@@ -179,6 +183,11 @@ class YOLO {
         'modelPath': modelPath,
         'task': task.name,
       };
+
+      // Include classifier options if provided
+      if (classifierOptions != null) {
+        arguments['classifierOptions'] = classifierOptions;
+      }
 
       // Only include instanceId for multi-instance mode
       if (_instanceId != 'default') {
@@ -582,6 +591,55 @@ class YOLO {
       return {};
     }
   }
+
+  /// Creates a YOLO instance with classifier options for custom preprocessing
+  /// 
+  /// This constructor is specifically designed for classification models that
+  /// need custom preprocessing, such as 1-channel grayscale models.
+  /// 
+  /// Example:
+  /// ```dart
+  /// final yolo = YOLO.withClassifierOptions(
+  ///   modelPath: 'assets/handwriting_model.tflite',
+  ///   task: YOLOTask.classify,
+  ///   classifierOptions: {
+  ///     'enable1ChannelSupport': true,
+  ///     'enableColorInversion': true,
+  ///     'enableMaxNormalization': true,
+  ///     'expectedChannels': 1,
+  ///     'expectedClasses': 12,
+  ///   },
+  /// );
+  /// ```
+  /// 
+  /// if need custom Normalization:
+  /// ```dart
+  ///   final grayscaleOptions = {
+  ///   'enableMaxNormalization': false,
+  ///   'inputMean': 127.5,
+  ///   'inputStd' : 127.5,
+  ///   'expectedChannels': 1,
+  ///   // labels·expectedClasses 필요하면 추가
+  /// };
+  ///```
+  
+  static YOLO withClassifierOptions({
+    required String modelPath,
+    required YOLOTask task,
+    required Map<String, dynamic> classifierOptions,
+    bool useMultiInstance = false,
+  }) {
+    return YOLO(
+      modelPath: modelPath,
+      task: task,
+      useMultiInstance: useMultiInstance,
+      classifierOptions: classifierOptions,
+    );
+  }
+  
+
+  
+
 
   /// Disposes this YOLO instance and releases all resources
   Future<void> dispose() async {
