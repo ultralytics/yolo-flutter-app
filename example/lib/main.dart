@@ -3,7 +3,6 @@
 // example/lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo_example/presentation/screens/camera_inference_screen.dart';
-import 'package:ultralytics_yolo_example/presentation/screens/front_camera_example.dart';
 
 void main() {
   runApp(const YOLOExampleApp());
@@ -16,7 +15,7 @@ class YOLOExampleApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       title: 'YOLO Plugin Example',
-      home: FrontCameraExample(),
+      home: CameraInferenceScreen(),
     );
   }
 }
