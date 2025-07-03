@@ -149,6 +149,11 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
     final orientation = MediaQuery.of(context).orientation;
     final isLandscape = orientation == Orientation.landscape;
 
+    // Debug camera state
+    debugPrint(
+      'FrontCameraExample: Building with _isFrontCamera = $_isFrontCamera',
+    );
+
     return Scaffold(
       body: Stack(
         children: [
@@ -241,7 +246,7 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    _isFrontCamera ? 'FRONT CAMERA' : 'BACK CAMERA',
+                    _isFrontCamera ? 'BACK CAMERA' : 'FRONT CAMERA',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,

@@ -876,10 +876,6 @@ class YOLOViewState extends State<YOLOView> {
   void _subscribeToResults() {
     _cancelResultSubscription();
 
-    logInfo(
-      'YOLOView: Setting up event stream listener for channel: ${_resultEventChannel.name}',
-    );
-
     // Cancel any existing subscription timer
     _subscriptionTimer?.cancel();
 
@@ -997,11 +993,10 @@ class YOLOViewState extends State<YOLOView> {
           });
         },
         onDone: () {
-          logInfo('YOLOView: Event stream closed for $_viewId');
           _resultSubscription = null;
         },
       );
-      logInfo('YOLOView: Event stream listener setup complete for $_viewId');
+
       // Close the dummy controller as it's no longer needed
       // The real EventChannel subscription is now active
       controller.close();
@@ -1015,7 +1010,6 @@ class YOLOViewState extends State<YOLOView> {
 
   void _cancelResultSubscription() {
     if (_resultSubscription != null) {
-      logInfo('YOLOView: Cancelling existing result subscription for $_viewId');
       _resultSubscription!.cancel();
       _resultSubscription = null;
     }
