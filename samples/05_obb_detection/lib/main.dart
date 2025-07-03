@@ -64,9 +64,9 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
       if (!success) {
         throw Exception('Failed to load model');
       }
-      print('OBB model loaded successfully');
+      // Model loaded successfully
     } catch (e) {
-      print('Error loading model: $e');
+      // Error loading model: $e
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading model: $e')),
@@ -111,14 +111,11 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
             .toList();
         
         // Debug: Check what data we're receiving
-        print('Raw results keys: ${results.keys}');
-        print('Number of detections: ${_detectionResults?.length ?? 0}');
-        if (results.containsKey('obb')) {
-          print('OBB data present: ${(results['obb'] as List).length} items');
-        }
+        // Process detection results
+        // _detectionResults contains ${_detectionResults?.length ?? 0} detections
       });
     } catch (e) {
-      print('Error during detection: $e');
+      // Error during detection: $e
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error during detection: $e')),
@@ -408,12 +405,12 @@ class ObbPainter extends CustomPainter {
     final scaleY = size.height / imageSize.height;
 
     // Debug
-    print('ObbPainter - Canvas size: $size, Image size: $imageSize');
-    print('ObbPainter - Number of detections: ${detections.length}');
+    // Canvas size: $size, Image size: $imageSize
+    // Number of detections: ${detections.length}
 
     // Get OBB data if available
     final obbList = rawResults['obb'] as List<dynamic>? ?? [];
-    print('ObbPainter - OBB list length: ${obbList.length}');
+    // OBB list length: ${obbList.length}
 
     // For OBB task, we should primarily use the OBB data, not detections
     if (obbList.isNotEmpty) {
@@ -424,7 +421,7 @@ class ObbPainter extends CustomPainter {
         final confidence = obbData['confidence'] ?? 0.0;
         final color = _getColorForClass(className.toString());
         
-        print('ObbPainter - Drawing OBB $i: class=$className, conf=$confidence');
+        // Drawing OBB $i: class=$className, conf=$confidence
 
         if (obbData['points'] != null) {
           // Draw oriented bounding box using points
@@ -514,7 +511,7 @@ class ObbPainter extends CustomPainter {
       }
     } else if (detections.isNotEmpty) {
       // Fallback to regular detection boxes if no OBB data
-      print('ObbPainter - No OBB data, falling back to regular boxes');
+      // No OBB data, falling back to regular boxes
       for (final detection in detections) {
         final color = _getColorForClass(detection['className'] ?? '');
         

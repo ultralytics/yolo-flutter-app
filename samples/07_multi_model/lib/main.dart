@@ -238,7 +238,7 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
         _inferenceTimes[model] = stopwatch.elapsedMilliseconds.toDouble();
       });
     } catch (e) {
-      print('Error during inference for ${model.name}: $e');
+      // Error during inference for ${model.name}: $e
     }
   }
 
@@ -843,7 +843,7 @@ class MultiModelPainter extends CustomPainter {
           );
         }
       } catch (e) {
-        print('Error drawing detection: $e');
+        // Error drawing detection: $e
       }
     }
   }
@@ -985,7 +985,7 @@ class MultiModelPainter extends CustomPainter {
           _drawLabel(canvas, 'Person', Offset(x, y - 4), labelColor);
         }
       } catch (e) {
-        print('Error drawing pose: $e');
+        // Error drawing pose: $e
       }
     }
   }
@@ -1103,7 +1103,7 @@ class MultiModelPainter extends CustomPainter {
           }
         }
       } catch (e) {
-        print('Error drawing segmentation: $e');
+        // Error drawing segmentation: $e
       }
     }
   }
@@ -1168,7 +1168,7 @@ class MultiModelPainter extends CustomPainter {
           _drawLabel(canvas, label.toString(), Offset(x1, y1 - 4), color);
         }
       } catch (e) {
-        print('Error drawing OBB: $e');
+        // Error drawing OBB: $e
       }
     }
   }
