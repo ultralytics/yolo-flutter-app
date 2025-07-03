@@ -67,6 +67,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
           guard let maskLayer = self.maskLayer else { return }
 
           maskLayer.isHidden = false
+
           maskLayer.frame = self.overlayLayer.bounds
           maskLayer.contents = maskImage
 
@@ -429,6 +430,11 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       self.overlayLayer.frame = CGRect(
         x: 0, y: -margin, width: self.bounds.width, height: offSet)
     }
+
+    // Update mask layer frame to match overlay layer bounds
+    if let maskLayer = self.maskLayer {
+      maskLayer.frame = self.overlayLayer.bounds
+    }
   }
 
   func setupMaskLayerIfNeeded() {
@@ -437,9 +443,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       layer.frame = self.overlayLayer.bounds
       layer.opacity = 0.5
       layer.name = "maskLayer"
-      // Set contentsGravity to match the overlay scaling
-      layer.contentsGravity = .resizeAspectFill
-      layer.masksToBounds = true
+      // Don't set contentsGravity - use default (matches yolo-ios-app)
+      // layer.contentsGravity = .resize
+      // layer.masksToBounds = true
       // layer.backgroundColor = UIColor.clear.cgColor
 
       self.overlayLayer.addSublayer(layer)
