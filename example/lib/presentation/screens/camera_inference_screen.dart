@@ -6,6 +6,7 @@ import 'package:ultralytics_yolo/yolo_view.dart';
 import '../../models/model_type.dart';
 import '../../models/slider_type.dart';
 import '../../services/model_manager.dart';
+import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 
 /// A screen that demonstrates real-time YOLO inference using the device camera.
 ///
@@ -38,7 +39,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   String _loadingMessage = '';
   double _downloadProgress = 0.0;
   double _currentZoomLevel = 1.0;
-  bool _isFrontCamera = false;
+  bool _isFrontCamera = true;
 
   final _yoloController = YOLOViewController();
   final _yoloViewKey = GlobalKey<YOLOViewState>();
@@ -46,9 +47,26 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
   late final ModelManager _modelManager;
 
+  // Add streaming config for frame rate control
+  late final YOLOStreamingConfig _streamingConfig;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize streaming config for slower detection
+    _streamingConfig = const YOLOStreamingConfig(
+      inferenceFrequency: 5, // Process 5 frames per second for slower detection
+      maxFPS: 5, // Also limit output to 5 FPS
+      includeDetections: true,
+      includeClassifications: true,
+      includeProcessingTimeMs: true,
+      includeFps: true,
+      includeMasks: false,
+      includePoses: false,
+      includeOBB: false,
+      includeOriginalImage: false,
+    );
 
     // Initialize ModelManager
     _modelManager = ModelManager(
@@ -79,6 +97,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           iouThreshold: _iouThreshold,
           numItemsThreshold: _numItemsThreshold,
         );
+        // Apply streaming config
+        _yoloController.setStreamingConfig(_streamingConfig);
       } else {
         _yoloViewKey.currentState?.setThresholds(
           confidenceThreshold: _confidenceThreshold,
@@ -125,6 +145,32 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     }
   }
 
+  /// Updates the streaming configuration to change frame rate
+  void _updateFrameRate(int fps) {
+    final newConfig = YOLOStreamingConfig(
+      inferenceFrequency: fps,
+      maxFPS: fps,
+      includeDetections: true,
+      includeClassifications: true,
+      includeProcessingTimeMs: true,
+      includeFps: true,
+      includeMasks: false,
+      includePoses: false,
+      includeOBB: false,
+      includeOriginalImage: false,
+    );
+
+    if (_useController) {
+      _yoloController.setStreamingConfig(newConfig);
+    }
+
+    setState(() {
+      _streamingConfig = newConfig;
+    });
+
+    debugPrint('Updated frame rate to $fps FPS');
+  }
+
   @override
   Widget build(BuildContext context) {
     final orientation = MediaQuery.of(context).orientation;
@@ -142,6 +188,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               controller: _useController ? _yoloController : null,
               modelPath: _modelPath!,
               task: _selectedModel.task,
+              streamingConfig: _streamingConfig, // Add streaming config
               onResult: _onDetectionResults,
               onPerformanceMetrics: (metrics) {
                 if (mounted) {
@@ -234,6 +281,26 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                 // Model selector
                 _buildModelSelector(),
                 SizedBox(height: isLandscape ? 8 : 12),
+                // Camera indicator
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _isFrontCamera ? 'FRONT CAMERA' : 'BACK CAMERA',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                SizedBox(height: isLandscape ? 8 : 12),
                 IgnorePointer(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -250,6 +317,14 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                         'FPS: ${_currentFps.toStringAsFixed(1)}',
                         style: const TextStyle(
                           color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        'TARGET: ${_streamingConfig.inferenceFrequency ?? 5}',
+                        style: const TextStyle(
+                          color: Colors.yellow,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -323,6 +398,22 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                 SizedBox(height: isLandscape ? 8 : 12),
                 _buildIconButton('assets/iou.png', () {
                   _toggleSlider(SliderType.iou);
+                }),
+                SizedBox(height: isLandscape ? 8 : 12),
+                _buildIconButton(Icons.speed, () {
+                  // Cycle through frame rates: 5 -> 10 -> 15 -> 30 -> 5
+                  int currentFps = _streamingConfig.inferenceFrequency ?? 5;
+                  int nextFps;
+                  if (currentFps <= 5) {
+                    nextFps = 10;
+                  } else if (currentFps <= 10) {
+                    nextFps = 15;
+                  } else if (currentFps <= 15) {
+                    nextFps = 30;
+                  } else {
+                    nextFps = 5;
+                  }
+                  _updateFrameRate(nextFps);
                 }),
                 SizedBox(height: isLandscape ? 16 : 40),
               ],
