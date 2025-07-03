@@ -1,3 +1,44 @@
+## 0.1.28
+
+- **Breaking**: None - fully backward compatible
+- **New Feature**: Enhanced front camera support with improved coordinate transformation
+  - Fixed front camera bounding box positioning and alignment issues
+  - Improved coordinate system handling for front-facing camera detection
+  - Added automatic vertical flipping for bounding boxes, masks, poses, and OBB on front camera
+  - Enhanced front camera detection accuracy and visual alignment
+- **New Feature**: Advanced frame rate control with YOLOStreamingConfig
+  - Added `inferenceFrequency` parameter to control model inference rate (5-30 FPS)
+  - Added `maxFPS` parameter to limit output streaming rate
+  - Added `skipFrames` parameter for frame skipping control
+  - Improved performance optimization for battery saving and resource management
+  - Added dynamic frame rate adjustment during runtime
+- **Enhancement**: Front camera example with comprehensive controls
+  - Created dedicated front camera example demonstrating proper usage
+  - Added confidence threshold cycling (0.5 → 0.3 → 0.1 → 0.5)
+  - Added frame rate cycling (5 → 10 → 15 → 30 → 5 FPS)
+  - Added model reload functionality for troubleshooting
+  - Enhanced debugging output for front camera detection issues
+- **Enhancement**: Improved camera inference screen with front camera support
+  - Set front camera as default for better user experience
+  - Added camera indicator showing current camera mode (FRONT/BACK)
+  - Added target FPS display alongside current FPS
+  - Integrated streaming config for frame rate control
+  - Added frame rate control button for dynamic adjustment
+- **Bug Fix**: Fixed front camera detection issues in main camera screen
+  - Resolved model loading conflicts between front and back camera modes
+  - Fixed coordinate transformation for front camera bounding boxes
+  - Improved detection sensitivity for front camera usage
+- **Documentation**: Added comprehensive front camera usage guide
+  - Created FRONT_CAMERA_GUIDE.md with troubleshooting steps
+  - Added examples for different frame rate configurations
+  - Documented front camera coordinate system handling
+  - Provided performance optimization recommendations
+- **Internal**: Enhanced debugging and logging for front camera issues
+  - Added detailed detection result logging
+  - Improved error messages for front camera problems
+  - Enhanced performance metrics reporting
+  - Better troubleshooting information in debug output
+
 ## 0.1.27
 
 - **Breaking**: None - fully backward compatible
