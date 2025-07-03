@@ -6,6 +6,8 @@ import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
+import '../../models/model_type.dart';
+import '../../services/model_manager.dart';
 
 /// Example demonstrating front camera usage with frame rate control
 class FrontCameraExample extends StatefulWidget {
@@ -20,14 +22,68 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
   int _detectionCount = 0;
   double _currentFps = 0.0;
   int _targetFps = 5;
+  String? _modelPath;
+  bool _isModelLoading = false;
+  String _loadingMessage = '';
 
   // Streaming config for slower detection
   late YOLOStreamingConfig _streamingConfig;
+  late final ModelManager _modelManager;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize ModelManager
+    _modelManager = ModelManager(
+      onDownloadProgress: (progress) {
+        debugPrint(
+          'Download progress: ${(progress * 100).toStringAsFixed(1)}%',
+        );
+      },
+      onStatusUpdate: (message) {
+        debugPrint('Model status: $message');
+      },
+    );
+
     _updateStreamingConfig(_targetFps);
+    _loadModel();
+  }
+
+  Future<void> _loadModel() async {
+    setState(() {
+      _isModelLoading = true;
+      _loadingMessage = 'Loading detection model...';
+    });
+
+    try {
+      // Use the same model as the working camera inference screen
+      final modelPath = await _modelManager.getModelPath(ModelType.detect);
+
+      if (mounted) {
+        setState(() {
+          _modelPath = modelPath;
+          _isModelLoading = false;
+          _loadingMessage = '';
+        });
+
+        if (modelPath != null) {
+          debugPrint(
+            'FrontCameraExample: Model loaded successfully: $modelPath',
+          );
+        } else {
+          debugPrint('FrontCameraExample: Failed to load model');
+        }
+      }
+    } catch (e) {
+      debugPrint('FrontCameraExample: Error loading model: $e');
+      if (mounted) {
+        setState(() {
+          _isModelLoading = false;
+          _loadingMessage = 'Failed to load model';
+        });
+      }
+    }
   }
 
   void _updateStreamingConfig(int fps) {
@@ -55,13 +111,29 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
       _detectionCount = results.length;
     });
 
-    // Debug output
-    for (var i = 0; i < results.length && i < 3; i++) {
-      final r = results[i];
-      debugPrint(
-        'Detection $i: ${r.className} (${(r.confidence * 100).toStringAsFixed(1)}%) at ${r.boundingBox}',
-      );
+    // Enhanced debugging
+    debugPrint('=== FRONT CAMERA DETECTION ===');
+    debugPrint('Total detections: ${results.length}');
+    debugPrint('Target FPS: $_targetFps');
+    debugPrint('Current FPS: ${_currentFps.toStringAsFixed(1)}');
+
+    if (results.isEmpty) {
+      debugPrint('⚠️ NO DETECTIONS - Possible issues:');
+      debugPrint('   - No objects in view');
+      debugPrint('   - Confidence threshold too high (0.5)');
+      debugPrint('   - Model not suitable for front camera');
+      debugPrint('   - Frame rate too low');
+    } else {
+      debugPrint('✅ DETECTIONS FOUND:');
+      // Debug first few detections
+      for (var i = 0; i < results.length && i < 3; i++) {
+        final r = results[i];
+        debugPrint(
+          '   Detection $i: ${r.className} (${(r.confidence * 100).toStringAsFixed(1)}%) at ${r.boundingBox}',
+        );
+      }
     }
+    debugPrint('=============================');
   }
 
   void _onPerformanceMetrics(YOLOPerformanceMetrics metrics) {
@@ -81,16 +153,43 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
       body: Stack(
         children: [
           // YOLO View with front camera configuration
-          YOLOView(
-            controller: _controller,
-            streamingConfig: _streamingConfig,
-            modelPath:
-                'assets/models/yolov8n.tflite', // Update with your model path
-            task: YOLOTask.detect,
-            confidenceThreshold: 0.5,
-            onResult: _onDetectionResults,
-            onPerformanceMetrics: _onPerformanceMetrics,
-          ),
+          if (_modelPath != null && !_isModelLoading)
+            YOLOView(
+              controller: _controller,
+              streamingConfig: _streamingConfig,
+              modelPath: _modelPath!,
+              task: YOLOTask.detect,
+              confidenceThreshold: 0.5,
+              onResult: _onDetectionResults,
+              onPerformanceMetrics: _onPerformanceMetrics,
+            )
+          else if (_isModelLoading)
+            Container(
+              color: Colors.black87,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _loadingMessage,
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            const Center(
+              child: Text(
+                'No model loaded',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
 
           // Top info overlay
           Positioned(
@@ -138,6 +237,31 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
             right: 16,
             child: Column(
               children: [
+                // Confidence threshold control
+                FloatingActionButton(
+                  heroTag: 'confidence',
+                  onPressed: () {
+                    // Cycle through confidence thresholds: 0.5 -> 0.3 -> 0.1 -> 0.5
+                    double currentThreshold =
+                        0.5; // You might want to track this in state
+                    double nextThreshold;
+                    if (currentThreshold >= 0.5) {
+                      nextThreshold = 0.3;
+                    } else if (currentThreshold >= 0.3) {
+                      nextThreshold = 0.1;
+                    } else {
+                      nextThreshold = 0.5;
+                    }
+                    _controller.setConfidenceThreshold(nextThreshold);
+                    debugPrint(
+                      'FrontCameraExample: Confidence threshold set to $nextThreshold',
+                    );
+                  },
+                  backgroundColor: Colors.orange,
+                  child: const Icon(Icons.tune, color: Colors.white),
+                ),
+                const SizedBox(height: 16),
+
                 // Frame rate control
                 FloatingActionButton(
                   heroTag: 'fps',
@@ -168,6 +292,17 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
                   },
                   backgroundColor: Colors.green,
                   child: const Icon(Icons.switch_camera, color: Colors.white),
+                ),
+                const SizedBox(height: 16),
+
+                // Reload model
+                FloatingActionButton(
+                  heroTag: 'reload',
+                  onPressed: () {
+                    _loadModel();
+                  },
+                  backgroundColor: Colors.red,
+                  child: const Icon(Icons.refresh, color: Colors.white),
                 ),
               ],
             ),
