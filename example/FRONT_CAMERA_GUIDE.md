@@ -11,6 +11,7 @@ This guide explains how to properly use the front camera with YOLO detection and
 **Solution**: Use the correct parameters in `YOLOStreamingConfig`:
 
 #### Option A: Use `inferenceFrequency` (Recommended)
+
 ```dart
 YOLOView(
   controller: _controller,
@@ -30,6 +31,7 @@ YOLOView(
 ```
 
 #### Option B: Use `maxFPS` for output throttling
+
 ```dart
 YOLOView(
   controller: _controller,
@@ -48,6 +50,7 @@ YOLOView(
 ```
 
 #### Option C: Use `skipFrames` with reasonable values
+
 ```dart
 YOLOView(
   controller: _controller,
@@ -123,7 +126,7 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
       includeOBB: false,
       includeOriginalImage: false,
     );
-    
+
     _controller.setStreamingConfig(_streamingConfig);
     setState(() {
       _targetFps = fps;
@@ -134,7 +137,7 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
     setState(() {
       _detectionCount = results.length;
     });
-    
+
     // Debug output
     for (var i = 0; i < results.length && i < 3; i++) {
       final r = results[i];
@@ -238,7 +241,7 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
                   child: const Icon(Icons.speed, color: Colors.white),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Camera switch
                 FloatingActionButton(
                   heroTag: 'camera',
@@ -261,12 +264,14 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
 ## Key Points
 
 ### Frame Rate Control
+
 - **`inferenceFrequency`**: Controls how often the model runs inference (most important for performance)
 - **`maxFPS`**: Controls how often results are sent to Flutter
 - **`skipFrames`**: Alternative way to control inference frequency by skipping frames
 - **Recommended values**: 5-15 FPS for battery saving, 30 FPS for smooth detection
 
 ### Front Camera Usage
+
 - The native implementation automatically handles coordinate transformation
 - Bounding boxes should appear correctly positioned
 - If issues persist, try:
@@ -275,6 +280,7 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
   3. Checking device-specific camera capabilities
 
 ### Performance Optimization
+
 - Use `YOLOStreamingConfig.minimal()` for maximum performance
 - Disable unnecessary features (masks, poses, OBB) if not needed
 - Monitor actual FPS vs target FPS to ensure settings are working
@@ -291,4 +297,4 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
 - **5 FPS**: Very slow, battery saving, good for static scenes
 - **10 FPS**: Balanced, moderate battery usage, good for most use cases
 - **15 FPS**: Smooth, higher battery usage, good for moving objects
-- **30 FPS**: Very smooth, high battery usage, best for fast-moving objects 
+- **30 FPS**: Very smooth, high battery usage, best for fast-moving objects
