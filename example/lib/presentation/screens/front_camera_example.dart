@@ -25,7 +25,8 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
   String? _modelPath;
   bool _isModelLoading = false;
   String _loadingMessage = '';
-  bool _isFrontCamera = true; // Track camera state
+  bool _isFrontCamera =
+      false; // Track camera state - YOLOView starts with back camera
 
   // Streaming config for slower detection
   late YOLOStreamingConfig _streamingConfig;
@@ -229,6 +230,26 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
                   ),
                 ),
                 SizedBox(height: isLandscape ? 8 : 12),
+                // Camera indicator
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _isFrontCamera ? 'FRONT CAMERA' : 'BACK CAMERA',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                SizedBox(height: isLandscape ? 8 : 12),
                 IgnorePointer(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -325,6 +346,9 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
                     _isFrontCamera = !_isFrontCamera;
                   });
                   _controller.switchCamera();
+                  debugPrint(
+                    'FrontCameraExample: Camera switched to ${_isFrontCamera ? "FRONT" : "BACK"}',
+                  );
                 }),
                 SizedBox(height: isLandscape ? 8 : 12),
                 _buildIconButton(Icons.refresh, () {
