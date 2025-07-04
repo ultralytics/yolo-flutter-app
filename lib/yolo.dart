@@ -619,7 +619,7 @@ class YOLO {
   ///   'inputMean': 127.5,
   ///   'inputStd' : 127.5,
   ///   'expectedChannels': 1,
-  ///   // labels·expectedClasses 필요하면 추가
+  ///   // labels·expectedClasses (if needed)
   /// };
   ///```
   
