@@ -2,7 +2,6 @@
 
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
@@ -730,13 +729,6 @@ class CustomVisualizationPainter extends CustomPainter {
   }
 
   void _drawCornerAccents(Canvas canvas, Rect rect, Color color) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    const accentLength = 15.0;
-
     // Draw corner accents
     final corners = [
       rect.topLeft,

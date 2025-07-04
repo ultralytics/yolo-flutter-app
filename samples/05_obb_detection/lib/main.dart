@@ -420,8 +420,9 @@ class ObbPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final scaleX = size.width / imageSize.width;
-    final scaleY = size.height / imageSize.height;
+    // Scale factors are calculated but not used in current implementation
+    // final scaleX = size.width / imageSize.width;
+    // final scaleY = size.height / imageSize.height;
 
     // Debug
     // Canvas size: $size, Image size: $imageSize
