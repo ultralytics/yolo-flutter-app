@@ -32,5 +32,16 @@ jobs:
             fi
           done
 
-      - name: Analyze project source
-        run: dart analyze --fatal-infos
+      - name: Analyze main plugin source
+        run: dart analyze lib test example --fatal-infos
+
+      - name: Analyze sample apps
+        run: |
+          for sample in samples/*; do
+            if [ -d "$sample" ] && [ -f "$sample/pubspec.yaml" ]; then
+              echo "Analyzing $sample..."
+              cd "$sample"
+              dart analyze --fatal-warnings || exit 1
+              cd ../..
+            fi
+          done
