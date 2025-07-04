@@ -355,8 +355,8 @@ class PosePainter extends CustomPainter {
       
       // Draw skeleton connections
       final connectionPaint = Paint()
-        ..color = Colors.green
-        ..strokeWidth = 3
+        ..color = const Color.fromRGBO(255, 180, 90, 1)  // Ultralytics skeleton color
+        ..strokeWidth = 2
         ..style = PaintingStyle.stroke;
       
       for (final connection in skeleton) {
@@ -388,7 +388,7 @@ class PosePainter extends CustomPainter {
           
           canvas.drawCircle(
             Offset(keypoint.x, keypoint.y),
-            5,
+            6,  // Match native keypoint radius
             keypointPaint,
           );
           
@@ -400,15 +400,16 @@ class PosePainter extends CustomPainter {
           
           canvas.drawCircle(
             Offset(keypoint.x, keypoint.y),
-            5,
+            6,  // Match native keypoint radius
             borderPaint,
           );
         }
       }
       
-      // Draw bounding box
+      // Draw bounding box using Ultralytics detection colors
+      final boxIndex = poseResults.indexOf(pose);
       final boxPaint = Paint()
-        ..color = Colors.blue.withOpacity(0.3)
+        ..color = _getDetectionColor(boxIndex).withOpacity(1.0)
         ..strokeWidth = 2
         ..style = PaintingStyle.stroke;
       
@@ -419,11 +420,58 @@ class PosePainter extends CustomPainter {
     canvas.restore();
   }
 
+  Color _getDetectionColor(int index) {
+    // Ultralytics standard detection colors with 60% opacity
+    final colors = [
+      const Color.fromARGB(153, 4, 42, 255),     // Blue
+      const Color.fromARGB(153, 11, 219, 235),   // Cyan
+      const Color.fromARGB(153, 243, 243, 243),  // Light Gray
+      const Color.fromARGB(153, 0, 223, 183),    // Turquoise
+      const Color.fromARGB(153, 17, 31, 104),    // Dark Blue
+      const Color.fromARGB(153, 255, 111, 221),  // Pink
+      const Color.fromARGB(153, 255, 68, 79),    // Red
+      const Color.fromARGB(153, 204, 237, 0),    // Yellow-Green
+      const Color.fromARGB(153, 0, 243, 68),     // Green
+      const Color.fromARGB(153, 189, 0, 255),    // Purple
+      const Color.fromARGB(153, 0, 180, 255),    // Light Blue
+      const Color.fromARGB(153, 221, 0, 186),    // Magenta
+      const Color.fromARGB(153, 0, 255, 255),    // Cyan
+      const Color.fromARGB(153, 38, 192, 0),     // Dark Green
+      const Color.fromARGB(153, 1, 255, 179),    // Mint
+      const Color.fromARGB(153, 125, 36, 255),   // Violet
+      const Color.fromARGB(153, 123, 0, 104),    // Dark Purple
+      const Color.fromARGB(153, 255, 27, 108),   // Hot Pink
+      const Color.fromARGB(153, 252, 109, 47),   // Orange
+      const Color.fromARGB(153, 162, 255, 11),   // Lime Green
+    ];
+    return colors[index % colors.length];
+  }
+
   Color _getKeypointColor(int index) {
-    // Color keypoints by body part
-    if (index < 5) return Colors.red; // Head
-    if (index < 11) return Colors.orange; // Arms
-    return Colors.yellow; // Legs
+    // Ultralytics pose palette colors
+    final posePalette = [
+      const Color.fromRGBO(255, 128, 0, 1),    // Orange
+      const Color.fromRGBO(255, 153, 51, 1),   // Light Orange
+      const Color.fromRGBO(255, 178, 102, 1),  // Pale Orange
+      const Color.fromRGBO(230, 230, 0, 1),    // Yellow
+      const Color.fromRGBO(255, 153, 255, 1),  // Light Pink
+      const Color.fromRGBO(153, 204, 255, 1),  // Light Blue
+      const Color.fromRGBO(255, 102, 255, 1),  // Pink
+      const Color.fromRGBO(255, 51, 255, 1),   // Magenta
+      const Color.fromRGBO(102, 178, 255, 1),  // Sky Blue
+      const Color.fromRGBO(51, 153, 255, 1),   // Blue
+      const Color.fromRGBO(255, 153, 153, 1),  // Light Red
+      const Color.fromRGBO(255, 102, 102, 1),  // Red
+      const Color.fromRGBO(255, 51, 51, 1),    // Dark Red
+      const Color.fromRGBO(153, 255, 153, 1),  // Light Green
+      const Color.fromRGBO(102, 255, 102, 1),  // Green
+      const Color.fromRGBO(51, 255, 51, 1),    // Bright Green
+      const Color.fromRGBO(0, 255, 0, 1),      // Pure Green
+      const Color.fromRGBO(0, 0, 255, 1),      // Pure Blue
+      const Color.fromRGBO(255, 0, 0, 1),      // Pure Red
+      const Color.fromRGBO(255, 255, 255, 1),  // White
+    ];
+    return posePalette[index % posePalette.length];
   }
 
   @override

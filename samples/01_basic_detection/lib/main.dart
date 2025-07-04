@@ -350,17 +350,28 @@ class _DetectionScreenState extends State<DetectionScreen> {
   }
 
   Color _getColorForClass(String className) {
+    // Ultralytics standard detection colors with 60% opacity
     final colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.red,
-      Colors.purple,
-      Colors.teal,
-      Colors.pink,
-      Colors.indigo,
-      Colors.amber,
-      Colors.cyan,
+      const Color.fromARGB(153, 4, 42, 255),     // Blue
+      const Color.fromARGB(153, 11, 219, 235),   // Cyan
+      const Color.fromARGB(153, 243, 243, 243),  // Light Gray
+      const Color.fromARGB(153, 0, 223, 183),    // Turquoise
+      const Color.fromARGB(153, 17, 31, 104),    // Dark Blue
+      const Color.fromARGB(153, 255, 111, 221),  // Pink
+      const Color.fromARGB(153, 255, 68, 79),    // Red
+      const Color.fromARGB(153, 204, 237, 0),    // Yellow-Green
+      const Color.fromARGB(153, 0, 243, 68),     // Green
+      const Color.fromARGB(153, 189, 0, 255),    // Purple
+      const Color.fromARGB(153, 0, 180, 255),    // Light Blue
+      const Color.fromARGB(153, 221, 0, 186),    // Magenta
+      const Color.fromARGB(153, 0, 255, 255),    // Cyan
+      const Color.fromARGB(153, 38, 192, 0),     // Dark Green
+      const Color.fromARGB(153, 1, 255, 179),    // Mint
+      const Color.fromARGB(153, 125, 36, 255),   // Violet
+      const Color.fromARGB(153, 123, 0, 104),    // Dark Purple
+      const Color.fromARGB(153, 255, 27, 108),   // Hot Pink
+      const Color.fromARGB(153, 252, 109, 47),   // Orange
+      const Color.fromARGB(153, 162, 255, 11),   // Lime Green
     ];
     return colors[className.hashCode % colors.length];
   }
@@ -404,9 +415,9 @@ class DetectionPainter extends CustomPainter {
 
       // Draw bounding box
       final boxPaint = Paint()
-        ..color = _getColorForClass(detection['className'] ?? '')
+        ..color = _getColorForClass(detection['className'] ?? '').withOpacity(1.0)  // Full opacity for box
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3;
+        ..strokeWidth = 2.0;  // Match native stroke width
       canvas.drawRect(rect, boxPaint);
 
       // Draw label background
@@ -434,7 +445,7 @@ class DetectionPainter extends CustomPainter {
       );
 
       final labelBgPaint = Paint()
-        ..color = _getColorForClass(className);
+        ..color = _getColorForClass(className).withOpacity(1.0);  // Full opacity for label background
       canvas.drawRect(labelBgRect, labelBgPaint);
 
       // Draw label text
@@ -449,17 +460,28 @@ class DetectionPainter extends CustomPainter {
   }
 
   Color _getColorForClass(String className) {
+    // Ultralytics standard detection colors with 60% opacity
     final colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.red,
-      Colors.purple,
-      Colors.teal,
-      Colors.pink,
-      Colors.indigo,
-      Colors.amber,
-      Colors.cyan,
+      const Color.fromARGB(153, 4, 42, 255),     // Blue
+      const Color.fromARGB(153, 11, 219, 235),   // Cyan
+      const Color.fromARGB(153, 243, 243, 243),  // Light Gray
+      const Color.fromARGB(153, 0, 223, 183),    // Turquoise
+      const Color.fromARGB(153, 17, 31, 104),    // Dark Blue
+      const Color.fromARGB(153, 255, 111, 221),  // Pink
+      const Color.fromARGB(153, 255, 68, 79),    // Red
+      const Color.fromARGB(153, 204, 237, 0),    // Yellow-Green
+      const Color.fromARGB(153, 0, 243, 68),     // Green
+      const Color.fromARGB(153, 189, 0, 255),    // Purple
+      const Color.fromARGB(153, 0, 180, 255),    // Light Blue
+      const Color.fromARGB(153, 221, 0, 186),    // Magenta
+      const Color.fromARGB(153, 0, 255, 255),    // Cyan
+      const Color.fromARGB(153, 38, 192, 0),     // Dark Green
+      const Color.fromARGB(153, 1, 255, 179),    // Mint
+      const Color.fromARGB(153, 125, 36, 255),   // Violet
+      const Color.fromARGB(153, 123, 0, 104),    // Dark Purple
+      const Color.fromARGB(153, 255, 27, 108),   // Hot Pink
+      const Color.fromARGB(153, 252, 109, 47),   // Orange
+      const Color.fromARGB(153, 162, 255, 11),   // Lime Green
     ];
     return colors[className.hashCode % colors.length];
   }
