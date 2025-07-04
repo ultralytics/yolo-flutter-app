@@ -980,8 +980,8 @@ class MultiModelPainter extends CustomPainter {
           final x = left * imageSize.width * scale + offsetX;
           final y = top * imageSize.height * scale + offsetY;
           
-          // Use person-specific color from ultralytics palette for label
-          final labelColor = ultralyticsColors[detectionIndex % ultralyticsColors.length];
+          // For pose, all detections are "person" class, so use the same color (index 0)
+          final labelColor = ultralyticsColors[0];  // Always use first color for person class
           _drawLabel(canvas, 'Person', Offset(x, y - 4), labelColor);
         }
       } catch (e) {
