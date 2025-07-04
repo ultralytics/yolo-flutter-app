@@ -400,18 +400,28 @@ class SegmentationPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     );
 
-    // Colors for different objects / オブジェクトごとの色
+    // Ultralytics standard detection colors with 60% opacity
     final colors = [
-      Colors.red,
-      Colors.green,
-      Colors.blue,
-      Colors.orange,
-      Colors.purple,
-      Colors.cyan,
-      Colors.pink,
-      Colors.teal,
-      Colors.amber,
-      Colors.lime,
+      const Color.fromARGB(153, 4, 42, 255),     // Blue
+      const Color.fromARGB(153, 11, 219, 235),   // Cyan
+      const Color.fromARGB(153, 243, 243, 243),  // Light Gray
+      const Color.fromARGB(153, 0, 223, 183),    // Turquoise
+      const Color.fromARGB(153, 17, 31, 104),    // Dark Blue
+      const Color.fromARGB(153, 255, 111, 221),  // Pink
+      const Color.fromARGB(153, 255, 68, 79),    // Red
+      const Color.fromARGB(153, 204, 237, 0),    // Yellow-Green
+      const Color.fromARGB(153, 0, 243, 68),     // Green
+      const Color.fromARGB(153, 189, 0, 255),    // Purple
+      const Color.fromARGB(153, 0, 180, 255),    // Light Blue
+      const Color.fromARGB(153, 221, 0, 186),    // Magenta
+      const Color.fromARGB(153, 0, 255, 255),    // Cyan
+      const Color.fromARGB(153, 38, 192, 0),     // Dark Green
+      const Color.fromARGB(153, 1, 255, 179),    // Mint
+      const Color.fromARGB(153, 125, 36, 255),   // Violet
+      const Color.fromARGB(153, 123, 0, 104),    // Dark Purple
+      const Color.fromARGB(153, 255, 27, 108),   // Hot Pink
+      const Color.fromARGB(153, 252, 109, 47),   // Orange
+      const Color.fromARGB(153, 162, 255, 11),   // Lime Green
     ];
 
     // Group results by class for consistent colors

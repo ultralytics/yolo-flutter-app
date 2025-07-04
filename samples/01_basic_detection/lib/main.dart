@@ -419,7 +419,7 @@ class DetectionPainter extends CustomPainter {
 
       // Draw bounding box
       final boxPaint = Paint()
-        ..color = _getColorForClass(detection['className'] ?? '').withOpacity(1.0)  // Full opacity for box
+        ..color = _getColorForClass(detection['className'] ?? '')  // Use color with original 60% opacity
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4.0 * strokeScale;  // Scale stroke width with image size
       canvas.drawRect(rect, boxPaint);
@@ -449,7 +449,7 @@ class DetectionPainter extends CustomPainter {
       );
 
       final labelBgPaint = Paint()
-        ..color = _getColorForClass(className).withOpacity(1.0);  // Full opacity for label background
+        ..color = _getColorForClass(className);  // Use color with original opacity
       canvas.drawRect(labelBgRect, labelBgPaint);
 
       // Draw label text

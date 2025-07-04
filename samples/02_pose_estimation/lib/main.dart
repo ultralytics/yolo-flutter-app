@@ -450,7 +450,7 @@ class PosePainter extends CustomPainter {
       // Draw bounding box using Ultralytics detection colors
       final boxIndex = poseResults.indexOf(pose);
       final boxPaint = Paint()
-        ..color = _getDetectionColor(boxIndex).withOpacity(1.0)
+        ..color = _getDetectionColor(boxIndex)  // Use color with original opacity
         ..strokeWidth = 4 * strokeScale  // Scale box stroke width
         ..style = PaintingStyle.stroke;
       
