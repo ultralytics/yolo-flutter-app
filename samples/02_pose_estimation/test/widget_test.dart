@@ -10,7 +10,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:pose_estimation/main.dart';
+import 'package:pose_estimation_sample/main.dart';
 
 void main() {
   testWidgets('App launches correctly', (WidgetTester tester) async {

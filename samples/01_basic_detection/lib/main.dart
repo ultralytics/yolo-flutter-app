@@ -41,7 +41,7 @@ class _DetectionScreenState extends State<DetectionScreen> {
   List<Map<String, dynamic>>? _detectionResults;
   bool _isProcessing = false;
   double _confidence = 0.45;
-  double _iou = 0.45;
+  final double _iou = 0.45;
   String _processingTime = '';
 
   // YOLO instance
