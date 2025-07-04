@@ -23,7 +23,8 @@ class YOLO(
     private val modelPath: String,
     val task: YOLOTask,
     private val labels: List<String> = emptyList(),
-    private val useGpu: Boolean = true
+    private val useGpu: Boolean = true,
+    private val classifierOptions: Map<String, Any>? = null
 ) {
     private val TAG = "YOLO"
 
@@ -44,8 +45,6 @@ class YOLO(
                 // Allow FP16 precision for faster computation
                 setAllowFp16PrecisionForFp32(true)
                 
-                // useGpu is handled in individual predictors
-                
                 // Log configuration
                 Log.d(TAG, "Interpreter options: threads=${Runtime.getRuntime().availableProcessors()}, FP16 enabled")
             }
@@ -60,7 +59,7 @@ class YOLO(
         when (task) {
             YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, options)
             YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, options)
-            YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu) // Classifier doesn't accept options
+            YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu, options, classifierOptions)
             YOLOTask.POSE -> PoseEstimator(context, modelPath, labels, useGpu, customOptions = options)
             YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, options)
         }
@@ -83,9 +82,18 @@ class YOLO(
      */
     fun predict(bitmap: Bitmap, rotateForCamera: Boolean = false): YOLOResult {
         val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera, isLandscape = false)
+        
+        // Don't create annotated image for classification tasks to save memory and processing time
+        val annotatedImage = if (task == YOLOTask.CLASSIFY) {
+            Log.d(TAG, "Skipping annotation for CLASSIFY task")
+            null
+        } else {
+            drawAnnotations(bitmap, result, rotateForCamera)
+        }
+        
         return result.copy(
             originalImage = bitmap,
-            annotatedImage = drawAnnotations(bitmap, result, rotateForCamera)
+            annotatedImage = annotatedImage
         )
     }
 
