@@ -399,6 +399,10 @@ class DetectionPainter extends CustomPainter {
     // Draw the image
     final paint = Paint();
     canvas.drawImage(image, Offset.zero, paint);
+    
+    // Calculate scale factor for stroke widths based on image size
+    final imageScale = (image.width + image.height) / 2000.0;
+    final strokeScale = imageScale.clamp(0.5, 3.0); // Clamp between 0.5x and 3x
 
     // Draw detections
     for (final detection in detections) {
@@ -417,7 +421,7 @@ class DetectionPainter extends CustomPainter {
       final boxPaint = Paint()
         ..color = _getColorForClass(detection['className'] ?? '').withOpacity(1.0)  // Full opacity for box
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 4.0;  // Increased for better visibility
+        ..strokeWidth = 4.0 * strokeScale;  // Scale stroke width with image size
       canvas.drawRect(rect, boxPaint);
 
       // Draw label background

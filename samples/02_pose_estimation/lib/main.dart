@@ -51,6 +51,11 @@ class _PoseEstimationScreenState extends State<PoseEstimationScreen> {
     [11, 13], [13, 15], [12, 14], [14, 16], // Legs
   ];
   
+  // Limb color indices matching native implementation
+  static const List<int> _limbColorIndices = [
+    7, 7, 7, 7, 7, 9, 9, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16
+  ];
+  
   // Keypoint names for display
   static const List<String> _keypointNames = [
     'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
@@ -246,6 +251,7 @@ class _PoseEstimationScreenState extends State<PoseEstimationScreen> {
                                       image: snapshot.data!,
                                       poseResults: _poseResults ?? [],
                                       skeleton: _skeleton,
+                                      limbColorIndices: _limbColorIndices,
                                       scale: scale,
                                     ),
                                   ),
@@ -334,12 +340,14 @@ class PosePainter extends CustomPainter {
   final ui.Image image;
   final List<YOLOResult> poseResults;
   final List<List<int>> skeleton;
+  final List<int> limbColorIndices;
   final double scale;
 
   PosePainter({
     required this.image,
     required this.poseResults,
     required this.skeleton,
+    required this.limbColorIndices,
     this.scale = 1.0,
   });
 
@@ -355,17 +363,18 @@ class PosePainter extends CustomPainter {
     final paint = Paint();
     canvas.drawImage(image, Offset.zero, paint);
     
+    // Calculate scale factor for stroke widths based on image size
+    // Use the smaller dimension to ensure visibility on both portrait and landscape
+    final imageScale = (image.width + image.height) / 2000.0;
+    final strokeScale = imageScale.clamp(0.5, 3.0); // Clamp between 0.5x and 3x
+    
     // Draw poses
     for (final pose in poseResults) {
       if (pose.keypoints == null || pose.keypointConfidences == null) continue;
       
       // Draw skeleton connections
-      final connectionPaint = Paint()
-        ..color = const Color.fromRGBO(255, 180, 90, 1)  // Ultralytics skeleton color
-        ..strokeWidth = 4
-        ..style = PaintingStyle.stroke;
-      
-      for (final connection in skeleton) {
+      for (int i = 0; i < skeleton.length; i++) {
+        final connection = skeleton[i];
         final startIdx = connection[0];
         final endIdx = connection[1];
         
@@ -386,10 +395,17 @@ class PosePainter extends CustomPainter {
           final endX = isNormalized ? endPoint.x * image.width : endPoint.x;
           final endY = isNormalized ? endPoint.y * image.height : endPoint.y;
           
+          // Get limb color from the same palette using limb color indices
+          final limbColor = _getLimbColor(i);
+          final limbPaint = Paint()
+            ..color = limbColor
+            ..strokeWidth = 6 * strokeScale  // Scale stroke width
+            ..style = PaintingStyle.stroke;
+          
           canvas.drawLine(
             Offset(startX, startY),
             Offset(endX, endY),
-            connectionPaint,
+            limbPaint,
           );
         }
       }
@@ -413,19 +429,19 @@ class PosePainter extends CustomPainter {
           
           canvas.drawCircle(
             Offset(x, y),
-            8,  // Increased keypoint radius for better visibility
+            10 * strokeScale,  // Scale keypoint radius with image size
             keypointPaint,
           );
           
           // Draw keypoint border
           final borderPaint = Paint()
             ..color = Colors.white
-            ..strokeWidth = 4
+            ..strokeWidth = 3 * strokeScale  // Scale border width
             ..style = PaintingStyle.stroke;
           
           canvas.drawCircle(
             Offset(x, y),
-            8,  // Increased keypoint radius for better visibility
+            10 * strokeScale,  // Scale keypoint radius with image size
             borderPaint,
           );
         }
@@ -435,7 +451,7 @@ class PosePainter extends CustomPainter {
       final boxIndex = poseResults.indexOf(pose);
       final boxPaint = Paint()
         ..color = _getDetectionColor(boxIndex).withOpacity(1.0)
-        ..strokeWidth = 4
+        ..strokeWidth = 4 * strokeScale  // Scale box stroke width
         ..style = PaintingStyle.stroke;
       
       canvas.drawRect(pose.boundingBox, boxPaint);
@@ -472,31 +488,73 @@ class PosePainter extends CustomPainter {
     return colors[index % colors.length];
   }
 
+  Color _getLimbColor(int limbIndex) {
+    // Ultralytics pose palette colors (same as keypoints)
+    final posePalette = [
+      const Color.fromRGBO(255, 128, 0, 1),    // 0: Orange
+      const Color.fromRGBO(255, 153, 51, 1),   // 1: Light Orange
+      const Color.fromRGBO(255, 178, 102, 1),  // 2: Pale Orange
+      const Color.fromRGBO(230, 230, 0, 1),    // 3: Yellow
+      const Color.fromRGBO(255, 153, 255, 1),  // 4: Light Pink
+      const Color.fromRGBO(153, 204, 255, 1),  // 5: Light Blue
+      const Color.fromRGBO(255, 102, 255, 1),  // 6: Pink
+      const Color.fromRGBO(255, 51, 255, 1),   // 7: Magenta
+      const Color.fromRGBO(102, 178, 255, 1),  // 8: Sky Blue
+      const Color.fromRGBO(51, 153, 255, 1),   // 9: Blue
+      const Color.fromRGBO(255, 153, 153, 1),  // 10: Light Red
+      const Color.fromRGBO(255, 102, 102, 1),  // 11: Red
+      const Color.fromRGBO(255, 51, 51, 1),    // 12: Dark Red
+      const Color.fromRGBO(153, 255, 153, 1),  // 13: Light Green
+      const Color.fromRGBO(102, 255, 102, 1),  // 14: Green
+      const Color.fromRGBO(51, 255, 51, 1),    // 15: Bright Green
+      const Color.fromRGBO(0, 255, 0, 1),      // 16: Pure Green
+      const Color.fromRGBO(0, 0, 255, 1),      // 17: Pure Blue
+      const Color.fromRGBO(255, 0, 0, 1),      // 18: Pure Red
+      const Color.fromRGBO(255, 255, 255, 1),  // 19: White
+    ];
+    
+    if (limbIndex < limbColorIndices.length) {
+      return posePalette[limbColorIndices[limbIndex]];
+    }
+    return posePalette[0]; // Default to orange
+  }
+
   Color _getKeypointColor(int index) {
     // Ultralytics pose palette colors
     final posePalette = [
-      const Color.fromRGBO(255, 128, 0, 1),    // Orange
-      const Color.fromRGBO(255, 153, 51, 1),   // Light Orange
-      const Color.fromRGBO(255, 178, 102, 1),  // Pale Orange
-      const Color.fromRGBO(230, 230, 0, 1),    // Yellow
-      const Color.fromRGBO(255, 153, 255, 1),  // Light Pink
-      const Color.fromRGBO(153, 204, 255, 1),  // Light Blue
-      const Color.fromRGBO(255, 102, 255, 1),  // Pink
-      const Color.fromRGBO(255, 51, 255, 1),   // Magenta
-      const Color.fromRGBO(102, 178, 255, 1),  // Sky Blue
-      const Color.fromRGBO(51, 153, 255, 1),   // Blue
-      const Color.fromRGBO(255, 153, 153, 1),  // Light Red
-      const Color.fromRGBO(255, 102, 102, 1),  // Red
-      const Color.fromRGBO(255, 51, 51, 1),    // Dark Red
-      const Color.fromRGBO(153, 255, 153, 1),  // Light Green
-      const Color.fromRGBO(102, 255, 102, 1),  // Green
-      const Color.fromRGBO(51, 255, 51, 1),    // Bright Green
-      const Color.fromRGBO(0, 255, 0, 1),      // Pure Green
-      const Color.fromRGBO(0, 0, 255, 1),      // Pure Blue
-      const Color.fromRGBO(255, 0, 0, 1),      // Pure Red
-      const Color.fromRGBO(255, 255, 255, 1),  // White
+      const Color.fromRGBO(255, 128, 0, 1),    // 0: Orange
+      const Color.fromRGBO(255, 153, 51, 1),   // 1: Light Orange
+      const Color.fromRGBO(255, 178, 102, 1),  // 2: Pale Orange
+      const Color.fromRGBO(230, 230, 0, 1),    // 3: Yellow
+      const Color.fromRGBO(255, 153, 255, 1),  // 4: Light Pink
+      const Color.fromRGBO(153, 204, 255, 1),  // 5: Light Blue
+      const Color.fromRGBO(255, 102, 255, 1),  // 6: Pink
+      const Color.fromRGBO(255, 51, 255, 1),   // 7: Magenta
+      const Color.fromRGBO(102, 178, 255, 1),  // 8: Sky Blue
+      const Color.fromRGBO(51, 153, 255, 1),   // 9: Blue
+      const Color.fromRGBO(255, 153, 153, 1),  // 10: Light Red
+      const Color.fromRGBO(255, 102, 102, 1),  // 11: Red
+      const Color.fromRGBO(255, 51, 51, 1),    // 12: Dark Red
+      const Color.fromRGBO(153, 255, 153, 1),  // 13: Light Green
+      const Color.fromRGBO(102, 255, 102, 1),  // 14: Green
+      const Color.fromRGBO(51, 255, 51, 1),    // 15: Bright Green
+      const Color.fromRGBO(0, 255, 0, 1),      // 16: Pure Green
+      const Color.fromRGBO(0, 0, 255, 1),      // 17: Pure Blue
+      const Color.fromRGBO(255, 0, 0, 1),      // 18: Pure Red
+      const Color.fromRGBO(255, 255, 255, 1),  // 19: White
     ];
-    return posePalette[index % posePalette.length];
+    
+    // Native keypoint color indices for COCO pose
+    final kptColorIndices = [
+      16, 16, 16, 16, 16,  // 0-4: nose, eyes, ears (green)
+      9, 9, 9, 9, 9, 9,    // 5-10: shoulders, elbows, wrists (blue)
+      0, 0, 0, 0, 0, 0,    // 11-16: hips, knees, ankles (orange)
+    ];
+    
+    if (index < kptColorIndices.length) {
+      return posePalette[kptColorIndices[index]];
+    }
+    return posePalette[0]; // Default to orange
   }
 
   @override
