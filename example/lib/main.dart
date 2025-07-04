@@ -42,7 +42,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
 
     // Initialize YOLO
-    final yolo = YOLO(modelPath: 'yolo11n.tflite');
+    final yolo = YOLO(modelPath: 'yolo11n.tflite', task: YOLOTask.detect);
 
     // Load model
     await yolo.loadModel();

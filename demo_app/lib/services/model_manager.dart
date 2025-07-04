@@ -195,7 +195,7 @@ class ModelManager {
         downloadedBytes += chunk.length;
 
         if (contentLength > 0) {
-          final progress = downloadedBytes / contentLength;
+          final progress = downloadedBytes / contentLength.toDouble();
           onDownloadProgress?.call(progress);
         }
       }
@@ -339,7 +339,7 @@ class ModelManager {
         downloadedBytes += chunk.length;
 
         if (contentLength > 0) {
-          final progress = downloadedBytes / contentLength;
+          final progress = downloadedBytes / contentLength.toDouble();
           onDownloadProgress?.call(progress);
         }
       }
