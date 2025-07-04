@@ -22,7 +22,15 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get
+          cd example && flutter pub get && cd ..
+          cd demo_app && flutter pub get && cd ..
+          for sample in samples/*; do
+            if [ -d "$sample" ] && [ -f "$sample/pubspec.yaml" ]; then
+              cd "$sample" && flutter pub get && cd ../..
+            fi
+          done
 
       - name: Analyze project source
         run: dart analyze --fatal-infos
