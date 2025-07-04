@@ -19,7 +19,7 @@ void main() {
 
     // Verify that the app launches with expected title
     expect(find.text('YOLO Basic Detection'), findsOneWidget);
-    
+
     // Verify that the pick image button exists
     expect(find.byIcon(Icons.photo_library), findsOneWidget);
   });
