@@ -224,17 +224,42 @@ class _DetectionScreenState extends State<DetectionScreen> {
                                 future: _getImageInfo(),
                                 builder: (context, snapshot) {
                                   if (!snapshot.hasData) {
-                                    return Image.file(_imageFile!);
+                                    return Container(
+                                      constraints: BoxConstraints(
+                                        maxHeight: MediaQuery.of(context).size.height * 0.5,
+                                      ),
+                                      child: Image.file(
+                                        _imageFile!,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    );
                                   }
                                   
-                                  return CustomPaint(
-                                    size: Size(
-                                      snapshot.data!.width.toDouble(),
-                                      snapshot.data!.height.toDouble(),
-                                    ),
-                                    painter: DetectionPainter(
-                                      image: snapshot.data!,
-                                      detections: _detectionResults ?? [],
+                                  // Calculate scale to fit image within screen bounds
+                                  final screenWidth = MediaQuery.of(context).size.width - 32; // Account for padding
+                                  final maxHeight = MediaQuery.of(context).size.height * 0.5;
+                                  final imageWidth = snapshot.data!.width.toDouble();
+                                  final imageHeight = snapshot.data!.height.toDouble();
+                                  
+                                  double scale = 1.0;
+                                  if (imageWidth > screenWidth) {
+                                    scale = screenWidth / imageWidth;
+                                  }
+                                  if (imageHeight * scale > maxHeight) {
+                                    scale = maxHeight / imageHeight;
+                                  }
+                                  
+                                  final scaledWidth = imageWidth * scale;
+                                  final scaledHeight = imageHeight * scale;
+                                  
+                                  return Center(
+                                    child: CustomPaint(
+                                      size: Size(scaledWidth, scaledHeight),
+                                      painter: DetectionPainter(
+                                        image: snapshot.data!,
+                                        detections: _detectionResults ?? [],
+                                        scale: scale,
+                                      ),
                                     ),
                                   );
                                 },
@@ -344,14 +369,22 @@ class _DetectionScreenState extends State<DetectionScreen> {
 class DetectionPainter extends CustomPainter {
   final ui.Image image;
   final List<Map<String, dynamic>> detections;
+  final double scale;
 
   DetectionPainter({
     required this.image,
     required this.detections,
+    this.scale = 1.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Save canvas state
+    canvas.save();
+    
+    // Scale canvas to fit the image
+    canvas.scale(scale);
+    
     // Draw the image
     final paint = Paint();
     canvas.drawImage(image, Offset.zero, paint);
@@ -410,6 +443,9 @@ class DetectionPainter extends CustomPainter {
         Offset(rect.left + 4, rect.top - 22),
       );
     }
+    
+    // Restore canvas state
+    canvas.restore();
   }
 
   Color _getColorForClass(String className) {
