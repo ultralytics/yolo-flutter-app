@@ -10,7 +10,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:segmentation/main.dart';
+import 'package:segmentation_sample/main.dart';
 
 void main() {
   testWidgets('App launches correctly', (WidgetTester tester) async {
