@@ -211,22 +211,23 @@ class YOLOView extends StatefulWidget {
 
 #### Constructor Parameters
 
-| Parameter              | Type                                | Required | Default  | Description                      |
-| ---------------------- | ----------------------------------- | -------- | -------- | -------------------------------- |
-| `modelPath`            | `String`                            | ✅       | -        | Path to YOLO model file          |
-| `task`                 | `YOLOTask`                          | ✅       | -        | YOLO task type                   |
-| `controller`           | `YOLOViewController?`               | ❌       | `null`   | Custom view controller           |
-| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`   | Detection results callback       |
-| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`   | Performance metrics callback     |
-| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`   | Comprehensive streaming callback |
-| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`   | Zoom level change callback       |
-| `cameraResolution`     | `String`                            | ❌       | `"720p"` | Camera resolution                |
-| `showNativeUI`         | `bool`                              | ❌       | `true`   | Show native camera UI            |
-| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`   | Streaming configuration          |
+| Parameter              | Type                                | Required | Default  | Description                                             |
+| ---------------------- | ----------------------------------- | -------- | -------- | ------------------------------------------------------- |
+| `modelPath`            | `String`                            | ✅       | -        | Path to YOLO model file (camera starts even if invalid) |
+| `task`                 | `YOLOTask`                          | ✅       | -        | YOLO task type                                          |
+| `controller`           | `YOLOViewController?`               | ❌       | `null`   | Custom view controller                                  |
+| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`   | Detection results callback                              |
+| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`   | Performance metrics callback                            |
+| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`   | Comprehensive streaming callback                        |
+| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`   | Zoom level change callback                              |
+| `cameraResolution`     | `String`                            | ❌       | `"720p"` | Camera resolution                                       |
+| `showNativeUI`         | `bool`                              | ❌       | `true`   | Show native camera UI                                   |
+| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`   | Streaming configuration                                 |
 
 #### Example
 
 ```dart
+// Basic usage with valid model
 YOLOView(
   modelPath: 'assets/models/yolo11n.tflite',
   task: YOLOTask.detect,
@@ -237,6 +238,20 @@ YOLOView(
     print('FPS: ${metrics.fps}');
   },
 )
+
+// Camera-only mode (v0.1.25+): starts even with invalid model path
+YOLOView(
+  modelPath: 'model_not_yet_downloaded.tflite',  // Model doesn't exist yet
+  task: YOLOTask.detect,
+  controller: controller,
+  onResult: (results) {
+    // Will receive empty results until model is loaded
+    print('Detections: ${results.length}');
+  },
+)
+
+// Later, load the model dynamically
+await controller.switchModel('downloaded_model.tflite', YOLOTask.detect);
 ```
 
 ---
@@ -312,6 +327,45 @@ Switch between front and back camera.
 Future<void> switchCamera()
 ```
 
+##### `switchModel()`
+
+Dynamically switch to a different model without restarting the camera.
+
+```dart
+Future<void> switchModel(String modelPath, YOLOTask task)
+```
+
+Parameters:
+
+- `modelPath`: Path to the new model file
+- `task`: The YOLO task type for the new model
+
+**Throws**:
+
+- `PlatformException` - If model file cannot be found or loaded
+
+**Note**: As of v0.1.25, YOLOView can start with an invalid model path (camera-only mode). Use this method to load a valid model later.
+
+Example:
+
+```dart
+// Switch to a different model
+await controller.switchModel('yolo11s', YOLOTask.detect);
+
+// Platform-specific paths
+await controller.switchModel(
+  Platform.isIOS ? 'yolo11s' : 'yolo11s.tflite',
+  YOLOTask.detect,
+);
+
+// Handle errors
+try {
+  await controller.switchModel('new_model.tflite', YOLOTask.detect);
+} catch (e) {
+  print('Failed to load model: $e');
+}
+```
+
 ##### `setStreamingConfig()`
 
 Configure streaming behavior.
@@ -319,6 +373,47 @@ Configure streaming behavior.
 ```dart
 Future<void> setStreamingConfig(YOLOStreamingConfig config)
 ```
+
+##### `captureFrame()`
+
+Capture the current camera frame with detection overlays.
+
+```dart
+Future<Uint8List?> captureFrame()
+```
+
+**Returns**: `Future<Uint8List?>` - JPEG image data with detection overlays, or `null` if capture fails
+
+**Description**: Captures the current camera frame including all detection visualizations (bounding boxes, masks, keypoints, etc.) as a JPEG image.
+
+**Example**:
+
+```dart
+// Capture frame with overlays
+final imageData = await controller.captureFrame();
+
+if (imageData != null) {
+  // Save to file
+  final directory = await getTemporaryDirectory();
+  final file = File('${directory.path}/capture_${DateTime.now().millisecondsSinceEpoch}.jpg');
+  await file.writeAsBytes(imageData);
+
+  // Or display in UI
+  showDialog(
+    context: context,
+    builder: (context) => Image.memory(imageData),
+  );
+}
+```
+
+**Note**: The captured image includes:
+
+- Camera frame
+- Detection bounding boxes with labels
+- Segmentation masks (for segment task)
+- Pose keypoints and skeleton (for pose task)
+- OBB rotated boxes (for OBB task)
+- Classification results (for classify task)
 
 ---
 

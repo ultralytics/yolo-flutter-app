@@ -82,7 +82,7 @@ class YOLO(
      * @param rotateForCamera Whether to rotate the image for camera processing, defaults to false for standard bitmap inference
      */
     fun predict(bitmap: Bitmap, rotateForCamera: Boolean = false): YOLOResult {
-        val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera)
+        val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera, isLandscape = false)
         return result.copy(
             originalImage = bitmap,
             annotatedImage = drawAnnotations(bitmap, result, rotateForCamera)
@@ -95,7 +95,7 @@ class YOLO(
      */
     fun predict(imageProxy: ImageProxy): YOLOResult? {
         val bitmap = ImageUtils.toBitmap(imageProxy) ?: return null
-        val result = predictor.predict(bitmap, imageProxy.width, imageProxy.height, rotateForCamera = true)
+        val result = predictor.predict(bitmap, imageProxy.width, imageProxy.height, rotateForCamera = true, isLandscape = false)
         return result.copy(
             originalImage = bitmap,
             annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = true)
@@ -109,7 +109,7 @@ class YOLO(
     fun predict(imageUri: Uri): YOLOResult? {
         try {
             val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, imageUri)
-            val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false)
+            val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false, isLandscape = false)
             return result.copy(
                 originalImage = bitmap,
                 annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false)
@@ -127,7 +127,7 @@ class YOLO(
     suspend fun predict(imageUrl: String): YOLOResult? = withContext(Dispatchers.IO) {
         try {
             val bitmap = BitmapFactory.decodeStream(URL(imageUrl).openStream())
-            val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false)
+            val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false, isLandscape = false)
             return@withContext result.copy(
                 originalImage = bitmap,
                 annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false)
@@ -223,14 +223,35 @@ class YOLO(
                     val cornerRadius = 12f
                     canvas.drawRoundRect(box.xywh, cornerRadius, cornerRadius, paint)
 
-                    // Draw label
+                    // Draw label with background
+                    val labelText = "${box.cls} ${(box.conf * 100).toInt()}%"
+                    val labelPadding = 8f
+                    
+                    // Measure text
+                    val textBounds = Rect()
+                    paint.getTextBounds(labelText, 0, labelText.length, textBounds)
+                    
+                    // Calculate label background position
+                    val labelLeft = transformedRect.left
+                    val labelTop = transformedRect.top - textBounds.height() - labelPadding * 2
+                    val labelRight = labelLeft + textBounds.width() + labelPadding * 2
+                    val labelBottom = transformedRect.top
+                    
+                    // Draw label background
                     paint.style = Paint.Style.FILL
+                    val labelRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
+                    canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
+                    
+                    // Draw label text in white
+                    paint.color = Color.WHITE
                     canvas.drawText(
-                        "${box.cls} ${"%.2f".format(box.conf * 100)}%",
-                        transformedRect.left,
-                        transformedRect.top - 10,
+                        labelText,
+                        labelLeft + labelPadding,
+                        labelBottom - labelPadding,
                         paint
                     )
+                    
+                    // Reset paint for next box
                     paint.style = Paint.Style.STROKE
                 }
             }
@@ -245,13 +266,35 @@ class YOLO(
                     val cornerRadius = 12f
                     canvas.drawRoundRect(transformedRect, cornerRadius, cornerRadius, paint)
 
+                    // Draw label with background
+                    val labelText = "${box.cls} ${(box.conf * 100).toInt()}%"
+                    val labelPadding = 8f
+                    
+                    // Measure text
+                    val textBounds = Rect()
+                    paint.getTextBounds(labelText, 0, labelText.length, textBounds)
+                    
+                    // Calculate label background position
+                    val labelLeft = transformedRect.left
+                    val labelTop = transformedRect.top - textBounds.height() - labelPadding * 2
+                    val labelRight = labelLeft + textBounds.width() + labelPadding * 2
+                    val labelBottom = transformedRect.top
+                    
+                    // Draw label background
                     paint.style = Paint.Style.FILL
+                    val labelRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
+                    canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
+                    
+                    // Draw label text in white
+                    paint.color = Color.WHITE
                     canvas.drawText(
-                        "${box.cls} ${"%.2f".format(box.conf * 100)}%",
-                        transformedRect.left,
-                        transformedRect.top - 10,
+                        labelText,
+                        labelLeft + labelPadding,
+                        labelBottom - labelPadding,
                         paint
                     )
+                    
+                    // Reset paint style
                     paint.style = Paint.Style.STROKE
                 }
 
@@ -331,13 +374,35 @@ class YOLO(
                     val cornerRadius = 12f
                     canvas.drawRoundRect(transformedRect, cornerRadius, cornerRadius, paint)
 
+                    // Draw label with background
+                    val labelText = "${box.cls} ${(box.conf * 100).toInt()}%"
+                    val labelPadding = 8f
+                    
+                    // Measure text
+                    val textBounds = Rect()
+                    paint.getTextBounds(labelText, 0, labelText.length, textBounds)
+                    
+                    // Calculate label background position
+                    val labelLeft = transformedRect.left
+                    val labelTop = transformedRect.top - textBounds.height() - labelPadding * 2
+                    val labelRight = labelLeft + textBounds.width() + labelPadding * 2
+                    val labelBottom = transformedRect.top
+                    
+                    // Draw label background
                     paint.style = Paint.Style.FILL
+                    val labelRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
+                    canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
+                    
+                    // Draw label text in white
+                    paint.color = Color.WHITE
                     canvas.drawText(
-                        "${box.cls} ${"%.2f".format(box.conf * 100)}%",
-                        transformedRect.left,
-                        transformedRect.top - 10,
+                        labelText,
+                        labelLeft + labelPadding,
+                        labelBottom - labelPadding,
                         paint
                     )
+                    
+                    // Reset paint style
                     paint.style = Paint.Style.STROKE
                 }
 

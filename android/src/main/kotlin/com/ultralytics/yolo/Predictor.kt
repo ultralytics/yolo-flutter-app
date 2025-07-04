@@ -13,9 +13,10 @@ interface Predictor {
      * @param origWidth Original width of the source image
      * @param origHeight Original height of the source image
      * @param rotateForCamera Whether this is a camera feed that requires rotation (true) or a single image (false)
+     * @param isLandscape Whether the device is in landscape orientation (true) or portrait (false)
      * @return YOLOResult containing detection results
      */
-    fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean = false): YOLOResult
+    fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean = false, isLandscape: Boolean = false): YOLOResult
     
     abstract fun setIouThreshold(iou: Double)
     abstract fun setConfidenceThreshold(conf: Double)

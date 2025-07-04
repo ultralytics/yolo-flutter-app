@@ -457,6 +457,169 @@ class AdvancedCameraScreen extends StatelessWidget {
 }
 ```
 
+## 🔄 Dynamic Model Management
+
+### Dynamic Model Switching
+
+Switch models on-the-fly without restarting the camera view:
+
+```dart
+class DynamicModelExample extends StatefulWidget {
+  @override
+  _DynamicModelExampleState createState() => _DynamicModelExampleState();
+}
+
+class _DynamicModelExampleState extends State<DynamicModelExample> {
+  final controller = YOLOViewController();
+  String currentModel = 'yolo11n';
+  bool isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // Camera starts even with invalid model path
+          YOLOView(
+            modelPath: 'invalid_model.tflite', // Can be invalid initially
+            task: YOLOTask.detect,
+            controller: controller,
+            onResult: (results) {
+              print('Detected ${results.length} objects');
+            },
+          ),
+
+          // Model switching UI
+          Positioned(
+            bottom: 50,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: isLoading ? null : () => switchToModel('yolo11n'),
+                  child: Text('YOLO11n'),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading ? null : () => switchToModel('yolo11s'),
+                  child: Text('YOLO11s'),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading ? null : () => switchToModel('yolo11m'),
+                  child: Text('YOLO11m'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> switchToModel(String modelName) async {
+    setState(() => isLoading = true);
+
+    try {
+      // Switch model without restarting camera
+      await controller.switchModel(
+        Platform.isIOS ? modelName : '$modelName.tflite',
+        YOLOTask.detect,
+      );
+
+      setState(() {
+        currentModel = modelName;
+        isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Switched to $modelName')),
+      );
+    } catch (e) {
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load model: $e')),
+      );
+    }
+  }
+}
+```
+
+### Camera-Only Mode (Deferred Model Loading)
+
+Start camera preview immediately while models download in background:
+
+```dart
+class DeferredModelLoadingExample extends StatefulWidget {
+  @override
+  _DeferredModelLoadingExampleState createState() => _DeferredModelLoadingExampleState();
+}
+
+class _DeferredModelLoadingExampleState extends State<DeferredModelLoadingExample> {
+  final controller = YOLOViewController();
+  bool isModelReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    downloadAndLoadModel();
+  }
+
+  Future<void> downloadAndLoadModel() async {
+    // Simulate model download
+    await Future.delayed(Duration(seconds: 3));
+
+    // Load model after download completes
+    await controller.switchModel(
+      'downloaded_model.tflite',
+      YOLOTask.detect,
+    );
+
+    setState(() => isModelReady = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Camera starts immediately with placeholder model
+        YOLOView(
+          modelPath: 'placeholder.tflite', // Non-existent file
+          task: YOLOTask.detect,
+          controller: controller,
+          onResult: (results) {
+            // Will only receive results after model is loaded
+            print('Detection active: ${results.length} objects');
+          },
+        ),
+
+        if (!isModelReady)
+          Center(
+            child: Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text(
+                    'Downloading model...',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+```
+
 ## ⚙️ Advanced Configurations
 
 ### Custom Thresholds and Performance Tuning
@@ -720,6 +883,117 @@ class SecuritySystem {
   Future<void> triggerAlert(String objectClass, double confidence) async {
     print('🚨 Security Alert: $objectClass detected (${(confidence * 100).toStringAsFixed(1)}% confidence)');
     // Implement notification logic
+  }
+}
+```
+
+### Frame Capture with Overlays
+
+Capture camera frames with detection visualizations for sharing or saving:
+
+```dart
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+
+class CaptureExample extends StatefulWidget {
+  @override
+  _CaptureExampleState createState() => _CaptureExampleState();
+}
+
+class _CaptureExampleState extends State<CaptureExample> {
+  final controller = YOLOViewController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          YOLOView(
+            modelPath: 'yolo11n',
+            task: YOLOTask.detect,
+            controller: controller,
+            onResult: (results) {
+              // Handle results
+            },
+          ),
+
+          // Capture button
+          Positioned(
+            bottom: 80,
+            child: FloatingActionButton(
+              onPressed: captureAndShare,
+              child: Icon(Icons.camera_alt),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> captureAndShare() async {
+    // Capture current frame with overlays
+    final imageData = await controller.captureFrame();
+
+    if (imageData != null) {
+      // Save to temporary file
+      final directory = await getTemporaryDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final file = File('${directory.path}/yolo_capture_$timestamp.jpg');
+      await file.writeAsBytes(imageData);
+
+      // Share the captured image
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'YOLO Detection Result',
+      );
+    }
+  }
+}
+```
+
+#### Advanced Capture with Metadata
+
+```dart
+class AdvancedCaptureExample {
+  final controller = YOLOViewController();
+  final List<YOLOResult> currentResults = [];
+
+  Future<Map<String, dynamic>> captureWithMetadata() async {
+    final imageData = await controller.captureFrame();
+
+    if (imageData == null) {
+      throw Exception('Failed to capture frame');
+    }
+
+    // Save image with metadata
+    final directory = await getApplicationDocumentsDirectory();
+    final timestamp = DateTime.now();
+    final fileName = 'capture_${timestamp.millisecondsSinceEpoch}.jpg';
+    final file = File('${directory.path}/$fileName');
+    await file.writeAsBytes(imageData);
+
+    // Create metadata JSON
+    final metadata = {
+      'timestamp': timestamp.toIso8601String(),
+      'detections': currentResults.map((r) => {
+        'class': r.className,
+        'confidence': r.confidence,
+        'bbox': {
+          'x': r.boundingBox.left,
+          'y': r.boundingBox.top,
+          'width': r.boundingBox.width,
+          'height': r.boundingBox.height,
+        },
+      }).toList(),
+      'image_path': file.path,
+      'image_size': imageData.length,
+    };
+
+    // Save metadata
+    final metadataFile = File('${directory.path}/${fileName}.json');
+    await metadataFile.writeAsString(jsonEncode(metadata));
+
+    return metadata;
   }
 }
 ```

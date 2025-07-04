@@ -28,6 +28,9 @@ import kotlin.math.max
 import kotlin.math.min
 import android.widget.TextView
 import android.view.Gravity
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.TimeUnit
+import android.content.res.Configuration
 
 class YOLOView @JvmOverloads constructor(
     context: Context,
@@ -40,6 +43,7 @@ class YOLOView @JvmOverloads constructor(
     companion object {
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
+        private var previewUseCase: Preview? = null
 
         private const val TAG = "YOLOView"
 
@@ -200,7 +204,11 @@ class YOLOView @JvmOverloads constructor(
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
     private var camera: Camera? = null
-    
+
+    // New fields for proper teardown:
+    private var cameraExecutor: ExecutorService? = null
+    private var imageAnalysisUseCase: ImageAnalysis? = null    
+
     // Zoom related
     private var currentZoomRatio = 1.0f
     private var minZoomRatio = 1.0f
@@ -343,8 +351,11 @@ class YOLOView @JvmOverloads constructor(
                     Log.d(TAG, "Model loaded successfully: $modelPath")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to load model: $modelPath", e)
+                Log.w(TAG, "Failed to load model: $modelPath. Camera will run without inference.", e)
                 post {
+                    // Set predictor to null to ensure camera-only mode
+                    this.predictor = null
+                    this.modelName = "No Model"
                     modelLoadCallback?.invoke(false)
                     callback?.invoke(false)
                 }
@@ -431,23 +442,23 @@ class YOLOView @JvmOverloads constructor(
         Log.d(TAG, "Starting camera...")
 
         try {
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+            cameraProviderFuture = ProcessCameraProvider.getInstance(context)
             cameraProviderFuture.addListener({
                 try {
                     val cameraProvider = cameraProviderFuture.get()
                     Log.d(TAG, "Camera provider obtained")
 
-                    val preview = Preview.Builder()
+                    previewUseCase = Preview.Builder()
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                         .build()
 
-                    val imageAnalysis = ImageAnalysis.Builder()
+                    imageAnalysisUseCase = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                         .build()
 
-                    val executor = Executors.newSingleThreadExecutor()
-                    imageAnalysis.setAnalyzer(executor) { imageProxy ->
+                    cameraExecutor = Executors.newSingleThreadExecutor()
+                    imageAnalysisUseCase!!.setAnalyzer(cameraExecutor!!) { imageProxy ->
                         onFrame(imageProxy)
                     }
 
@@ -469,8 +480,8 @@ class YOLOView @JvmOverloads constructor(
                         camera = cameraProvider.bindToLifecycle(
                             owner,
                             cameraSelector,
-                            preview,
-                            imageAnalysis
+                            previewUseCase,
+                            imageAnalysisUseCase  // the field, not a local val
                         )
                         
                         // Reset zoom to 1.0x when camera starts
@@ -478,7 +489,7 @@ class YOLOView @JvmOverloads constructor(
                         onZoomChanged?.invoke(currentZoomRatio)
 
                         Log.d(TAG, "Setting surface provider to previewView")
-                        preview.setSurfaceProvider(previewView.surfaceProvider)
+                        previewUseCase?.setSurfaceProvider(previewView.surfaceProvider)
                         
                         // Initialize zoom
                         camera?.let { cam: Camera ->
@@ -531,7 +542,8 @@ class YOLOView @JvmOverloads constructor(
     private fun onFrame(imageProxy: ImageProxy) {
         val w = imageProxy.width
         val h = imageProxy.height
-        Log.d(TAG, "Processing frame: ${w}x${h}")
+        val orientation = context.resources.configuration.orientation
+        val isLandscapeDevice = orientation == Configuration.ORIENTATION_LANDSCAPE
 
         val bitmap = ImageUtils.toBitmap(imageProxy) ?: run {
             Log.e(TAG, "Failed to convert ImageProxy to Bitmap")
@@ -548,8 +560,18 @@ class YOLOView @JvmOverloads constructor(
             }
             
             try {
+                // Get device orientation
+                val orientation = context.resources.configuration.orientation
+                val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
+                
                 // For camera feed, we typically rotate the bitmap
-                val result = p.predict(bitmap, h, w, rotateForCamera = true)
+                // In landscape mode, we don't rotate, so width/height should match actual bitmap dimensions
+                val result = if (isLandscape) {
+                    p.predict(bitmap, w, h, rotateForCamera = true, isLandscape = isLandscape)
+                } else {
+                    // In portrait mode, keep the original behavior (h, w)
+                    p.predict(bitmap, h, w, rotateForCamera = true, isLandscape = isLandscape)
+                }
                 
                 // Apply originalImage if streaming config requires it
                 val resultWithOriginalImage = if (streamConfig?.includeOriginalImage == true) {
@@ -561,7 +583,6 @@ class YOLOView @JvmOverloads constructor(
                 inferenceResult = resultWithOriginalImage
 
                 // Log
-                Log.d(TAG, "Inference complete: ${result.boxes.size} boxes detected")
                 
                 // Callback
                 inferenceCallback?.invoke(resultWithOriginalImage)
@@ -579,7 +600,6 @@ class YOLOView @JvmOverloads constructor(
                         enhancedStreamData["frameNumber"] = frameNumberCounter++
                         
                         callback.invoke(enhancedStreamData)
-                        Log.d(TAG, "Sent streaming data with ${result.boxes.size} detections")
                     } else {
                         Log.d(TAG, "Skipping frame output due to throttling")
                     }
@@ -588,7 +608,6 @@ class YOLOView @JvmOverloads constructor(
                 // Update overlay
                 post {
                     overlayView.invalidate()
-                    Log.d(TAG, "Overlay invalidated for redraw")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error during prediction", e)
@@ -627,7 +646,6 @@ class YOLOView @JvmOverloads constructor(
             super.onDraw(canvas)
             val result = inferenceResult ?: return
             
-            Log.d(TAG, "OverlayView onDraw: Drawing result with ${result.boxes.size} boxes")
 
             val iw = result.origShape.width.toFloat()
             val ih = result.origShape.height.toFloat()
@@ -635,12 +653,16 @@ class YOLOView @JvmOverloads constructor(
             val vw = width.toFloat()
             val vh = height.toFloat()
             
-            Log.d(TAG, "OverlayView dimensions: View(${vw}x${vh}), Image(${iw}x${ih})")
+            // Get device orientation for debugging
+            val orientation = context.resources.configuration.orientation
+            val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
+            
 
             // Scale factor from camera image to view
             val scaleX = vw / iw
             val scaleY = vh / ih
             val scale = max(scaleX, scaleY)
+            
 
             val scaledW = iw * scale
             val scaledH = ih * scale
@@ -651,7 +673,6 @@ class YOLOView @JvmOverloads constructor(
             // Check if using front camera
             val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
             
-            Log.d(TAG, "OverlayView scaling: scale=${scale}, dx=${dx}, dy=${dy}, frontCamera=${isFrontCamera}")
 
             when (task) {
                 // ----------------------------------------
@@ -659,8 +680,16 @@ class YOLOView @JvmOverloads constructor(
                 // ----------------------------------------
                 YOLOTask.DETECT -> {
                     Log.d(TAG, "Drawing DETECT boxes: ${result.boxes.size}")
+                    
+                    // Debug first box coordinates
+                    if (result.boxes.isNotEmpty()) {
+                        val firstBox = result.boxes[0]
+                        Log.d(TAG, "=== First Box Debug ===")
+                        Log.d(TAG, "Box normalized coords: (${firstBox.xywhn.left}, ${firstBox.xywhn.top}, ${firstBox.xywhn.right}, ${firstBox.xywhn.bottom})")
+                        Log.d(TAG, "Box pixel coords: (${firstBox.xywh.left}, ${firstBox.xywh.top}, ${firstBox.xywh.right}, ${firstBox.xywh.bottom})")
+                    }
+                    
                     for (box in result.boxes) {
-                        // Adjust alpha based on confidence
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
                         val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
                         val newColor = Color.argb(
@@ -670,21 +699,33 @@ class YOLOView @JvmOverloads constructor(
                             Color.blue(baseColor)
                         )
 
-                        // Log the original box.xywh values
-                        Log.d(TAG, "Box raw coords: L=${box.xywh.left}, T=${box.xywh.top}, R=${box.xywh.right}, B=${box.xywh.bottom}, cls=${box.cls}, conf=${box.conf}")
-                        
-                        // Draw bounding box like in the original code
-                        var left   = box.xywh.left   * scale + dx
-                        var top    = box.xywh.top    * scale + dy
-                        var right  = box.xywh.right  * scale + dx
+                        // Use same coordinate calculation for all orientations
+                        // since the image is now correctly oriented before inference
+                        var left = box.xywh.left * scale + dx
+                        var top = box.xywh.top * scale + dy
+                        var right = box.xywh.right * scale + dx
                         var bottom = box.xywh.bottom * scale + dy
                         
-                        // Flip vertically for front camera
-                        if (isFrontCamera) {
-                            val flippedTop = vh - bottom
-                            val flippedBottom = vh - top
-                            top = flippedTop
-                            bottom = flippedBottom
+                        // Ensure coordinates are within view bounds and maintain aspect ratio
+                        val boxWidth = right - left
+                        val boxHeight = bottom - top
+                        
+                        // Adjust coordinates to maintain aspect ratio and stay within bounds
+                        if (left < 0) {
+                            left = 0f
+                            right = left + boxWidth
+                        }
+                        if (right > vw) {
+                            right = vw.toFloat()
+                            left = right - boxWidth
+                        }
+                        if (top < 0) {
+                            top = 0f
+                            bottom = top + boxHeight
+                        }
+                        if (bottom > vh) {
+                            bottom = vh.toFloat()
+                            top = bottom - boxHeight
                         }
                         
                         Log.d(TAG, "Drawing box for ${box.cls}: L=$left, T=$top, R=$right, B=$bottom, conf=${box.conf}")
@@ -728,10 +769,7 @@ class YOLOView @JvmOverloads constructor(
                         val centerY = (labelTop + labelBottom) / 2
                         // Baseline = centerY - (fm.descent + fm.ascent)/2
                         val baseline = centerY - (fm.descent + fm.ascent) / 2
-                        // X coordinate is left-aligned plus padding
-                        val textX = labelLeft + pad
-
-                        canvas.drawText(labelText, textX, baseline, paint)
+                        canvas.drawText(labelText, labelLeft + pad, baseline, paint)
                     }
                 }
                 // ----------------------------------------
@@ -1251,13 +1289,63 @@ class YOLOView @JvmOverloads constructor(
                     Log.d(TAG, "Added keypoints data (${keypoints.xy.size} points) for detection $detectionIndex")
                 }
                 
-                // Add OBB data (if available and enabled)
-                if (config.includeOBB && detectionIndex < result.obb.size) {
-                    val obbResult = result.obb[detectionIndex]
-                    val obbBox = obbResult.box
-                    
-                    // Convert OBB to 4 corner points
-                    val polygon = obbBox.toPolygon()
+                detections.add(detection)
+            }
+            
+            // Handle OBB results directly (same pattern as overlay: for obbRes in result.obb)
+            for (obbRes in result.obb) {
+                val detection = HashMap<String, Any>()
+                detection["classIndex"] = obbRes.index
+                detection["className"] = obbRes.cls
+                detection["confidence"] = obbRes.confidence.toDouble()
+                
+                // Get OBB polygon points (4 corners of rotated rectangle)
+                val polygon = obbRes.box.toPolygon()
+                val imgWidth = result.origShape.width.toFloat()
+                val imgHeight = result.origShape.height.toFloat()
+                
+                // Convert polygon points to pixel coordinates  
+                val polygonPixels = polygon.map { point ->
+                    mapOf(
+                        "x" to (point.x * imgWidth).toDouble(),
+                        "y" to (point.y * imgHeight).toDouble()
+                    )
+                }
+                
+                // Store polygon points directly for precise OBB cropping
+                detection["polygon"] = polygonPixels
+                
+                // Also calculate AABB as fallback for compatibility (but Flutter should use polygon)
+                var minX = Float.MAX_VALUE
+                var maxX = Float.MIN_VALUE  
+                var minY = Float.MAX_VALUE
+                var maxY = Float.MIN_VALUE
+                
+                for (point in polygon) {
+                    if (point.x < minX) minX = point.x
+                    if (point.x > maxX) maxX = point.x
+                    if (point.y < minY) minY = point.y
+                    if (point.y > maxY) maxY = point.y
+                }
+                
+                // Fallback bounding box (enlarged) - only use if polygon cropping fails
+                val boundingBox = HashMap<String, Any>()
+                boundingBox["left"] = (minX * imgWidth).toDouble()
+                boundingBox["top"] = (minY * imgHeight).toDouble()
+                boundingBox["right"] = (maxX * imgWidth).toDouble()
+                boundingBox["bottom"] = (maxY * imgHeight).toDouble()
+                detection["boundingBox"] = boundingBox
+                
+                // Normalized bounding box (0-1) - fallback
+                val normalizedBox = HashMap<String, Any>()
+                normalizedBox["left"] = minX.toDouble()
+                normalizedBox["top"] = minY.toDouble()
+                normalizedBox["right"] = maxX.toDouble()
+                normalizedBox["bottom"] = maxY.toDouble()
+                detection["normalizedBox"] = normalizedBox
+                
+                // Add OBB-specific data
+                if (config.includeOBB) {
                     val points = polygon.map { point ->
                         mapOf(
                             "x" to point.x.toDouble(),
@@ -1265,37 +1353,35 @@ class YOLOView @JvmOverloads constructor(
                         )
                     }
                     
-                    // Create comprehensive OBB data map
                     val obbDataMap = mapOf(
-                        "centerX" to obbBox.cx.toDouble(),
-                        "centerY" to obbBox.cy.toDouble(),
-                        "width" to obbBox.w.toDouble(),
-                        "height" to obbBox.h.toDouble(),
-                        "angle" to obbBox.angle.toDouble(), // radians
-                        "angleDegrees" to (obbBox.angle * 180.0 / Math.PI), // degrees for convenience
-                        "area" to obbBox.area.toDouble(),
-                        "points" to points, // 4 corner points
-                        "confidence" to obbResult.confidence.toDouble(),
-                        "className" to obbResult.cls,
-                        "classIndex" to obbResult.index
+                        "centerX" to obbRes.box.cx.toDouble(),
+                        "centerY" to obbRes.box.cy.toDouble(),
+                        "width" to obbRes.box.w.toDouble(),
+                        "height" to obbRes.box.h.toDouble(),
+                        "angle" to obbRes.box.angle.toDouble(),
+                        "angleDegrees" to (obbRes.box.angle * 180.0 / Math.PI),
+                        "area" to obbRes.box.area.toDouble(),
+                        "points" to points,
+                        "confidence" to obbRes.confidence.toDouble(),
+                        "className" to obbRes.cls,
+                        "classIndex" to obbRes.index
                     )
                     
                     detection["obb"] = obbDataMap
-                    Log.d(TAG, "✅ Added OBB data: ${obbResult.cls} (${String.format("%.1f", obbBox.angle * 180.0 / Math.PI)}° rotation)")
+                    Log.d(TAG, "✅ Added OBB data: ${obbRes.cls} (${String.format("%.1f", obbRes.box.angle * 180.0 / Math.PI)}° rotation)")
                 }
                 
                 detections.add(detection)
             }
             
             map["detections"] = detections
-            Log.d(TAG, "Converted ${detections.size} detections to stream data")
+            Log.d(TAG, "✅ Total detections in stream: ${detections.size} (boxes: ${result.boxes.size}, obb: ${result.obb.size})")
         }
         
         // Add performance metrics (if enabled)
         if (config.includeProcessingTimeMs) {
             val processingTimeMs = result.speed.toDouble()
             map["processingTimeMs"] = processingTimeMs
-            Log.d(TAG, "📊 Including processingTimeMs: $processingTimeMs ms (includeProcessingTimeMs=${config.includeProcessingTimeMs})")
         } else {
             Log.d(TAG, "⚠️ Skipping processingTimeMs (includeProcessingTimeMs=${config.includeProcessingTimeMs})")
         }
@@ -1319,4 +1405,122 @@ class YOLOView @JvmOverloads constructor(
     }
     
     // endregion
+    
+    /**
+     * Capture current camera frame with detection overlays
+     * Returns the captured image as a ByteArray (JPEG format)
+     */
+    fun captureFrame(): ByteArray? {
+        try {
+            // Create bitmap to hold the captured frame
+            val width = width
+            val height = height
+            if (width <= 0 || height <= 0) {
+                Log.e(TAG, "Invalid view dimensions for capture: ${width}x${height}")
+                return null
+            }
+            
+            // Create bitmap and canvas
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            
+            // Method 1: Try to get bitmap from PreviewView directly
+            var cameraFrameCaptured = false
+            previewView.bitmap?.let { cameraBitmap ->
+                Log.d(TAG, "Got camera bitmap from PreviewView: ${cameraBitmap.width}x${cameraBitmap.height}")
+                // Draw the camera bitmap scaled to fit
+                val matrix = Matrix()
+                val scaleX = width.toFloat() / cameraBitmap.width
+                val scaleY = height.toFloat() / cameraBitmap.height
+                matrix.setScale(scaleX, scaleY)
+                canvas.drawBitmap(cameraBitmap, matrix, null)
+                cameraFrameCaptured = true
+            }
+            
+            if (!cameraFrameCaptured) {
+                // Method 2: Use hardware acceleration to capture the view
+                Log.w(TAG, "PreviewView.bitmap is null, trying hardware capture")
+                
+                // Enable drawing cache temporarily
+                isDrawingCacheEnabled = true
+                buildDrawingCache()
+                drawingCache?.let { cache ->
+                    canvas.drawBitmap(cache, 0f, 0f, null)
+                    cameraFrameCaptured = true
+                }
+                isDrawingCacheEnabled = false
+                
+                if (!cameraFrameCaptured) {
+                    // Method 3: Last resort - draw the entire view hierarchy
+                    Log.w(TAG, "Drawing cache failed, using draw method")
+                    // Draw PreviewView first
+                    previewView.draw(canvas)
+                }
+            }
+            
+            // Always draw the overlay on top
+            overlayView.draw(canvas)
+            
+            // Convert bitmap to JPEG byte array
+            val outputStream = java.io.ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+            val imageData = outputStream.toByteArray()
+            
+            // Clean up
+            outputStream.close()
+            bitmap.recycle()
+            
+            Log.d(TAG, "Frame captured successfully: ${imageData.size} bytes, camera captured: $cameraFrameCaptured")
+            return imageData
+        } catch (e: Exception) {
+            Log.e(TAG, "Error capturing frame", e)
+            return null
+        }
+    }
+
+    /**
+     * Stop camera and inference (can be restarted later)
+     */
+    fun stop() {
+        Log.d(TAG, "YOLOView.stop() called - tearing down camera")
+
+        try {
+            // 1) Unbind all use-cases
+            if (::cameraProviderFuture.isInitialized) {
+                val cameraProvider = cameraProviderFuture.get()
+                Log.d(TAG, "Unbinding all camera use cases")
+                cameraProvider.unbindAll()
+            }
+
+            // 2) Clear the analyzer so no threads keep the camera alive
+            imageAnalysisUseCase?.clearAnalyzer()
+            imageAnalysisUseCase = null
+
+            // 3) Detach the PreviewView surface
+            previewUseCase?.setSurfaceProvider(null)
+
+            // 4) Shutdown the executor
+            cameraExecutor?.let { exec ->
+                Log.d(TAG, "Shutting down camera executor")
+                exec.shutdown()
+                if (!exec.awaitTermination(1, TimeUnit.SECONDS)) {
+                    Log.w(TAG, "Executor didn't shut down in time; forcing shutdown")
+                    exec.shutdownNow()
+                }
+            }
+            cameraExecutor = null
+
+            // 5) Null out camera and inference machinery
+            camera = null
+            predictor = null
+            inferenceCallback = null
+            streamCallback = null
+            inferenceResult = null
+
+            Log.d(TAG, "YOLOView stop completed successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during YOLOView stop", e)
+        }
+    }
+
 }

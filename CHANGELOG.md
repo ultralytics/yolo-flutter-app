@@ -1,3 +1,57 @@
+## 0.1.27
+
+- **Breaking**: None - fully backward compatible
+- **Bug Fix**: Fix iOS segmentation mask alignment issue
+  - Masks now correctly align with detected objects in both portrait and landscape modes
+  - Removed explicit `contentsGravity` settings that caused mask stretching
+  - Simplified mask positioning to match yolo-ios-app reference implementation
+- **Enhancement**: Add mask layer frame update during orientation changes
+- **Internal**: Remove unnecessary margin calculations for mask positioning
+
+## 0.1.26
+
+- **Breaking**: None - fully backward compatible
+- **New Feature**: Add frame capture functionality with detection overlays
+  - Capture camera frames with bounding boxes, masks, poses, and other overlays
+  - Save captured images to device gallery or share with other apps
+  - Support for all YOLO tasks (detect, segment, pose, classify, OBB)
+  - New `captureFrame()` method in YOLOViewController returns JPEG image data
+- **Enhancement**: iOS capture includes all overlay types (masks, poses, OBB)
+- **Enhancement**: Android capture with multiple fallback methods for reliability
+- **Documentation**: Added comprehensive frame capture API documentation
+
+## 0.1.25
+
+- **Breaking**: None - fully backward compatible
+- **New Feature**: Enable camera preview without valid model path
+  - YOLOView now starts with camera-only mode when model is unavailable
+  - Graceful error handling instead of crashes on both iOS and Android
+- **New Feature**: Add dynamic model switching via `switchModel()` method
+  - Switch between different models without restarting camera
+  - Enables progressive model loading and A/B testing scenarios
+- **Enhancement**: Improved error messages and logging for model loading failures
+- **Documentation**: Added comprehensive examples for new features
+
+## 0.1.24
+
+- Fix Android landscape orientation coordinate mapping issue
+- Add device orientation detection for proper image rotation
+- Implement separate image processors for portrait/landscape modes
+- Correct aspect ratio calculations for all YOLO tasks in landscape mode
+
+## 0.1.23
+
+- Add Support for Landscape Mode
+
+## 0.1.22
+
+- Fixed critical memory leaks in iOS YOLOView disposal and model switching
+- Added proper dispose implementation for YOLOView on both iOS and Android platforms
+- Fixed native rendering issues for detection visualization
+- Fixed Android model label loading issues
+- Enhanced single image inference result updates
+- Improved resource cleanup when switching between models or tasks
+
 ## 0.1.21
 
 - Merge example READMEs

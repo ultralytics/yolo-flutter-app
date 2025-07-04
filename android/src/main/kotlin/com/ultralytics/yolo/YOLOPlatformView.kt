@@ -90,15 +90,15 @@ class YOLOPlatformView(
                     // Mark that the full initialization sequence (including model load) is complete.
                     initialized = true
                 } else {
-                    Log.e(TAG, "Failed to load model: $modelPath")
-                    // initialized remains false, or handle error state appropriately
+                    Log.w(TAG, "Failed to load model: $modelPath. Camera will run without inference.")
+                    // Still mark as initialized since camera can work without model
+                    initialized = true
                 }
             }
             
             // YOLOView streaming is now configured separately
             // Keep simple inference callback for compatibility
             yoloView.setOnInferenceCallback { result ->
-                Log.d(TAG, "*** Inference result received with ${result.boxes.size} detections ***")
             }
             
             // Load model with the specified path and task
@@ -205,6 +205,60 @@ class YOLOPlatformView(
                     Log.d(TAG, "YOLOView streaming config updated: $streamConfig")
                     result.success(null)
                 }
+                "stop" -> {
+                    Log.d(TAG, "Received manual stop call from Flutter")
+                    try {
+                        yoloView.stop()
+                        Log.d(TAG, "YOLOView stopped successfully via method call")
+                        result.success(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error stopping YOLOView via method call", e)
+                        result.error("stop_error", "Error stopping YOLOView: ${e.message}", null)
+                    }
+                }
+                "setModel" -> {
+                    val modelPath = call.argument<String>("modelPath")
+                    val taskString = call.argument<String>("task")
+                    
+                    if (modelPath == null || taskString == null) {
+                        result.error("invalid_args", "modelPath and task are required", null)
+                        return
+                    }
+                    
+                    val task = YOLOTask.valueOf(taskString.uppercase())
+                    Log.d(TAG, "Received setModel call with modelPath: $modelPath, task: $task")
+                    
+                    yoloView.setModel(modelPath, task) { success ->
+                        if (success) {
+                            Log.d(TAG, "Model switched successfully")
+                            result.success(null)
+                        } else {
+                            Log.e(TAG, "Failed to switch model")
+                            result.error("MODEL_NOT_FOUND", "Failed to load model: $modelPath", null)
+                        }
+                    }
+                }
+                "captureFrame" -> {
+                    Log.d(TAG, "Received captureFrame call")
+                    val imageData = yoloView.captureFrame()
+                    if (imageData != null) {
+                        Log.d(TAG, "Frame captured successfully: ${imageData.size} bytes")
+                        result.success(imageData)
+                    } else {
+                        Log.e(TAG, "Failed to capture frame")
+                        result.error("capture_failed", "Failed to capture frame from camera", null)
+                    }
+                }
+                "listen" -> {
+                    Log.d(TAG, "EventChannel listen method called")
+                    // Called when EventChannel starts the stream
+                    result.success(null)
+                }
+                "cancel" -> {
+                    Log.d(TAG, "EventChannel cancel method called")
+                    // Called when EventChannel cancels the stream
+                    result.success(null)
+                }
                 else -> {
                     Log.w(TAG, "Method not implemented: ${call.method}")
                     result.notImplemented()
@@ -271,19 +325,16 @@ class YOLOPlatformView(
      */
     private fun sendStreamDataToFlutter(streamData: Map<String, Any>) {
         try {
-            Log.d(TAG, "Sending stream data to Flutter: ${streamData.keys.joinToString()}")
             
             // Create a runnable to ensure we're on the main thread
             val sendResults = Runnable {
                 try {
                     if (streamHandler is CustomStreamHandler) {
                         val customHandler = streamHandler as CustomStreamHandler
-                        Log.d(TAG, "Using CustomStreamHandler - is sink valid: ${customHandler.isSinkValid()}")
                         
                         // Use the safe send method
                         val sent = customHandler.safelySend(streamData)
                         if (sent) {
-                            Log.d(TAG, "Successfully sent stream data via CustomStreamHandler")
                         } else {
                             Log.w(TAG, "Failed to send stream data via CustomStreamHandler")
                             // Notify Flutter to recreate the channel
@@ -300,9 +351,7 @@ class YOLOPlatformView(
                         val sink = sinkField.get(streamHandler) as? EventChannel.EventSink
                         
                         if (sink != null) {
-                            Log.d(TAG, "Sending stream data to Flutter via event sink (reflection)")
                             sink.success(streamData)
-                            Log.d(TAG, "Successfully sent stream data via reflection")
                         } else {
                             Log.w(TAG, "Event sink is NOT available via reflection, skipping data")
                             // Try alternative approach - recreate the event channel
@@ -351,10 +400,25 @@ class YOLOPlatformView(
 
     override fun dispose() {
         Log.d(TAG, "Disposing YOLOPlatformView for viewId: $viewId")
-        // Clean up resources
-        methodChannel?.setMethodCallHandler(null)
-        // Notify the factory that this view is disposed
-        factory.onPlatformViewDisposed(viewId)
+
+        try {
+            // Stop camera and inference before disposing
+            Log.d(TAG, "Calling yoloView.stop() to stop camera and inference")
+            yoloView.stop()
+
+            // Clean up method channel
+            Log.d(TAG, "Clearing method channel handler")
+            methodChannel?.setMethodCallHandler(null)
+
+            // Notify the factory that this view is disposed
+            Log.d(TAG, "Notifying factory of disposal")
+            factory.onPlatformViewDisposed(viewId)
+
+            Log.d(TAG, "YOLOPlatformView disposal completed successfully")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during YOLOPlatformView disposal", e)
+        }
     }
 
     /**
