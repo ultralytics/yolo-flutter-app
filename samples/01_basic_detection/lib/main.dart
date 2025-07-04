@@ -1,4 +1,7 @@
+import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 void main() {
@@ -29,69 +32,100 @@ class DetectionScreen extends StatefulWidget {
 }
 
 class _DetectionScreenState extends State<DetectionScreen> {
-  late YOLOController _controller;
-  bool _modelLoaded = false;
-  double _confidence = 0.25;
+  final ImagePicker _picker = ImagePicker();
+  
+  // State
+  File? _imageFile;
+  List<Map<String, dynamic>>? _detectionResults;
+  bool _isProcessing = false;
+  double _confidence = 0.45;
   double _iou = 0.45;
-  int _detectionCount = 0;
-  double _zoom = 1.0;
-  bool _useGpu = false;
+  String _processingTime = '';
+  
+  // YOLO instance
+  late final YOLO _yolo;
 
   @override
   void initState() {
     super.initState();
-    _initializeController();
-  }
-
-  Future<void> _initializeController() async {
-    // Create controller with model path
-    // For demo purposes, using a non-existent model to show camera-only mode
-    _controller = YOLOController(
-      modelPath: 'assets/models/yolo11n.tflite',
+    _yolo = YOLO(
+      modelPath: 'yolo11n.tflite',
       task: YOLOTask.detect,
     );
-
-    // Set callbacks
-    _controller.onCameraStreamChanged = (cameraInfo) {
-      debugPrint('Camera info: ${cameraInfo.currentCameraType}');
-    };
-
-    _controller.onResultsChanged = (results) {
-      setState(() {
-        _detectionCount = results.length;
-      });
-    };
-  }
-
-  void _toggleCamera() {
-    _controller.toggleCamera();
-  }
-
-  void _updateConfidence(double value) {
-    setState(() {
-      _confidence = value;
-    });
-    _controller.setConfidenceThreshold(value);
-  }
-
-  void _updateIoU(double value) {
-    setState(() {
-      _iou = value;
-    });
-    _controller.setIoUThreshold(value);
-  }
-
-  void _updateZoom(double value) {
-    setState(() {
-      _zoom = value;
-    });
-    _controller.setZoomRatio(value);
+    _loadModel();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _yolo.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadModel() async {
+    setState(() => _isProcessing = true);
+    try {
+      final success = await _yolo.loadModel();
+      if (!success) {
+        throw Exception('Failed to load model');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading model: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final XFile? image = await _picker.pickImage(source: source);
+    if (image != null) {
+      setState(() {
+        _imageFile = File(image.path);
+        _detectionResults = null;
+        _processingTime = '';
+      });
+      _detectObjects();
+    }
+  }
+
+  Future<void> _detectObjects() async {
+    if (_imageFile == null) return;
+
+    setState(() => _isProcessing = true);
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      final imageBytes = await _imageFile!.readAsBytes();
+      final results = await _yolo.predict(
+        imageBytes,
+        confidenceThreshold: _confidence,
+        iouThreshold: _iou,
+      );
+
+      stopwatch.stop();
+      
+      setState(() {
+        _detectionResults = (results['detections'] as List<dynamic>?)
+            ?.map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        _processingTime = '${stopwatch.elapsedMilliseconds}ms';
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error during detection: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
   }
 
   @override
@@ -103,158 +137,299 @@ class _DetectionScreenState extends State<DetectionScreen> {
       ),
       body: Column(
         children: [
-          // Camera view
-          Expanded(
-            child: Container(
-              color: Colors.black,
-              child: YOLOView(
-                controller: _controller,
-                onModelLoaded: () {
-                  setState(() {
-                    _modelLoaded = true;
-                  });
-                },
-              ),
-            ),
-          ),
-          // Controls
+          // Controls section
           Container(
             padding: const EdgeInsets.all(16),
+            color: Colors.grey[100],
             child: Column(
               children: [
-                // Detection info
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Column(
-                        children: [
-                          const Text('Detections'),
-                          Text(
-                            '$_detectionCount',
-                            style: Theme.of(context).textTheme.headlineMedium,
-                          ),
-                        ],
+                // Stats row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatCard(
+                      'Detections',
+                      '${_detectionResults?.length ?? 0}',
+                      Icons.crop_square,
+                    ),
+                    if (_processingTime.isNotEmpty)
+                      _buildStatCard(
+                        'Processing',
+                        _processingTime,
+                        Icons.timer,
                       ),
-                      Column(
-                        children: [
-                          const Text('Model Status'),
-                          Text(
-                            _modelLoaded ? 'Loaded' : 'Not Loaded',
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
-                const Divider(),
+                const SizedBox(height: 16),
                 // Confidence slider
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(width: 16),
-                    const Icon(Icons.confidence),
-                    const SizedBox(width: 8),
-                    const Text('Confidence'),
-                    Expanded(
-                      child: Slider(
-                        value: _confidence,
-                        min: 0.0,
-                        max: 1.0,
-                        divisions: 20,
-                        label: _confidence.toStringAsFixed(2),
-                        onChanged: _updateConfidence,
-                      ),
+                    Row(
+                      children: [
+                        const Icon(Icons.tune),
+                        const SizedBox(width: 8),
+                        Text('Confidence: ${(_confidence * 100).toInt()}%'),
+                      ],
                     ),
-                    SizedBox(
-                      width: 50,
-                      child: Text(
-                        _confidence.toStringAsFixed(2),
-                        textAlign: TextAlign.center,
-                      ),
+                    Slider(
+                      value: _confidence,
+                      min: 0.1,
+                      max: 0.9,
+                      divisions: 8,
+                      label: '${(_confidence * 100).toInt()}%',
+                      onChanged: (value) {
+                        setState(() => _confidence = value);
+                      },
                     ),
                   ],
                 ),
-                // IoU slider
-                Row(
-                  children: [
-                    const SizedBox(width: 16),
-                    const Icon(Icons.layers),
-                    const SizedBox(width: 8),
-                    const Text('IoU'),
-                    Expanded(
-                      child: Slider(
-                        value: _iou,
-                        min: 0.0,
-                        max: 1.0,
-                        divisions: 20,
-                        label: _iou.toStringAsFixed(2),
-                        onChanged: _updateIoU,
-                      ),
-                    ),
-                    SizedBox(
-                      width: 50,
-                      child: Text(
-                        _iou.toStringAsFixed(2),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                ),
-                // Zoom slider
-                Row(
-                  children: [
-                    const SizedBox(width: 16),
-                    const Icon(Icons.zoom_in),
-                    const SizedBox(width: 8),
-                    const Text('Zoom'),
-                    Expanded(
-                      child: Slider(
-                        value: _zoom,
-                        min: 1.0,
-                        max: 5.0,
-                        divisions: 16,
-                        label: '${_zoom.toStringAsFixed(1)}x',
-                        onChanged: _updateZoom,
-                      ),
-                    ),
-                    SizedBox(
-                      width: 50,
-                      child: Text(
-                        '${_zoom.toStringAsFixed(1)}x',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(),
                 // Action buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     ElevatedButton.icon(
-                      onPressed: _toggleCamera,
-                      icon: const Icon(Icons.cameraswitch),
-                      label: const Text('Switch Camera'),
+                      onPressed: _isProcessing ? null : () => _pickImage(ImageSource.camera),
+                      icon: const Icon(Icons.camera_alt),
+                      label: const Text('Camera'),
                     ),
                     ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _useGpu = !_useGpu;
-                        });
-                        _controller.useGpu(_useGpu);
-                      },
-                      icon: Icon(_useGpu ? Icons.gpu_on : Icons.gpu_off),
-                      label: Text(_useGpu ? 'GPU On' : 'GPU Off'),
+                      onPressed: _isProcessing ? null : () => _pickImage(ImageSource.gallery),
+                      icon: const Icon(Icons.photo_library),
+                      label: const Text('Gallery'),
                     ),
                   ],
                 ),
               ],
             ),
           ),
+          // Image and detections
+          Expanded(
+            child: _isProcessing
+                ? const Center(child: CircularProgressIndicator())
+                : _imageFile == null
+                    ? const Center(
+                        child: Text(
+                          'Select an image to detect objects',
+                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            // Image with detections
+                            if (_imageFile != null)
+                              FutureBuilder<ui.Image>(
+                                future: _getImageInfo(),
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData) {
+                                    return Image.file(_imageFile!);
+                                  }
+                                  
+                                  return CustomPaint(
+                                    size: Size(
+                                      snapshot.data!.width.toDouble(),
+                                      snapshot.data!.height.toDouble(),
+                                    ),
+                                    painter: DetectionPainter(
+                                      image: snapshot.data!,
+                                      detections: _detectionResults ?? [],
+                                    ),
+                                  );
+                                },
+                              ),
+                            // Detection list
+                            if (_detectionResults != null && _detectionResults!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 16),
+                                child: Card(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Detected Objects',
+                                          style: Theme.of(context).textTheme.titleMedium,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        ..._buildDetectionList(),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, size: 32, color: Theme.of(context).primaryColor),
+        const SizedBox(height: 4),
+        Text(label, style: Theme.of(context).textTheme.labelMedium),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildDetectionList() {
+    final classCount = <String, int>{};
+    for (final detection in _detectionResults!) {
+      final className = detection['className'] ?? 'Unknown';
+      classCount[className] = (classCount[className] ?? 0) + 1;
+    }
+
+    return classCount.entries.map((entry) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: _getColorForClass(entry.key),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(entry.key),
+            ),
+            Text(
+              '${entry.value}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  Future<ui.Image> _getImageInfo() async {
+    final bytes = await _imageFile!.readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    return frame.image;
+  }
+
+  Color _getColorForClass(String className) {
+    final colors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.red,
+      Colors.purple,
+      Colors.teal,
+      Colors.pink,
+      Colors.indigo,
+      Colors.amber,
+      Colors.cyan,
+    ];
+    return colors[className.hashCode % colors.length];
+  }
+}
+
+class DetectionPainter extends CustomPainter {
+  final ui.Image image;
+  final List<Map<String, dynamic>> detections;
+
+  DetectionPainter({
+    required this.image,
+    required this.detections,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Draw the image
+    final paint = Paint();
+    canvas.drawImage(image, Offset.zero, paint);
+
+    // Draw detections
+    for (final detection in detections) {
+      final normalizedBox = detection['normalizedBox'] as Map<String, dynamic>?;
+      if (normalizedBox == null) continue;
+
+      // Convert normalized coordinates to pixel coordinates
+      final rect = Rect.fromLTRB(
+        normalizedBox['left'] * image.width.toDouble(),
+        normalizedBox['top'] * image.height.toDouble(),
+        normalizedBox['right'] * image.width.toDouble(),
+        normalizedBox['bottom'] * image.height.toDouble(),
+      );
+
+      // Draw bounding box
+      final boxPaint = Paint()
+        ..color = _getColorForClass(detection['className'] ?? '')
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3;
+      canvas.drawRect(rect, boxPaint);
+
+      // Draw label background
+      final className = detection['className'] ?? 'Unknown';
+      final confidence = (detection['confidence'] ?? 0.0) * 100;
+      final label = '$className ${confidence.toStringAsFixed(0)}%';
+
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      final labelBgRect = Rect.fromLTWH(
+        rect.left,
+        rect.top - 24,
+        textPainter.width + 8,
+        24,
+      );
+
+      final labelBgPaint = Paint()
+        ..color = _getColorForClass(className);
+      canvas.drawRect(labelBgRect, labelBgPaint);
+
+      // Draw label text
+      textPainter.paint(
+        canvas,
+        Offset(rect.left + 4, rect.top - 22),
+      );
+    }
+  }
+
+  Color _getColorForClass(String className) {
+    final colors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.red,
+      Colors.purple,
+      Colors.teal,
+      Colors.pink,
+      Colors.indigo,
+      Colors.amber,
+      Colors.cyan,
+    ];
+    return colors[className.hashCode % colors.length];
+  }
+
+  @override
+  bool shouldRepaint(covariant DetectionPainter oldDelegate) {
+    return image != oldDelegate.image || detections != oldDelegate.detections;
   }
 }
