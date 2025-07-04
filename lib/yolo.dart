@@ -510,11 +510,11 @@ class YOLO {
   Map<String, dynamic> _createDetectionMap(Map<String, dynamic> box) {
     // Debug: Check what we're receiving
     final className = box['className'] ?? box['class'] ?? 'Unknown';
-    
+
     // If class is numeric, it's the index; if string, it's the name
     final classValue = box['class'];
     final isNumeric = classValue is int;
-    
+
     return {
       'classIndex': isNumeric ? classValue : 0,
       'className': className.toString(), // Ensure it's a string

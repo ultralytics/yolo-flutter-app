@@ -16,6 +16,7 @@ This sample demonstrates advanced UI customization and visualization techniques 
 ## Visualization Styles
 
 ### 1. Modern Style
+
 - Rounded corners with gradient borders
 - Semi-transparent fill
 - Corner accent markers
@@ -23,6 +24,7 @@ This sample demonstrates advanced UI customization and visualization techniques 
 - Confidence progress bars
 
 ### 2. Neon Style
+
 - Glowing box effects
 - Multiple blur layers
 - Neon text with shadows
@@ -30,6 +32,7 @@ This sample demonstrates advanced UI customization and visualization techniques 
 - High contrast colors
 
 ### 3. Minimal Style
+
 - Clean corner brackets
 - Simple black lines
 - Minimal text labels
@@ -37,6 +40,7 @@ This sample demonstrates advanced UI customization and visualization techniques 
 - Professional look
 
 ### 4. Glass Style
+
 - Frosted glass effect
 - Blur and transparency
 - Soft rounded corners
@@ -46,12 +50,14 @@ This sample demonstrates advanced UI customization and visualization techniques 
 ## Interactive Features
 
 ### Visualization Options
+
 - **Animations**: Enable/disable all animations
 - **Confidence Bar**: Show detection confidence as progress bar
 - **Detection Grid**: Overlay grid for spatial reference
 - **Heatmap**: Visualize detection density
 
 ### Animation Effects
+
 ```dart
 // Pulse animation for floating action button
 AnimationController _pulseController = AnimationController(
@@ -83,6 +89,7 @@ class CustomVisualizationPainter extends CustomPainter {
 ## Advanced Techniques
 
 ### 1. Gradient Borders
+
 ```dart
 final borderPaint = Paint()
   ..shader = LinearGradient(
@@ -95,6 +102,7 @@ final borderPaint = Paint()
 ```
 
 ### 2. Blur Effects
+
 ```dart
 // Neon glow
 for (int i = 3; i > 0; i--) {
@@ -106,6 +114,7 @@ for (int i = 3; i > 0; i--) {
 ```
 
 ### 3. Glass Morphism
+
 ```dart
 // Frosted glass background
 final glassPaint = Paint()
@@ -114,6 +123,7 @@ final glassPaint = Paint()
 ```
 
 ### 4. Animated Statistics
+
 ```dart
 TweenAnimationBuilder<double>(
   tween: Tween(begin: 0, end: value),
@@ -128,15 +138,19 @@ TweenAnimationBuilder<double>(
 ## UI Components
 
 ### Style Selector
+
 Horizontal chip list for easy style switching with visual feedback.
 
 ### Options Card
+
 Material design card with toggle chips for visualization features.
 
 ### Detection Display
+
 Stacked layout with image and custom painted overlay.
 
 ### Statistics Dashboard
+
 Animated bar chart showing detection counts by class.
 
 ## Performance Considerations

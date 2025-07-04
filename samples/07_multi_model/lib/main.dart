@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -16,10 +18,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'YOLO Multi-Instance',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(primarySwatch: Colors.deepPurple, useMaterial3: true),
       home: const MultiModelScreen(),
     );
   }
@@ -50,7 +49,7 @@ class MultiModelScreen extends StatefulWidget {
 
 class _MultiModelScreenState extends State<MultiModelScreen> {
   final ImagePicker _picker = ImagePicker();
-  
+
   // Available models
   final List<ModelConfig> _models = [
     ModelConfig(
@@ -131,7 +130,7 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
         // Load model if not already loaded
         if (!_loadedModels.containsKey(model)) {
           final stopwatch = Stopwatch()..start();
-          
+
           final yolo = YOLO(
             modelPath: model.modelPath,
             task: model.task,
@@ -162,9 +161,9 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
           _statusMessage = 'Error loading model: $e';
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
         }
       } finally {
         setState(() {
@@ -181,10 +180,10 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
         _imageFile = File(image.path);
         _allResults.clear();
       });
-      
+
       // Load image for visualization
       await _loadImageForVisualization();
-      
+
       if (_activeModels.isNotEmpty) {
         await _runInferenceOnAllModels();
       }
@@ -193,7 +192,7 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
 
   Future<void> _loadImageForVisualization() async {
     if (_imageFile == null) return;
-    
+
     final imageBytes = await _imageFile!.readAsBytes();
     final codec = await ui.instantiateImageCodec(imageBytes);
     final frame = await codec.getNextFrame();
@@ -223,7 +222,10 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
     });
   }
 
-  Future<void> _runInferenceForModel(ModelConfig model, {Uint8List? imageBytes}) async {
+  Future<void> _runInferenceForModel(
+    ModelConfig model, {
+    Uint8List? imageBytes,
+  }) async {
     try {
       final bytes = imageBytes ?? await _imageFile!.readAsBytes();
       final yolo = _loadedModels[model];
@@ -282,15 +284,21 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
                       const SizedBox(width: 4),
                       Text(model.name),
                       if (isLoaded && !isActive)
-                        const Icon(Icons.check_circle, size: 14, color: Colors.green),
+                        const Icon(
+                          Icons.check_circle,
+                          size: 14,
+                          color: Colors.green,
+                        ),
                     ],
                   ),
                   selected: isActive,
                   selectedColor: model.color,
                   checkmarkColor: Colors.white,
-                  onSelected: _isLoading ? null : (selected) {
-                    _toggleModel(model);
-                  },
+                  onSelected: _isLoading
+                      ? null
+                      : (selected) {
+                          _toggleModel(model);
+                        },
                 );
               }).toList(),
             ),
@@ -315,7 +323,10 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
         padding: const EdgeInsets.all(8),
         child: Row(
           children: [
-            Text('Visualization:', style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              'Visualization:',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             const SizedBox(width: 8),
             ChoiceChip(
               label: const Text('Show'),
@@ -362,7 +373,7 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
               final loadTime = _loadTimes[model] ?? 0;
               final inferenceTime = _inferenceTimes[model] ?? 0;
               final hasResults = _allResults.containsKey(model);
-              
+
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(12),
@@ -420,11 +431,10 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.file(
-              _imageFile!,
-              fit: BoxFit.contain,
-            ),
-            if (_showVisualization && _uiImage != null && _allResults.isNotEmpty)
+            Image.file(_imageFile!, fit: BoxFit.contain),
+            if (_showVisualization &&
+                _uiImage != null &&
+                _allResults.isNotEmpty)
               LayoutBuilder(
                 builder: (context, constraints) {
                   return CustomPaint(
@@ -452,37 +462,43 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
     if (_allResults.isEmpty) return const SizedBox();
 
     return Column(
-      children: _activeModels.where((model) => _allResults.containsKey(model)).map((model) {
-        return Card(
-          margin: const EdgeInsets.all(8),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+      children: _activeModels
+          .where((model) => _allResults.containsKey(model))
+          .map((model) {
+            return Card(
+              margin: const EdgeInsets.all(8),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(model.icon, color: model.color, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      model.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: model.color,
-                      ),
+                    Row(
+                      children: [
+                        Icon(model.icon, color: model.color, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          model.name,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleMedium?.copyWith(color: model.color),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 8),
+                    _buildTaskSpecificResults(model, _allResults[model]!),
                   ],
                 ),
-                const SizedBox(height: 8),
-                _buildTaskSpecificResults(model, _allResults[model]!),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+              ),
+            );
+          })
+          .toList(),
     );
   }
 
-  Widget _buildTaskSpecificResults(ModelConfig model, Map<String, dynamic> results) {
+  Widget _buildTaskSpecificResults(
+    ModelConfig model,
+    Map<String, dynamic> results,
+  ) {
     switch (model.task) {
       case YOLOTask.detect:
       case YOLOTask.obb:
@@ -530,7 +546,11 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
                 return Chip(
                   avatar: CircleAvatar(
                     backgroundColor: model.color,
-                    child: const Icon(Icons.texture, color: Colors.white, size: 16),
+                    child: const Icon(
+                      Icons.texture,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                   ),
                   label: Text(detection['className'] ?? 'Unknown'),
                 );
@@ -540,9 +560,11 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
         );
 
       case YOLOTask.classify:
-        final classification = results['classification'] as Map<dynamic, dynamic>?;
-        if (classification == null) return const Text('No classification results');
-        
+        final classification =
+            results['classification'] as Map<dynamic, dynamic>?;
+        if (classification == null)
+          return const Text('No classification results');
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -560,17 +582,23 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
             if (classification['top5Classes'] != null)
               ...List.generate(4, (i) {
                 final classes = classification['top5Classes'] as List<dynamic>;
-                final confidences = classification['top5Confidences'] as List<dynamic>;
+                final confidences =
+                    classification['top5Confidences'] as List<dynamic>;
                 if (i + 1 >= classes.length) return const SizedBox();
                 return ListTile(
                   dense: true,
                   leading: CircleAvatar(
                     backgroundColor: Colors.grey,
                     radius: 14,
-                    child: Text('${i + 2}', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                    child: Text(
+                      '${i + 2}',
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
                   ),
                   title: Text(classes[i + 1]),
-                  subtitle: Text('${(confidences[i + 1] * 100).toStringAsFixed(1)}%'),
+                  subtitle: Text(
+                    '${(confidences[i + 1] * 100).toStringAsFixed(1)}%',
+                  ),
                 );
               }),
           ],
@@ -578,20 +606,28 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
 
       case YOLOTask.pose:
         final detections = results['detections'] as List<dynamic>? ?? [];
-        final peopleWithPose = detections.where((d) => d['keypoints'] != null).length;
+        final peopleWithPose = detections
+            .where((d) => d['keypoints'] != null)
+            .length;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Detected $peopleWithPose person(s) with pose'),
             const SizedBox(height: 8),
             if (peopleWithPose > 0)
-              ...detections.take(3).where((d) => d['keypoints'] != null).map((detection) {
+              ...detections.take(3).where((d) => d['keypoints'] != null).map((
+                detection,
+              ) {
                 final keypoints = detection['keypoints'] as List<dynamic>;
                 return ListTile(
                   dense: true,
                   leading: CircleAvatar(
                     backgroundColor: model.color,
-                    child: const Icon(Icons.accessibility_new, color: Colors.white, size: 16),
+                    child: const Icon(
+                      Icons.accessibility_new,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                   ),
                   title: const Text('Person'),
                   subtitle: Text('${keypoints.length ~/ 3} keypoints detected'),
@@ -616,7 +652,9 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
-              color: _isLoading ? Colors.orange.shade100 : Colors.green.shade100,
+              color: _isLoading
+                  ? Colors.orange.shade100
+                  : Colors.green.shade100,
               child: Row(
                 children: [
                   if (_isLoading)
@@ -630,7 +668,9 @@ class _MultiModelScreenState extends State<MultiModelScreen> {
                     child: Text(
                       _statusMessage,
                       style: TextStyle(
-                        color: _isLoading ? Colors.orange.shade900 : Colors.green.shade900,
+                        color: _isLoading
+                            ? Colors.orange.shade900
+                            : Colors.green.shade900,
                       ),
                     ),
                   ),
@@ -713,7 +753,7 @@ class MultiModelPainter extends CustomPainter {
     final double scaleX = size.width / imageSize.width;
     final double scaleY = size.height / imageSize.height;
     final double scale = scaleX < scaleY ? scaleX : scaleY;
-    
+
     // Calculate offset to center image
     final double scaledWidth = imageSize.width * scale;
     final double scaledHeight = imageSize.height * scale;
@@ -724,13 +764,13 @@ class MultiModelPainter extends CustomPainter {
     int modelIndex = 0;
     for (final model in models) {
       if (!allResults.containsKey(model)) continue;
-      
+
       final results = allResults[model]!;
-      
+
       switch (model.task) {
         case YOLOTask.detect:
           _drawDetections(
-            canvas, 
+            canvas,
             results['detections'] as List<dynamic>? ?? [],
             scale,
             offsetX,
@@ -738,7 +778,7 @@ class MultiModelPainter extends CustomPainter {
             modelIndex,
           );
           break;
-          
+
         case YOLOTask.pose:
           _drawPoses(
             canvas,
@@ -748,7 +788,7 @@ class MultiModelPainter extends CustomPainter {
             offsetY,
           );
           break;
-          
+
         case YOLOTask.segment:
           _drawSegmentations(
             canvas,
@@ -759,17 +799,11 @@ class MultiModelPainter extends CustomPainter {
             size,
           );
           break;
-          
+
         case YOLOTask.obb:
-          _drawOBBDetections(
-            canvas,
-            results,
-            scale,
-            offsetX,
-            offsetY,
-          );
+          _drawOBBDetections(canvas, results, scale, offsetX, offsetY);
           break;
-          
+
         case YOLOTask.classify:
           _drawClassification(
             canvas,
@@ -779,7 +813,7 @@ class MultiModelPainter extends CustomPainter {
           );
           break;
       }
-      
+
       modelIndex++;
     }
   }
@@ -797,44 +831,46 @@ class MultiModelPainter extends CustomPainter {
         // Get class index for color
         final classIndex = detection['classIndex'] as int? ?? 0;
         final color = ultralyticsColors[classIndex % ultralyticsColors.length];
-        
+
         // Use normalizedBox for coordinates (0-1 range)
         final box = detection['normalizedBox'] as Map<dynamic, dynamic>?;
         if (box == null) continue;
-        
+
         // Convert normalized coordinates to canvas coordinates
         final left = (box['left'] as num).toDouble();
         final top = (box['top'] as num).toDouble();
         final right = (box['right'] as num).toDouble();
         final bottom = (box['bottom'] as num).toDouble();
-        
+
         final x1 = left * imageSize.width * scale + offsetX;
         final y1 = top * imageSize.height * scale + offsetY;
         final x2 = right * imageSize.width * scale + offsetX;
         final y2 = bottom * imageSize.height * scale + offsetY;
-      
+
         // Offset boxes slightly for multiple models
         final offset = modelIndex * 2.0;
-      
+
         // Draw bounding box
         final paint = Paint()
           ..color = color.withOpacity(0.8)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 4.0;
-          
+
         canvas.drawRect(
           Rect.fromLTRB(x1 + offset, y1 + offset, x2 + offset, y2 + offset),
           paint,
         );
-        
+
         // Draw label
         if (showLabels) {
           final label = StringBuffer();
           label.write(detection['className'] ?? 'Unknown');
           if (showConfidence) {
-            label.write(' ${((detection['confidence'] ?? 0) * 100).toStringAsFixed(1)}%');
+            label.write(
+              ' ${((detection['confidence'] ?? 0) * 100).toStringAsFixed(1)}%',
+            );
           }
-          
+
           _drawLabel(
             canvas,
             label.toString(),
@@ -873,17 +909,70 @@ class MultiModelPainter extends CustomPainter {
   ];
 
   // Keypoint color indices (17 keypoints)
-  static const List<int> kptColorIndices = [16, 16, 16, 16, 16, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0, 0];
-  
+  static const List<int> kptColorIndices = [
+    16,
+    16,
+    16,
+    16,
+    16,
+    9,
+    9,
+    9,
+    9,
+    9,
+    9,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+  ];
+
   // Limb color indices for skeleton connections
-  static const List<int> limbColorIndices = [0, 0, 0, 0, 7, 7, 7, 9, 9, 9, 9, 9, 16, 16, 16, 16, 16, 16, 16];
-  
+  static const List<int> limbColorIndices = [
+    0,
+    0,
+    0,
+    0,
+    7,
+    7,
+    7,
+    9,
+    9,
+    9,
+    9,
+    9,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+  ];
+
   // Skeleton connections matching native implementation
   static const List<List<int>> skeleton = [
-    [16, 14], [14, 12], [17, 15], [15, 13], [12, 13],
-    [6, 12], [7, 13], [6, 7], [6, 8], [7, 9],
-    [8, 10], [9, 11], [2, 3], [1, 2], [1, 3],
-    [2, 4], [3, 5], [4, 6], [5, 7],
+    [16, 14],
+    [14, 12],
+    [17, 15],
+    [15, 13],
+    [12, 13],
+    [6, 12],
+    [7, 13],
+    [6, 7],
+    [6, 8],
+    [7, 9],
+    [8, 10],
+    [9, 11],
+    [2, 3],
+    [1, 2],
+    [1, 3],
+    [2, 4],
+    [3, 5],
+    [4, 6],
+    [5, 7],
   ];
 
   void _drawPoses(
@@ -893,12 +982,16 @@ class MultiModelPainter extends CustomPainter {
     double offsetX,
     double offsetY,
   ) {
-    for (int detectionIndex = 0; detectionIndex < detections.length; detectionIndex++) {
+    for (
+      int detectionIndex = 0;
+      detectionIndex < detections.length;
+      detectionIndex++
+    ) {
       final detection = detections[detectionIndex];
       try {
         final keypointsFlat = detection['keypoints'] as List<dynamic>? ?? [];
         if (keypointsFlat.isEmpty) continue;
-        
+
         // Convert flat array to structured keypoints
         final keypoints = <Map<String, double>>[];
         for (int i = 0; i < keypointsFlat.length; i += 3) {
@@ -910,17 +1003,17 @@ class MultiModelPainter extends CustomPainter {
             });
           }
         }
-        
+
         // Draw skeleton connections
         for (int i = 0; i < skeleton.length; i++) {
           final connection = skeleton[i];
           final kp1Index = connection[0] - 1; // Convert to 0-based index
           final kp2Index = connection[1] - 1;
-          
+
           if (kp1Index < keypoints.length && kp2Index < keypoints.length) {
             final kp1 = keypoints[kp1Index];
             final kp2 = keypoints[kp2Index];
-            
+
             if (kp1['confidence']! > 0.3 && kp2['confidence']! > 0.3) {
               final p1 = Offset(
                 kp1['x']! * imageSize.width * scale + offsetX,
@@ -930,7 +1023,7 @@ class MultiModelPainter extends CustomPainter {
                 kp2['x']! * imageSize.width * scale + offsetX,
                 kp2['y']! * imageSize.height * scale + offsetY,
               );
-              
+
               // Get limb color from palette
               final limbColor = posePalette[limbColorIndices[i]];
               final linePaint = Paint()
@@ -941,21 +1034,25 @@ class MultiModelPainter extends CustomPainter {
                   0.6,
                 )
                 ..strokeWidth = 4.0;
-              
+
               canvas.drawLine(p1, p2, linePaint);
             }
           }
         }
-        
+
         // Draw keypoints
-        for (int i = 0; i < keypoints.length && i < kptColorIndices.length; i++) {
+        for (
+          int i = 0;
+          i < keypoints.length && i < kptColorIndices.length;
+          i++
+        ) {
           final keypoint = keypoints[i];
           if (keypoint['confidence']! > 0.3) {
             final center = Offset(
               keypoint['x']! * imageSize.width * scale + offsetX,
               keypoint['y']! * imageSize.height * scale + offsetY,
             );
-            
+
             // Get keypoint color from palette
             final kptColor = posePalette[kptColorIndices[i]];
             final pointPaint = Paint()
@@ -966,22 +1063,23 @@ class MultiModelPainter extends CustomPainter {
                 1.0,
               )
               ..style = PaintingStyle.fill;
-            
+
             canvas.drawCircle(center, 3, pointPaint);
           }
         }
-        
+
         // Draw bounding box
         final box = detection['normalizedBox'] as Map<dynamic, dynamic>?;
         if (box != null && showLabels) {
           final left = (box['left'] as num).toDouble();
           final top = (box['top'] as num).toDouble();
-          
+
           final x = left * imageSize.width * scale + offsetX;
           final y = top * imageSize.height * scale + offsetY;
-          
+
           // For pose, all detections are "person" class, so use the same color (index 0)
-          final labelColor = ultralyticsColors[0];  // Always use first color for person class
+          final labelColor =
+              ultralyticsColors[0]; // Always use first color for person class
           _drawLabel(canvas, 'Person', Offset(x, y - 4), labelColor);
         }
       } catch (e) {
@@ -1001,38 +1099,39 @@ class MultiModelPainter extends CustomPainter {
     for (int i = 0; i < detections.length; i++) {
       try {
         final detection = detections[i];
-        
+
         // Get class index for color
         final classIndex = detection['classIndex'] as int? ?? 0;
         final color = ultralyticsColors[classIndex % ultralyticsColors.length];
-        
+
         final mask = detection['mask'] as List<dynamic>?;
-        
+
         // Draw mask if available
         if (mask != null && mask.isNotEmpty) {
           final paint = Paint()
             ..color = color.withOpacity(0.4)
             ..style = PaintingStyle.fill;
-            
+
           // Check if mask is properly formatted
           if (mask[0] is List) {
             final maskHeight = mask.length;
             final maskWidth = (mask[0] as List).length;
-            
+
             // Calculate scale from mask size to image size
             final maskScaleX = imageSize.width / maskWidth;
             final maskScaleY = imageSize.height / maskHeight;
-            
+
             // Create path for the mask
             final path = Path();
-            
+
             // Draw mask pixels
-            for (int y = 0; y < maskHeight; y += 2) { // Skip pixels for performance
+            for (int y = 0; y < maskHeight; y += 2) {
+              // Skip pixels for performance
               for (int x = 0; x < maskWidth; x += 2) {
                 // Check if it's a valid 2D array access
                 if (y < mask.length && x < (mask[y] as List).length) {
                   final pixelValue = mask[y][x];
-                  
+
                   // Check if pixel is part of mask (handle both int and double)
                   bool isInMask = false;
                   if (pixelValue is num) {
@@ -1040,29 +1139,31 @@ class MultiModelPainter extends CustomPainter {
                   } else if (pixelValue is bool) {
                     isInMask = pixelValue;
                   }
-                  
+
                   if (isInMask) {
                     // Convert mask coordinates to canvas coordinates
                     final pixelX = x * maskScaleX * scale + offsetX;
                     final pixelY = y * maskScaleY * scale + offsetY;
                     final pixelWidth = maskScaleX * scale * 2;
                     final pixelHeight = maskScaleY * scale * 2;
-                    
-                    path.addRect(Rect.fromLTWH(
-                      pixelX,
-                      pixelY,
-                      pixelWidth + 0.5,
-                      pixelHeight + 0.5,
-                    ));
+
+                    path.addRect(
+                      Rect.fromLTWH(
+                        pixelX,
+                        pixelY,
+                        pixelWidth + 0.5,
+                        pixelHeight + 0.5,
+                      ),
+                    );
                   }
                 }
               }
             }
-            
+
             canvas.drawPath(path, paint);
           }
         }
-        
+
         // Draw bounding box
         final box = detection['normalizedBox'] as Map<dynamic, dynamic>?;
         if (box != null) {
@@ -1070,36 +1171,30 @@ class MultiModelPainter extends CustomPainter {
           final top = (box['top'] as num).toDouble();
           final right = (box['right'] as num).toDouble();
           final bottom = (box['bottom'] as num).toDouble();
-          
+
           final x1 = left * imageSize.width * scale + offsetX;
           final y1 = top * imageSize.height * scale + offsetY;
           final x2 = right * imageSize.width * scale + offsetX;
           final y2 = bottom * imageSize.height * scale + offsetY;
-          
+
           // Draw border
           final borderPaint = Paint()
             ..color = color
             ..style = PaintingStyle.stroke
             ..strokeWidth = 4.0;
-            
-          canvas.drawRect(
-            Rect.fromLTRB(x1, y1, x2, y2),
-            borderPaint,
-          );
-          
+
+          canvas.drawRect(Rect.fromLTRB(x1, y1, x2, y2), borderPaint);
+
           if (showLabels) {
             final label = StringBuffer();
             label.write(detection['className'] ?? 'Unknown');
             if (showConfidence) {
-              label.write(' ${((detection['confidence'] ?? 0) * 100).toStringAsFixed(1)}%');
+              label.write(
+                ' ${((detection['confidence'] ?? 0) * 100).toStringAsFixed(1)}%',
+              );
             }
-            
-            _drawLabel(
-              canvas,
-              label.toString(),
-              Offset(x1, y1 - 4),
-              color,
-            );
+
+            _drawLabel(canvas, label.toString(), Offset(x1, y1 - 4), color);
           }
         }
       } catch (e) {
@@ -1117,54 +1212,50 @@ class MultiModelPainter extends CustomPainter {
   ) {
     // For OBB, try both 'obb' array and 'detections' array
     final detections = results['detections'] as List<dynamic>? ?? [];
-    
+
     for (final detection in detections) {
       try {
         // Get class index for color
         final classIndex = detection['classIndex'] as int? ?? 0;
         final color = ultralyticsColors[classIndex % ultralyticsColors.length];
-        
+
         // Use normalizedBox for OBB as well (simplified visualization)
         final box = detection['normalizedBox'] as Map<dynamic, dynamic>?;
         if (box == null) continue;
-        
+
         final left = (box['left'] as num).toDouble();
         final top = (box['top'] as num).toDouble();
         final right = (box['right'] as num).toDouble();
         final bottom = (box['bottom'] as num).toDouble();
-        
+
         final x1 = left * imageSize.width * scale + offsetX;
         final y1 = top * imageSize.height * scale + offsetY;
         final x2 = right * imageSize.width * scale + offsetX;
         final y2 = bottom * imageSize.height * scale + offsetY;
-        
+
         // Draw as rotated rectangle (simplified)
         final paint = Paint()
           ..color = color.withOpacity(0.2)
           ..style = PaintingStyle.fill;
-          
-        canvas.drawRect(
-          Rect.fromLTRB(x1, y1, x2, y2),
-          paint,
-        );
-        
+
+        canvas.drawRect(Rect.fromLTRB(x1, y1, x2, y2), paint);
+
         final borderPaint = Paint()
           ..color = color
           ..style = PaintingStyle.stroke
           ..strokeWidth = 4.0;
-          
-        canvas.drawRect(
-          Rect.fromLTRB(x1, y1, x2, y2),
-          borderPaint,
-        );
-        
+
+        canvas.drawRect(Rect.fromLTRB(x1, y1, x2, y2), borderPaint);
+
         if (showLabels) {
           final label = StringBuffer();
           label.write(detection['className'] ?? 'Unknown');
           if (showConfidence) {
-            label.write(' ${((detection['confidence'] ?? 0) * 100).toStringAsFixed(1)}%');
+            label.write(
+              ' ${((detection['confidence'] ?? 0) * 100).toStringAsFixed(1)}%',
+            );
           }
-          
+
           _drawLabel(canvas, label.toString(), Offset(x1, y1 - 4), color);
         }
       } catch (e) {
@@ -1180,32 +1271,28 @@ class MultiModelPainter extends CustomPainter {
     Size canvasSize,
   ) {
     if (classification.isEmpty) return;
-    
+
     // Draw classification result in top-left corner
     final bgPaint = Paint()
       ..color = Colors.black.withOpacity(0.7)
       ..style = PaintingStyle.fill;
-      
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
-    
+
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+
     final label = StringBuffer();
     label.write('Class: ${classification['topClass'] ?? 'Unknown'}');
     if (showConfidence) {
-      label.write(' (${((classification['topConfidence'] ?? 0) * 100).toStringAsFixed(1)}%)');
+      label.write(
+        ' (${((classification['topConfidence'] ?? 0) * 100).toStringAsFixed(1)}%)',
+      );
     }
-    
+
     textPainter.text = TextSpan(
       text: label.toString(),
-      style: TextStyle(
-        color: color,
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-      ),
+      style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold),
     );
     textPainter.layout();
-    
+
     final padding = 8.0;
     final bgRect = Rect.fromLTWH(
       padding,
@@ -1213,24 +1300,16 @@ class MultiModelPainter extends CustomPainter {
       textPainter.width + padding * 2,
       textPainter.height + padding,
     );
-    
+
     canvas.drawRRect(
       RRect.fromRectAndRadius(bgRect, const Radius.circular(4)),
       bgPaint,
     );
-    
-    textPainter.paint(
-      canvas,
-      Offset(padding * 2, padding * 1.5),
-    );
+
+    textPainter.paint(canvas, Offset(padding * 2, padding * 1.5));
   }
 
-  void _drawLabel(
-    Canvas canvas,
-    String text,
-    Offset position,
-    Color color,
-  ) {
+  void _drawLabel(Canvas canvas, String text, Offset position, Color color) {
     final textPainter = TextPainter(
       text: TextSpan(
         text: text,
@@ -1243,12 +1322,12 @@ class MultiModelPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     );
     textPainter.layout();
-    
+
     // Draw background
     final bgPaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-      
+
     final padding = 2.0;
     final bgRect = Rect.fromLTWH(
       position.dx,
@@ -1256,12 +1335,12 @@ class MultiModelPainter extends CustomPainter {
       textPainter.width + padding * 2,
       textPainter.height + padding,
     );
-    
+
     canvas.drawRRect(
       RRect.fromRectAndRadius(bgRect, const Radius.circular(2)),
       bgPaint,
     );
-    
+
     // Draw text
     textPainter.paint(
       canvas,
@@ -1292,10 +1371,7 @@ class _MetricTile extends StatelessWidget {
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
         Text(
           value,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(

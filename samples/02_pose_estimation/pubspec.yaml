@@ -1,11 +1,13 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 name: pose_estimation_sample
 description: Demonstrates pose estimation with YOLO
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.1.0 <4.0.0'
+  sdk: ">=3.1.0 <4.0.0"
 
 dependencies:
   flutter:

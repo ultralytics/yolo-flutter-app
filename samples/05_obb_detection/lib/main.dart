@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
@@ -16,10 +18,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'YOLO OBB Detection',
-      theme: ThemeData(
-        primarySwatch: Colors.purple,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(primarySwatch: Colors.purple, useMaterial3: true),
       home: const ObbDetectionScreen(),
     );
   }
@@ -51,7 +50,7 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
   void initState() {
     super.initState();
     _yolo = YOLO(
-      modelPath: 'yolo11n-obb.tflite',  // OBB model
+      modelPath: 'yolo11n-obb.tflite', // OBB model
       task: YOLOTask.obb,
     );
     _loadModel();
@@ -68,9 +67,9 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
     } catch (e) {
       // Error loading model: $e
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading model: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading model: $e')));
       }
     } finally {
       if (mounted) {
@@ -109,7 +108,7 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
         _detectionResults = (results['detections'] as List<dynamic>?)
             ?.map((e) => Map<String, dynamic>.from(e))
             .toList();
-        
+
         // Debug: Check what data we're receiving
         // Process detection results
         // _detectionResults contains ${_detectionResults?.length ?? 0} detections
@@ -117,9 +116,9 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
     } catch (e) {
       // Error during detection: $e
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error during detection: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error during detection: $e')));
       }
     } finally {
       if (mounted) {
@@ -151,7 +150,7 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Confidence Threshold
                     Row(
                       children: [
@@ -175,7 +174,7 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
                         Text(_confidenceThreshold.toStringAsFixed(2)),
                       ],
                     ),
-                    
+
                     // IoU Threshold
                     Row(
                       children: [
@@ -199,7 +198,7 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
                         Text(_iouThreshold.toStringAsFixed(2)),
                       ],
                     ),
-                    
+
                     // Display options
                     const SizedBox(height: 8),
                     Wrap(
@@ -208,17 +207,20 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
                         FilterChip(
                           label: const Text('Labels'),
                           selected: _showLabels,
-                          onSelected: (value) => setState(() => _showLabels = value),
+                          onSelected: (value) =>
+                              setState(() => _showLabels = value),
                         ),
                         FilterChip(
                           label: const Text('Confidence'),
                           selected: _showConfidence,
-                          onSelected: (value) => setState(() => _showConfidence = value),
+                          onSelected: (value) =>
+                              setState(() => _showConfidence = value),
                         ),
                         FilterChip(
                           label: const Text('Angle'),
                           selected: _showAngle,
-                          onSelected: (value) => setState(() => _showAngle = value),
+                          onSelected: (value) =>
+                              setState(() => _showAngle = value),
                         ),
                       ],
                     ),
@@ -286,7 +288,9 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
                         return ListTile(
                           dense: true,
                           leading: CircleAvatar(
-                            backgroundColor: _getColorForClass(detection['className'] ?? ''),
+                            backgroundColor: _getColorForClass(
+                              detection['className'] ?? '',
+                            ),
                             child: Text(
                               '${detection['className']?.substring(0, 1).toUpperCase() ?? '?'}',
                               style: const TextStyle(color: Colors.white),
@@ -295,7 +299,9 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
                           title: Text(detection['className'] ?? 'Unknown'),
                           subtitle: Text(
                             'Confidence: ${((detection['confidence'] ?? 0) * 100).toStringAsFixed(1)}%' +
-                            (angle != null ? ', Angle: ${angle.toStringAsFixed(1)}°' : ''),
+                                (angle != null
+                                    ? ', Angle: ${angle.toStringAsFixed(1)}°'
+                                    : ''),
                           ),
                         );
                       }).toList(),
@@ -339,26 +345,26 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
   Color _getColorForClass(String className) {
     // Ultralytics standard detection colors with 60% opacity
     final colors = [
-      const Color.fromARGB(153, 4, 42, 255),     // Blue
-      const Color.fromARGB(153, 11, 219, 235),   // Cyan
-      const Color.fromARGB(153, 243, 243, 243),  // Light Gray
-      const Color.fromARGB(153, 0, 223, 183),    // Turquoise
-      const Color.fromARGB(153, 17, 31, 104),    // Dark Blue
-      const Color.fromARGB(153, 255, 111, 221),  // Pink
-      const Color.fromARGB(153, 255, 68, 79),    // Red
-      const Color.fromARGB(153, 204, 237, 0),    // Yellow-Green
-      const Color.fromARGB(153, 0, 243, 68),     // Green
-      const Color.fromARGB(153, 189, 0, 255),    // Purple
-      const Color.fromARGB(153, 0, 180, 255),    // Light Blue
-      const Color.fromARGB(153, 221, 0, 186),    // Magenta
-      const Color.fromARGB(153, 0, 255, 255),    // Cyan
-      const Color.fromARGB(153, 38, 192, 0),     // Dark Green
-      const Color.fromARGB(153, 1, 255, 179),    // Mint
-      const Color.fromARGB(153, 125, 36, 255),   // Violet
-      const Color.fromARGB(153, 123, 0, 104),    // Dark Purple
-      const Color.fromARGB(153, 255, 27, 108),   // Hot Pink
-      const Color.fromARGB(153, 252, 109, 47),   // Orange
-      const Color.fromARGB(153, 162, 255, 11),   // Lime Green
+      const Color.fromARGB(153, 4, 42, 255), // Blue
+      const Color.fromARGB(153, 11, 219, 235), // Cyan
+      const Color.fromARGB(153, 243, 243, 243), // Light Gray
+      const Color.fromARGB(153, 0, 223, 183), // Turquoise
+      const Color.fromARGB(153, 17, 31, 104), // Dark Blue
+      const Color.fromARGB(153, 255, 111, 221), // Pink
+      const Color.fromARGB(153, 255, 68, 79), // Red
+      const Color.fromARGB(153, 204, 237, 0), // Yellow-Green
+      const Color.fromARGB(153, 0, 243, 68), // Green
+      const Color.fromARGB(153, 189, 0, 255), // Purple
+      const Color.fromARGB(153, 0, 180, 255), // Light Blue
+      const Color.fromARGB(153, 221, 0, 186), // Magenta
+      const Color.fromARGB(153, 0, 255, 255), // Cyan
+      const Color.fromARGB(153, 38, 192, 0), // Dark Green
+      const Color.fromARGB(153, 1, 255, 179), // Mint
+      const Color.fromARGB(153, 125, 36, 255), // Violet
+      const Color.fromARGB(153, 123, 0, 104), // Dark Purple
+      const Color.fromARGB(153, 255, 27, 108), // Hot Pink
+      const Color.fromARGB(153, 252, 109, 47), // Orange
+      const Color.fromARGB(153, 162, 255, 11), // Lime Green
     ];
     return colors[className.hashCode % colors.length];
   }
@@ -381,8 +387,10 @@ class _ObbDetectionScreenState extends State<ObbDetectionScreen> {
             if (points.length >= 2) {
               final p1 = points[0] as Map<dynamic, dynamic>;
               final p2 = points[1] as Map<dynamic, dynamic>;
-              final dx = (p2['x'] as num).toDouble() - (p1['x'] as num).toDouble();
-              final dy = (p2['y'] as num).toDouble() - (p1['y'] as num).toDouble();
+              final dx =
+                  (p2['x'] as num).toDouble() - (p1['x'] as num).toDouble();
+              final dy =
+                  (p2['y'] as num).toDouble() - (p1['y'] as num).toDouble();
               return math.atan2(dy, dx) * 180 / math.pi;
             }
           }
@@ -431,7 +439,7 @@ class ObbPainter extends CustomPainter {
         final className = obbData['class'] ?? 'Unknown';
         final confidence = obbData['confidence'] ?? 0.0;
         final color = _getColorForClass(className.toString());
-        
+
         // Drawing OBB $i: class=$className, conf=$confidence
 
         if (obbData['points'] != null) {
@@ -454,7 +462,7 @@ class ObbPainter extends CustomPainter {
               // Points are already in normalized coordinates (0-1)
               final x = (point['x'] as num).toDouble() * size.width;
               final y = (point['y'] as num).toDouble() * size.height;
-              
+
               if (j == 0) {
                 path.moveTo(x, y);
               } else {
@@ -472,18 +480,12 @@ class ObbPainter extends CustomPainter {
               // Points are already in normalized coordinates (0-1)
               final x = (point['x'] as num).toDouble() * size.width;
               final y = (point['y'] as num).toDouble() * size.height;
-              canvas.drawCircle(
-                Offset(x, y),
-                4,
-                Paint()..color = color,
-              );
+              canvas.drawCircle(Offset(x, y), 4, Paint()..color = color);
             }
-            
+
             // Draw label
             if (showLabels || showConfidence || showAngle) {
-              final textPainter = TextPainter(
-                textDirection: TextDirection.ltr,
-              );
+              final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
               String label = '';
               if (showLabels) label = className.toString();
@@ -492,7 +494,8 @@ class ObbPainter extends CustomPainter {
                 label += '${(confidence * 100).toStringAsFixed(0)}%';
               }
               if (showAngle && obbData['angle'] != null) {
-                final angleDeg = (obbData['angle'] as num).toDouble() * 180 / 3.14159;
+                final angleDeg =
+                    (obbData['angle'] as num).toDouble() * 180 / 3.14159;
                 if (label.isNotEmpty) label += ' ';
                 label += '${angleDeg.toStringAsFixed(0)}°';
               }
@@ -510,7 +513,10 @@ class ObbPainter extends CustomPainter {
               // Position label at first point
               final firstPoint = points[0] as Map<dynamic, dynamic>;
               final labelX = (firstPoint['x'] as num).toDouble() * size.width;
-              final labelY = (firstPoint['y'] as num).toDouble() * size.height - textPainter.height - 2;
+              final labelY =
+                  (firstPoint['y'] as num).toDouble() * size.height -
+                  textPainter.height -
+                  2;
 
               textPainter.paint(
                 canvas,
@@ -525,9 +531,10 @@ class ObbPainter extends CustomPainter {
       // No OBB data, falling back to regular boxes
       for (final detection in detections) {
         final color = _getColorForClass(detection['className'] ?? '');
-        
+
         // Fallback to regular bounding box
-        final normalizedBox = detection['normalizedBox'] as Map<String, dynamic>;
+        final normalizedBox =
+            detection['normalizedBox'] as Map<String, dynamic>;
         final rect = Rect.fromLTRB(
           normalizedBox['left'] * size.width,
           normalizedBox['top'] * size.height,
@@ -549,15 +556,14 @@ class ObbPainter extends CustomPainter {
 
         // Draw label
         if (showLabels || showConfidence) {
-          final textPainter = TextPainter(
-            textDirection: TextDirection.ltr,
-          );
+          final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
           String label = '';
           if (showLabels) label = detection['className'] ?? 'Unknown';
           if (showConfidence) {
             if (label.isNotEmpty) label += ' ';
-            label += '${((detection['confidence'] ?? 0) * 100).toStringAsFixed(0)}%';
+            label +=
+                '${((detection['confidence'] ?? 0) * 100).toStringAsFixed(0)}%';
           }
 
           textPainter.text = TextSpan(
@@ -572,12 +578,10 @@ class ObbPainter extends CustomPainter {
 
           // Position label at top-left of the box
           final labelX = normalizedBox['left'] * size.width;
-          final labelY = normalizedBox['top'] * size.height - textPainter.height - 2;
+          final labelY =
+              normalizedBox['top'] * size.height - textPainter.height - 2;
 
-          textPainter.paint(
-            canvas,
-            Offset(labelX, labelY > 0 ? labelY : 0),
-          );
+          textPainter.paint(canvas, Offset(labelX, labelY > 0 ? labelY : 0));
         }
       }
     }
@@ -586,36 +590,35 @@ class ObbPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant ObbPainter oldDelegate) {
     return detections != oldDelegate.detections ||
-           showLabels != oldDelegate.showLabels ||
-           showConfidence != oldDelegate.showConfidence ||
-           showAngle != oldDelegate.showAngle;
+        showLabels != oldDelegate.showLabels ||
+        showConfidence != oldDelegate.showConfidence ||
+        showAngle != oldDelegate.showAngle;
   }
 
   Color _getColorForClass(String className) {
     // Ultralytics standard detection colors with 60% opacity
     final colors = [
-      const Color.fromARGB(153, 4, 42, 255),     // Blue
-      const Color.fromARGB(153, 11, 219, 235),   // Cyan
-      const Color.fromARGB(153, 243, 243, 243),  // Light Gray
-      const Color.fromARGB(153, 0, 223, 183),    // Turquoise
-      const Color.fromARGB(153, 17, 31, 104),    // Dark Blue
-      const Color.fromARGB(153, 255, 111, 221),  // Pink
-      const Color.fromARGB(153, 255, 68, 79),    // Red
-      const Color.fromARGB(153, 204, 237, 0),    // Yellow-Green
-      const Color.fromARGB(153, 0, 243, 68),     // Green
-      const Color.fromARGB(153, 189, 0, 255),    // Purple
-      const Color.fromARGB(153, 0, 180, 255),    // Light Blue
-      const Color.fromARGB(153, 221, 0, 186),    // Magenta
-      const Color.fromARGB(153, 0, 255, 255),    // Cyan
-      const Color.fromARGB(153, 38, 192, 0),     // Dark Green
-      const Color.fromARGB(153, 1, 255, 179),    // Mint
-      const Color.fromARGB(153, 125, 36, 255),   // Violet
-      const Color.fromARGB(153, 123, 0, 104),    // Dark Purple
-      const Color.fromARGB(153, 255, 27, 108),   // Hot Pink
-      const Color.fromARGB(153, 252, 109, 47),   // Orange
-      const Color.fromARGB(153, 162, 255, 11),   // Lime Green
+      const Color.fromARGB(153, 4, 42, 255), // Blue
+      const Color.fromARGB(153, 11, 219, 235), // Cyan
+      const Color.fromARGB(153, 243, 243, 243), // Light Gray
+      const Color.fromARGB(153, 0, 223, 183), // Turquoise
+      const Color.fromARGB(153, 17, 31, 104), // Dark Blue
+      const Color.fromARGB(153, 255, 111, 221), // Pink
+      const Color.fromARGB(153, 255, 68, 79), // Red
+      const Color.fromARGB(153, 204, 237, 0), // Yellow-Green
+      const Color.fromARGB(153, 0, 243, 68), // Green
+      const Color.fromARGB(153, 189, 0, 255), // Purple
+      const Color.fromARGB(153, 0, 180, 255), // Light Blue
+      const Color.fromARGB(153, 221, 0, 186), // Magenta
+      const Color.fromARGB(153, 0, 255, 255), // Cyan
+      const Color.fromARGB(153, 38, 192, 0), // Dark Green
+      const Color.fromARGB(153, 1, 255, 179), // Mint
+      const Color.fromARGB(153, 125, 36, 255), // Violet
+      const Color.fromARGB(153, 123, 0, 104), // Dark Purple
+      const Color.fromARGB(153, 255, 27, 108), // Hot Pink
+      const Color.fromARGB(153, 252, 109, 47), // Orange
+      const Color.fromARGB(153, 162, 255, 11), // Lime Green
     ];
     return colors[className.hashCode % colors.length];
   }
-
 }

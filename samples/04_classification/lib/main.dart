@@ -1,16 +1,18 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 /// Image Classification Sample
-/// 
+///
 /// This sample demonstrates how to use YOLO for image classification:
 /// 1. Load a YOLO classification model
 /// 2. Select an image from gallery
 /// 3. Classify the entire image into categories
 /// 4. Display results with confidence scores
-/// 
+///
 /// 画像分類のサンプル
 /// YOLOを使った画像分類の実装例：
 /// 1. YOLO分類モデルの読み込み
@@ -123,23 +125,26 @@ class _ClassificationScreenState extends State<ClassificationScreen> {
     // Check if we have classification data
     final classificationData = _classificationResult!['classification'];
     if (classificationData == null || classificationData is! Map) return [];
-    
+
     // Cast to Map<dynamic, dynamic> first to handle platform channel data
     final classification = Map<String, dynamic>.from(classificationData as Map);
 
     // Get top 5 classes and confidences
     final top5Classes = classification['top5Classes'] as List<dynamic>? ?? [];
-    final top5Confidences = classification['top5Confidences'] as List<dynamic>? ?? [];
-    
+    final top5Confidences =
+        classification['top5Confidences'] as List<dynamic>? ?? [];
+
     // Combine classes with confidences
     List<MapEntry<String, double>> entries = [];
     for (int i = 0; i < top5Classes.length && i < top5Confidences.length; i++) {
-      entries.add(MapEntry(
-        top5Classes[i].toString(),
-        (top5Confidences[i] as num).toDouble(),
-      ));
+      entries.add(
+        MapEntry(
+          top5Classes[i].toString(),
+          (top5Confidences[i] as num).toDouble(),
+        ),
+      );
     }
-    
+
     // Return all available predictions (already sorted by confidence)
     return entries;
   }
@@ -222,7 +227,9 @@ class _ClassificationScreenState extends State<ClassificationScreen> {
                   label: const Text('Select Image'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _imageFile == null || _isLoading ? null : _runClassification,
+                  onPressed: _imageFile == null || _isLoading
+                      ? null
+                      : _runClassification,
                   icon: _isLoading
                       ? const SizedBox(
                           width: 20,
@@ -258,10 +265,7 @@ class _ClassificationScreenState extends State<ClassificationScreen> {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: Image.file(
-        _imageFile!,
-        fit: BoxFit.contain,
-      ),
+      child: Image.file(_imageFile!, fit: BoxFit.contain),
     );
   }
 
@@ -270,19 +274,14 @@ class _ClassificationScreenState extends State<ClassificationScreen> {
   Widget _buildResultsView() {
     if (_classificationResult == null) {
       return const Center(
-        child: Text(
-          'No results yet',
-          style: TextStyle(color: Colors.grey),
-        ),
+        child: Text('No results yet', style: TextStyle(color: Colors.grey)),
       );
     }
 
     final topPredictions = _getTopPredictions();
-    
+
     if (topPredictions.isEmpty) {
-      return const Center(
-        child: Text('No predictions available'),
-      );
+      return const Center(child: Text('No predictions available'));
     }
 
     return Column(
@@ -302,16 +301,16 @@ class _ClassificationScreenState extends State<ClassificationScreen> {
               final prediction = topPredictions[index];
               final confidence = prediction.value;
               final isTopPrediction = index == 0;
-              
+
               return Card(
                 elevation: isTopPrediction ? 4 : 1,
-                color: isTopPrediction 
+                color: isTopPrediction
                     ? Theme.of(context).primaryColor.withOpacity(0.1)
                     : null,
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: isTopPrediction 
+                    backgroundColor: isTopPrediction
                         ? Theme.of(context).primaryColor
                         : Colors.grey,
                     child: Text(
@@ -325,8 +324,8 @@ class _ClassificationScreenState extends State<ClassificationScreen> {
                   title: Text(
                     prediction.key,
                     style: TextStyle(
-                      fontWeight: isTopPrediction 
-                          ? FontWeight.bold 
+                      fontWeight: isTopPrediction
+                          ? FontWeight.bold
                           : FontWeight.normal,
                     ),
                   ),
@@ -338,7 +337,7 @@ class _ClassificationScreenState extends State<ClassificationScreen> {
                         value: confidence,
                         backgroundColor: Colors.grey[300],
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          isTopPrediction 
+                          isTopPrediction
                               ? Theme.of(context).primaryColor
                               : Colors.grey,
                         ),
@@ -350,7 +349,7 @@ class _ClassificationScreenState extends State<ClassificationScreen> {
                       ),
                     ],
                   ),
-                  trailing: isTopPrediction 
+                  trailing: isTopPrediction
                       ? const Icon(Icons.star, color: Colors.amber)
                       : null,
                 ),

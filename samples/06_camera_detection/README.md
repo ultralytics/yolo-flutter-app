@@ -42,6 +42,7 @@ YOLOView(
 ### Performance Metrics
 
 The sample displays real-time performance information:
+
 - **FPS**: Frames processed per second
 - **Inference Time**: Time taken for each detection (ms)
 - **Object Count**: Number of detected objects
@@ -76,13 +77,17 @@ yoloView.stopCamera();
 ## Permissions
 
 ### Android
+
 Add to `AndroidManifest.xml`:
+
 ```xml
 <uses-permission android:name="android.permission.CAMERA" />
 ```
 
 ### iOS
+
 Add to `Info.plist`:
+
 ```xml
 <key>NSCameraUsageDescription</key>
 <string>Camera access is required for object detection</string>
@@ -113,16 +118,19 @@ Add to `Info.plist`:
 ## Troubleshooting
 
 ### Camera not starting
+
 - Check camera permissions
 - Ensure model is loaded
 - Verify device has camera
 
 ### Low FPS
+
 - Use lighter model (YOLOv11n)
 - Reduce input resolution
 - Disable visual overlays
 
 ### No detections
+
 - Lower confidence threshold
 - Ensure good lighting
 - Check model compatibility

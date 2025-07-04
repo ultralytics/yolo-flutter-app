@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
@@ -13,10 +15,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'YOLO Camera Detection',
-      theme: ThemeData(
-        primarySwatch: Colors.orange,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(primarySwatch: Colors.orange, useMaterial3: true),
       home: const CameraDetectionScreen(),
     );
   }
@@ -32,7 +31,7 @@ class CameraDetectionScreen extends StatefulWidget {
 class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
   // YOLO controller
   final YOLOViewController _controller = YOLOViewController();
-  
+
   // Settings
   double _confidenceThreshold = 0.45;
   double _iouThreshold = 0.5;
@@ -41,7 +40,7 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
   bool _showFPS = true;
   bool _isCameraActive = true;
   bool _modelLoaded = false;
-  
+
   // Performance metrics
   double _currentFPS = 0.0;
   double _inferenceTime = 0.0;
@@ -135,7 +134,7 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
                         style: TextStyle(fontSize: 20, color: Colors.grey),
                       ),
                     ),
-                  
+
                   // Performance overlay
                   if (_isCameraActive)
                     Positioned(
@@ -176,17 +175,15 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
                         ),
                       ),
                     ),
-                  
+
                   // Loading indicator
                   if (!_modelLoaded)
-                    const Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                    const Center(child: CircularProgressIndicator()),
                 ],
               ),
             ),
           ),
-          
+
           // Controls
           Container(
             padding: const EdgeInsets.all(16),
@@ -215,7 +212,7 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
                     Text(_confidenceThreshold.toStringAsFixed(2)),
                   ],
                 ),
-                
+
                 Row(
                   children: [
                     const Icon(Icons.layers, size: 20),
@@ -238,7 +235,7 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
                     Text(_iouThreshold.toStringAsFixed(2)),
                   ],
                 ),
-                
+
                 // Display options
                 const SizedBox(height: 8),
                 Wrap(
@@ -270,7 +267,7 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
                     ),
                   ],
                 ),
-                
+
                 // Camera control button
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
@@ -278,9 +275,14 @@ class _CameraDetectionScreenState extends State<CameraDetectionScreen> {
                   icon: Icon(_isCameraActive ? Icons.stop : Icons.camera_alt),
                   label: Text(_isCameraActive ? 'Stop Camera' : 'Start Camera'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isCameraActive ? Colors.red : Colors.green,
+                    backgroundColor: _isCameraActive
+                        ? Colors.red
+                        : Colors.green,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
                   ),
                 ),
               ],

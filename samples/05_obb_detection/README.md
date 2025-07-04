@@ -15,10 +15,12 @@ This sample demonstrates Oriented Bounding Box (OBB) detection using YOLO Flutte
 ## What is OBB?
 
 Oriented Bounding Box (OBB) detection differs from regular object detection:
+
 - **Regular detection**: Axis-aligned bounding boxes (rectangles parallel to image edges)
 - **OBB detection**: Rotated bounding boxes that better fit object orientation
 
 This is particularly useful for:
+
 - 🛩️ Aerial/satellite imagery (vehicles, buildings, ships)
 - 📄 Document analysis (rotated text, tables)
 - 🏭 Industrial inspection (parts on conveyor belts)
@@ -46,6 +48,7 @@ final obbData = results['obb'] as List<dynamic>;
 ## Visualization
 
 The sample includes a custom painter that:
+
 1. Draws oriented bounding boxes using the 4 corner points
 2. Fills boxes with semi-transparent colors
 3. Highlights corners with circular markers
@@ -61,24 +64,27 @@ The sample includes a custom painter that:
 ## Model Training
 
 To train an OBB model:
+
 ```python
 from ultralytics import YOLO
 
 # Train OBB model
-model = YOLO('yolo11n-obb.yaml')
-model.train(data='path/to/obb-dataset.yaml')
+model = YOLO("yolo11n-obb.yaml")
+model.train(data="path/to/obb-dataset.yaml")
 
 # Export for mobile
-model.export(format='tflite')  # Android
-model.export(format='coreml')  # iOS
+model.export(format="tflite")  # Android
+model.export(format="coreml")  # iOS
 ```
 
 ## Dataset Format
 
 OBB datasets use rotated bounding boxes with format:
+
 ```
 class_id x1 y1 x2 y2 x3 y3 x4 y4
 ```
+
 Where (x1,y1) to (x4,y4) are the four corners of the oriented box.
 
 ## Tips

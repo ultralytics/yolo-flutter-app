@@ -89,16 +89,13 @@ The test suite covers:
 The multi-instance test app validates:
 
 1. **Multiple Instance Creation**
-
    - Object detection instance
    - Segmentation instance
 
 2. **Parallel Model Loading**
-
    - Load both models simultaneously
 
 3. **Inference Execution**
-
    - Run both models on the same image
    - Measure inference time
 

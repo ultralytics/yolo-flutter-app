@@ -85,6 +85,7 @@ void dispose() {
 ## Performance Metrics
 
 The app tracks and displays:
+
 - **Load Time**: Time to load the model into memory
 - **Inference Time**: Time for single image prediction
 - **Model Size**: Size of the model file (when available)
@@ -92,19 +93,25 @@ The app tracks and displays:
 ## UI Components
 
 ### Model Selector
+
 Filter chips showing model states:
+
 - **Active** (selected) - Model is loaded and will process images
 - **Loaded** (green check) - Model is in memory but not active
 - **Not loaded** - Model needs to be loaded first
 
 ### Performance Comparison
+
 Shows all active models with:
+
 - Individual load times
 - Per-model inference times
 - Visual completion indicators
 
 ### Results View
+
 All active models' results displayed simultaneously:
+
 - Each model gets its own result card
 - Results appear in the order models were activated
 - Task-specific visualization for each model type

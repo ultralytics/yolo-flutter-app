@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -5,13 +7,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 /// Instance Segmentation Sample
-/// 
+///
 /// This sample demonstrates how to use YOLO for instance segmentation:
 /// 1. Load a YOLO segmentation model
 /// 2. Select an image from gallery
 /// 3. Detect objects and their pixel-perfect masks
 /// 4. Display results with colored masks overlay
-/// 
+///
 /// インスタンスセグメンテーションのサンプル
 /// YOLOを使ったインスタンスセグメンテーションの実装例：
 /// 1. YOLOセグメンテーションモデルの読み込み
@@ -169,7 +171,7 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
                       Text('${(_maskOpacity * 100).toStringAsFixed(0)}%'),
                     ],
                   ),
-                  
+
                   // Toggle switches / トグルスイッチ
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -229,7 +231,9 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
                   label: const Text('Select Image'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _imageFile == null || _isLoading ? null : _runSegmentation,
+                  onPressed: _imageFile == null || _isLoading
+                      ? null
+                      : _runSegmentation,
                   icon: _isLoading
                       ? const SizedBox(
                           width: 20,
@@ -237,7 +241,9 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.play_arrow),
-                  label: Text(_isLoading ? 'Processing...' : 'Run Segmentation'),
+                  label: Text(
+                    _isLoading ? 'Processing...' : 'Run Segmentation',
+                  ),
                 ),
               ],
             ),
@@ -267,10 +273,7 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
       fit: StackFit.expand,
       children: [
         // Original image / 元画像
-        Image.file(
-          _imageFile!,
-          fit: BoxFit.contain,
-        ),
+        Image.file(_imageFile!, fit: BoxFit.contain),
 
         // Segmentation masks and bounding boxes overlay
         // セグメンテーションマスクとバウンディングボックスのオーバーレイ
@@ -303,7 +306,7 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
   Widget _buildResultsSummary() {
     final uniqueClasses = _results!.map((r) => r.className).toSet();
     final classCounts = <String, int>{};
-    
+
     for (final result in _results!) {
       classCounts[result.className] = (classCounts[result.className] ?? 0) + 1;
     }
@@ -324,17 +327,19 @@ class _SegmentationScreenState extends State<SegmentationScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          ...classCounts.entries.map((entry) => Container(
-            margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: _getColorForIndex(
-                uniqueClasses.toList().indexOf(entry.key)
-              ).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(16),
+          ...classCounts.entries.map(
+            (entry) => Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _getColorForIndex(
+                  uniqueClasses.toList().indexOf(entry.key),
+                ).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text('${entry.key}: ${entry.value}'),
             ),
-            child: Text('${entry.key}: ${entry.value}'),
-          )),
+          ),
         ],
       ),
     );
@@ -389,39 +394,36 @@ class SegmentationPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.fill;
+    final paint = Paint()..style = PaintingStyle.fill;
 
     final boxPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4.0;
 
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
     // Ultralytics standard detection colors with 60% opacity
     final colors = [
-      const Color.fromARGB(153, 4, 42, 255),     // Blue
-      const Color.fromARGB(153, 11, 219, 235),   // Cyan
-      const Color.fromARGB(153, 243, 243, 243),  // Light Gray
-      const Color.fromARGB(153, 0, 223, 183),    // Turquoise
-      const Color.fromARGB(153, 17, 31, 104),    // Dark Blue
-      const Color.fromARGB(153, 255, 111, 221),  // Pink
-      const Color.fromARGB(153, 255, 68, 79),    // Red
-      const Color.fromARGB(153, 204, 237, 0),    // Yellow-Green
-      const Color.fromARGB(153, 0, 243, 68),     // Green
-      const Color.fromARGB(153, 189, 0, 255),    // Purple
-      const Color.fromARGB(153, 0, 180, 255),    // Light Blue
-      const Color.fromARGB(153, 221, 0, 186),    // Magenta
-      const Color.fromARGB(153, 0, 255, 255),    // Cyan
-      const Color.fromARGB(153, 38, 192, 0),     // Dark Green
-      const Color.fromARGB(153, 1, 255, 179),    // Mint
-      const Color.fromARGB(153, 125, 36, 255),   // Violet
-      const Color.fromARGB(153, 123, 0, 104),    // Dark Purple
-      const Color.fromARGB(153, 255, 27, 108),   // Hot Pink
-      const Color.fromARGB(153, 252, 109, 47),   // Orange
-      const Color.fromARGB(153, 162, 255, 11),   // Lime Green
+      const Color.fromARGB(153, 4, 42, 255), // Blue
+      const Color.fromARGB(153, 11, 219, 235), // Cyan
+      const Color.fromARGB(153, 243, 243, 243), // Light Gray
+      const Color.fromARGB(153, 0, 223, 183), // Turquoise
+      const Color.fromARGB(153, 17, 31, 104), // Dark Blue
+      const Color.fromARGB(153, 255, 111, 221), // Pink
+      const Color.fromARGB(153, 255, 68, 79), // Red
+      const Color.fromARGB(153, 204, 237, 0), // Yellow-Green
+      const Color.fromARGB(153, 0, 243, 68), // Green
+      const Color.fromARGB(153, 189, 0, 255), // Purple
+      const Color.fromARGB(153, 0, 180, 255), // Light Blue
+      const Color.fromARGB(153, 221, 0, 186), // Magenta
+      const Color.fromARGB(153, 0, 255, 255), // Cyan
+      const Color.fromARGB(153, 38, 192, 0), // Dark Green
+      const Color.fromARGB(153, 1, 255, 179), // Mint
+      const Color.fromARGB(153, 125, 36, 255), // Violet
+      const Color.fromARGB(153, 123, 0, 104), // Dark Purple
+      const Color.fromARGB(153, 255, 27, 108), // Hot Pink
+      const Color.fromARGB(153, 252, 109, 47), // Orange
+      const Color.fromARGB(153, 162, 255, 11), // Lime Green
     ];
 
     // Group results by class for consistent colors
@@ -436,23 +438,23 @@ class SegmentationPainter extends CustomPainter {
       // Draw segmentation mask / セグメンテーションマスクを描画
       if (showMasks && result.mask != null) {
         paint.color = color.withOpacity(maskOpacity);
-        
+
         // The mask is a 2D array representing a binary mask
         // マスクは2次元配列のバイナリマスク
         final maskData = result.mask!;
-        
+
         if (maskData.isNotEmpty && maskData[0].isNotEmpty) {
           final maskHeight = maskData.length;
           final maskWidth = maskData[0].length;
-          
+
           // Calculate the actual displayed image area considering BoxFit.contain
           // BoxFit.containを考慮して実際に表示される画像領域を計算
           final double imageAspectRatio = imageSize.width / imageSize.height;
           final double canvasAspectRatio = size.width / size.height;
-          
+
           double displayWidth, displayHeight;
           double offsetX = 0, offsetY = 0;
-          
+
           if (imageAspectRatio > canvasAspectRatio) {
             // Image is wider than canvas
             displayWidth = size.width;
@@ -464,16 +466,16 @@ class SegmentationPainter extends CustomPainter {
             displayWidth = size.height * imageAspectRatio;
             offsetX = (size.width - displayWidth) / 2;
           }
-          
+
           // Calculate scale factors from mask size to displayed image size
           // マスクサイズから表示画像サイズへのスケールファクターを計算
           final scaleX = displayWidth / maskWidth;
           final scaleY = displayHeight / maskHeight;
-          
+
           // Create a path for the mask
           // マスクのパスを作成
           final path = Path();
-          
+
           // Draw mask pixels
           // マスクのピクセルを描画
           for (int y = 0; y < maskHeight; y++) {
@@ -491,7 +493,7 @@ class SegmentationPainter extends CustomPainter {
               }
             }
           }
-          
+
           canvas.drawPath(path, paint);
         }
       }
@@ -504,10 +506,10 @@ class SegmentationPainter extends CustomPainter {
         // BoxFit.containを考慮して実際に表示される画像領域を計算
         final double imageAspectRatio = imageSize.width / imageSize.height;
         final double canvasAspectRatio = size.width / size.height;
-        
+
         double displayWidth, displayHeight;
         double offsetX = 0, offsetY = 0;
-        
+
         if (imageAspectRatio > canvasAspectRatio) {
           // Image is wider than canvas
           displayWidth = size.width;
@@ -531,7 +533,8 @@ class SegmentationPainter extends CustomPainter {
         canvas.drawRect(rect, boxPaint);
 
         // Draw label / ラベルを描画
-        final label = '${result.className} ${(result.confidence * 100).toStringAsFixed(0)}%';
+        final label =
+            '${result.className} ${(result.confidence * 100).toStringAsFixed(0)}%';
         textPainter.text = TextSpan(
           text: label,
           style: const TextStyle(

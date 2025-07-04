@@ -34,6 +34,7 @@ await yolo.dispose();
 ## Running the Example
 
 1. **Add the plugin** to your `pubspec.yaml`:
+
    ```yaml
    dependencies:
      ultralytics_yolo: ^0.0.3
@@ -51,6 +52,7 @@ await yolo.dispose();
 ## What's in the Example
 
 The example consists of a single `main.dart` file that:
+
 1. Creates a simple Flutter app
 2. Allows users to pick an image from gallery
 3. Runs YOLO object detection
@@ -65,5 +67,6 @@ The example consists of a single `main.dart` file that:
 ## Model Files
 
 Download pre-trained models from:
+
 - [Ultralytics Hub](https://hub.ultralytics.com)
 - [GitHub Releases](https://github.com/ultralytics/yolo-flutter-app/releases)

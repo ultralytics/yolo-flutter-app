@@ -37,6 +37,7 @@ demo_app/
    - YOLO model files
 
 2. **Install dependencies**:
+
    ```bash
    cd demo_app
    flutter pub get
@@ -54,6 +55,7 @@ demo_app/
 ## Model Files
 
 The demo supports multiple YOLO models:
+
 - `yolo11n.tflite` - Object detection
 - `yolo11n-seg.tflite` - Instance segmentation
 - `yolo11n-cls.tflite` - Image classification
@@ -63,12 +65,14 @@ The demo supports multiple YOLO models:
 ## Features Demonstrated
 
 ### Camera Inference
+
 - Real-time detection with bounding boxes
 - FPS and inference time display
 - Adjustable detection thresholds
 - Support for all YOLO tasks
 
 ### Single Image Processing
+
 - Gallery image selection
 - Comprehensive result visualization
 - Task-specific displays (masks, keypoints, etc.)
@@ -77,6 +81,7 @@ The demo supports multiple YOLO models:
 ## Customization
 
 The demo app can be customized:
+
 - Modify detection thresholds in the UI
 - Change visualization colors and styles
 - Add new models to the model manager

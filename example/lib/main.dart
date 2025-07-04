@@ -1,3 +1,5 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -41,20 +43,20 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // Initialize YOLO
     final yolo = YOLO(modelPath: 'yolo11n.tflite');
-    
+
     // Load model
     await yolo.loadModel();
-    
+
     // Run inference
     final results = await yolo.predict(await _image!.readAsBytes());
-    
+
     // Parse results
     setState(() {
       _results = (results['detections'] as List?)
           ?.map((e) => YOLOResult.fromMap(e))
           .toList();
     });
-    
+
     // Clean up
     await yolo.dispose();
   }
@@ -67,10 +69,8 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (_image != null) 
-              Image.file(_image!, height: 300),
-            if (_results != null)
-              Text('Found ${_results!.length} objects'),
+            if (_image != null) Image.file(_image!, height: 300),
+            if (_results != null) Text('Found ${_results!.length} objects'),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: detectObjects,

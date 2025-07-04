@@ -23,6 +23,7 @@ This sample demonstrates the fundamental usage of the Ultralytics YOLO Flutter p
 ## Key Concepts
 
 ### Basic YOLO Usage
+
 ```dart
 // 1. Create YOLO instance
 final yolo = YOLO(
@@ -48,14 +49,18 @@ for (final detection in detections) {
 ```
 
 ### Understanding Detection Results
+
 Each detection contains:
+
 - `className`: The name of the detected object (e.g., "person", "car")
 - `confidence`: Detection confidence score (0.0 to 1.0)
 - `boundingBox`: Pixel coordinates of the object
 - `normalizedBox`: Normalized coordinates (0.0 to 1.0)
 
 ### Visualization
+
 The sample includes a custom painter that:
+
 - Draws bounding boxes around detected objects
 - Displays class names and confidence scores
 - Uses different colors for different object classes
@@ -69,6 +74,7 @@ The sample includes a custom painter that:
 ## Model Information
 
 The sample uses `yolo11n.tflite`, which can detect 80 object classes including:
+
 - People and animals
 - Vehicles (cars, trucks, buses, etc.)
 - Everyday objects (chairs, tables, bottles, etc.)
@@ -76,6 +82,7 @@ The sample uses `yolo11n.tflite`, which can detect 80 object classes including:
 - Food items
 
 For different performance/accuracy trade-offs, you can use:
+
 - `yolo11n`: Fastest, lowest accuracy
 - `yolo11s`: Balanced speed and accuracy
 - `yolo11m`: Good accuracy, moderate speed
