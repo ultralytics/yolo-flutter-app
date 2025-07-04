@@ -289,6 +289,8 @@ class _PoseEstimationScreenState extends State<PoseEstimationScreen> {
 
   Widget _buildPoseInfo(int personNumber, YOLOResult pose) {
     final visibleKeypoints = <String>[];
+    final totalKeypoints = pose.keypoints?.length ?? 0;
+    
     if (pose.keypoints != null && pose.keypointConfidences != null) {
       for (int i = 0; i < pose.keypoints!.length && i < _keypointNames.length; i++) {
         if (pose.keypointConfidences![i] > 0.5) {
@@ -305,6 +307,10 @@ class _PoseEstimationScreenState extends State<PoseEstimationScreen> {
           Text(
             'Person $personNumber (${(pose.confidence * 100).toStringAsFixed(1)}% confidence)',
             style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Text(
+            'Total keypoints: $totalKeypoints, Visible: ${visibleKeypoints.length}',
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           if (visibleKeypoints.isNotEmpty)
             Text(
@@ -368,9 +374,21 @@ class PosePainter extends CustomPainter {
             pose.keypointConfidences![startIdx] > 0.5 &&
             pose.keypointConfidences![endIdx] > 0.5) {
           
+          final startPoint = pose.keypoints![startIdx];
+          final endPoint = pose.keypoints![endIdx];
+          
+          // Check if keypoints are normalized
+          final isNormalized = startPoint.x <= 1.0 && startPoint.y <= 1.0;
+          
+          // Convert to pixel coordinates if normalized
+          final startX = isNormalized ? startPoint.x * image.width : startPoint.x;
+          final startY = isNormalized ? startPoint.y * image.height : startPoint.y;
+          final endX = isNormalized ? endPoint.x * image.width : endPoint.x;
+          final endY = isNormalized ? endPoint.y * image.height : endPoint.y;
+          
           canvas.drawLine(
-            Offset(pose.keypoints![startIdx].x, pose.keypoints![startIdx].y),
-            Offset(pose.keypoints![endIdx].x, pose.keypoints![endIdx].y),
+            Offset(startX, startY),
+            Offset(endX, endY),
             connectionPaint,
           );
         }
@@ -381,13 +399,20 @@ class PosePainter extends CustomPainter {
         if (pose.keypointConfidences![i] > 0.5) {
           final keypoint = pose.keypoints![i];
           
+          // Check if keypoints are normalized (values between 0 and 1)
+          final isNormalized = keypoint.x <= 1.0 && keypoint.y <= 1.0;
+          
+          // Convert to pixel coordinates if normalized
+          final x = isNormalized ? keypoint.x * image.width : keypoint.x;
+          final y = isNormalized ? keypoint.y * image.height : keypoint.y;
+          
           // Draw keypoint circle
           final keypointPaint = Paint()
             ..color = _getKeypointColor(i)
             ..style = PaintingStyle.fill;
           
           canvas.drawCircle(
-            Offset(keypoint.x, keypoint.y),
+            Offset(x, y),
             6,  // Match native keypoint radius
             keypointPaint,
           );
@@ -399,7 +424,7 @@ class PosePainter extends CustomPainter {
             ..style = PaintingStyle.stroke;
           
           canvas.drawCircle(
-            Offset(keypoint.x, keypoint.y),
+            Offset(x, y),
             6,  // Match native keypoint radius
             borderPaint,
           );
