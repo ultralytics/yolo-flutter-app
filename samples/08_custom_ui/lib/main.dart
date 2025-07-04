@@ -491,7 +491,7 @@ class CustomVisualizationPainter extends CustomPainter {
   void _drawGrid(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = Colors.white.withOpacity(0.2)
-      ..strokeWidth = 1
+      ..strokeWidth = 4
       ..style = PaintingStyle.stroke;
 
     const gridSize = 50.0;
@@ -584,7 +584,7 @@ class CustomVisualizationPainter extends CustomPainter {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ).createShader(rect)
-      ..strokeWidth = 3
+      ..strokeWidth = 5
       ..style = PaintingStyle.stroke;
     canvas.drawRRect(
       RRect.fromRectAndRadius(animatedRect, const Radius.circular(8)),
@@ -605,7 +605,7 @@ class CustomVisualizationPainter extends CustomPainter {
     for (int i = 3; i > 0; i--) {
       final glowPaint = Paint()
         ..color = color.withOpacity(0.3 / i)
-        ..strokeWidth = i * 2.0
+        ..strokeWidth = i * 3.0
         ..style = PaintingStyle.stroke
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, i * 2.0);
       canvas.drawRect(rect, glowPaint);
@@ -614,7 +614,7 @@ class CustomVisualizationPainter extends CustomPainter {
     // Main border
     final borderPaint = Paint()
       ..color = color
-      ..strokeWidth = 2
+      ..strokeWidth = 4
       ..style = PaintingStyle.stroke;
     canvas.drawRect(rect, borderPaint);
     
@@ -628,7 +628,7 @@ class CustomVisualizationPainter extends CustomPainter {
     // Simple lines at corners
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 2
+      ..strokeWidth = 4
       ..style = PaintingStyle.stroke;
     
     const cornerLength = 20.0;
@@ -669,7 +669,7 @@ class CustomVisualizationPainter extends CustomPainter {
     // Glass border
     final borderPaint = Paint()
       ..color = Colors.white.withOpacity(0.5)
-      ..strokeWidth = 1
+      ..strokeWidth = 4
       ..style = PaintingStyle.stroke;
     canvas.drawRRect(
       RRect.fromRectAndRadius(rect, const Radius.circular(12)),
@@ -683,7 +683,7 @@ class CustomVisualizationPainter extends CustomPainter {
   void _drawCornerAccents(Canvas canvas, Rect rect, Color color) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 3
+      ..strokeWidth = 5
       ..style = PaintingStyle.stroke;
     
     const accentLength = 15.0;
@@ -853,7 +853,7 @@ class CustomVisualizationPainter extends CustomPainter {
       Paint()
         ..color = Colors.white.withOpacity(0.1)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
+        ..strokeWidth = 2,
     );
     
     textPainter.paint(

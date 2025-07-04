@@ -417,7 +417,7 @@ class DetectionPainter extends CustomPainter {
       final boxPaint = Paint()
         ..color = _getColorForClass(detection['className'] ?? '').withOpacity(1.0)  // Full opacity for box
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;  // Match native stroke width
+        ..strokeWidth = 4.0;  // Increased for better visibility
       canvas.drawRect(rect, boxPaint);
 
       // Draw label background

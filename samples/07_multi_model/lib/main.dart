@@ -820,7 +820,7 @@ class MultiModelPainter extends CustomPainter {
         final paint = Paint()
           ..color = color.withOpacity(0.8)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0;
+          ..strokeWidth = 4.0;
           
         canvas.drawRect(
           Rect.fromLTRB(x1 + offset, y1 + offset, x2 + offset, y2 + offset),
@@ -940,7 +940,7 @@ class MultiModelPainter extends CustomPainter {
                   limbColor[2].toInt(),
                   0.6,
                 )
-                ..strokeWidth = 2.0;
+                ..strokeWidth = 4.0;
               
               canvas.drawLine(p1, p2, linePaint);
             }
@@ -1080,7 +1080,7 @@ class MultiModelPainter extends CustomPainter {
           final borderPaint = Paint()
             ..color = color
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.0;
+            ..strokeWidth = 4.0;
             
           canvas.drawRect(
             Rect.fromLTRB(x1, y1, x2, y2),
@@ -1151,7 +1151,7 @@ class MultiModelPainter extends CustomPainter {
         final borderPaint = Paint()
           ..color = color
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0;
+          ..strokeWidth = 4.0;
           
         canvas.drawRect(
           Rect.fromLTRB(x1, y1, x2, y2),

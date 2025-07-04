@@ -434,7 +434,7 @@ class ObbPainter extends CustomPainter {
             final borderPaint = Paint()
               ..color = color
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 2.0;
+              ..strokeWidth = 4.0;
 
             // Convert points to Path
             final path = Path();
@@ -531,7 +531,7 @@ class ObbPainter extends CustomPainter {
         final borderPaint = Paint()
           ..color = color
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0;
+          ..strokeWidth = 4.0;
 
         canvas.drawRect(rect, paint);
         canvas.drawRect(rect, borderPaint);

@@ -394,7 +394,7 @@ class SegmentationPainter extends CustomPainter {
 
     final boxPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 4.0;
 
     final textPainter = TextPainter(
       textDirection: TextDirection.ltr,

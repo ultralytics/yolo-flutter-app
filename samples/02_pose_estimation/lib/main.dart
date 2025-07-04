@@ -362,7 +362,7 @@ class PosePainter extends CustomPainter {
       // Draw skeleton connections
       final connectionPaint = Paint()
         ..color = const Color.fromRGBO(255, 180, 90, 1)  // Ultralytics skeleton color
-        ..strokeWidth = 2
+        ..strokeWidth = 4
         ..style = PaintingStyle.stroke;
       
       for (final connection in skeleton) {
@@ -413,19 +413,19 @@ class PosePainter extends CustomPainter {
           
           canvas.drawCircle(
             Offset(x, y),
-            6,  // Match native keypoint radius
+            8,  // Increased keypoint radius for better visibility
             keypointPaint,
           );
           
           // Draw keypoint border
           final borderPaint = Paint()
             ..color = Colors.white
-            ..strokeWidth = 2
+            ..strokeWidth = 4
             ..style = PaintingStyle.stroke;
           
           canvas.drawCircle(
             Offset(x, y),
-            6,  // Match native keypoint radius
+            8,  // Increased keypoint radius for better visibility
             borderPaint,
           );
         }
@@ -435,7 +435,7 @@ class PosePainter extends CustomPainter {
       final boxIndex = poseResults.indexOf(pose);
       final boxPaint = Paint()
         ..color = _getDetectionColor(boxIndex).withOpacity(1.0)
-        ..strokeWidth = 2
+        ..strokeWidth = 4
         ..style = PaintingStyle.stroke;
       
       canvas.drawRect(pose.boundingBox, boxPaint);
