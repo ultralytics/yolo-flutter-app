@@ -1,0 +1,14 @@
+// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+import Cocoa
+import FlutterMacOS
+import XCTest
+
+class RunnerTests: XCTestCase {
+
+  func testExample() {
+    // If you add code to the Runner application, consider adding tests here.
+    // See https://developer.apple.com/documentation/xctest for more information about using XCTest.
+  }
+
+}

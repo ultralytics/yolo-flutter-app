@@ -43,19 +43,18 @@ class Classifier(
 
     var numClass: Int = 0
 
-    private lateinit var imageProcessorCameraPortrait: ImageProcessor
-    private lateinit var imageProcessorCameraLandscape: ImageProcessor
+    private lateinit var imageProcessorCamera: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
 
     init {
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
-        // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
+        // Load label information (try Appended ZIP → FlatBuffers in order)
         var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         var labelsWereLoaded = loadedLabels != null
 
         if (labelsWereLoaded) {
-            this.labels = loadedLabels!! // Use labels from appended ZIP
+            this.labels = loadedLabels!!
             Log.i(TAG, "Labels successfully loaded from appended ZIP.")
         } else {
             Log.w(TAG, "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
@@ -65,11 +64,11 @@ class Classifier(
                 Log.i(TAG, "Labels successfully loaded from FlatBuffers metadata.")
             }
         }
-
+        
         if (!labelsWereLoaded) {
-            Log.w(TAG, "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
+            Log.w(TAG, "No embedded labels found. Using labels passed via constructor: ${this.labels}")
             if (this.labels.isEmpty()) {
-                Log.w(TAG, "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names.")
+                Log.w(TAG, "Warning: No labels loaded and no labels provided. Classifications will show 'Unknown'.")
             }
         }
 
@@ -93,16 +92,9 @@ class Classifier(
         numClass = outputShape[1]
         Log.d(TAG, "Model output shape = [1, $numClass]")
 
-        // For camera feed in portrait mode (with rotation)
-        imageProcessorCameraPortrait = ImageProcessor.Builder()
-            .add(Rot90Op(3))  // 270-degree rotation
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(INPUT_MEAN, INPUT_STD))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-            
-        // For camera feed in landscape mode (no rotation)
-        imageProcessorCameraLandscape = ImageProcessor.Builder()
+        // For camera feed (with rotation)
+        imageProcessorCamera = ImageProcessor.Builder()
+            .add(Rot90Op(3))  // Rotate as needed
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(INPUT_MEAN, INPUT_STD))
             .add(CastOp(DataType.FLOAT32))
@@ -118,20 +110,16 @@ class Classifier(
         Log.d(TAG, "Classifier initialized.")
     }
 
-    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
+    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
         t0 = System.nanoTime()
 
         val tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bitmap)
         
-        // Choose appropriate processor based on input source and orientation
+        // Choose appropriate processor based on input source
         val processedImage = if (rotateForCamera) {
-            // Apply appropriate rotation based on device orientation
-            if (isLandscape) {
-                imageProcessorCameraLandscape.process(tensorImage)
-            } else {
-                imageProcessorCameraPortrait.process(tensorImage)
-            }
+            // Apply rotation for camera feed
+            imageProcessorCamera.process(tensorImage)
         } else {
             // No rotation for single image
             imageProcessorSingleImage.process(tensorImage)
@@ -170,7 +158,7 @@ class Classifier(
         val fpsVal = if (t4 > 0) 1.0 / t4 else 0.0
 
         return YOLOResult(
-            origShape = Size(origWidth, origHeight),
+            origShape = Size(bitmap.width, bitmap.height),
             probs = probs,
             speed = t2,
             fps = fpsVal,
@@ -178,13 +166,6 @@ class Classifier(
         )
     }
 
-    companion object {
-        private const val TAG = "Classifier"
-
-        private const val INPUT_MEAN = 0f
-        private const val INPUT_STD = 255f
-    }
-    
     /**
      * Load labels from FlatBuffers metadata
      */
@@ -218,5 +199,12 @@ class Classifier(
     } catch (e: Exception) {
         Log.e(TAG, "Failed to extract metadata: ${e.message}")
         false
+    }
+
+    companion object {
+        private const val TAG = "Classifier"
+
+        private const val INPUT_MEAN = 0f
+        private const val INPUT_STD = 255f
     }
 }

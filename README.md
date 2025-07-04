@@ -51,7 +51,7 @@ YOLOView(
 )
 ```
 
-**[▶️ Try the Live Demo](./example)** | **[📖 Full Setup Guide](doc/install.md)**
+**[▶️ Try the Example](./example)** | **[📖 Full Setup Guide](doc/install.md)** | **[🎮 Demo App](./demo_app)**
 
 ## 🎯 What You Can Build
 
@@ -142,6 +142,22 @@ Ultralytics offers two licensing options to accommodate diverse needs:
 
 - **AGPL-3.0 License**: Ideal for students, researchers, and enthusiasts passionate about open-source collaboration. This [OSI-approved](https://opensource.org/license/agpl-v3) license promotes knowledge sharing and open contribution. See the [LICENSE](https://github.com/ultralytics/ultralytics/blob/main/LICENSE) file for details.
 - **Enterprise License**: Designed for commercial applications, this license permits seamless integration of Ultralytics software and AI models into commercial products and services, bypassing the open-source requirements of AGPL-3.0. For commercial use cases, please inquire about an [Enterprise License](https://www.ultralytics.com/license).
+
+## 📁 Project Structure
+
+```
+yolo-flutter-app/
+├── lib/                    # Flutter plugin source code
+├── example/                # Minimal example (80 lines)
+├── demo_app/              # Comprehensive demo application
+├── samples/               # Task-specific examples
+│   ├── 01_basic_detection/
+│   ├── 02_pose_estimation/
+│   ├── 03_segmentation/
+│   └── ...
+└── doc/                   # Documentation
+
+```
 
 ## 🔗 Related Resources
 

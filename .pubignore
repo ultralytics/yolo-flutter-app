@@ -23,6 +23,10 @@ example/test/widget_test.dart
 # Example and test applications
 example/
 hello_yolo/
+demo_app/
+samples/
+screenshot_app/
+test_pr228_app/
 
 # Model files (exclude all TFLite, MLPackage, and MLModel files)
 **/*.tflite

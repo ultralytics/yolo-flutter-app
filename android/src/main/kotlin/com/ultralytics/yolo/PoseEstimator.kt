@@ -99,8 +99,7 @@ class PoseEstimator(
         }
     }
 
-    private lateinit var imageProcessorCameraPortrait: ImageProcessor
-    private lateinit var imageProcessorCameraLandscape: ImageProcessor
+    private lateinit var imageProcessorCamera: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
     
     // Reuse ByteBuffer for input to reduce allocations
@@ -116,7 +115,7 @@ class PoseEstimator(
     init {
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
-        // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
+        // Get labels from metadata (try Appended ZIP → FlatBuffers in order)
         var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         var labelsWereLoaded = loadedLabels != null
 
@@ -133,9 +132,9 @@ class PoseEstimator(
         }
 
         if (!labelsWereLoaded) {
-            Log.w("PoseEstimator", "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
+            Log.w("PoseEstimator", "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor: ${this.labels}")
             if (this.labels.isEmpty()) {
-                Log.w("PoseEstimator", "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names.")
+                Log.w("PoseEstimator", "Warning: No labels loaded and no labels provided. Detections will show 'Unknown'.")
             }
         }
 
@@ -168,16 +167,8 @@ class PoseEstimator(
         }
         Log.d("PoseEstimator", "Direct ByteBuffer allocated with native ordering: $inputBytes bytes")
         
-        // For camera feed in portrait mode (with rotation)
-        imageProcessorCameraPortrait = ImageProcessor.Builder()
-            .add(Rot90Op(3))  // 270-degree rotation
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-            
-        // For camera feed in landscape mode (no rotation)
-        imageProcessorCameraLandscape = ImageProcessor.Builder()
+        imageProcessorCamera = ImageProcessor.Builder()
+            .add(Rot90Op(3))
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))
             .add(CastOp(DataType.FLOAT32))
@@ -191,19 +182,15 @@ class PoseEstimator(
             .build()
     }
 
-    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
+    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
         t0 = System.nanoTime()
         val tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bitmap)
         
-        // Choose the appropriate processor based on input source and orientation
+        // Choose the appropriate processor based on input source
         val processedImage = if (rotateForCamera) {
-            // Apply appropriate rotation based on device orientation
-            if (isLandscape) {
-                imageProcessorCameraLandscape.process(tensorImage)
-            } else {
-                imageProcessorCameraPortrait.process(tensorImage)
-            }
+            // Apply rotation for camera feed
+            imageProcessorCamera.process(tensorImage)
         } else {
             // No rotation for single image
             imageProcessorSingleImage.process(tensorImage)
@@ -234,7 +221,7 @@ class PoseEstimator(
         val fpsDouble: Double = if (t4 > 0) (1.0 / t4) else 0.0
         // Pack into YOLOResult and return
         return YOLOResult(
-            origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
+            origShape = com.ultralytics.yolo.Size(bitmap.height, bitmap.width),
             boxes = boxes,
             keypointsList = keypointsList,
 //            annotatedImage = annotatedImage,
@@ -448,9 +435,12 @@ class PoseEstimator(
         val box: Box,
         val keypoints: Keypoints
     )
-    
+
     /**
-     * Load labels from FlatBuffers metadata
+     * Load labels from FlatBuffers (metadata.yaml)
+     * - Scan all associatedFileNames
+     * - Parse YAML as Map<Int,String>
+     * - Use values directly as List and assign to labels
      */
     private fun loadLabelsFromFlatbuffers(buf: MappedByteBuffer): Boolean = try {
         val extractor = MetadataExtractor(buf)

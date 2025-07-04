@@ -49,9 +49,8 @@ class ObbDetector(
         }
     }
 
-    // Similar to PoseEstimator, use ImageProcessor - separate ones for camera portrait/landscape and single images
-    private lateinit var imageProcessorCameraPortrait: ImageProcessor
-    private lateinit var imageProcessorCameraLandscape: ImageProcessor
+    // Similar to PoseEstimator, use ImageProcessor - one for camera and one for single images
+    private lateinit var imageProcessorCamera: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
     
     // Reuse ByteBuffer for input to reduce allocations
@@ -71,7 +70,7 @@ class ObbDetector(
     init {
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
-        // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
+        // Get labels from metadata (try Appended ZIP → FlatBuffers in order)
         var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         var labelsWereLoaded = loadedLabels != null
 
@@ -88,9 +87,9 @@ class ObbDetector(
         }
 
         if (!labelsWereLoaded) {
-            Log.w("ObbDetector", "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
+            Log.w("ObbDetector", "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor: ${this.labels}")
             if (this.labels.isEmpty()) {
-                Log.w("ObbDetector", "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names.")
+                Log.w("ObbDetector", "Warning: No labels loaded and no labels provided. Detections will show 'Unknown'.")
             }
         }
 
@@ -124,16 +123,9 @@ class ObbDetector(
         }
 
         
-        // For camera feed in portrait mode (with rotation)
-        imageProcessorCameraPortrait = ImageProcessor.Builder()
-            .add(Rot90Op(3))  // 270-degree rotation
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))  // Normalize to 0~1
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-            
-        // For camera feed in landscape mode (no rotation)
-        imageProcessorCameraLandscape = ImageProcessor.Builder()
+        // For camera feed (with rotation)
+        imageProcessorCamera = ImageProcessor.Builder()
+            .add(Rot90Op(3))
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))  // Normalize to 0~1
             .add(CastOp(DataType.FLOAT32))
@@ -147,20 +139,16 @@ class ObbDetector(
             .build()
     }
 
-    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
+    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
         t0 = System.nanoTime()
 
         val tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bitmap)
         
-        // Choose appropriate processor based on input source and orientation
+        // Choose appropriate processor based on input source
         val processedImage = if (rotateForCamera) {
-            // Apply appropriate rotation based on device orientation
-            if (isLandscape) {
-                imageProcessorCameraLandscape.process(tensorImage)
-            } else {
-                imageProcessorCameraPortrait.process(tensorImage)
-            }
+            // Apply rotation for camera feed
+            imageProcessorCamera.process(tensorImage)
         } else {
             // No rotation for single image
             imageProcessorSingleImage.process(tensorImage)
@@ -188,7 +176,7 @@ class ObbDetector(
         val annotatedImage = drawOBBsOnBitmap(bitmap, obbDetections)
 
         return YOLOResult(
-            origShape = Size(origWidth, origHeight),
+            origShape = Size(bitmap.height, bitmap.width),
             obb = obbDetections,
             annotatedImage = annotatedImage,
             speed = t2,
@@ -252,6 +240,44 @@ class ObbDetector(
     }
 
     data class Detection(val obb: OBB, val score: Float, val cls: Int)
+
+    /**
+     * Load labels from FlatBuffers (metadata.yaml)
+     * - Scan all associatedFileNames
+     * - Parse YAML as Map<Int,String>
+     * - Use values directly as List and assign to labels
+     */
+    private fun loadLabelsFromFlatbuffers(buf: MappedByteBuffer): Boolean = try {
+        val extractor = MetadataExtractor(buf)
+        val files = extractor.associatedFileNames
+        if (!files.isNullOrEmpty()) {
+            for (fileName in files) {
+                Log.d("ObbDetector", "Found associated file: $fileName")
+                extractor.getAssociatedFile(fileName)?.use { stream ->
+                    val fileString = String(stream.readBytes(), Charsets.UTF_8)
+                    Log.d("ObbDetector", "Associated file contents:\n$fileString")
+
+                    val yaml = Yaml()
+                    @Suppress("UNCHECKED_CAST")
+                    val data = yaml.load<Map<String, Any>>(fileString)
+                    if (data != null && data.containsKey("names")) {
+                        val namesMap = data["names"] as? Map<Int, String>
+                        if (namesMap != null) {
+                            labels = namesMap.values.toList()
+                            Log.d("ObbDetector", "Loaded labels from metadata: $labels")
+                            return true
+                        }
+                    }
+                }
+            }
+        } else {
+            Log.d("ObbDetector", "No associated files found in the metadata.")
+        }
+        false
+    } catch (e: Exception) {
+        Log.e("ObbDetector", "Failed to extract metadata: ${e.message}")
+        false
+    }
 
     private fun drawOBBsOnBitmap(bitmap: Bitmap, obbDetections: List<OBBResult>): Bitmap {
         val output = bitmap.copy(Bitmap.Config.ARGB_8888, true)
@@ -429,41 +455,6 @@ class ObbDetector(
         }
         area += (poly.last().x * poly.first().y) - (poly.first().x * poly.last().y)
         return kotlin.math.abs(area) * 0.5f
-    }
-    
-    /**
-     * Load labels from FlatBuffers metadata
-     */
-    private fun loadLabelsFromFlatbuffers(buf: MappedByteBuffer): Boolean = try {
-        val extractor = MetadataExtractor(buf)
-        val files = extractor.associatedFileNames
-        if (!files.isNullOrEmpty()) {
-            for (fileName in files) {
-                Log.d("ObbDetector", "Found associated file: $fileName")
-                extractor.getAssociatedFile(fileName)?.use { stream ->
-                    val fileString = String(stream.readBytes(), Charsets.UTF_8)
-                    Log.d("ObbDetector", "Associated file contents:\n$fileString")
-
-                    val yaml = Yaml()
-                    @Suppress("UNCHECKED_CAST")
-                    val data = yaml.load<Map<String, Any>>(fileString)
-                    if (data != null && data.containsKey("names")) {
-                        val namesMap = data["names"] as? Map<Int, String>
-                        if (namesMap != null) {
-                            labels = namesMap.values.toList()
-                            Log.d("ObbDetector", "Loaded labels from metadata: $labels")
-                            return true
-                        }
-                    }
-                }
-            }
-        } else {
-            Log.d("ObbDetector", "No associated files found in the metadata.")
-        }
-        false
-    } catch (e: Exception) {
-        Log.e("ObbDetector", "Failed to extract metadata: ${e.message}")
-        false
     }
 }
 

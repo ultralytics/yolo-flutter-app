@@ -301,8 +301,9 @@ class YOLO {
         if (resultMap.containsKey('boxes') && resultMap['boxes'] is List) {
           boxes.addAll(
             (resultMap['boxes'] as List).whereType<Map>().map((item) {
+              final Map<dynamic, dynamic> mapItem = item;
               return Map<String, dynamic>.fromEntries(
-                item.entries.map((e) => MapEntry(e.key.toString(), e.value)),
+                mapItem.entries.map((e) => MapEntry(e.key.toString(), e.value)),
               );
             }),
           );
@@ -505,9 +506,16 @@ class YOLO {
 
   /// Helper method to create a detection map from a box
   Map<String, dynamic> _createDetectionMap(Map<String, dynamic> box) {
+    // Debug: Check what we're receiving
+    final className = box['className'] ?? box['class'] ?? 'Unknown';
+
+    // If class is numeric, it's the index; if string, it's the name
+    final classValue = box['class'];
+    final isNumeric = classValue is int;
+
     return {
-      'classIndex': 0, // Would need class mapping for proper index
-      'className': box['class'] ?? '',
+      'classIndex': isNumeric ? classValue : 0,
+      'className': className.toString(), // Ensure it's a string
       'confidence': box['confidence'] ?? 0.0,
       'boundingBox': {
         'left': box['x1'] ?? 0.0,

@@ -21,7 +21,6 @@ import org.tensorflow.lite.support.metadata.schema.ModelMetadata
 import org.yaml.snakeyaml.Yaml
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.MappedByteBuffer
 import kotlin.math.max
 import kotlin.math.min
 
@@ -59,9 +58,8 @@ class Segmenter(
         }
     }
 
-    /** ImageProcessor for image preprocessing - separate ones for camera portrait/landscape and single images */
-    private lateinit var imageProcessorCameraPortrait: ImageProcessor
-    private lateinit var imageProcessorCameraLandscape: ImageProcessor
+    /** ImageProcessor for image preprocessing - one for camera and one for single images */
+    private lateinit var imageProcessorCamera: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
     
     // Reuse ByteBuffer for input to reduce allocations
@@ -80,21 +78,62 @@ class Segmenter(
         var labelsWereLoaded = loadedLabels != null
 
         if (labelsWereLoaded) {
-            this.labels = loadedLabels!! // Use labels from appended ZIP
+            this.labels = loadedLabels!!
             Log.i("Segmenter", "Labels successfully loaded from appended ZIP.")
         } else {
             Log.w("Segmenter", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
             // Try FlatBuffers as a fallback
-            if (loadLabelsFromFlatbuffers(modelBuffer)) {
-                labelsWereLoaded = true
-                Log.i("Segmenter", "Labels successfully loaded from FlatBuffers metadata.")
+            try {
+                val metadataExtractor = MetadataExtractor(modelBuffer)
+                val modelMetadata: ModelMetadata? = metadataExtractor.modelMetadata
+                if (modelMetadata != null) {
+                    Log.d("Segmenter", "Model metadata retrieved successfully.")
+                }
+                val associatedFiles = metadataExtractor.associatedFileNames
+                if (!associatedFiles.isNullOrEmpty()) {
+                    run fileLoop@{
+                        for (fileName in associatedFiles) {
+                            Log.d("Segmenter", "Found associated file: $fileName")
+                            val inputStream = metadataExtractor.getAssociatedFile(fileName)
+                            inputStream?.use { stream ->
+                                val fileContent = stream.readBytes()
+                                val fileString = fileContent.toString(Charsets.UTF_8)
+                                Log.d("Segmenter", "Associated file contents:\n$fileString")
+                                try {
+                                    val yaml = Yaml()
+                                    @Suppress("UNCHECKED_CAST")
+                                    val data = yaml.load<Map<String, Any>>(fileString)
+                                    if (data != null && data.containsKey("names")) {
+                                        val namesMap = data["names"] as? Map<Int, String>
+                                        if (namesMap != null) {
+                                            this.labels = namesMap.values.toList()
+                                            labelsWereLoaded = true
+                                            Log.d("Segmenter", "Loaded labels from metadata: $labels")
+                                            return@fileLoop
+                                        } else {
+                                            Log.e("Segmenter", "Failed to parse YAML from metadata")
+                                        }
+                                    } else {
+                                        Log.e("Segmenter", "Failed to parse YAML from metadata")
+                                    }
+                                } catch (ex: Exception) {
+                                    Log.e("Segmenter", "Failed to parse YAML from metadata: ${ex.message}")
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Log.d("Segmenter", "No associated files found in the metadata.")
+                }
+            } catch (e: Exception) {
+                Log.e("Segmenter", "Failed to extract metadata: ${e.message}")
             }
         }
-
+        
         if (!labelsWereLoaded) {
-            Log.w("Segmenter", "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
+            Log.w("Segmenter", "No embedded labels found. Using labels passed via constructor: ${this.labels}")
             if (this.labels.isEmpty()) {
-                Log.w("Segmenter", "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names.")
+                Log.w("Segmenter", "Warning: No labels loaded and no labels provided. Detections will show 'Unknown'.")
             }
         }
 
@@ -136,24 +175,17 @@ class Segmenter(
             order(ByteOrder.nativeOrder())
         }
 
-        // Initialize ImageProcessor - separate ones for camera portrait/landscape and single images
+        // Initialize ImageProcessor - both with and without rotation
         
-        // 1. For camera feed in portrait mode (with rotation)
-        imageProcessorCameraPortrait = ImageProcessor.Builder()
-            .add(Rot90Op(3)) // 270-degree rotation
+        // 1. For camera feed (with rotation)
+        imageProcessorCamera = ImageProcessor.Builder()
+            .add(Rot90Op(3)) // Rotate as needed
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))
             .add(CastOp(DataType.FLOAT32))
             .build()
             
-        // 2. For camera feed in landscape mode (no rotation)
-        imageProcessorCameraLandscape = ImageProcessor.Builder()
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-            
-        // 3. For single images (no rotation)
+        // 2. For single images (no rotation)
         imageProcessorSingleImage = ImageProcessor.Builder()
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))
@@ -161,21 +193,17 @@ class Segmenter(
             .build()
     }
 
-    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
+    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean): YOLOResult {
         t0 = System.nanoTime()
 
         // (1) Preprocess with TensorImage
         val tensorImage = TensorImage(DataType.FLOAT32)
         tensorImage.load(bitmap)
         
-        // Choose appropriate processor based on input source and orientation
+        // Choose appropriate processor based on whether we're processing camera feed or single image
         val processedImage = if (rotateForCamera) {
-            // Use appropriate camera processor based on device orientation
-            if (isLandscape) {
-                imageProcessorCameraLandscape.process(tensorImage)
-            } else {
-                imageProcessorCameraPortrait.process(tensorImage)
-            }
+            // Use camera processor (with rotation) for camera feed
+            imageProcessorCamera.process(tensorImage)
         } else {
             // Use single image processor (no rotation) for regular images
             imageProcessorSingleImage.process(tensorImage)
@@ -197,7 +225,7 @@ class Segmenter(
             Log.e("Segmenter", "Inference error: ${e.message}")
             val fpsDouble: Double = if (t4 > 0f) (1f / t4).toDouble() else 0.0
             return YOLOResult(
-                origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
+                origShape = com.ultralytics.yolo.Size(bitmap.width, bitmap.height),
                 boxes = emptyList(),
                 speed = t2,
                 fps = fpsDouble,
@@ -227,6 +255,8 @@ class Segmenter(
             )
             
             val label = labels.getOrElse(cls) { "Unknown" }
+            // Debug: Log class index and label
+            Log.d("Segmenter", "Class index: $cls, Label: $label, Labels size: ${labels.size}")
             // Use normRect for xywhn (normalized 0-1 coordinates) and rectF for xywh (pixel coordinates)
             boxes.add(Box(cls, label, score, rectF, normRect))
         }
@@ -241,7 +271,7 @@ class Segmenter(
         val masks = Masks(probMasks ?: emptyList(), combinedMask)
         val fpsDouble: Double = if (t4 > 0f) (1f / t4).toDouble() else 0.0
         return YOLOResult(
-            origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
+            origShape = com.ultralytics.yolo.Size(bitmap.height, bitmap.width),
             boxes = boxes,
             masks = masks,
             speed = t2,
@@ -381,39 +411,4 @@ class Segmenter(
         val score: Float,
         val maskCoeffs: FloatArray
     )
-    
-    /**
-     * Load labels from FlatBuffers metadata
-     */
-    private fun loadLabelsFromFlatbuffers(buf: MappedByteBuffer): Boolean = try {
-        val extractor = MetadataExtractor(buf)
-        val files = extractor.associatedFileNames
-        if (!files.isNullOrEmpty()) {
-            for (fileName in files) {
-                Log.d("Segmenter", "Found associated file: $fileName")
-                extractor.getAssociatedFile(fileName)?.use { stream ->
-                    val fileString = String(stream.readBytes(), Charsets.UTF_8)
-                    Log.d("Segmenter", "Associated file contents:\n$fileString")
-
-                    val yaml = Yaml()
-                    @Suppress("UNCHECKED_CAST")
-                    val data = yaml.load<Map<String, Any>>(fileString)
-                    if (data != null && data.containsKey("names")) {
-                        val namesMap = data["names"] as? Map<Int, String>
-                        if (namesMap != null) {
-                            labels = namesMap.values.toList()
-                            Log.d("Segmenter", "Loaded labels from metadata: $labels")
-                            return true
-                        }
-                    }
-                }
-            }
-        } else {
-            Log.d("Segmenter", "No associated files found in the metadata.")
-        }
-        false
-    } catch (e: Exception) {
-        Log.e("Segmenter", "Failed to extract metadata: ${e.message}")
-        false
-    }
 }
