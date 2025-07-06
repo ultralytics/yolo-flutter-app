@@ -259,7 +259,6 @@ class ObjectDetector(
         var stageStartTime = System.nanoTime()
 
         // ======== Preprocessing: Convert Bitmap to ByteBuffer via TensorImage ========
-        Log.d(TAG, "Predict Start: Preprocessing")
         // 1. Resize to input size (using createScaledBitmap instead of the original scaledBitmap)
 //        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, inputSize.width, inputSize.height, false)
 
@@ -289,18 +288,17 @@ class ObjectDetector(
         inputBuffer.rewind()
         
         var preprocessTimeMs = (System.nanoTime() - stageStartTime) / 1_000_000.0
-        Log.d(TAG, "Predict Stage: Preprocessing done in $preprocessTimeMs ms")
         stageStartTime = System.nanoTime()
 
         // ======== Inference ============
-        Log.d(TAG, "Predict Start: Inference")
+       
         interpreter.run(inputBuffer, rawOutput)
         var inferenceTimeMs = (System.nanoTime() - stageStartTime) / 1_000_000.0
-        Log.d(TAG, "Predict Stage: Inference done in $inferenceTimeMs ms")
+       
         stageStartTime = System.nanoTime()
 
         // ======== Post-processing (same as existing code) ============
-        Log.d(TAG, "Predict Start: Postprocessing")
+       
         // val postStart = System.nanoTime() // This was previously here, now using stageStartTime
         val outHeight = rawOutput[0].size      // out1
         val outWidth = rawOutput[0][0].size      // out2
@@ -362,7 +360,7 @@ class ObjectDetector(
 
         // val postEnd = System.nanoTime() // This was previously here, now using stageStartTime for end of postprocess
         var postprocessTimeMs = (System.nanoTime() - stageStartTime) / 1_000_000.0
-        Log.d(TAG, "Predict Stage: Postprocessing done in $postprocessTimeMs ms")
+       
 
         val totalMs = (System.nanoTime() - overallStartTime) / 1_000_000.0
         Log.d(TAG, "Predict Total time: $totalMs ms (Pre: $preprocessTimeMs, Inf: $inferenceTimeMs, Post: $postprocessTimeMs)")
