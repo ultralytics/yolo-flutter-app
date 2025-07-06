@@ -48,7 +48,7 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
   late final ModelManager _modelManager;
 
   // Add streaming config for frame rate control
-  late final YOLOStreamingConfig _streamingConfig;
+  late YOLOStreamingConfig _streamingConfig;
 
   @override
   void initState() {
@@ -57,7 +57,7 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
     // Initialize streaming config for slower detection
     _streamingConfig = const YOLOStreamingConfig(
       inferenceFrequency: 5, // Process 5 frames per second for slower detection
-      maxFPS: 5, // Also limit output to 5 FPS
+      maxFPS: 30, // Keep output at 30 FPS for smooth UI updates
       includeDetections: true,
       includeClassifications: true,
       includeProcessingTimeMs: true,
@@ -116,7 +116,14 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
   /// - FPS calculation
   /// - Debug information for first few detections
   void _onDetectionResults(List<YOLOResult> results) {
-    if (!mounted) return;
+    debugPrint(
+      '🎯 _onDetectionResults called with ${results.length} detections',
+    );
+
+    if (!mounted) {
+      debugPrint('🎯 Widget not mounted, skipping update');
+      return;
+    }
 
     _frameCount++;
     final now = DateTime.now();
@@ -124,7 +131,7 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
 
     if (elapsed >= 1000) {
       final calculatedFps = _frameCount * 1000 / elapsed;
-      debugPrint('Calculated FPS: ${calculatedFps.toStringAsFixed(1)}');
+      debugPrint('🎯 Calculated FPS: ${calculatedFps.toStringAsFixed(1)}');
 
       _currentFps = calculatedFps;
       _frameCount = 0;
@@ -134,22 +141,25 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
     // Still update detection count in the UI
     setState(() {
       _detectionCount = results.length;
+      debugPrint('🎯 Updated detection count to: $_detectionCount');
     });
 
     // Debug first few detections
     for (var i = 0; i < results.length && i < 3; i++) {
       final r = results[i];
       debugPrint(
-        'Detection $i: ${r.className} (${(r.confidence * 100).toStringAsFixed(1)}%) at ${r.boundingBox}',
+        '🎯 Detection $i: ${r.className} (${(r.confidence * 100).toStringAsFixed(1)}%) at ${r.boundingBox}',
       );
     }
   }
 
   /// Updates the streaming configuration to change frame rate
   void _updateFrameRate(int fps) {
+    debugPrint('🔄 Updating frame rate to $fps FPS');
+
     final newConfig = YOLOStreamingConfig(
       inferenceFrequency: fps,
-      maxFPS: fps,
+      maxFPS: 30, // Keep output at 30 FPS for smooth UI updates
       includeDetections: true,
       includeClassifications: true,
       includeProcessingTimeMs: true,
@@ -161,18 +171,29 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
     );
 
     if (_useController) {
+      debugPrint('📱 Using controller to set streaming config');
       _yoloController.setStreamingConfig(newConfig);
     }
 
     setState(() {
       _streamingConfig = newConfig;
+      debugPrint('🔄 Updated _streamingConfig in setState');
     });
 
-    debugPrint('Updated frame rate to $fps FPS');
+    debugPrint('✅ Updated frame rate to $fps FPS');
+    debugPrint(
+      '📊 New config - inferenceFrequency: ${newConfig.inferenceFrequency}, maxFPS: ${newConfig.maxFPS}',
+    );
+    debugPrint(
+      '📊 Current _streamingConfig.inferenceFrequency: ${_streamingConfig.inferenceFrequency}',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint(
+      '🏗️ Building UI - current FPS: ${_streamingConfig.inferenceFrequency}',
+    );
     final orientation = MediaQuery.of(context).orientation;
     final isLandscape = orientation == Orientation.landscape;
 
@@ -321,6 +342,7 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
                         ),
                       ),
                       const SizedBox(width: 16),
+                      // Debug: Target FPS display
                       Text(
                         'TARGET: ${_streamingConfig.inferenceFrequency ?? 5}',
                         style: const TextStyle(
@@ -400,21 +422,30 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
                   _toggleSlider(SliderType.iou);
                 }),
                 SizedBox(height: isLandscape ? 8 : 12),
-                _buildIconButton(Icons.speed, () {
-                  // Cycle through frame rates: 5 -> 10 -> 15 -> 30 -> 5
-                  int currentFps = _streamingConfig.inferenceFrequency ?? 5;
-                  int nextFps;
-                  if (currentFps <= 5) {
-                    nextFps = 10;
-                  } else if (currentFps <= 10) {
-                    nextFps = 15;
-                  } else if (currentFps <= 15) {
-                    nextFps = 30;
-                  } else {
-                    nextFps = 5;
-                  }
-                  _updateFrameRate(nextFps);
-                }),
+                _buildCircleButton(
+                  '${_streamingConfig.inferenceFrequency ?? 5}',
+                  onPressed: () {
+                    debugPrint(
+                      '🎯 FPS button text: ${_streamingConfig.inferenceFrequency ?? 5}',
+                    );
+                    debugPrint('🎯 FPS button pressed');
+                    // Cycle through frame rates: 5 -> 10 -> 15 -> 30 -> 5
+                    int currentFps = _streamingConfig.inferenceFrequency ?? 5;
+                    debugPrint('📊 Current FPS: $currentFps');
+                    int nextFps;
+                    if (currentFps <= 5) {
+                      nextFps = 10;
+                    } else if (currentFps <= 10) {
+                      nextFps = 15;
+                    } else if (currentFps <= 15) {
+                      nextFps = 30;
+                    } else {
+                      nextFps = 5;
+                    }
+                    debugPrint('🎯 Next FPS: $nextFps');
+                    _updateFrameRate(nextFps);
+                  },
+                ),
                 SizedBox(height: isLandscape ? 16 : 40),
               ],
             ),
@@ -514,6 +545,7 @@ class _FrontCameraExampleState extends State<FrontCameraExample> {
   /// [label] is the text to display in the button
   /// [onPressed] is called when the button is tapped
   Widget _buildCircleButton(String label, {required VoidCallback onPressed}) {
+    debugPrint('🔘 Building circle button with label: $label');
     return CircleAvatar(
       radius: 24,
       backgroundColor: Colors.black.withValues(alpha: 0.2),

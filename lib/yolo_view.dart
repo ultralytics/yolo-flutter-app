@@ -433,6 +433,11 @@ class YOLOViewController {
   ///
   /// @param config The streaming configuration to apply
   Future<void> setStreamingConfig(YOLOStreamingConfig config) async {
+    logInfo('🔄 YOLOViewController: Setting streaming config');
+    logInfo(
+      '📊 Config - inferenceFrequency: ${config.inferenceFrequency}, maxFPS: ${config.maxFPS}',
+    );
+
     if (_methodChannel == null) {
       logInfo(
         'YOLOViewController: Warning - Cannot set streaming config, view not yet created',
@@ -440,7 +445,7 @@ class YOLOViewController {
       return;
     }
     try {
-      await _methodChannel!.invokeMethod('setStreamingConfig', {
+      final params = {
         'includeDetections': config.includeDetections,
         'includeClassifications': config.includeClassifications,
         'includeProcessingTimeMs': config.includeProcessingTimeMs,
@@ -453,10 +458,13 @@ class YOLOViewController {
         'throttleInterval': config.throttleInterval?.inMilliseconds,
         'inferenceFrequency': config.inferenceFrequency,
         'skipFrames': config.skipFrames,
-      });
-      logInfo('YOLOViewController: Streaming config updated');
+      };
+
+      logInfo('📤 Sending setStreamingConfig with params: $params');
+      await _methodChannel!.invokeMethod('setStreamingConfig', params);
+      logInfo('✅ YOLOViewController: Streaming config updated successfully');
     } catch (e) {
-      logInfo('YOLOViewController: Error setting streaming config: $e');
+      logInfo('❌ YOLOViewController: Error setting streaming config: $e');
     }
   }
 
@@ -739,6 +747,7 @@ class YOLOViewState extends State<YOLOView> {
 
   @override
   void didUpdateWidget(YOLOView oldWidget) {
+    logInfo('🔄 YOLOView: didUpdateWidget called');
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.controller != widget.controller) {
@@ -762,6 +771,16 @@ class YOLOViewState extends State<YOLOView> {
       _methodChannel.invokeMethod('setShowUIControls', {
         'show': widget.showNativeUI,
       });
+    }
+
+    // Handle streaming config changes
+    if (oldWidget.streamingConfig != widget.streamingConfig) {
+      logInfo('🔄 YOLOView: Streaming config changed, updating controller');
+      logInfo('📊 Old config: ${oldWidget.streamingConfig}');
+      logInfo('📊 New config: ${widget.streamingConfig}');
+      if (widget.streamingConfig != null) {
+        _effectiveController.setStreamingConfig(widget.streamingConfig!);
+      }
     }
 
     // Handle model or task changes
@@ -897,12 +916,21 @@ class YOLOViewState extends State<YOLOView> {
 
       _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
         (dynamic event) {
+          logInfo('🎯 YOLOView: Received event type: ${event.runtimeType}');
+
           if (event is Map && event.containsKey('test')) {
             logInfo('YOLOView: Received test message: ${event['test']}');
             return;
           }
 
           if (event is Map) {
+            logInfo('🎯 YOLOView: Event keys: ${event.keys.toList()}');
+            logInfo(
+              '🎯 YOLOView: onStreamingData is ${widget.onStreamingData != null ? 'set' : 'null'}',
+            );
+            logInfo(
+              '🎯 YOLOView: onResult is ${widget.onResult != null ? 'set' : 'null'}',
+            );
             // Priority system: onStreamingData takes precedence
             if (widget.onStreamingData != null) {
               try {
@@ -920,17 +948,23 @@ class YOLOViewState extends State<YOLOView> {
               if (widget.onResult != null && event.containsKey('detections')) {
                 try {
                   final List<dynamic> detections = event['detections'] ?? [];
+                  logInfo(
+                    '🎯 YOLOView: Received ${detections.length} detections from streaming data',
+                  );
 
                   for (var i = 0; i < detections.length && i < 3; i++) {
                     final detection = detections[i];
                     final className = detection['className'] ?? 'unknown';
                     final confidence = detection['confidence'] ?? 0.0;
                     logInfo(
-                      'YOLOView: Detection $i - $className (${(confidence * 100).toStringAsFixed(1)}%)',
+                      '🎯 YOLOView: Detection $i - $className (${(confidence * 100).toStringAsFixed(1)}%)',
                     );
                   }
 
                   final results = _parseDetectionResults(event);
+                  logInfo(
+                    '🎯 YOLOView: Calling widget.onResult! with ${results.length} results',
+                  );
                   widget.onResult!(results);
                 } catch (e, s) {
                   logInfo('Error parsing detection results: $e');
@@ -1088,6 +1122,8 @@ class YOLOViewState extends State<YOLOView> {
         'maxFPS': widget.streamingConfig!.maxFPS,
         'throttleInterval':
             widget.streamingConfig!.throttleInterval?.inMilliseconds,
+        'inferenceFrequency': widget.streamingConfig!.inferenceFrequency,
+        'skipFrames': widget.streamingConfig!.skipFrames,
       };
     }
 

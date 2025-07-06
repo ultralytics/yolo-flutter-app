@@ -32,6 +32,14 @@ data class YOLOStreamConfig(
     // Note: annotatedImage is intentionally excluded for YOLOView
     // YOLOView uses Canvas drawing (real-time overlay), not bitmap generation
 ) {
+    override fun toString(): String {
+        return "YOLOStreamConfig(" +
+                "inferenceFrequency=$inferenceFrequency, " +
+                "maxFPS=$maxFPS, " +
+                "skipFrames=$skipFrames, " +
+                "includeDetections=$includeDetections" +
+                ")"
+    }
     companion object {
         /**
          * Preset configurations for common use cases

@@ -186,7 +186,9 @@ class YOLOPlatformView(
                     }
                 }
                 "setStreamingConfig" -> {
-                    Log.d(TAG, "Received setStreamingConfig call")
+                    Log.d(TAG, "🔄 Received setStreamingConfig call")
+                    Log.d(TAG, "📊 Arguments: ${call.arguments}")
+                    
                     val streamConfig = YOLOStreamConfig(
                         includeDetections = call.argument<Boolean>("includeDetections") ?: true,
                         includeClassifications = call.argument<Boolean>("includeClassifications") ?: true,
@@ -201,8 +203,12 @@ class YOLOPlatformView(
                         inferenceFrequency = call.argument<Int>("inferenceFrequency"),
                         skipFrames = call.argument<Int>("skipFrames")
                     )
+                    
+                    Log.d(TAG, "📊 Created streamConfig: $streamConfig")
+                    Log.d(TAG, "🎯 Key FPS settings - inferenceFrequency: ${streamConfig.inferenceFrequency}, maxFPS: ${streamConfig.maxFPS}")
+                    
                     yoloView.setStreamConfig(streamConfig)
-                    Log.d(TAG, "YOLOView streaming config updated: $streamConfig")
+                    Log.d(TAG, "✅ YOLOView streaming config updated successfully")
                     result.success(null)
                 }
                 "stop" -> {
@@ -286,9 +292,9 @@ class YOLOPlatformView(
                 includeClassifications = streamingConfigParam["includeClassifications"] as? Boolean ?: true,
                 includeProcessingTimeMs = streamingConfigParam["includeProcessingTimeMs"] as? Boolean ?: true,
                 includeFps = streamingConfigParam["includeFps"] as? Boolean ?: true,
-                includeMasks = streamingConfigParam["includeMasks"] as? Boolean ?: true,
-                includePoses = streamingConfigParam["includePoses"] as? Boolean ?: true,
-                includeOBB = streamingConfigParam["includeOBB"] as? Boolean ?: true,
+                includeMasks = streamingConfigParam["includeMasks"] as? Boolean ?: false,
+                includePoses = streamingConfigParam["includePoses"] as? Boolean ?: false,
+                includeOBB = streamingConfigParam["includeOBB"] as? Boolean ?: false,
                 includeOriginalImage = streamingConfigParam["includeOriginalImage"] as? Boolean ?: false,
                 maxFPS = when (val maxFPS = streamingConfigParam["maxFPS"]) {
                     is Int -> maxFPS
@@ -301,6 +307,18 @@ class YOLOPlatformView(
                     is Double -> throttleMs.toInt()
                     is String -> throttleMs.toIntOrNull()
                     else -> null
+                },
+                inferenceFrequency = when (val inferenceFreq = streamingConfigParam["inferenceFrequency"]) {
+                    is Int -> inferenceFreq
+                    is Double -> inferenceFreq.toInt()
+                    is String -> inferenceFreq.toIntOrNull()
+                    else -> null
+                },
+                skipFrames = when (val skipFrames = streamingConfigParam["skipFrames"]) {
+                    is Int -> skipFrames
+                    is Double -> skipFrames.toInt()
+                    is String -> skipFrames.toIntOrNull()
+                    else -> null
                 }
             )
         } else {
@@ -312,6 +330,11 @@ class YOLOPlatformView(
         // Configure YOLOView with the stream config
         yoloView.setStreamConfig(streamConfig)
         Log.d(TAG, "YOLOView streaming configured: $streamConfig")
+        Log.d(TAG, "📊 Stream config details:")
+        Log.d(TAG, "   - maxFPS: ${streamConfig.maxFPS}")
+        Log.d(TAG, "   - inferenceFrequency: ${streamConfig.inferenceFrequency}")
+        Log.d(TAG, "   - skipFrames: ${streamConfig.skipFrames}")
+        Log.d(TAG, "   - includeDetections: ${streamConfig.includeDetections}")
         
         // Set up streaming callback to forward data to Flutter via event channel
         yoloView.setStreamCallback { streamData ->
@@ -324,6 +347,12 @@ class YOLOPlatformView(
      * Send stream data to Flutter via event channel
      */
     private fun sendStreamDataToFlutter(streamData: Map<String, Any>) {
+        Log.d(TAG, "📤 sendStreamDataToFlutter called with ${streamData.size} keys: ${streamData.keys}")
+        if (streamData.containsKey("detections")) {
+            val detections = streamData["detections"] as? List<*>
+            Log.d(TAG, "📤 Detections count: ${detections?.size ?: 0}")
+        }
+        
         try {
             
             // Create a runnable to ensure we're on the main thread

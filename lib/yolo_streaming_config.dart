@@ -374,6 +374,42 @@ class YOLOStreamingConfig {
   }
 
   @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is YOLOStreamingConfig &&
+        other.includeDetections == includeDetections &&
+        other.includeClassifications == includeClassifications &&
+        other.includeProcessingTimeMs == includeProcessingTimeMs &&
+        other.includeFps == includeFps &&
+        other.includeMasks == includeMasks &&
+        other.includePoses == includePoses &&
+        other.includeOBB == includeOBB &&
+        other.includeOriginalImage == includeOriginalImage &&
+        other.maxFPS == maxFPS &&
+        other.throttleInterval == throttleInterval &&
+        other.inferenceFrequency == inferenceFrequency &&
+        other.skipFrames == skipFrames;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      includeDetections,
+      includeClassifications,
+      includeProcessingTimeMs,
+      includeFps,
+      includeMasks,
+      includePoses,
+      includeOBB,
+      includeOriginalImage,
+      maxFPS,
+      throttleInterval,
+      inferenceFrequency,
+      skipFrames,
+    );
+  }
+
+  @override
   String toString() {
     return 'YOLOStreamingConfig('
         'detections: $includeDetections, '
