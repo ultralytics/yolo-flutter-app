@@ -1,3 +1,7 @@
+## 0.1.28
+
+- **Bug Fix**: Add support for different model architectures
+
 ## 0.1.27
 
 - **Breaking**: None - fully backward compatible
