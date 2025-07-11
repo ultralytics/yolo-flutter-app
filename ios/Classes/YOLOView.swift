@@ -230,6 +230,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     completion: ((Result<Void, Error>) -> Void)? = nil
   ) {
     print("YOLOView.setModel: Received modelPath: \(modelPathOrName)")
+    print("YOLOView.setModel: Task: \(task)")
 
     activityIndicator.startAnimating()
     boundingBoxViews.forEach { box in
@@ -254,15 +255,79 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         modelURL = possibleURL
         print(
           "YOLOView: Found model at: \(possibleURL.path) (isDirectory: \(isDirectory.boolValue))")
+      } else {
+        print("YOLOView: Model file not found at path: \(possibleURL.path)")
       }
     } else {
-      if let compiledURL = Bundle.main.url(forResource: modelPathOrName, withExtension: "mlmodelc")
-      {
-        modelURL = compiledURL
-      } else if let packageURL = Bundle.main.url(
-        forResource: modelPathOrName, withExtension: "mlpackage")
-      {
-        modelURL = packageURL
+      // For bundled models, map model IDs to architecture names and try different extensions
+      let possibleExtensions = ["mlmodelc", "mlpackage", "mlmodel"]
+      
+      // Map model IDs to architecture names (based on the bundled models in the app)
+      let modelIdToArchitecture: [String: String] = [
+        "7wzkDSKNMcwkPTs8ZVJC": "yolo11n",
+        "H7IMEul2mft9vBDrDBlY": "yolo11n-seg", 
+        "Ztw39GrvNQSmZe4FE41i": "yolo11n-cls",
+        "7KCbLJLY5GPeSW0rUZLL": "yolo11n-pose",
+        "fy24CCYGW3oO2BO8M0PV": "yolo11n-obb",
+        "QY3xfW2WvmiGbtGFAFzN": "yolo11n",
+        "ujmP6MCPezbTE0Y7L1e7": "yolo11m",
+        "Pi3uAeiO8JYD2bX0wotZ": "yolo11s"
+      ]
+      
+      let architectureName = modelIdToArchitecture[modelPathOrName] ?? modelPathOrName
+      let possibleNames = [
+        architectureName,
+        modelPathOrName, // Also try the original name in case it's already an architecture name
+        "yolo\(architectureName)",
+        "YOLO\(architectureName)"
+      ]
+      
+      print("YOLOView: Searching for bundled model with ID: \(modelPathOrName)")
+      print("YOLOView: Mapped to architecture: \(architectureName)")
+      print("YOLOView: Trying possible names: \(possibleNames)")
+      
+      for name in possibleNames {
+        for ext in possibleExtensions {
+          if let compiledURL = Bundle.main.url(forResource: name, withExtension: ext) {
+            modelURL = compiledURL
+            print("YOLOView: Found bundled model: \(compiledURL.path)")
+            break
+          }
+        }
+        if modelURL != nil { break }
+      }
+      
+      if modelURL == nil {
+        print("YOLOView: Model not found in bundle for: \(modelPathOrName)")
+        print("YOLOView: Available bundle resources:")
+        if let resourcePath = Bundle.main.resourcePath {
+          do {
+            let contents = try fileManager.contentsOfDirectory(atPath: resourcePath)
+            let modelFiles = contents.filter { $0.contains("mlmodel") || $0.contains("mlpackage") }
+            print("YOLOView: Found \(modelFiles.count) model files in bundle:")
+            for file in modelFiles {
+              print("YOLOView: Available: \(file)")
+            }
+          } catch {
+            print("YOLOView: Could not list bundle contents: \(error)")
+          }
+        }
+        
+        // Also check the main bundle directly for mlpackage files
+        print("YOLOView: Checking main bundle for mlpackage files:")
+        let bundlePath = Bundle.main.bundlePath
+        if !bundlePath.isEmpty {
+          do {
+            let contents = try fileManager.contentsOfDirectory(atPath: bundlePath)
+            let mlpackageFiles = contents.filter { $0.hasSuffix(".mlpackage") }
+            print("YOLOView: Found \(mlpackageFiles.count) mlpackage files in main bundle:")
+            for file in mlpackageFiles {
+              print("YOLOView: Main bundle: \(file)")
+            }
+          } catch {
+            print("YOLOView: Could not list main bundle contents: \(error)")
+          }
+        }
       }
     }
 
