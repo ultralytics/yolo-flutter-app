@@ -327,9 +327,20 @@ public class BasePredictor: Predictor, @unchecked Sendable {
 
     if let multiArrayConstraint = inputDescription.multiArrayConstraint {
       let shape = multiArrayConstraint.shape
-      if shape.count >= 2 {
+      print("Model input shape: \(shape)")
+      // CoreML models typically have shape as [batch, channels, height, width] or [batch, height, width, channels]
+      // For YOLO models, it's usually [1, 3, height, width] for RGB images
+      if shape.count == 4 {
+        // Assume NCHW format: [batch, channels, height, width]
+        let height = shape[2].intValue
+        let width = shape[3].intValue
+        print("Detected model input size (NCHW): width=\(width), height=\(height)")
+        return (width: width, height: height)
+      } else if shape.count >= 2 {
+        // Fallback for other formats
         let height = shape[0].intValue
         let width = shape[1].intValue
+        print("Detected model input size (fallback): width=\(width), height=\(height)")
         return (width: width, height: height)
       }
     }

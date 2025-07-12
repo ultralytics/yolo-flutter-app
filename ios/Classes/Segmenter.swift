@@ -49,7 +49,8 @@ class Segmenter: BasePredictor, @unchecked Sendable {
       for p in detectedObjects {
         let box = p.0
         let rect = CGRect(
-          x: box.minX / 640, y: box.minY / 640, width: box.width / 640, height: box.height / 640)
+          x: box.minX / CGFloat(self.modelInputSize.width), y: box.minY / CGFloat(self.modelInputSize.height), 
+          width: box.width / CGFloat(self.modelInputSize.width), height: box.height / CGFloat(self.modelInputSize.height))
         let confidence = p.2
         let bestClass = p.1
         let label = self.labels[bestClass]
@@ -142,7 +143,8 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         for p in detectedObjects {
           let box = p.0
           let rect = CGRect(
-            x: box.minX / 640, y: box.minY / 640, width: box.width / 640, height: box.height / 640)
+            x: box.minX / CGFloat(self.modelInputSize.width), y: box.minY / CGFloat(self.modelInputSize.height), 
+            width: box.width / CGFloat(self.modelInputSize.width), height: box.height / CGFloat(self.modelInputSize.height))
           let confidence = p.2
           let bestClass = p.1
           let label = labels[bestClass]
@@ -291,8 +293,8 @@ class Segmenter: BasePredictor, @unchecked Sendable {
   }
 
   func adjustBox(_ box: CGRect, toFitIn containerSize: CGSize) -> CGRect {
-    let xScale = containerSize.width / 640.0
-    let yScale = containerSize.height / 640.0
+    let xScale = containerSize.width / CGFloat(modelInputSize.width)
+    let yScale = containerSize.height / CGFloat(modelInputSize.height)
     return CGRect(
       x: box.origin.x * xScale, y: box.origin.y * yScale, width: box.size.width * xScale,
       height: box.size.height * yScale)

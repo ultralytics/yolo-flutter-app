@@ -79,6 +79,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     } else if task == .classify {
       self.overlayYOLOClassificationsCALayer(on: self, result: result)
     } else if task == .pose {
+      print("DEBUG YOLOView onPredict: Processing pose with \(result.boxes.count) boxes and \(result.keypointsList.count) keypoints")
       self.removeAllSubLayers(parentLayer: poseLayer)
       var keypointList = [[(x: Float, y: Float)]]()
       var confsList = [[Float]]()
@@ -87,7 +88,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         keypointList.append(keypoint.xyn)
         confsList.append(keypoint.conf)
       }
-      guard let poseLayer = poseLayer else { return }
+      guard let poseLayer = poseLayer else { 
+        print("DEBUG YOLOView: poseLayer is nil!")
+        return 
+      }
       drawKeypoints(
         keypointsList: keypointList, confsList: confsList, boundingBoxes: result.boxes,
         on: poseLayer, imageViewSize: overlayLayer.frame.size, originalImageSize: result.orig_shape)
@@ -514,7 +518,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   func showBoxes(predictions: YOLOResult) {
-
+    print("DEBUG showBoxes: task=\(task), boxes.count=\(predictions.boxes.count)")
+    
     let width = self.bounds.width
     let height = self.bounds.height
     var resultCount = 0
@@ -617,6 +622,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
           }
           displayRect = VNImageRectForNormalizedRect(displayRect, Int(width), Int(height))
 
+          print("DEBUG showBoxes: Showing box \(i) at displayRect: \(displayRect)")
           boundingBoxViews[i].show(
             frame: displayRect, label: label, color: boxColor, alpha: alpha)
 

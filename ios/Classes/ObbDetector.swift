@@ -131,10 +131,12 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
 
     // 1) Parallel-extract predictions
     DispatchQueue.concurrentPerform(iterations: numAnchors) { i in
-      let cx = pointer[i] / inputW
-      let cy = pointer[numAnchors + i] / inputH
-      let w = pointer[2 * numAnchors + i] / inputW
-      let h = pointer[3 * numAnchors + i] / inputH
+      // Use consistent normalization to avoid aspect ratio distortion
+      let maxDim = max(inputW, inputH)
+      let cx = pointer[i] / maxDim
+      let cy = pointer[numAnchors + i] / maxDim
+      let w = pointer[2 * numAnchors + i] / maxDim
+      let h = pointer[3 * numAnchors + i] / maxDim
 
       // Find best class & score
       var bestScore: Float = 0

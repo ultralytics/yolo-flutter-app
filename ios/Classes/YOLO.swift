@@ -312,6 +312,10 @@ public class YOLO {
   public func callAsFunction(_ uiImage: UIImage, returnAnnotatedImage: Bool = true) -> YOLOResult {
     let ciImage = CIImage(image: uiImage)!
     var result = predictor.predictOnImage(image: ciImage)
+    print("DEBUG YOLO.callAsFunction(UIImage): annotatedImage is \(result.annotatedImage == nil ? "nil" : "not nil")")
+    if let img = result.annotatedImage {
+      print("DEBUG YOLO.callAsFunction(UIImage): annotatedImage size: \(img.size)")
+    }
     //        if returnAnnotatedImage {
     //            let annotatedImage = drawYOLODetections(on: ciImage, result: result)
     //            result.annotatedImage = annotatedImage

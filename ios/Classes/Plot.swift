@@ -476,15 +476,20 @@ func drawSinglePersonKeypoints(
   let scaleYToView = Float(imageViewSize.height / originalImageSize.height)
 
   var points: [(CGPoint, Float)] = Array(repeating: (CGPoint.zero, 0), count: 17)
-
+  
   for i in 0..<17 {
-    let x = keypoints[i].x * Float(imageViewSize.width)
-    let y = keypoints[i].y * Float(imageViewSize.height)
+    // Keep original coordinates without any aspect ratio correction for now
+    let adjustedX = keypoints[i].x
+    let adjustedY = keypoints[i].y
+    
+    let x = adjustedX * Float(imageViewSize.width)
+    let y = adjustedY * Float(imageViewSize.height)
     let conf = confs[i]
-
+    
     let point = CGPoint(x: CGFloat(x), y: CGFloat(y))
     let box = boundingBox
 
+    // Check if the normalized keypoint is within the normalized bounding box
     if conf >= confThreshold
       && box.xywhn.contains(CGPoint(x: CGFloat(keypoints[i].x), y: CGFloat(keypoints[i].y)))
     {
@@ -499,7 +504,6 @@ func drawSinglePersonKeypoints(
       let (startIdx, endIdx) = (bone[0] - 1, bone[1] - 1)
 
       guard startIdx < points.count, endIdx < points.count else {
-        print("Invalid skeleton indices: \(startIdx), \(endIdx)")
         continue
       }
 
@@ -563,8 +567,13 @@ func drawPoseOnCIImage(
   confThreshold: Float = 0.25,
   drawSkeleton: Bool = true
 ) -> UIImage? {
+  print("DEBUG drawPoseOnCIImage: ciImage extent: \(ciImage.extent)")
+  print("DEBUG drawPoseOnCIImage: originalImageSize: \(originalImageSize)")
+  print("DEBUG drawPoseOnCIImage: boundingBoxes count: \(boundingBoxes.count)")
+  
   let _radius = max(originalImageSize.width, originalImageSize.height) / 300
   let context = CIContext(options: nil)
+  
   guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
     return nil
   }
@@ -580,6 +589,52 @@ func drawPoseOnCIImage(
 
   UIImage(cgImage: cgImage).draw(in: CGRect(origin: .zero, size: renderedSize))
 
+  // Draw bounding boxes first
+  print("DEBUG drawPoseOnCIImage: Drawing \(boundingBoxes.count) bounding boxes")
+  for (i, box) in boundingBoxes.enumerated() {
+    let colorIndex = box.index % ultralyticsColors.count
+    let color = ultralyticsColors[colorIndex]
+    let lineWidth = renderedSize.width * 0.01
+    currentContext.setStrokeColor(color.cgColor)
+    currentContext.setLineWidth(lineWidth)
+    
+    let rect = box.xywh
+    print("DEBUG drawPoseOnCIImage: Box \(i) - rect: \(rect), conf: \(box.conf), cls: \(box.cls)")
+    let cornerRadius: CGFloat = 12.0
+    let path = UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius)
+    currentContext.addPath(path.cgPath)
+    currentContext.strokePath()
+    
+    // Draw label
+    let confidencePercent = Int(box.conf * 100)
+    let labelText = "\(box.cls) \(confidencePercent)%"
+    let font = UIFont.systemFont(ofSize: renderedSize.width * 0.03, weight: .semibold)
+    let attrs: [NSAttributedString.Key: Any] = [
+      .font: font,
+      .foregroundColor: UIColor.white,
+    ]
+    let textSize = labelText.size(withAttributes: attrs)
+    let labelWidth = textSize.width + 10
+    let labelHeight = textSize.height + 4
+    var labelRect = CGRect(
+      x: rect.minX,
+      y: rect.minY - labelHeight,
+      width: labelWidth,
+      height: labelHeight
+    )
+    if labelRect.minY < 0 {
+      labelRect.origin.y = rect.minY
+    }
+    currentContext.setFillColor(color.cgColor)
+    currentContext.fill(labelRect)
+    let textPoint = CGPoint(
+      x: labelRect.origin.x + 5,
+      y: labelRect.origin.y + (labelHeight - textSize.height) / 2
+    )
+    labelText.draw(at: textPoint, withAttributes: attrs)
+  }
+
+  // Then draw keypoints on top
   let rootLayer = CALayer()
   rootLayer.frame = CGRect(origin: .zero, size: renderedSize)
 
@@ -602,6 +657,11 @@ func drawPoseOnCIImage(
   let finalImage = UIGraphicsGetImageFromCurrentImageContext()
   UIGraphicsEndImageContext()
 
+  print("DEBUG: drawPoseOnCIImage returning image: \(finalImage == nil ? "nil" : "not nil")")
+  if let img = finalImage {
+    print("DEBUG: returned image size: \(img.size)")
+  }
+  
   return finalImage
 }
 

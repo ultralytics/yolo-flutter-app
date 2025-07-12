@@ -123,6 +123,11 @@ class YOLOInstanceManager {
     }
 
     result = yolo.callAsFunction(image)
+    
+    print("DEBUG YOLOInstanceManager: result.annotatedImage is \(result.annotatedImage == nil ? "nil" : "not nil")")
+    if let img = result.annotatedImage {
+      print("DEBUG YOLOInstanceManager: annotatedImage size: \(img.size)")
+    }
 
     // Restore original thresholds
     yolo.confidenceThreshold = originalConfThreshold
@@ -397,9 +402,15 @@ class YOLOInstanceManager {
 
     // Include annotated image if available
     if let annotatedImage = result.annotatedImage {
+      print("DEBUG YOLOInstanceManager: annotatedImage exists, size: \(annotatedImage.size)")
       if let imageData = annotatedImage.pngData() {
+        print("DEBUG YOLOInstanceManager: PNG data created, size: \(imageData.count) bytes")
         resultDict["annotatedImage"] = FlutterStandardTypedData(bytes: imageData)
+      } else {
+        print("DEBUG YOLOInstanceManager: Failed to create PNG data")
       }
+    } else {
+      print("DEBUG YOLOInstanceManager: No annotatedImage in result")
     }
 
     // Include speed metric
