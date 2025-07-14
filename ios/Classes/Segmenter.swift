@@ -49,8 +49,10 @@ class Segmenter: BasePredictor, @unchecked Sendable {
       for p in detectedObjects {
         let box = p.0
         let rect = CGRect(
-          x: box.minX / CGFloat(self.modelInputSize.width), y: box.minY / CGFloat(self.modelInputSize.height), 
-          width: box.width / CGFloat(self.modelInputSize.width), height: box.height / CGFloat(self.modelInputSize.height))
+          x: box.minX / CGFloat(self.modelInputSize.width),
+          y: box.minY / CGFloat(self.modelInputSize.height),
+          width: box.width / CGFloat(self.modelInputSize.width),
+          height: box.height / CGFloat(self.modelInputSize.height))
         let confidence = p.2
         let bestClass = p.1
         let label = self.labels[bestClass]
@@ -143,8 +145,10 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         for p in detectedObjects {
           let box = p.0
           let rect = CGRect(
-            x: box.minX / CGFloat(self.modelInputSize.width), y: box.minY / CGFloat(self.modelInputSize.height), 
-            width: box.width / CGFloat(self.modelInputSize.width), height: box.height / CGFloat(self.modelInputSize.height))
+            x: box.minX / CGFloat(self.modelInputSize.width),
+            y: box.minY / CGFloat(self.modelInputSize.height),
+            width: box.width / CGFloat(self.modelInputSize.width),
+            height: box.height / CGFloat(self.modelInputSize.height))
           let confidence = p.2
           let bestClass = p.1
           let label = labels[bestClass]

@@ -14,10 +14,7 @@ class YOLOExampleApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'YOLO Plugin Example',
-      home: HomeScreen(),
-    );
+    return const MaterialApp(title: 'YOLO Plugin Example', home: HomeScreen());
   }
 }
 
@@ -28,9 +25,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('YOLO Flutter Example'),
-      ),
+      appBar: AppBar(title: const Text('YOLO Flutter Example')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

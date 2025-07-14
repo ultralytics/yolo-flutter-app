@@ -5,6 +5,7 @@
 BasePredictor.swiftの`getModelInputSize`関数に問題があります。
 
 ### 元のコード（問題あり）：
+
 ```swift
 if shape.count >= 2 {
   let height = shape[0].intValue
@@ -14,11 +15,14 @@ if shape.count >= 2 {
 ```
 
 ### 問題の詳細：
+
 CoreMLモデルの`multiArrayConstraint`のshapeは**NCHW形式**（batch, channels, height, width）です：
+
 - 640x640モデル: shape = [1, 3, 640, 640]
 - 320x320モデル: shape = [1, 3, 320, 320]
 
 元のコードは：
+
 - shape[0] = 1 (batch size) → heightと誤解釈
 - shape[1] = 3 (channels) → widthと誤解釈
 - 結果：modelInputSize = (width: 3, height: 1)
@@ -26,6 +30,7 @@ CoreMLモデルの`multiArrayConstraint`のshapeは**NCHW形式**（batch, chann
 ### なぜ「惜しい位置」なのか：
 
 考えられる理由：
+
 1. **2つの入力形式**：
    - 一部のモデルは`imageConstraint`を使用（正しくwidth/heightを取得）
    - 他のモデルは`multiArrayConstraint`を使用（間違った解釈）
@@ -35,6 +40,7 @@ CoreMLモデルの`multiArrayConstraint`のshapeは**NCHW形式**（batch, chann
    - または別の場所でフォールバック処理がある
 
 ### 修正案：
+
 ```swift
 if let multiArrayConstraint = inputDescription.multiArrayConstraint {
   let shape = multiArrayConstraint.shape
@@ -53,6 +59,7 @@ if let multiArrayConstraint = inputDescription.multiArrayConstraint {
 ```
 
 ### テスト方法：
+
 1. print文を追加してmodelInputSizeの値を確認
 2. 640x640モデルと他のサイズのモデルでshape配列の内容を比較
 3. imageConstraintとmultiArrayConstraintのどちらが使われているか確認

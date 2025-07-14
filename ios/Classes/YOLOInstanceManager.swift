@@ -123,8 +123,10 @@ class YOLOInstanceManager {
     }
 
     result = yolo.callAsFunction(image)
-    
-    print("DEBUG YOLOInstanceManager: result.annotatedImage is \(result.annotatedImage == nil ? "nil" : "not nil")")
+
+    print(
+      "DEBUG YOLOInstanceManager: result.annotatedImage is \(result.annotatedImage == nil ? "nil" : "not nil")"
+    )
     if let img = result.annotatedImage {
       print("DEBUG YOLOInstanceManager: annotatedImage size: \(img.size)")
     }

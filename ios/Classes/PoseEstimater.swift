@@ -95,7 +95,7 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
           let annotatedImage = drawPoseOnCIImage(
             ciImage: image, keypointsList: keypointsForImage, confsList: confsList,
             boundingBoxes: boxes, originalImageSize: inputSize)
-          
+
           updateTime()
           return YOLOResult(
             orig_shape: inputSize, boxes: boxes, masks: nil, probs: nil,
@@ -167,7 +167,7 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
     // Debug prints to help understand the coordinate system
     print("DEBUG PostProcessPose: inputSize: \(inputSize), modelInputSize: \(modelInputSize)")
     print("DEBUG PostProcessPose: Number of filtered boxes: \(filteredBoxes.count)")
-    
+
     let boxScorePairs = zip(filteredBoxes, filteredScores)
     let results: [(Box, Keypoints)] = zip(boxScorePairs, filteredFeatures).map {
       (pair, boxFeatures) in
@@ -190,7 +190,7 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
       var xynArray = [(x: Float, y: Float)]()
       var xyArray = [(x: Float, y: Float)]()
       var confArray = [Float]()
-      
+
       for i in 0..<numKeypoints {
         let kx = boxFeatures[3 * i]
         let ky = boxFeatures[3 * i + 1]

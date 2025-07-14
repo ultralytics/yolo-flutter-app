@@ -1,6 +1,7 @@
 # YOLO Flutter Plugin - Pose/OBB座標問題の最終分析
 
 ## 現状
+
 - **動作している**: detect, segment, classify（リアルタイム・単一画像とも）
 - **問題がある**: pose, obb（640x640以外のモデルで座標がずれる）
 
@@ -9,6 +10,7 @@
 ### 1. 座標処理の違い
 
 #### Segmenter（正常動作）
+
 ```swift
 // postProcessSegment: 生の座標を取得
 let x = pointerWrapper.pointer[j]
@@ -21,6 +23,7 @@ let rect = CGRect(
 ```
 
 #### ObbDetector（問題あり）
+
 ```swift
 // postProcessOBB: すぐに正規化
 let cx = pointer[i] / inputW
@@ -31,6 +34,7 @@ let obb = OBB(cx: cx, cy: cy, w: w, h: h, angle: angle)
 ```
 
 #### PoseEstimater（問題あり）
+
 ```swift
 // PostProcessPose: 生の座標を取得
 let x = featurePointer[j]
@@ -58,6 +62,7 @@ let Ny = box.origin.y / CGFloat(modelInputSize.height)
 ### 3. なぜ640x640では動作するのか
 
 考えられる理由：
+
 1. 640x640が最も一般的なYOLOモデルサイズ
 2. モデルの出力形式が640x640を前提に最適化されている
 3. 座標の誤差が目立ちにくい

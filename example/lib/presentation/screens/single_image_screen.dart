@@ -29,7 +29,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
 
   YOLO? _yolo;
   bool _isModelReady = false;
-  
+
   // Available models for different tasks
   final Map<YOLOTask, Map<String, String>> _availableModels = {
     YOLOTask.detect: {
@@ -58,10 +58,10 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       'ios_zip': 'yolo11n-obb.mlpackage.zip',
     },
   };
-  
+
   // Current selected task
   YOLOTask _selectedTask = YOLOTask.detect;
-  
+
   // Loading state for each task
   final Map<YOLOTask, bool> _modelLoadingStates = {
     YOLOTask.detect: false,
@@ -76,7 +76,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
     super.initState();
     _initializeYOLO(_selectedTask);
   }
-  
+
   @override
   void dispose() {
     _yolo?.dispose();
@@ -96,12 +96,12 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       await _yolo!.dispose();
       _yolo = null;
     }
-    
+
     setState(() {
       _isModelReady = false;
       _modelLoadingStates[task] = true;
     });
-    
+
     final modelInfo = _availableModels[task]!;
     String modelPath = modelInfo['name']!;
     if (Platform.isIOS) {
@@ -292,15 +292,19 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
 
     final bytes = await file.readAsBytes();
     final result = await _yolo!.predict(bytes);
-    
+
     // Debug print to check what's returned
     print('DEBUG: Result keys: ${result.keys}');
     print('DEBUG: Has annotatedImage: ${result.containsKey('annotatedImage')}');
     if (result.containsKey('annotatedImage')) {
-      print('DEBUG: annotatedImage type: ${result['annotatedImage'].runtimeType}');
-      print('DEBUG: annotatedImage is Uint8List: ${result['annotatedImage'] is Uint8List}');
+      print(
+        'DEBUG: annotatedImage type: ${result['annotatedImage'].runtimeType}',
+      );
+      print(
+        'DEBUG: annotatedImage is Uint8List: ${result['annotatedImage'] is Uint8List}',
+      );
     }
-    
+
     if (mounted) {
       setState(() {
         if (result.containsKey('boxes') && result['boxes'] is List) {
@@ -446,7 +450,10 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
                   if (_detections.isNotEmpty) ...[
                     const Text(
                       'Detections:',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     _buildDetectionsList(),
@@ -459,7 +466,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       ),
     );
   }
-  
+
   /// Returns a display name for each YOLO task
   String _getTaskDisplayName(YOLOTask task) {
     switch (task) {
@@ -475,7 +482,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
         return 'Oriented Bounding Box';
     }
   }
-  
+
   /// Builds a formatted list of detection results
   Widget _buildDetectionsList() {
     if (_selectedTask == YOLOTask.classify) {

@@ -79,7 +79,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     } else if task == .classify {
       self.overlayYOLOClassificationsCALayer(on: self, result: result)
     } else if task == .pose {
-      print("DEBUG YOLOView onPredict: Processing pose with \(result.boxes.count) boxes and \(result.keypointsList.count) keypoints")
+      print(
+        "DEBUG YOLOView onPredict: Processing pose with \(result.boxes.count) boxes and \(result.keypointsList.count) keypoints"
+      )
       self.removeAllSubLayers(parentLayer: poseLayer)
       var keypointList = [[(x: Float, y: Float)]]()
       var confsList = [[Float]]()
@@ -88,9 +90,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         keypointList.append(keypoint.xyn)
         confsList.append(keypoint.conf)
       }
-      guard let poseLayer = poseLayer else { 
+      guard let poseLayer = poseLayer else {
         print("DEBUG YOLOView: poseLayer is nil!")
-        return 
+        return
       }
       drawKeypoints(
         keypointsList: keypointList, confsList: confsList, boundingBoxes: result.boxes,
@@ -519,7 +521,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   func showBoxes(predictions: YOLOResult) {
     print("DEBUG showBoxes: task=\(task), boxes.count=\(predictions.boxes.count)")
-    
+
     let width = self.bounds.width
     let height = self.bounds.height
     var resultCount = 0
