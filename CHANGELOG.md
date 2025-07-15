@@ -1,3 +1,28 @@
+## 0.1.28
+
+- **Enhancement**: Smart label positioning for detection results
+  - Labels for detected objects are now always visible and never cut off at the edges of the screen
+  - Implemented boundary checks in all directions (top, bottom, left, right)
+  - By default, labels are placed above the box; if off-screen, they are placed inside the box
+  - Implemented as a reusable, high-performance function
+  - Consistent behavior on both iOS and Android platforms
+- **Bug Fix**: Accurate coordinate handling for all model sizes
+  - Fixed bounding box and keypoint placement for all YOLO tasks (detect, segment, pose, OBB) when using models with input sizes other than 640x640
+
+**Targeted tasks:**
+
+- ✅ Object Detection (DETECT)
+- ✅ Instance Segmentation (SEGMENT)
+- ✅ Pose Estimation (POSE)
+- ✅ Oriented Bounding Box (OBB)
+- ⚠️ Classification (CLASSIFY) - Not applicable for label placement
+
+**Upgrade note:**
+
+- Labels for all detection results are now always visible and neatly placed
+- Coordinate handling is robust for all model sizes and tasks
+- Example app is more flexible and user-friendly
+
 ## 0.1.27
 
 - **Breaking**: None - fully backward compatible
