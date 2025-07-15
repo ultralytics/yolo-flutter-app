@@ -91,6 +91,45 @@ let skeleton = [
   [5, 7],
 ]
 
+/// Calculate smart label position that ensures the label stays within screen bounds
+/// - Parameters:
+///   - boxRect: The bounding box rectangle
+///   - labelSize: The size of the label
+///   - screenSize: The size of the screen/image
+/// - Returns: The adjusted rectangle for the label
+func calculateSmartLabelRect(boxRect: CGRect, labelSize: CGSize, screenSize: CGSize) -> CGRect {
+  // Initial position: above the box
+  var labelX = boxRect.minX
+  var labelY = boxRect.minY - labelSize.height
+
+  // Check top boundary
+  if labelY < 0 {
+    // Place inside top of box
+    labelY = boxRect.minY
+  }
+
+  // Check left boundary
+  if labelX < 0 {
+    labelX = 0
+  }
+
+  // Check right boundary
+  if labelX + labelSize.width > screenSize.width {
+    labelX = screenSize.width - labelSize.width
+    // If still too wide, align with box's right edge
+    if labelX < 0 {
+      labelX = max(0, boxRect.maxX - labelSize.width)
+    }
+  }
+
+  // Check bottom boundary
+  if labelY + labelSize.height > screenSize.height {
+    labelY = screenSize.height - labelSize.height
+  }
+
+  return CGRect(x: labelX, y: labelY, width: labelSize.width, height: labelSize.height)
+}
+
 public func drawYOLODetections(on ciImage: CIImage, result: YOLOResult) -> UIImage {
   let context = CIContext(options: nil)
   guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
@@ -131,15 +170,11 @@ public func drawYOLODetections(on ciImage: CIImage, result: YOLOResult) -> UIIma
     let textSize = labelText.size(withAttributes: attrs)
     let labelWidth = textSize.width + 10
     let labelHeight = textSize.height + 4
-    var labelRect = CGRect(
-      x: rect.minX,
-      y: rect.minY - labelHeight,
-      width: labelWidth,
-      height: labelHeight
-    )
-    if labelRect.minY < 0 {
-      labelRect.origin.y = rect.minY
-    }
+    let labelSize = CGSize(width: labelWidth, height: labelHeight)
+
+    let labelRect = calculateSmartLabelRect(
+      boxRect: rect, labelSize: labelSize, screenSize: imageSize)
+
     drawContext.setFillColor(color.cgColor)
     drawContext.fill(labelRect)
     let textPoint = CGPoint(
@@ -580,6 +615,45 @@ func drawPoseOnCIImage(
 
   UIImage(cgImage: cgImage).draw(in: CGRect(origin: .zero, size: renderedSize))
 
+  // Draw bounding boxes first
+  for (i, box) in boundingBoxes.enumerated() {
+    let colorIndex = box.index % ultralyticsColors.count
+    let color = ultralyticsColors[colorIndex]
+    let lineWidth = renderedSize.width * 0.01
+    currentContext.setStrokeColor(color.cgColor)
+    currentContext.setLineWidth(lineWidth)
+
+    let rect = box.xywh
+    let cornerRadius: CGFloat = 12.0
+    let path = UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius)
+    currentContext.addPath(path.cgPath)
+    currentContext.strokePath()
+
+    // Draw label
+    let confidencePercent = Int(box.conf * 100)
+    let labelText = "\(box.cls) \(confidencePercent)%"
+    let font = UIFont.systemFont(ofSize: renderedSize.width * 0.03, weight: .semibold)
+    let attrs: [NSAttributedString.Key: Any] = [
+      .font: font,
+      .foregroundColor: UIColor.white,
+    ]
+    let textSize = labelText.size(withAttributes: attrs)
+    let labelWidth = textSize.width + 10
+    let labelHeight = textSize.height + 4
+    let labelSize = CGSize(width: labelWidth, height: labelHeight)
+    let labelRect = calculateSmartLabelRect(
+      boxRect: rect, labelSize: labelSize, screenSize: renderedSize)
+
+    currentContext.setFillColor(color.cgColor)
+    currentContext.fill(labelRect)
+    let textPoint = CGPoint(
+      x: labelRect.origin.x + 5,
+      y: labelRect.origin.y + (labelHeight - textSize.height) / 2
+    )
+    labelText.draw(at: textPoint, withAttributes: attrs)
+  }
+
+  // Then draw keypoints on top
   let rootLayer = CALayer()
   rootLayer.frame = CGRect(origin: .zero, size: renderedSize)
 
@@ -716,16 +790,20 @@ class OBBRenderer {
       let horizontalPadding: CGFloat = 10
       let verticalPadding: CGFloat = 4
 
-      if let firstCorner = corners.first {
-        let px = firstCorner.x * scaleX
-        let py = firstCorner.y * scaleY
+      if !corners.isEmpty {
+        // Find bounding box of the OBB polygon
+        let minX = corners.map { $0.x * scaleX }.min() ?? 0
+        let maxX = corners.map { $0.x * scaleX }.max() ?? 0
+        let minY = corners.map { $0.y * scaleY }.min() ?? 0
+        let maxY = corners.map { $0.y * scaleY }.max() ?? 0
+        let obbBounds = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
 
-        textLayer.frame = CGRect(
-          x: px,
-          y: py - textSize.height - verticalPadding,
-          width: textSize.width + horizontalPadding,
-          height: textSize.height + verticalPadding
-        )
+        let labelSize = CGSize(
+          width: textSize.width + horizontalPadding, height: textSize.height + verticalPadding)
+        let labelRect = calculateSmartLabelRect(
+          boxRect: obbBounds, labelSize: labelSize, screenSize: imageViewSize)
+
+        textLayer.frame = labelRect
       }
     }
 
@@ -788,17 +866,31 @@ func drawOBBsOnCIImage(
     let attrs: [NSAttributedString.Key: Any] = [
       .font: UIFont.systemFont(ofSize: fontSize),
       .foregroundColor: UIColor.white,
-      .backgroundColor: color.withAlphaComponent(0.7),
     ]
     let textSize = (labelText as NSString).size(withAttributes: attrs)
-    let corner0 = corners[0]
-    let labelX = corner0.x * outputSize.width
-    let labelY = corner0.y * outputSize.height - textSize.height
+    let labelPadding: CGFloat = 8
+    let labelSize = CGSize(
+      width: textSize.width + labelPadding * 2, height: textSize.height + labelPadding)
 
-    (labelText as NSString).draw(
-      at: CGPoint(x: labelX, y: labelY),
-      withAttributes: attrs
-    )
+    // Find bounding box of the OBB polygon
+    let minX = corners.map { $0.x * outputSize.width }.min() ?? 0
+    let maxX = corners.map { $0.x * outputSize.width }.max() ?? 0
+    let minY = corners.map { $0.y * outputSize.height }.min() ?? 0
+    let maxY = corners.map { $0.y * outputSize.height }.max() ?? 0
+    let obbBounds = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+
+    // Calculate smart label position
+    let labelRect = calculateSmartLabelRect(
+      boxRect: obbBounds, labelSize: labelSize, screenSize: outputSize)
+
+    // Draw label background
+    cgContext.setFillColor(color.withAlphaComponent(0.7).cgColor)
+    cgContext.fill(labelRect)
+
+    // Draw label text
+    let textPoint = CGPoint(
+      x: labelRect.origin.x + labelPadding, y: labelRect.origin.y + labelPadding / 2)
+    (labelText as NSString).draw(at: textPoint, withAttributes: attrs)
   }
 
   let drawnImage = UIGraphicsGetImageFromCurrentImageContext()

@@ -70,7 +70,45 @@ class BoundingBoxView {
       options: .truncatesLastVisibleLine,
       attributes: attributes, context: nil)
     let textSize = CGSize(width: textRect.width + 12, height: textRect.height)  // Add padding to the text size
-    let textOrigin = CGPoint(x: frame.origin.x - 2, y: frame.origin.y - textSize.height - 2)  // Position above the bounding box
+
+    // Get screen bounds from the parent layer or use screen bounds as fallback
+    let screenBounds: CGRect
+    if let superlayer = shapeLayer.superlayer {
+      screenBounds = superlayer.bounds
+    } else {
+      screenBounds = UIScreen.main.bounds
+    }
+
+    // Calculate initial label position (above the bounding box)
+    var labelX = frame.origin.x - 2
+    var labelY = frame.origin.y - textSize.height - 2
+
+    // Check top boundary
+    if labelY < 0 {
+      // Place label inside the top of the bounding box
+      labelY = frame.origin.y + 2
+    }
+
+    // Check left boundary
+    if labelX < 0 {
+      labelX = 0
+    }
+
+    // Check right boundary
+    if labelX + textSize.width > screenBounds.width {
+      labelX = screenBounds.width - textSize.width
+      // If label is still too wide, align it with the right edge of the box
+      if labelX < 0 {
+        labelX = max(0, frame.maxX - textSize.width)
+      }
+    }
+
+    // Check bottom boundary (in case label was moved inside the box)
+    if labelY + textSize.height > screenBounds.height {
+      labelY = screenBounds.height - textSize.height
+    }
+
+    let textOrigin = CGPoint(x: labelX, y: labelY)
     textLayer.frame = CGRect(origin: textOrigin, size: textSize)  // Set the text layer frame
   }
 
