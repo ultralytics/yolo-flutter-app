@@ -1,3 +1,12 @@
+## 0.1.29
+
+- **Bug Fix**: Resolve model path inconsistency for Android models
+  - Fixed inconsistency between ModelManager and YOLOFileUtils for model placement
+  - ModelManager expected models in Flutter assets folder (`assets/models/`)
+  - YOLOFileUtils.loadLabelsFromAppendedZip() now properly handles Flutter asset paths
+  - Updated path resolution logic to strip `flutter_assets/` and `assets/` prefixes correctly
+  - Eliminates the need to place models in both `assets/models/` and `android/app/src/main/assets/`
+
 ## 0.1.28
 
 - **Enhancement**: Smart label positioning for detection results
