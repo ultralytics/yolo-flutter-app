@@ -59,7 +59,7 @@ Bundle the model with your app using the following method.
 
 For iOS: Drag and drop mlpackage/mlmodel directly into **ios/Runner.xcworkspace** and set target to Runner.
 
-For Android: Place the tflite file in app/src/main/assets.
+For Android: Place the tflite file in **assets/models/** (the Flutter assets folder, not the Android raw assets folder).
 
 ## ⚡ Step 4: Minimal Detection Code
 
