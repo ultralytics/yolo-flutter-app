@@ -153,24 +153,22 @@ Add to `ios/Runner/Info.plist`:
 #### 1. Create Assets Directory
 
 ```bash
-mkdir -p android/app/src/main/assets
+mkdir -p assets/models
 ```
 
 #### 2. Add Model Files
 
-Place your `.tflite` models in the assets directory:
+Place your `.tflite` models in the Flutter assets directory:
 
 ```
-android/
-├── app/
-│   └── src/
-│       └── main/
-│           ├── assets/
-│           │   ├── yolo11n.tflite          ← Your models here
-│           │   ├── yolo11n-seg.tflite
-│           │   └── yolo11n-cls.tflite
-│           └── AndroidManifest.xml
+assets/
+├── models/
+│   ├── yolo11n.tflite          ← Your models here
+│   ├── yolo11n-seg.tflite
+│   └── yolo11n-cls.tflite
 ```
+
+**Note**: Use the Flutter assets folder (`assets/models/`), not the Android raw assets folder (`android/app/src/main/assets/`).
 
 #### 3. Use in Flutter Code
 
