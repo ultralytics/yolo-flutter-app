@@ -1,11 +1,9 @@
 ## 0.1.29
 
-- **Bug Fix**: Resolve model path inconsistency for Android models
-  - Fixed inconsistency between ModelManager and YOLOFileUtils for model placement
-  - ModelManager expected models in Flutter assets folder (`assets/models/`)
-  - YOLOFileUtils.loadLabelsFromAppendedZip() now properly handles Flutter asset paths
-  - Updated path resolution logic to strip `flutter_assets/` and `assets/` prefixes correctly
-  - Eliminates the need to place models in both `assets/models/` and `android/app/src/main/assets/`
+- **Bug Fix**: Clarified model placement requirements for Android
+  - For Android, models **must** be placed in `android/app/src/main/assets/` due to TensorFlow Lite's asset loading limitations.
+  - For iOS, add models to the Xcode project as before.
+  - The code changes to YOLOFileUtils.kt for path prefix stripping are not used in the current loading flow.
 
 ## 0.1.28
 
