@@ -629,7 +629,7 @@ func drawPoseOnCIImage(
     let path = UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius)
     currentContext.addPath(path.cgPath)
     currentContext.strokePath()
-    
+
     // Draw label
     let confidencePercent = Int(box.conf * 100)
     let labelText = "\(box.cls) \(confidencePercent)%"
