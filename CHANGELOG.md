@@ -1,3 +1,10 @@
+## 0.1.29
+
+- **Bug Fix**: Clarified model placement requirements for Android
+  - For Android, models **must** be placed in `android/app/src/main/assets/` due to TensorFlow Lite's asset loading limitations.
+  - For iOS, add models to the Xcode project as before.
+  - The code changes to YOLOFileUtils.kt for path prefix stripping are not used in the current loading flow.
+
 ## 0.1.28
 
 - **Enhancement**: Smart label positioning for detection results
