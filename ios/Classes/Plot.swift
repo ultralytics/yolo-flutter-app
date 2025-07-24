@@ -580,6 +580,50 @@ func drawPoseOnCIImage(
 
   UIImage(cgImage: cgImage).draw(in: CGRect(origin: .zero, size: renderedSize))
 
+  // Draw bounding boxes first
+  for box in boundingBoxes {
+    let colorIndex = box.index % ultralyticsColors.count
+    let color = ultralyticsColors[colorIndex]
+    let lineWidth = renderedSize.width * 0.01
+    currentContext.setStrokeColor(color.cgColor)
+    currentContext.setLineWidth(lineWidth)
+    
+    let rect = box.xywh
+    let cornerRadius: CGFloat = 12.0
+    let path = UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius)
+    currentContext.addPath(path.cgPath)
+    currentContext.strokePath()
+    
+    // Draw label
+    let confidencePercent = Int(box.conf * 100)
+    let labelText = "\(box.cls) \(confidencePercent)%"
+    let font = UIFont.systemFont(ofSize: renderedSize.width * 0.03, weight: .semibold)
+    let attrs: [NSAttributedString.Key: Any] = [
+      .font: font,
+      .foregroundColor: UIColor.white,
+    ]
+    let textSize = labelText.size(withAttributes: attrs)
+    let labelWidth = textSize.width + 10
+    let labelHeight = textSize.height + 4
+    var labelRect = CGRect(
+      x: rect.minX,
+      y: rect.minY - labelHeight,
+      width: labelWidth,
+      height: labelHeight
+    )
+    if labelRect.minY < 0 {
+      labelRect.origin.y = rect.minY
+    }
+    currentContext.setFillColor(color.cgColor)
+    currentContext.fill(labelRect)
+    let textPoint = CGPoint(
+      x: labelRect.origin.x + 5,
+      y: labelRect.origin.y + (labelHeight - textSize.height) / 2
+    )
+    labelText.draw(at: textPoint, withAttributes: attrs)
+  }
+
+  // Then draw keypoints on top
   let rootLayer = CALayer()
   rootLayer.frame = CGRect(origin: .zero, size: renderedSize)
 
