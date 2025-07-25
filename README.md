@@ -96,7 +96,7 @@ Bundle the model with your app using the following method.
 
 For iOS: Drag and drop mlpackage/mlmodel directly into **ios/Runner.xcworkspace** and set target to Runner.
 
-For Android: Create a folder called **android/app/src/main/assets** and place tflite in it.
+For Android: Create a folder called **android/app/src/main/assets** and place tflite files in it.
 
 ### 4. Platform-Specific Setup
 

@@ -158,7 +158,7 @@ mkdir -p android/app/src/main/assets
 
 #### 2. Add Model Files
 
-Place your `.tflite` models in the assets directory:
+Place your `.tflite` models in the Android native assets directory:
 
 ```
 android/
@@ -171,6 +171,8 @@ android/
 │           │   └── yolo11n-cls.tflite
 │           └── AndroidManifest.xml
 ```
+
+> **Note:** A future update may allow placing models in `assets/models/` for both platforms, but this is not yet supported on Android.
 
 #### 3. Use in Flutter Code
 
