@@ -46,6 +46,7 @@ abstract class BasePredictor : Predictor {
     var IOU_THRESHOLD:Float = 0.4f
     var transformationMatrix: Matrix? = null
     var pendingBitmapFrame: Bitmap? = null
+    var isFrontCamera: Boolean = false
 
     protected fun updateTiming() {
         val now = System.nanoTime()

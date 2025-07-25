@@ -100,6 +100,7 @@ class PoseEstimator(
     }
 
     private lateinit var imageProcessorCameraPortrait: ImageProcessor
+    private lateinit var imageProcessorCameraPortraitFront: ImageProcessor
     private lateinit var imageProcessorCameraLandscape: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
     
@@ -170,7 +171,15 @@ class PoseEstimator(
         
         // For camera feed in portrait mode (with rotation)
         imageProcessorCameraPortrait = ImageProcessor.Builder()
-            .add(Rot90Op(3))  // 270-degree rotation
+            .add(Rot90Op(3))  // 270-degree rotation for back camera
+            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
+            .add(NormalizeOp(0f, 255f))
+            .add(CastOp(DataType.FLOAT32))
+            .build()
+            
+        // For front camera in portrait mode (90-degree rotation to the right)
+        imageProcessorCameraPortraitFront = ImageProcessor.Builder()
+            .add(Rot90Op(1))  // 90-degree rotation to the right for front camera
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))
             .add(CastOp(DataType.FLOAT32))
@@ -202,7 +211,12 @@ class PoseEstimator(
             if (isLandscape) {
                 imageProcessorCameraLandscape.process(tensorImage)
             } else {
-                imageProcessorCameraPortrait.process(tensorImage)
+                // Use different rotation for front vs back camera
+                if (isFrontCamera) {
+                    imageProcessorCameraPortraitFront.process(tensorImage)
+                } else {
+                    imageProcessorCameraPortrait.process(tensorImage)
+                }
             }
         } else {
             // No rotation for single image
