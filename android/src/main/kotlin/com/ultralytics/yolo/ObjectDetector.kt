@@ -48,6 +48,7 @@ class ObjectDetector(
     private var out2 = 0
     // Three image processors: camera portrait, camera landscape, and single images
     private lateinit var imageProcessorCameraPortrait: ImageProcessor
+    private lateinit var imageProcessorCameraPortraitFront: ImageProcessor
     private lateinit var imageProcessorCameraLandscape: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
 
@@ -159,20 +160,28 @@ class ObjectDetector(
         
         // 1. For camera feed in portrait mode - includes 270-degree rotation
         imageProcessorCameraPortrait = ImageProcessor.Builder()
-            .add(Rot90Op(3))  // 270-degree rotation (3 * 90 degrees)
+            .add(Rot90Op(3))  // 270-degree rotation (3 * 90 degrees) for back camera
             .add(ResizeOp(inputSize.height, inputSize.width, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
             .add(CastOp(INPUT_IMAGE_TYPE))
             .build()
             
-        // 2. For camera feed in landscape mode - no rotation needed
+        // 2. For front camera in portrait mode - 90-degree rotation
+        imageProcessorCameraPortraitFront = ImageProcessor.Builder()
+            .add(Rot90Op(1))  // 90-degree rotation for front camera
+            .add(ResizeOp(inputSize.height, inputSize.width, ResizeOp.ResizeMethod.BILINEAR))
+            .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
+            .add(CastOp(INPUT_IMAGE_TYPE))
+            .build()
+            
+        // 3. For camera feed in landscape mode - no rotation needed
         imageProcessorCameraLandscape = ImageProcessor.Builder()
             .add(ResizeOp(inputSize.height, inputSize.width, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
             .add(CastOp(INPUT_IMAGE_TYPE))
             .build()
             
-        // 3. For single images - no rotation needed
+        // 4. For single images - no rotation needed
         imageProcessorSingleImage = ImageProcessor.Builder()
             .add(ResizeOp(inputSize.height, inputSize.width, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
@@ -277,7 +286,12 @@ class ObjectDetector(
             if (isLandscape) {
                 imageProcessorCameraLandscape.process(tensorImage)
             } else {
-                imageProcessorCameraPortrait.process(tensorImage)
+                // Use different rotation for front vs back camera
+                if (isFrontCamera) {
+                    imageProcessorCameraPortraitFront.process(tensorImage)
+                } else {
+                    imageProcessorCameraPortrait.process(tensorImage)
+                }
             }
         } else {
             // Use single image processor (no rotation) for regular images
