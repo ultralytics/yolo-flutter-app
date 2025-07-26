@@ -365,7 +365,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
           // Camera flip button - bottom left
           Positioned(
-            bottom: isLandscape ? 40 : 70,
+            bottom:
+                MediaQuery.of(context).padding.top + (isLandscape ? 32 : 16),
             left: isLandscape ? 32 : 16,
             child: CircleAvatar(
               radius: isLandscape ? 20 : 24,
@@ -426,11 +427,6 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       backgroundColor: Colors.black.withValues(alpha: 0.2),
       child: TextButton(
         onPressed: onPressed,
-        style: TextButton.styleFrom(
-          padding: EdgeInsets.zero,
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
         child: Text(
           label,
           style: const TextStyle(color: Colors.white, fontSize: 12),

@@ -23,7 +23,8 @@ class YOLO(
     private val modelPath: String,
     val task: YOLOTask,
     private val labels: List<String> = emptyList(),
-    private val useGpu: Boolean = true
+    private val useGpu: Boolean = true,
+    private val classifierOptions: Map<String, Any>? = null
 ) {
     private val TAG = "YOLO"
 
@@ -44,8 +45,6 @@ class YOLO(
                 // Allow FP16 precision for faster computation
                 setAllowFp16PrecisionForFp32(true)
                 
-                // useGpu is handled in individual predictors
-                
                 // Log configuration
                 Log.d(TAG, "Interpreter options: threads=${Runtime.getRuntime().availableProcessors()}, FP16 enabled")
             }
@@ -60,7 +59,7 @@ class YOLO(
         when (task) {
             YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, options)
             YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, options)
-            YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu) // Classifier doesn't accept options
+            YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu, options, classifierOptions)
             YOLOTask.POSE -> PoseEstimator(context, modelPath, labels, useGpu, customOptions = options)
             YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, options)
         }
@@ -83,9 +82,18 @@ class YOLO(
      */
     fun predict(bitmap: Bitmap, rotateForCamera: Boolean = false): YOLOResult {
         val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera, isLandscape = false)
+        
+        // Don't create annotated image for classification tasks to save memory and processing time
+        val annotatedImage = if (task == YOLOTask.CLASSIFY) {
+            Log.d(TAG, "Skipping annotation for CLASSIFY task")
+            null
+        } else {
+            drawAnnotations(bitmap, result, rotateForCamera)
+        }
+        
         return result.copy(
             originalImage = bitmap,
-            annotatedImage = drawAnnotations(bitmap, result, rotateForCamera)
+            annotatedImage = annotatedImage
         )
     }
 
@@ -136,6 +144,60 @@ class YOLO(
             Log.e(TAG, "Failed to load image from URL: ${e.message}")
             return@withContext null
         }
+    }
+
+    /**
+     * Calculate smart label position that ensures the label stays within screen bounds
+     * @param boxRect The bounding box rectangle
+     * @param labelWidth The width of the label
+     * @param labelHeight The height of the label
+     * @param viewWidth The width of the view/canvas
+     * @param viewHeight The height of the view/canvas
+     * @return The adjusted rectangle for the label
+     */
+    private fun calculateSmartLabelRect(
+        boxRect: RectF,
+        labelWidth: Float,
+        labelHeight: Float,
+        viewWidth: Float,
+        viewHeight: Float
+    ): RectF {
+        // Initial position: above the box
+        var labelLeft = boxRect.left
+        var labelTop = boxRect.top - labelHeight
+        var labelRight = labelLeft + labelWidth
+        var labelBottom = boxRect.top
+        
+        // Check top boundary
+        if (labelTop < 0) {
+            // Place inside top of box
+            labelTop = boxRect.top
+            labelBottom = labelTop + labelHeight
+        }
+        
+        // Check left boundary
+        if (labelLeft < 0) {
+            labelLeft = 0f
+            labelRight = labelWidth
+        }
+        
+        // Check right boundary
+        if (labelRight > viewWidth) {
+            labelRight = viewWidth
+            labelLeft = labelRight - labelWidth
+            // If still too wide, align with box's right edge
+            if (labelLeft < 0) {
+                labelLeft = maxOf(0f, boxRect.right - labelWidth)
+            }
+        }
+        
+        // Check bottom boundary
+        if (labelBottom > viewHeight) {
+            labelBottom = viewHeight
+            labelTop = labelBottom - labelHeight
+        }
+        
+        return RectF(labelLeft, labelTop, labelRight, labelBottom)
     }
 
     /**
@@ -231,23 +293,29 @@ class YOLO(
                     val textBounds = Rect()
                     paint.getTextBounds(labelText, 0, labelText.length, textBounds)
                     
-                    // Calculate label background position
-                    val labelLeft = transformedRect.left
-                    val labelTop = transformedRect.top - textBounds.height() - labelPadding * 2
-                    val labelRight = labelLeft + textBounds.width() + labelPadding * 2
-                    val labelBottom = transformedRect.top
+                    // Calculate label size
+                    val labelWidth = textBounds.width() + labelPadding * 2
+                    val labelHeight = textBounds.height() + labelPadding * 2
+                    
+                    // Calculate smart label position
+                    val labelRect = calculateSmartLabelRect(
+                        transformedRect,
+                        labelWidth,
+                        labelHeight,
+                        output.width.toFloat(),
+                        output.height.toFloat()
+                    )
                     
                     // Draw label background
                     paint.style = Paint.Style.FILL
-                    val labelRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
                     canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
                     
                     // Draw label text in white
                     paint.color = Color.WHITE
                     canvas.drawText(
                         labelText,
-                        labelLeft + labelPadding,
-                        labelBottom - labelPadding,
+                        labelRect.left + labelPadding,
+                        labelRect.bottom - labelPadding,
                         paint
                     )
                     
@@ -274,23 +342,29 @@ class YOLO(
                     val textBounds = Rect()
                     paint.getTextBounds(labelText, 0, labelText.length, textBounds)
                     
-                    // Calculate label background position
-                    val labelLeft = transformedRect.left
-                    val labelTop = transformedRect.top - textBounds.height() - labelPadding * 2
-                    val labelRight = labelLeft + textBounds.width() + labelPadding * 2
-                    val labelBottom = transformedRect.top
+                    // Calculate label size
+                    val labelWidth = textBounds.width() + labelPadding * 2
+                    val labelHeight = textBounds.height() + labelPadding * 2
+                    
+                    // Calculate smart label position
+                    val labelRect = calculateSmartLabelRect(
+                        transformedRect,
+                        labelWidth,
+                        labelHeight,
+                        output.width.toFloat(),
+                        output.height.toFloat()
+                    )
                     
                     // Draw label background
                     paint.style = Paint.Style.FILL
-                    val labelRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
                     canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
                     
                     // Draw label text in white
                     paint.color = Color.WHITE
                     canvas.drawText(
                         labelText,
-                        labelLeft + labelPadding,
-                        labelBottom - labelPadding,
+                        labelRect.left + labelPadding,
+                        labelRect.bottom - labelPadding,
                         paint
                     )
                     
@@ -382,23 +456,29 @@ class YOLO(
                     val textBounds = Rect()
                     paint.getTextBounds(labelText, 0, labelText.length, textBounds)
                     
-                    // Calculate label background position
-                    val labelLeft = transformedRect.left
-                    val labelTop = transformedRect.top - textBounds.height() - labelPadding * 2
-                    val labelRight = labelLeft + textBounds.width() + labelPadding * 2
-                    val labelBottom = transformedRect.top
+                    // Calculate label size
+                    val labelWidth = textBounds.width() + labelPadding * 2
+                    val labelHeight = textBounds.height() + labelPadding * 2
+                    
+                    // Calculate smart label position
+                    val labelRect = calculateSmartLabelRect(
+                        transformedRect,
+                        labelWidth,
+                        labelHeight,
+                        output.width.toFloat(),
+                        output.height.toFloat()
+                    )
                     
                     // Draw label background
                     paint.style = Paint.Style.FILL
-                    val labelRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
                     canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
                     
                     // Draw label text in white
                     paint.color = Color.WHITE
                     canvas.drawText(
                         labelText,
-                        labelLeft + labelPadding,
-                        labelBottom - labelPadding,
+                        labelRect.left + labelPadding,
+                        labelRect.bottom - labelPadding,
                         paint
                     )
                     
@@ -567,13 +647,50 @@ class YOLO(
                         }
                         canvas.drawPath(path, paint)
 
+                        // Draw label with background
+                        val labelText = "${obbResult.cls} ${"%.2f".format(obbResult.confidence * 100)}%"
+                        val labelPadding = 8f
+                        val cornerRadius = 12f
+                        
+                        // Measure text
+                        val textBounds = Rect()
+                        paint.getTextBounds(labelText, 0, labelText.length, textBounds)
+                        
+                        // Find bounding box of the OBB polygon
+                        val minX = poly.map { it.x }.minOrNull() ?: 0f
+                        val maxX = poly.map { it.x }.maxOrNull() ?: 0f
+                        val minY = poly.map { it.y }.minOrNull() ?: 0f
+                        val maxY = poly.map { it.y }.maxOrNull() ?: 0f
+                        val obbBounds = RectF(minX, minY, maxX, maxY)
+                        
+                        // Calculate label size
+                        val labelWidth = textBounds.width() + labelPadding * 2
+                        val labelHeight = textBounds.height() + labelPadding * 2
+                        
+                        // Calculate smart label position
+                        val labelRect = calculateSmartLabelRect(
+                            obbBounds,
+                            labelWidth,
+                            labelHeight,
+                            output.width.toFloat(),
+                            output.height.toFloat()
+                        )
+                        
+                        // Draw label background
                         paint.style = Paint.Style.FILL
+                        canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
+                        
+                        // Draw label text in white
+                        paint.color = Color.WHITE
                         canvas.drawText(
-                            "${obbResult.cls} ${"%.2f".format(obbResult.confidence * 100)}%",
-                            poly[0].x,
-                            poly[0].y - 10,
+                            labelText,
+                            labelRect.left + labelPadding,
+                            labelRect.bottom - labelPadding,
                             paint
                         )
+                        
+                        // Reset paint
+                        paint.color = ultralyticsColors[obbResult.index % ultralyticsColors.size]
                         paint.style = Paint.Style.STROKE
                     }
                 }

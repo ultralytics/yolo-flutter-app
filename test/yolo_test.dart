@@ -107,6 +107,25 @@ void main() {
       expect(log[0].arguments['task'], 'detect');
     });
 
+    test('loadModel with classifierOptions', () async {
+      final classifierOptions = {
+        'enable1ChannelSupport': true,
+        'expectedChannels': 1,
+      };
+      
+      final testYolo = YOLO(
+        modelPath: 'classifier_model.tflite',
+        task: YOLOTask.classify,
+        classifierOptions: classifierOptions,
+      );
+
+      final result = await testYolo.loadModel();
+
+      expect(result, isTrue);
+      expect(log, hasLength(1));
+      expect(log[0].arguments['classifierOptions'], classifierOptions);
+    });
+
     test('YOLO.predict throws if called before loadModel', () async {
       final yolo = YOLO(modelPath: 'test_model.tflite', task: YOLOTask.detect);
       final image = Uint8List.fromList([1, 2, 3]);
@@ -1103,6 +1122,49 @@ void main() {
 
       final result = await YOLO.getStoragePaths();
       expect(result, isEmpty);
+    });
+  });
+
+  group('YOLO withClassifierOptions Constructor', () {
+    test('creates YOLO instance with classifier options', () {
+      final classifierOptions = {'enable1ChannelSupport': true};
+
+      final yolo = YOLO.withClassifierOptions(
+        modelPath: 'model.tflite',
+        task: YOLOTask.classify,
+        classifierOptions: classifierOptions,
+      );
+
+      expect(yolo.modelPath, 'model.tflite');
+      expect(yolo.classifierOptions, classifierOptions);
+    });
+
+    test('withClassifierOptions with useMultiInstance', () {
+      final classifierOptions = {'expectedChannels': 1};
+
+      final yolo = YOLO.withClassifierOptions(
+        modelPath: 'model.tflite',
+        task: YOLOTask.classify,
+        classifierOptions: classifierOptions,
+        useMultiInstance: true,
+      );
+
+      expect(yolo.instanceId, isNot('default'));
+    });
+
+    test('withClassifierOptions loadModel', () async {
+      final classifierOptions = {'enable1ChannelSupport': true};
+
+      final yolo = YOLO.withClassifierOptions(
+        modelPath: 'model.tflite',
+        task: YOLOTask.classify,
+        classifierOptions: classifierOptions,
+      );
+
+      final result = await yolo.loadModel();
+
+      expect(result, isTrue);
+      expect(log[0].arguments['classifierOptions'], classifierOptions);
     });
   });
 }
