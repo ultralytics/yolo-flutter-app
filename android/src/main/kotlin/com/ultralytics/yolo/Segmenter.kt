@@ -61,6 +61,7 @@ class Segmenter(
 
     /** ImageProcessor for image preprocessing - separate ones for camera portrait/landscape and single images */
     private lateinit var imageProcessorCameraPortrait: ImageProcessor
+    private lateinit var imageProcessorCameraPortraitFront: ImageProcessor
     private lateinit var imageProcessorCameraLandscape: ImageProcessor
     private lateinit var imageProcessorSingleImage: ImageProcessor
     
@@ -140,20 +141,28 @@ class Segmenter(
         
         // 1. For camera feed in portrait mode (with rotation)
         imageProcessorCameraPortrait = ImageProcessor.Builder()
-            .add(Rot90Op(3)) // 270-degree rotation
+            .add(Rot90Op(3)) // 270-degree rotation for back camera
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))
             .add(CastOp(DataType.FLOAT32))
             .build()
             
-        // 2. For camera feed in landscape mode (no rotation)
+        // 2. For front camera in portrait mode (90-degree rotation)
+        imageProcessorCameraPortraitFront = ImageProcessor.Builder()
+            .add(Rot90Op(1)) // 90-degree rotation for front camera
+            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
+            .add(NormalizeOp(0f, 255f))
+            .add(CastOp(DataType.FLOAT32))
+            .build()
+            
+        // 3. For camera feed in landscape mode (no rotation)
         imageProcessorCameraLandscape = ImageProcessor.Builder()
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))
             .add(CastOp(DataType.FLOAT32))
             .build()
             
-        // 3. For single images (no rotation)
+        // 4. For single images (no rotation)
         imageProcessorSingleImage = ImageProcessor.Builder()
             .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(0f, 255f))
@@ -174,7 +183,12 @@ class Segmenter(
             if (isLandscape) {
                 imageProcessorCameraLandscape.process(tensorImage)
             } else {
-                imageProcessorCameraPortrait.process(tensorImage)
+                // Use different rotation for front vs back camera
+                if (isFrontCamera) {
+                    imageProcessorCameraPortraitFront.process(tensorImage)
+                } else {
+                    imageProcessorCameraPortrait.process(tensorImage)
+                }
             }
         } else {
             // Use single image processor (no rotation) for regular images

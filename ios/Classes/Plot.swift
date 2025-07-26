@@ -616,7 +616,8 @@ func drawPoseOnCIImage(
   UIImage(cgImage: cgImage).draw(in: CGRect(origin: .zero, size: renderedSize))
 
   // Draw bounding boxes first
-  for (i, box) in boundingBoxes.enumerated() {
+
+  for box in boundingBoxes {
     let colorIndex = box.index % ultralyticsColors.count
     let color = ultralyticsColors[colorIndex]
     let lineWidth = renderedSize.width * 0.01
@@ -640,9 +641,15 @@ func drawPoseOnCIImage(
     let textSize = labelText.size(withAttributes: attrs)
     let labelWidth = textSize.width + 10
     let labelHeight = textSize.height + 4
-    let labelSize = CGSize(width: labelWidth, height: labelHeight)
-    let labelRect = calculateSmartLabelRect(
-      boxRect: rect, labelSize: labelSize, screenSize: renderedSize)
+    var labelRect = CGRect(
+      x: rect.minX,
+      y: rect.minY - labelHeight,
+      width: labelWidth,
+      height: labelHeight
+    )
+    if labelRect.minY < 0 {
+      labelRect.origin.y = rect.minY
+    }
 
     currentContext.setFillColor(color.cgColor)
     currentContext.fill(labelRect)
