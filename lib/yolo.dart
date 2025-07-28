@@ -8,12 +8,14 @@ import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_exceptions.dart';
 import 'package:ultralytics_yolo/yolo_instance_manager.dart';
+import 'package:ultralytics_yolo/video_processor.dart';
 
 /// Exports all YOLO-related classes and enums
 export 'yolo_task.dart';
 export 'yolo_exceptions.dart';
 export 'yolo_result.dart';
 export 'yolo_instance_manager.dart';
+export 'video_processor.dart';
 
 /// YOLO (You Only Look Once) is a class that provides machine learning inference
 /// capabilities for object detection, segmentation, classification, pose estimation,
@@ -653,6 +655,29 @@ class YOLO {
       // Always remove from manager, even if platform call fails
       YOLOInstanceManager.unregisterInstance(_instanceId);
       _isInitialized = false;
+    }
+  }
+
+  /// Process a video file with YOLO detection
+  ///
+  /// This method creates a VideoProcessor instance and processes the video
+  /// frame by frame using the loaded YOLO model.
+  ///
+  /// @param videoPath Path to the video file
+  /// @param config Configuration for video processing
+  /// @return List of VideoFrameResult containing detection results for each frame
+  Future<List<VideoFrameResult>> processVideo({
+    required String videoPath,
+    required VideoProcessingConfig config,
+  }) async {
+    final processor = VideoProcessor();
+
+    try {
+      await processor.initialize(yolo: this, videoPath: videoPath);
+
+      return await processor.processVideo(config: config);
+    } finally {
+      await processor.dispose();
     }
   }
 }
