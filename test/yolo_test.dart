@@ -112,7 +112,7 @@ void main() {
         'enable1ChannelSupport': true,
         'expectedChannels': 1,
       };
-      
+
       final testYolo = YOLO(
         modelPath: 'classifier_model.tflite',
         task: YOLOTask.classify,
