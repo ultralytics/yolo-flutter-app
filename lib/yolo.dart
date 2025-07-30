@@ -593,10 +593,10 @@ class YOLO {
   }
 
   /// Creates a YOLO instance with classifier options for custom preprocessing
-  /// 
+  ///
   /// This constructor is specifically designed for classification models that
   /// need custom preprocessing, such as 1-channel grayscale models.
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// final yolo = YOLO.withClassifierOptions(
@@ -611,7 +611,7 @@ class YOLO {
   ///   },
   /// );
   /// ```
-  /// 
+  ///
   /// if need custom Normalization:
   /// ```dart
   ///   final grayscaleOptions = {
@@ -622,7 +622,7 @@ class YOLO {
   ///   // labels·expectedClasses (if needed)
   /// };
   ///```
-  
+
   static YOLO withClassifierOptions({
     required String modelPath,
     required YOLOTask task,
@@ -636,10 +636,6 @@ class YOLO {
       classifierOptions: classifierOptions,
     );
   }
-  
-
-  
-
 
   /// Disposes this YOLO instance and releases all resources
   Future<void> dispose() async {
