@@ -21,7 +21,6 @@ example/test/widget_test.dart
 **/.flutter-plugins-dependencies
 
 # Example and test applications
-example/
 hello_yolo/
 
 # Model files (exclude all TFLite, MLPackage, and MLModel files)

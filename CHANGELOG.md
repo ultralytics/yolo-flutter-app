@@ -1,3 +1,7 @@
+## 0.1.30
+
+- Remove pubspec models
+
 ## 0.1.29
 
 - **Bug Fix**: Clarified model placement requirements for Android
