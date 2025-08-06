@@ -1,4 +1,4 @@
-## 0.1.32
+## 0.1.31
 
 - **New Feature**: Add `useGpu` parameter for GPU acceleration control
   - Added `useGpu` parameter to `YOLO` constructor and `YOLOView` widget
