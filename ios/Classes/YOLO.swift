@@ -41,7 +41,8 @@ public class YOLO {
   }
 
   public init(
-    _ modelPathOrName: String, task: YOLOTask, useGpu: Bool = true, completion: ((Result<YOLO, Error>) -> Void)? = nil
+    _ modelPathOrName: String, task: YOLOTask, useGpu: Bool = true,
+    completion: ((Result<YOLO, Error>) -> Void)? = nil
   ) {
     print("YOLO.init: Received modelPath: \(modelPathOrName)")
 
