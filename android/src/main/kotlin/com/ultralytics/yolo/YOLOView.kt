@@ -327,19 +327,19 @@ class YOLOView @JvmOverloads constructor(
 
     // region Model / Task
 
-    fun setModel(modelPath: String, task: YOLOTask, callback: ((Boolean) -> Unit)? = null) {
+    fun setModel(modelPath: String, task: YOLOTask, useGpu: Boolean = true, callback: ((Boolean) -> Unit)? = null) {
         Executors.newSingleThreadExecutor().execute {
             try {
                 val newPredictor = when (task) {
-                    YOLOTask.DETECT -> ObjectDetector(context, modelPath, loadLabels(modelPath), useGpu = true).apply {
+                    YOLOTask.DETECT -> ObjectDetector(context, modelPath, loadLabels(modelPath), useGpu = useGpu).apply {
                         setConfidenceThreshold(confidenceThreshold)
                         setIouThreshold(iouThreshold)
                         setNumItemsThreshold(numItemsThreshold)
                     }
-                    YOLOTask.SEGMENT -> Segmenter(context, modelPath, loadLabels(modelPath), useGpu = true)
-                    YOLOTask.CLASSIFY -> Classifier(context, modelPath, loadLabels(modelPath), useGpu = true)
-                    YOLOTask.POSE -> PoseEstimator(context, modelPath, loadLabels(modelPath), useGpu = true)
-                    YOLOTask.OBB -> ObbDetector(context, modelPath, loadLabels(modelPath), useGpu = true)
+                    YOLOTask.SEGMENT -> Segmenter(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
+                    YOLOTask.CLASSIFY -> Classifier(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
+                    YOLOTask.POSE -> PoseEstimator(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
+                    YOLOTask.OBB -> ObbDetector(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
                 }
 
                 post {

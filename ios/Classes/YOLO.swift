@@ -41,7 +41,8 @@ public class YOLO {
   }
 
   public init(
-    _ modelPathOrName: String, task: YOLOTask, completion: ((Result<YOLO, Error>) -> Void)? = nil
+    _ modelPathOrName: String, task: YOLOTask, useGpu: Bool = true,
+    completion: ((Result<YOLO, Error>) -> Void)? = nil
   ) {
     print("YOLO.init: Received modelPath: \(modelPathOrName)")
 
@@ -258,7 +259,7 @@ public class YOLO {
 
     switch task {
     case .classify:
-      Classifier.create(unwrappedModelURL: unwrappedModelURL) { result in
+      Classifier.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu) { result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -268,7 +269,7 @@ public class YOLO {
       }
 
     case .segment:
-      Segmenter.create(unwrappedModelURL: unwrappedModelURL) { result in
+      Segmenter.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu) { result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -278,7 +279,7 @@ public class YOLO {
       }
 
     case .pose:
-      PoseEstimater.create(unwrappedModelURL: unwrappedModelURL) { result in
+      PoseEstimater.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu) { result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -288,7 +289,7 @@ public class YOLO {
       }
 
     case .obb:
-      ObbDetector.create(unwrappedModelURL: unwrappedModelURL) { result in
+      ObbDetector.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu) { result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -298,7 +299,7 @@ public class YOLO {
       }
 
     default:
-      ObjectDetector.create(unwrappedModelURL: unwrappedModelURL) { result in
+      ObjectDetector.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu) { result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)

@@ -102,7 +102,8 @@ class YOLOPlatformView(
             }
             
             // Load model with the specified path and task
-            yoloView.setModel(modelPath, task)
+            val useGpu = creationParams?.get("useGpu") as? Boolean ?: true
+            yoloView.setModel(modelPath, task, useGpu)
             
             // Setup zoom callback
             yoloView.onZoomChanged = { zoomLevel ->
@@ -219,6 +220,7 @@ class YOLOPlatformView(
                 "setModel" -> {
                     val modelPath = call.argument<String>("modelPath")
                     val taskString = call.argument<String>("task")
+                    val useGpu = call.argument<Boolean>("useGpu") ?: true
                     
                     if (modelPath == null || taskString == null) {
                         result.error("invalid_args", "modelPath and task are required", null)
@@ -226,9 +228,9 @@ class YOLOPlatformView(
                     }
                     
                     val task = YOLOTask.valueOf(taskString.uppercase())
-                    Log.d(TAG, "Received setModel call with modelPath: $modelPath, task: $task")
+                    Log.d(TAG, "Received setModel call with modelPath: $modelPath, task: $task, useGpu: $useGpu")
                     
-                    yoloView.setModel(modelPath, task) { success ->
+                    yoloView.setModel(modelPath, task, useGpu) { success ->
                         if (success) {
                             Log.d(TAG, "Model switched successfully")
                             result.success(null)
@@ -446,10 +448,10 @@ class YOLOPlatformView(
          * @param task The YOLO task type
          * @param callback Callback to report success/failure
          */
-        fun setModel(modelPath: String, task: YOLOTask, callback: ((Boolean) -> Unit)? = null) {
-            Log.d(TAG, "setModel called for viewId $viewId with model: $modelPath, task: $task")
-            yoloView.setModel(modelPath, task, callback)
-        }
+            fun setModel(modelPath: String, task: YOLOTask, useGpu: Boolean = true, callback: ((Boolean) -> Unit)? = null) {
+        Log.d(TAG, "setModel called for viewId $viewId with model: $modelPath, task: $task, useGpu: $useGpu")
+        yoloView.setModel(modelPath, task, useGpu, callback)
+    }
     
     /**
      * Resolves a model path that might be relative to app's internal storage

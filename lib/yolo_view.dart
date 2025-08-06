@@ -662,6 +662,15 @@ class YOLOView extends StatefulWidget {
   /// Range: 0.0 to 1.0. Default is 0.45.
   final double iouThreshold;
 
+  /// Whether to use GPU acceleration for inference.
+  ///
+  /// On Android, this controls TensorFlow Lite GPU delegate usage.
+  /// On iOS, this controls Core ML GPU usage.
+  ///
+  /// Default is true for better performance, but can be set to false
+  /// for stability on devices where GPU inference causes crashes.
+  final bool useGpu;
+
   const YOLOView({
     super.key,
     required this.modelPath,
@@ -676,6 +685,7 @@ class YOLOView extends StatefulWidget {
     this.streamingConfig,
     this.confidenceThreshold = 0.5,
     this.iouThreshold = 0.45,
+    this.useGpu = true,
   });
 
   @override
@@ -1076,6 +1086,7 @@ class YOLOViewState extends State<YOLOView> {
       'iouThreshold': widget.iouThreshold,
       'numItemsThreshold': _effectiveController.numItemsThreshold,
       'viewId': _viewId,
+      'useGpu': widget.useGpu,
     };
 
     // Add streaming config to creation params if provided
