@@ -152,6 +152,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           var modelPath = args?.get("modelPath") as? String ?: "yolo11n"
           val taskString = args?.get("task") as? String ?: "detect"
           val instanceId = args?.get("instanceId") as? String ?: "default"
+          val useGpu = args?.get("useGpu") as? Boolean ?: true
           val classifierOptionsMap = args?.get("classifierOptions") as? Map<String, Any>
           
           // Resolve the model path (handling absolute paths, internal:// scheme, or asset paths)
@@ -177,10 +178,11 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             context = applicationContext,
             modelPath = modelPath,
             task = task,
+            useGpu = useGpu,
             classifierOptions = classifierOptions
           ) { loadResult ->
             if (loadResult.isSuccess) {
-              Log.d(TAG, "Model loaded successfully: $modelPath for task: $task, instance: $instanceId ${if (classifierOptions != null) "with classifier options" else ""}")
+              Log.d(TAG, "Model loaded successfully: $modelPath for task: $task, instance: $instanceId, useGpu: $useGpu ${if (classifierOptions != null) "with classifier options" else ""}")
               result.success(true)
             } else {
               Log.e(TAG, "Failed to load model for instance $instanceId", loadResult.exceptionOrNull())
@@ -402,6 +404,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           val viewId = args?.get("viewId") as? Int
           val modelPath = args?.get("modelPath") as? String
           val taskString = args?.get("task") as? String
+          val useGpu = args?.get("useGpu") as? Boolean ?: true
           
           if (viewId == null || modelPath == null || taskString == null) {
             result.error("bad_args", "Missing required arguments for setModel", null)
@@ -418,7 +421,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             val task = YOLOTask.valueOf(taskString.uppercase())
             
             // Call setModel on the YoloView
-            yoloView.setModel(resolvedPath, task) { success ->
+            yoloView.setModel(resolvedPath, task, useGpu) { success ->
               if (success) {
                 result.success(null)
               } else {

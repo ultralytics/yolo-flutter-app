@@ -55,13 +55,14 @@ class YOLOInstanceManager {
     }
     
     /**
-     * Loads a model for a specific instance with classifier options
+     * Loads a model for a specific instance with classifier options and GPU control
      */
     fun loadModel(
         instanceId: String,
         context: Context,
         modelPath: String,
         task: YOLOTask,
+        useGpu: Boolean = true,
         classifierOptions: Map<String, Any>?,
         callback: (Result<Unit>) -> Unit
     ) {
@@ -89,7 +90,7 @@ class YOLOInstanceManager {
             }
             
             // Get labels from model metadata or use default
-            val yolo = YOLO(context, modelPath, task, emptyList(), true, classifierOptions)
+            val yolo = YOLO(context, modelPath, task, emptyList(), useGpu, classifierOptions)
             instances[instanceId] = yolo
             loadingStates[instanceId] = false
             Log.d(TAG, "Model loaded successfully for instance: $instanceId ${if (classifierOptions != null) "with classifier options" else ""}")

@@ -104,11 +104,13 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   /// - Parameters:
   ///   - unwrappedModelURL: The URL of the CoreML model file to load.
   ///   - isRealTime: Flag indicating if the predictor will be used for real-time processing (camera feed).
+  ///   - useGpu: Flag indicating whether to use GPU acceleration
   ///   - completion: Callback that receives the initialized predictor or an error.
   /// - Note: Model loading happens on a background thread to avoid blocking the main thread.
   public static func create(
     unwrappedModelURL: URL,
     isRealTime: Bool = false,
+    useGpu: Bool = true,
     completion: @escaping (Result<BasePredictor, Error>) -> Void
   ) {
     // Create an instance (synchronously, cheap)
@@ -121,6 +123,15 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         let ext = unwrappedModelURL.pathExtension.lowercased()
         let isCompiled = (ext == "mlmodelc")
         let config = MLModelConfiguration()
+        
+        if useGpu {
+          // Enable GPU acceleration 
+          config.computeUnits = .all
+        } else {
+          // Force CPU only for stability on problematic devices
+          config.computeUnits = .cpuOnly
+        }
+        
         if #available(iOS 16.0, *) {
           config.setValue(1, forKey: "experimentalMLE5EngineUsage")
         }

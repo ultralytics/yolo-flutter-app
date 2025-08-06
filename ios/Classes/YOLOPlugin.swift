@@ -177,6 +177,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
 
         let task = YOLOTask.fromString(taskString)
         let instanceId = args["instanceId"] as? String ?? "default"
+        let useGpu = args["useGpu"] as? Bool ?? true
 
         do {
           try await withCheckedThrowingContinuation {
@@ -184,7 +185,8 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
             YOLOInstanceManager.shared.loadModel(
               instanceId: instanceId,
               modelName: modelPath,
-              task: task
+              task: task,
+              useGpu: useGpu
             ) { modelResult in
               switch modelResult {
               case .success:
