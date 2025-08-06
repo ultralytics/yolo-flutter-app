@@ -1,7 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/material.dart';
-import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import 'use_gpu_example.dart';
 
 void main() {
