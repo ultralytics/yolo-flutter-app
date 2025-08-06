@@ -10,6 +10,7 @@
   - Updated documentation with usage examples and troubleshooting guide
 
 **API Changes:**
+
 - `YOLO` constructor now accepts optional `useGpu: bool = true` parameter
 - `YOLOView` widget now accepts optional `useGpu: bool = true` parameter
 - `YOLO.withClassifierOptions` constructor now accepts optional `useGpu: bool = true` parameter
