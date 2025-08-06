@@ -123,15 +123,15 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         let ext = unwrappedModelURL.pathExtension.lowercased()
         let isCompiled = (ext == "mlmodelc")
         let config = MLModelConfiguration()
-
+        
         if useGpu {
-          // Enable GPU acceleration
+          // Enable GPU acceleration 
           config.computeUnits = .all
         } else {
           // Force CPU only for stability on problematic devices
           config.computeUnits = .cpuOnly
         }
-
+        
         if #available(iOS 16.0, *) {
           config.setValue(1, forKey: "experimentalMLE5EngineUsage")
         }
