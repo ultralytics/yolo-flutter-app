@@ -1,3 +1,19 @@
+## 0.1.32
+
+- **New Feature**: Add `useGpu` parameter for GPU acceleration control
+  - Added `useGpu` parameter to `YOLO` constructor and `YOLOView` widget
+  - Allows disabling GPU acceleration on problematic devices to prevent crashes
+  - Supports fallback to CPU/NNAPI on Android and CPU-only mode on iOS
+  - Cross-platform consistency: parameter works on both Android and iOS
+  - Default value is `true` for backward compatibility
+  - Added comprehensive example demonstrating GPU control and error handling
+  - Updated documentation with usage examples and troubleshooting guide
+
+**API Changes:**
+- `YOLO` constructor now accepts optional `useGpu: bool = true` parameter
+- `YOLOView` widget now accepts optional `useGpu: bool = true` parameter
+- `YOLO.withClassifierOptions` constructor now accepts optional `useGpu: bool = true` parameter
+
 ## 0.1.30
 
 - Remove pubspec models
