@@ -27,6 +27,7 @@ export 'yolo_instance_manager.dart';
 /// final yolo = YOLO(
 ///   modelPath: 'assets/models/yolo11n.tflite',
 ///   task: YOLOTask.detect,
+///   useGpu: false, // Disable GPU for stability on some devices
 /// );
 ///
 /// await yolo.loadModel();
@@ -55,6 +56,15 @@ class YOLO {
   /// The type of task this YOLO model will perform (detection, segmentation, etc.)
   final YOLOTask task;
 
+  /// Whether to use GPU acceleration for inference.
+  ///
+  /// On Android, this controls TensorFlow Lite GPU delegate usage.
+  /// On iOS, this controls Core ML GPU usage.
+  ///
+  /// Default is true for better performance, but can be set to false
+  /// for stability on devices where GPU inference causes crashes.
+  final bool useGpu;
+
   /// Classifier options for customizing preprocessing (1-channel support, etc.)
   final Map<String, dynamic>? classifierOptions;
 
@@ -65,12 +75,14 @@ class YOLO {
   ///
   /// The [modelPath] can refer to a model in assets, internal storage, or absolute path.
   /// The [task] specifies what type of inference will be performed.
+  /// The [useGpu] parameter controls whether to use GPU acceleration (default: true).
   ///
   /// If [useMultiInstance] is true, each YOLO instance gets a unique ID and its own channel.
   /// If false, uses the default channel for backward compatibility.
   YOLO({
     required this.modelPath,
     required this.task,
+    this.useGpu = true,
     bool useMultiInstance = false,
     this.classifierOptions,
   }) {
@@ -131,6 +143,7 @@ class YOLO {
         'viewId': _viewId,
         'modelPath': newModelPath,
         'task': newTask.name,
+        'useGpu': useGpu,
       };
 
       // Only include instanceId for multi-instance mode
@@ -182,6 +195,7 @@ class YOLO {
       final Map<String, dynamic> arguments = {
         'modelPath': modelPath,
         'task': task.name,
+        'useGpu': useGpu,
       };
 
       // Include classifier options if provided
@@ -627,11 +641,13 @@ class YOLO {
     required String modelPath,
     required YOLOTask task,
     required Map<String, dynamic> classifierOptions,
+    bool useGpu = true,
     bool useMultiInstance = false,
   }) {
     return YOLO(
       modelPath: modelPath,
       task: task,
+      useGpu: useGpu,
       useMultiInstance: useMultiInstance,
       classifierOptions: classifierOptions,
     );
