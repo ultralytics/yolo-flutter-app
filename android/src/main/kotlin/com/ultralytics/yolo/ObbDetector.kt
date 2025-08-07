@@ -241,7 +241,7 @@ class ObbDetector(
             }
 
             val angleIndex = 4 + numClasses
-            val angle = data[angleIndex]
+            val angle = if (angleIndex < data.size) data[angleIndex] else 0f
 
             if (bestScore >= confidenceThreshold) {
                 val obb = OBB(cx, cy, w, h, angle)
