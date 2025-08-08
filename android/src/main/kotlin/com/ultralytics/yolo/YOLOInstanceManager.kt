@@ -51,7 +51,7 @@ class YOLOInstanceManager {
         task: YOLOTask,
         callback: (Result<Unit>) -> Unit
     ) {
-        loadModel(instanceId, context, modelPath, task, null, callback)
+        loadModel(instanceId, context, modelPath, task, true, null, callback)
     }
     
     /**
