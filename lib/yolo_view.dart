@@ -755,9 +755,17 @@ class YOLOViewState extends State<YOLOView> {
       _setupController();
     }
 
-    if (oldWidget.onResult != widget.onResult ||
-        oldWidget.onPerformanceMetrics != widget.onPerformanceMetrics ||
-        oldWidget.onStreamingData != widget.onStreamingData) {
+    bool callbacksChanged = false;
+
+    if ((oldWidget.onResult == null) != (widget.onResult == null) ||
+        (oldWidget.onPerformanceMetrics == null) !=
+            (widget.onPerformanceMetrics == null) ||
+        (oldWidget.onStreamingData == null) !=
+            (widget.onStreamingData == null)) {
+      callbacksChanged = true;
+    }
+
+    if (callbacksChanged) {
       if (widget.onResult == null &&
           widget.onPerformanceMetrics == null &&
           widget.onStreamingData == null) {
