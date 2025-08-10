@@ -80,13 +80,13 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         var result = YOLOResult(
           orig_shape: self.inputSize, boxes: boxes, masks: maskResults, speed: self.t2,
           fps: 1 / self.t4, names: self.labels)
-        
+
         // Add original image data if available
         if let originalImageData = self.originalImageData {
           result.originalImage = UIImage(data: originalImageData)
-          
+
         }
-        
+
         self.updateTime()
         self.currentOnResultsListener?.on(result: result)
       }

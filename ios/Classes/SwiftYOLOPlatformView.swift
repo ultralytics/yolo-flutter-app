@@ -61,7 +61,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Unwrap creation parameters
     if let dict = args as? [String: Any] {
     }
-    
+
     if let dict = args as? [String: Any],
       let modelName = dict["modelPath"] as? String,
       let taskRaw = dict["task"] as? String
@@ -250,7 +250,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           let iouThreshold = args["iouThreshold"] as? Double
           let numItemsThreshold = args["numItemsThreshold"] as? Int
 
-          
           self.updateThresholds(
             confidenceThreshold: confidenceThreshold,
             iouThreshold: iouThreshold,
@@ -268,7 +267,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let show = args["show"] as? Bool
         {
-          
+
           yoloView?.showUIControls = show
           result(nil)  // Success
         } else {
@@ -279,7 +278,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         }
 
       case "switchCamera":
-        
+
         self.yoloView?.switchCameraTapped()
         result(nil)  // Success
 
@@ -287,7 +286,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let zoomLevel = args["zoomLevel"] as? Double
         {
-          
+
           self.yoloView?.setZoomLevel(CGFloat(zoomLevel))
           result(nil)  // Success
         } else {
@@ -299,10 +298,10 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       case "setStreamingConfig":
         // Method to update streaming configuration
         if let args = call.arguments as? [String: Any] {
-          
+
           let streamConfig = YOLOStreamConfig.from(dict: args)
           self.yoloView?.setStreamConfig(streamConfig)
-          
+
           result(nil)  // Success
         } else {
           result(
@@ -314,7 +313,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       case "stop":
         // Method to stop camera and inference
-        
+
         self.stopCamera()
         result(nil)  // Success
 
@@ -325,17 +324,16 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           let taskString = args["task"] as? String
         {
           let task = YOLOTask.fromString(taskString)
-          
 
           // Use YOLOView's setModel method to switch the model
           self.yoloView?.setModel(modelPathOrName: modelPath, task: task) { modelResult in
             switch modelResult {
             case .success:
-              
+
               result(nil)  // Success
             case .failure(let error):
-              
-              result( 
+
+              result(
                 FlutterError(
                   code: "MODEL_NOT_FOUND",
                   message: "Failed to load model: \(modelPath) - \(error.localizedDescription)",
@@ -352,7 +350,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       case "captureFrame":
         // Method to capture current camera frame with detection overlays
-        
+
         self.yoloView?.capturePhoto { [weak self] image in
           if let image = image {
             // Convert UIImage to byte array (JPEG format)
@@ -397,22 +395,23 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
     let streamConfig: YOLOStreamConfig
     if let configDict = streamingConfigParam {
-      
+
       streamConfig = YOLOStreamConfig.from(dict: configDict)
     } else {
       // Use default minimal configuration for optimal performance
-      
+
       streamConfig = YOLOStreamConfig.DEFAULT
     }
-    
+
     // Use the parsed stream config (no more hardcoding)
     let finalStreamConfig = streamConfig
-    
-    print("SwiftYOLOPlatformView: 🔍 Final stream config - includeOriginalImage: \(finalStreamConfig.includeOriginalImage)")
+
+    print(
+      "SwiftYOLOPlatformView: 🔍 Final stream config - includeOriginalImage: \(finalStreamConfig.includeOriginalImage)"
+    )
 
     // Configure YOLOView with the stream config
     yoloView.setStreamConfig(finalStreamConfig)
-    
 
     // Set up streaming callback to forward data to Flutter via event channel
     yoloView.setStreamCallback { [weak self] streamData in
@@ -423,16 +422,15 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
   /// Send stream data to Flutter via event channel
   private func sendStreamDataToFlutter(_ streamData: [String: Any]) {
-    
 
     guard let eventSink = self.eventSink else {
-      
+
       return
     }
 
     // Send event on main thread
     DispatchQueue.main.async {
-      
+
       eventSink(streamData)
     }
   }
@@ -446,14 +444,14 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink)
     -> FlutterError?
   {
-    
+
     self.eventSink = events
-    
+
     return nil
   }
 
   public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-    
+
     self.eventSink = nil
     return nil
   }
@@ -462,7 +460,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
   /// Stop camera and inference operations
   private func stopCamera() {
-    
 
     // Stop the camera capture
     yoloView?.stop()
@@ -475,20 +472,17 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Remove from factory registry
     SwiftYOLOPlatformViewFactory.unregister(for: Int(viewId))
 
-    
   }
 
   deinit {
-    
 
     // Dispose model instance from YOLOInstanceManager
     // Since we're in deinit and YOLOInstanceManager is @MainActor, we need to dispatch
     let instanceIdToRemove = flutterViewId
-    
 
     Task { @MainActor in
       YOLOInstanceManager.shared.removeInstance(instanceId: instanceIdToRemove)
-      
+
     }
 
     // Clean up event channel
@@ -501,6 +495,5 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Clean up YOLOView reference - its own deinit will handle camera cleanup
     yoloView = nil
 
-    
   }
 }

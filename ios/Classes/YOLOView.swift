@@ -283,12 +283,12 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
 
       self.videoCapture.predictor = predictor
-      
+
       // Set stream configuration for original image capture
       if let basePredictor = predictor as? BasePredictor {
         basePredictor.streamConfig = self.streamConfig
-      } 
-      
+      }
+
       self.activityIndicator.stopAnimating()
       self.labelName.text = modelName
       completion?(.success(()))
@@ -1436,7 +1436,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
       }
       photoCaptureCompletion?(img)
       photoCaptureCompletion = nil
-    } 
+    }
   }
 
   // MARK: - Streaming Functionality
@@ -1467,10 +1467,10 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
     // Setup throttleInterval (for result output)
     if let throttleMs = config.throttleIntervalMs, throttleMs > 0 {
       throttleInterval = Double(throttleMs) / 1000.0  // Convert ms to seconds
-      
+
     } else {
       throttleInterval = nil
-     
+
     }
 
     // Setup inference frequency control
@@ -1484,7 +1484,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
     if let skipFrames = config.skipFrames, skipFrames > 0 {
       targetSkipFrames = skipFrames
       frameSkipCount = 0  // Reset counter
-     
+
     } else {
       targetSkipFrames = 0
       frameSkipCount = 0
@@ -1593,7 +1593,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
               row.map { Double($0) }
             }
             detection["mask"] = maskDataDouble
-            
+
           }
         }
 
@@ -1657,23 +1657,21 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
     // Add performance metrics (if enabled)
     if config.includeProcessingTimeMs {
       map["processingTimeMs"] = currentProcessingTime  // inference time in ms
-    } 
+    }
 
     if config.includeFps {
       map["fps"] = currentFps  // FPS value
-    } 
-
+    }
 
     if config.includeOriginalImage {
       if let originalImage = result.originalImage {
         if let imageData = originalImage.jpegData(compressionQuality: 0.9) {
           map["originalImage"] = imageData
-        } 
-      } 
-    } 
+        }
+      }
+    }
 
     return map
   }
-
 
 }

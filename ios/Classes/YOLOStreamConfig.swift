@@ -115,7 +115,7 @@ public struct YOLOStreamConfig {
 extension YOLOStreamConfig {
   public static func from(dict: [String: Any]) -> YOLOStreamConfig {
     let includeOriginalImage = dict["includeOriginalImage"] as? Bool ?? false
-    
+
     return YOLOStreamConfig(
       includeDetections: dict["includeDetections"] as? Bool ?? true,
       includeClassifications: dict["includeClassifications"] as? Bool ?? true,

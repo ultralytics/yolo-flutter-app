@@ -13,10 +13,10 @@
 //  (detection, segmentation, classification, etc.) inherit from this base class and override
 //  the prediction-specific methods.
 
+import CoreImage
 import Foundation
 import UIKit
 import Vision
-import CoreImage
 
 /// Base class for all YOLO model predictors, handling common model loading and inference logic.
 ///
@@ -73,10 +73,10 @@ public class BasePredictor: Predictor, @unchecked Sendable {
 
   /// Flag indicating whether the predictor is currently processing an update.
   public var isUpdating: Bool = false
-  
+
   /// Stream configuration for controlling what data is included in results.
   var streamConfig: YOLOStreamConfig?
-  
+
   /// Original image data captured for streaming (if enabled).
   var originalImageData: Data?
 
@@ -92,7 +92,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   ///
   /// Cancels any pending vision requests and releases references to avoid memory leaks.
   deinit {
-   
+
     visionRequest?.cancel()
     visionRequest = nil
     detector = nil
@@ -253,22 +253,22 @@ public class BasePredictor: Predictor, @unchecked Sendable {
 
       // Capture original image data for streaming if needed
       var originalImageData: Data? = nil
-     
+
       if let streamConfig = streamConfig {
-       
+
         if streamConfig.includeOriginalImage {
-         
+
           if let imageData = convertPixelBufferToJPEGData(pixelBuffer) {
             originalImageData = imageData
-           
+
           } else {
-           
+
           }
         } else {
-         
+
         }
       } else {
-       
+
       }
 
       // Invoke a VNRequestHandler with that image
@@ -286,7 +286,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
 
       // Store original image data for result creation
       self.originalImageData = originalImageData
-      
+
       currentBuffer = nil
     }
   }
@@ -384,7 +384,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     print("an not find input size")
     return (0, 0)
   }
-  
+
   /// Convert CVPixelBuffer to JPEG data for streaming
   private func convertPixelBufferToJPEGData(_ pixelBuffer: CVPixelBuffer) -> Data? {
     let ciImage = CIImage(cvPixelBuffer: pixelBuffer)

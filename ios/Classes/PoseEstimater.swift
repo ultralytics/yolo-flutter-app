@@ -40,13 +40,13 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
         var result = YOLOResult(
           orig_shape: inputSize, boxes: boxes, masks: nil, probs: nil, keypointsList: keypointsList,
           annotatedImage: nil, speed: 0, fps: 0, originalImage: nil, names: labels)
-        
+
         // Add original image data if available
         if let originalImageData = self.originalImageData {
           result.originalImage = UIImage(data: originalImageData)
-          
+
         }
-        
+
         self.currentOnResultsListener?.on(result: result)
         self.updateTime()
       }

@@ -42,13 +42,13 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
 
         var result = YOLOResult(
           orig_shape: inputSize, boxes: [], obb: obbResults, speed: 0, names: labels)
-        
+
         // Add original image data if available
         if let originalImageData = self.originalImageData {
           result.originalImage = UIImage(data: originalImageData)
-          
+
         }
-        
+
         self.currentOnResultsListener?.on(result: result)
         self.updateTime()
       }
