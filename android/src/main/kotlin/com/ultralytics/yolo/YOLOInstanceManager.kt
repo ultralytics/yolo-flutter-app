@@ -130,17 +130,29 @@ object YOLOInstanceManager {
             return null
         }
         
-        // Get stored classifier options if any
-        val options = instanceOptions[instanceId]
+        // Store original thresholds
+        val originalConfThreshold = yolo.getConfidenceThreshold()
+        val originalIouThreshold = yolo.getIouThreshold()
         
-        // Apply thresholds if specified
-        confidenceThreshold?.let { yolo.confidenceThreshold = it }
-        iouThreshold?.let { yolo.iouThreshold = it }
+        // Apply custom thresholds if provided
+        confidenceThreshold?.let { yolo.setConfidenceThreshold(it) }
+        iouThreshold?.let { yolo.setIouThreshold(it) }
         
         return try {
-            yolo.predict(bitmap)
+            val result = yolo.predict(bitmap)
+            
+            // Restore original thresholds
+            yolo.setConfidenceThreshold(originalConfThreshold)
+            yolo.setIouThreshold(originalIouThreshold)
+            
+            result
         } catch (e: Exception) {
             Log.e(TAG, "Prediction failed for instance $instanceId: ${e.message}")
+            
+            // Restore thresholds even on error
+            yolo.setConfidenceThreshold(originalConfThreshold)
+            yolo.setIouThreshold(originalIouThreshold)
+            
             null
         }
     }
@@ -151,8 +163,8 @@ object YOLOInstanceManager {
     fun dispose(instanceId: String) {
         instances[instanceId]?.let { yolo ->
             try {
-                yolo.close()
-                Log.d(TAG, "Disposed instance: $instanceId")
+                // YOLO class doesn't have a close() method, just remove from map
+                Log.d(TAG, "Disposing instance: $instanceId")
             } catch (e: Exception) {
                 Log.e(TAG, "Error disposing instance $instanceId: ${e.message}")
             }
@@ -160,6 +172,13 @@ object YOLOInstanceManager {
         instances.remove(instanceId)
         loadingStates.remove(instanceId)
         instanceOptions.remove(instanceId)
+    }
+    
+    /**
+     * Removes an instance (alias for dispose for compatibility)
+     */
+    fun removeInstance(instanceId: String) {
+        dispose(instanceId)
     }
     
     /**
@@ -183,5 +202,19 @@ object YOLOInstanceManager {
      */
     fun getActiveInstanceIds(): List<String> {
         return instances.keys.toList()
+    }
+    
+    /**
+     * Gets classifier options for a specific instance
+     */
+    fun getClassifierOptions(instanceId: String): Map<String, Any>? {
+        return instanceOptions[instanceId]
+    }
+    
+    /**
+     * Clears all instances
+     */
+    fun clearAll() {
+        disposeAll()
     }
 }
