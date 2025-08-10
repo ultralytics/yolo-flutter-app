@@ -1114,7 +1114,7 @@ class YOLOViewState extends State<YOLOView> {
 
     // Add streaming config to creation params if provided
     if (widget.streamingConfig != null) {
-      creationParams['streamingConfig'] = {
+      final streamConfig = {
         'includeDetections': widget.streamingConfig!.includeDetections,
         'includeClassifications':
             widget.streamingConfig!.includeClassifications,
@@ -1129,6 +1129,7 @@ class YOLOViewState extends State<YOLOView> {
         'throttleInterval':
             widget.streamingConfig!.throttleInterval?.inMilliseconds,
       };
+      creationParams['streamingConfig'] = streamConfig;
     }
 
     // This was causing issues in initState/didUpdateWidget, better to call once after view created.

@@ -40,21 +40,17 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Get viewId passed from Flutter (primarily a string ID)
     if let dict = args as? [String: Any], let viewIdStr = dict["viewId"] as? String {
       self.flutterViewId = viewIdStr
-      print("SwiftYOLOPlatformView: Using Flutter-provided viewId: \(flutterViewId)")
     } else {
       // Fallback: Convert numeric viewId to string
       self.flutterViewId = "\(viewId)"
-      print("SwiftYOLOPlatformView: Using fallback numeric viewId: \(flutterViewId)")
     }
 
     // Setup event channel - create unique channel name using view ID
     let eventChannelName = "com.ultralytics.yolo/detectionResults_\(flutterViewId)"
-    print("SwiftYOLOPlatformView: Creating event channel with name: \(eventChannelName)")
     self.eventChannel = FlutterEventChannel(name: eventChannelName, binaryMessenger: messenger)
 
     // Setup method channel - create unique channel name using view ID
     let methodChannelName = "com.ultralytics.yolo/controlChannel_\(flutterViewId)"
-    print("SwiftYOLOPlatformView: Creating method channel with name: \(methodChannelName)")
     self.methodChannel = FlutterMethodChannel(name: methodChannelName, binaryMessenger: messenger)
 
     super.init()
@@ -63,13 +59,14 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     self.eventChannel.setStreamHandler(self)
 
     // Unwrap creation parameters
+    if let dict = args as? [String: Any] {
+    }
+    
     if let dict = args as? [String: Any],
       let modelName = dict["modelPath"] as? String,
       let taskRaw = dict["task"] as? String
     {
       let task = YOLOTask.fromString(taskRaw)
-
-      print("SwiftYOLOPlatformView: Received modelPath: \(modelName)")
 
       // Get new threshold parameters
       let confidenceThreshold = dict["confidenceThreshold"] as? Double ?? 0.5
@@ -79,9 +76,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       let oldThreshold = dict["threshold"] as? Double ?? 0.5
 
       // Determine which thresholds to use (prioritize new parameters)
-      print(
-        "SwiftYOLOPlatformView: Received thresholds - confidence: \(confidenceThreshold), IoU: \(iouThreshold), old: \(oldThreshold)"
-      )
 
       // Create YOLOView
       yoloView = YOLOView(
@@ -123,17 +117,9 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   private func setupYOLOView(confidenceThreshold: Double, iouThreshold: Double) {
     guard let yoloView = yoloView else { return }
 
-    // Debug information
-    print(
-      "SwiftYOLOPlatformView: setupYOLOView - Setting up detection callback with confidenceThreshold: \(confidenceThreshold), iouThreshold: \(iouThreshold)"
-    )
-
     // YOLOView streaming is now configured separately
     // Keep simple detection callback for compatibility
     yoloView.onDetection = { result in
-      print(
-        "SwiftYOLOPlatformView: onDetection callback triggered with \(result.boxes.count) detections"
-      )
     }
 
     // Set thresholds
@@ -159,10 +145,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     confidenceThreshold: Double, iouThreshold: Double?, numItemsThreshold: Int? = nil
   ) {
     guard let yoloView = yoloView else { return }
-
-    print(
-      "SwiftYoloPlatformView: Updating thresholds - confidence: \(confidenceThreshold), IoU: \(String(describing: iouThreshold)), numItems: \(String(describing: numItemsThreshold))"
-    )
 
     // Set confidence threshold
     yoloView.sliderConf.value = Float(confidenceThreshold)
@@ -198,7 +180,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let threshold = args["threshold"] as? Double
         {
-          print("SwiftYOLOPlatformView: Received setThreshold call with threshold: \(threshold)")
           self.updateThreshold(threshold: threshold)
           result(nil)  // Success
         } else {
@@ -212,8 +193,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let threshold = args["threshold"] as? Double
         {
-          print(
-            "SwiftYoloPlatformView: Received setConfidenceThreshold call with value: \(threshold)")
           self.updateThresholds(
             confidenceThreshold: threshold,
             iouThreshold: nil,
@@ -232,7 +211,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let threshold = args["threshold"] as? Double
         {
-          print("SwiftYOLOPlatformView: Received setIoUThreshold call with value: \(threshold)")
           self.updateThresholds(
             confidenceThreshold: Double(self.yoloView?.sliderConf.value ?? 0.5),
             iouThreshold: threshold,
@@ -250,7 +228,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let numItems = args["numItems"] as? Int
         {
-          print("SwiftYOLOPlatformView: Received setNumItemsThreshold call with value: \(numItems)")
+
           // Keep current confidence and IoU thresholds
           self.updateThresholds(
             numItemsThreshold: numItems
@@ -272,9 +250,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           let iouThreshold = args["iouThreshold"] as? Double
           let numItemsThreshold = args["numItemsThreshold"] as? Int
 
-          print(
-            "SwiftYoloPlatformView: Received setThresholds call with confidence: \(confidenceThreshold), IoU: \(String(describing: iouThreshold)), numItems: \(String(describing: numItemsThreshold))"
-          )
+          
           self.updateThresholds(
             confidenceThreshold: confidenceThreshold,
             iouThreshold: iouThreshold,
@@ -292,7 +268,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let show = args["show"] as? Bool
         {
-          print("SwiftYOLOPlatformView: Setting UI controls visibility to \(show)")
+          
           yoloView?.showUIControls = show
           result(nil)  // Success
         } else {
@@ -303,7 +279,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         }
 
       case "switchCamera":
-        print("SwiftYoloPlatformView: Received switchCamera call")
+        
         self.yoloView?.switchCameraTapped()
         result(nil)  // Success
 
@@ -311,7 +287,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let zoomLevel = args["zoomLevel"] as? Double
         {
-          print("SwiftYoloPlatformView: Received setZoomLevel call with value: \(zoomLevel)")
+          
           self.yoloView?.setZoomLevel(CGFloat(zoomLevel))
           result(nil)  // Success
         } else {
@@ -323,10 +299,10 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       case "setStreamingConfig":
         // Method to update streaming configuration
         if let args = call.arguments as? [String: Any] {
-          print("SwiftYOLOPlatformView: Received setStreamingConfig call")
+          
           let streamConfig = YOLOStreamConfig.from(dict: args)
           self.yoloView?.setStreamConfig(streamConfig)
-          print("SwiftYOLOPlatformView: YOLOView streaming config updated")
+          
           result(nil)  // Success
         } else {
           result(
@@ -338,7 +314,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       case "stop":
         // Method to stop camera and inference
-        print("SwiftYOLOPlatformView: Received stop call from Flutter")
+        
         self.stopCamera()
         result(nil)  // Success
 
@@ -349,19 +325,17 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           let taskString = args["task"] as? String
         {
           let task = YOLOTask.fromString(taskString)
-          print(
-            "SwiftYOLOPlatformView: Received setModel call with modelPath: \(modelPath), task: \(taskString)"
-          )
+          
 
           // Use YOLOView's setModel method to switch the model
           self.yoloView?.setModel(modelPathOrName: modelPath, task: task) { modelResult in
             switch modelResult {
             case .success:
-              print("SwiftYOLOPlatformView: Model switched successfully")
+              
               result(nil)  // Success
             case .failure(let error):
-              print("SwiftYOLOPlatformView: Failed to switch model: \(error.localizedDescription)")
-              result(
+              
+              result( 
                 FlutterError(
                   code: "MODEL_NOT_FOUND",
                   message: "Failed to load model: \(modelPath) - \(error.localizedDescription)",
@@ -378,7 +352,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       case "captureFrame":
         // Method to capture current camera frame with detection overlays
-        print("SwiftYOLOPlatformView: Received captureFrame call")
+        
         self.yoloView?.capturePhoto { [weak self] image in
           if let image = image {
             // Convert UIImage to byte array (JPEG format)
@@ -423,17 +397,22 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
     let streamConfig: YOLOStreamConfig
     if let configDict = streamingConfigParam {
-      print("SwiftYOLOPlatformView: Creating YOLOStreamConfig from creation params: \(configDict)")
+      
       streamConfig = YOLOStreamConfig.from(dict: configDict)
     } else {
       // Use default minimal configuration for optimal performance
-      print("SwiftYOLOPlatformView: Using default streaming config")
+      
       streamConfig = YOLOStreamConfig.DEFAULT
     }
+    
+    // Use the parsed stream config (no more hardcoding)
+    let finalStreamConfig = streamConfig
+    
+    print("SwiftYOLOPlatformView: 🔍 Final stream config - includeOriginalImage: \(finalStreamConfig.includeOriginalImage)")
 
     // Configure YOLOView with the stream config
-    yoloView.setStreamConfig(streamConfig)
-    print("SwiftYOLOPlatformView: YOLOView streaming configured: \(streamConfig)")
+    yoloView.setStreamConfig(finalStreamConfig)
+    
 
     // Set up streaming callback to forward data to Flutter via event channel
     yoloView.setStreamCallback { [weak self] streamData in
@@ -444,18 +423,16 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
   /// Send stream data to Flutter via event channel
   private func sendStreamDataToFlutter(_ streamData: [String: Any]) {
-    print(
-      "SwiftYOLOPlatformView: Sending stream data to Flutter: \(streamData.keys.joined(separator: ", "))"
-    )
+    
 
     guard let eventSink = self.eventSink else {
-      print("SwiftYOLOPlatformView: eventSink is nil - no listener for events")
+      
       return
     }
 
     // Send event on main thread
     DispatchQueue.main.async {
-      print("SwiftYOLOPlatformView: Sending stream data to Flutter via eventSink")
+      
       eventSink(streamData)
     }
   }
@@ -469,14 +446,14 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink)
     -> FlutterError?
   {
-    print("SwiftYOLOPlatformView: onListen called - Stream handler connected")
+    
     self.eventSink = events
-    print("SwiftYOLOPlatformView: eventSink set successfully")
+    
     return nil
   }
 
   public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-    print("SwiftYOLOPlatformView: onCancel called - Stream handler disconnected")
+    
     self.eventSink = nil
     return nil
   }
@@ -485,7 +462,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
   /// Stop camera and inference operations
   private func stopCamera() {
-    print("SwiftYOLOPlatformView: Stopping camera and inference")
+    
 
     // Stop the camera capture
     yoloView?.stop()
@@ -498,22 +475,20 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Remove from factory registry
     SwiftYOLOPlatformViewFactory.unregister(for: Int(viewId))
 
-    print("SwiftYOLOPlatformView: Camera stopped successfully")
+    
   }
 
   deinit {
-    print(
-      "SwiftYOLOPlatformView: deinit called for viewId: \(viewId), flutterViewId: \(flutterViewId)")
+    
 
     // Dispose model instance from YOLOInstanceManager
     // Since we're in deinit and YOLOInstanceManager is @MainActor, we need to dispatch
     let instanceIdToRemove = flutterViewId
-    print(
-      "SwiftYOLOPlatformView: Scheduling disposal of model instance with id: \(instanceIdToRemove)")
+    
 
     Task { @MainActor in
       YOLOInstanceManager.shared.removeInstance(instanceId: instanceIdToRemove)
-      print("SwiftYOLOPlatformView: Model instance disposed: \(instanceIdToRemove)")
+      
     }
 
     // Clean up event channel
@@ -526,6 +501,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Clean up YOLOView reference - its own deinit will handle camera cleanup
     yoloView = nil
 
-    print("SwiftYOLOPlatformView: deinit completed - cleanup scheduled")
+    
   }
 }

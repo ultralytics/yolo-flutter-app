@@ -33,7 +33,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     // Check if we should process inference result based on frequency control
     if !shouldRunInference() {
-      print("YOLOView: Skipping inference result due to frequency control")
       return
     }
 
@@ -54,9 +53,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         frameNumberCounter += 1
 
         streamCallback(enhancedStreamData)
-        print("YOLOView: Sent streaming data with \(result.boxes.count) detections")
-      } else {
-        print("YOLOView: Skipping frame output due to throttling")
       }
     }
 
@@ -229,8 +225,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     task: YOLOTask,
     completion: ((Result<Void, Error>) -> Void)? = nil
   ) {
-    print("YOLOView.setModel: Received modelPath: \(modelPathOrName)")
-
     activityIndicator.startAnimating()
     boundingBoxViews.forEach { box in
       box.hide()
@@ -285,11 +279,16 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     func handleSuccess(predictor: Predictor) {
       // Release old predictor before setting new one to prevent memory leak
       if self.videoCapture.predictor != nil {
-        print("YOLOView: Releasing old predictor before setting new one")
         self.videoCapture.predictor = nil
       }
 
       self.videoCapture.predictor = predictor
+      
+      // Set stream configuration for original image capture
+      if let basePredictor = predictor as? BasePredictor {
+        basePredictor.streamConfig = self.streamConfig
+      } 
+      
       self.activityIndicator.stopAnimating()
       self.labelName.text = modelName
       completion?(.success(()))
@@ -1235,8 +1234,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   deinit {
-    print("YOLOView: deinit called - stopping camera capture")
-
     // Ensure camera is stopped when view is deallocated
     videoCapture.stop()
 
@@ -1253,8 +1250,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     // Remove notification observers
     NotificationCenter.default.removeObserver(self)
-
-    print("YOLOView: deinit completed")
   }
 }
 
@@ -1441,9 +1436,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
       }
       photoCaptureCompletion?(img)
       photoCaptureCompletion = nil
-    } else {
-      print("AVCapturePhotoCaptureDelegate Error")
-    }
+    } 
   }
 
   // MARK: - Streaming Functionality
@@ -1452,13 +1445,11 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
   public func setStreamConfig(_ config: YOLOStreamConfig?) {
     self.streamConfig = config
     setupThrottlingFromConfig()
-    print("YOLOView: Streaming config set: \(String(describing: config))")
   }
 
   /// Set streaming callback
   public func setStreamCallback(_ callback: (([String: Any]) -> Void)?) {
     self.onStream = callback
-    print("YOLOView: Streaming callback set: \(callback != nil)")
   }
 
   /// Setup throttling parameters from streaming configuration
@@ -1468,43 +1459,36 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
     // Setup maxFPS throttling (for result output)
     if let maxFPS = config.maxFPS, maxFPS > 0 {
       targetFrameInterval = 1.0 / Double(maxFPS)  // Convert to seconds
-      print(
-        "YOLOView: maxFPS throttling enabled - target FPS: \(maxFPS), interval: \(targetFrameInterval! * 1000)ms"
-      )
     } else {
       targetFrameInterval = nil
-      print("YOLOView: maxFPS throttling disabled")
+
     }
 
     // Setup throttleInterval (for result output)
     if let throttleMs = config.throttleIntervalMs, throttleMs > 0 {
       throttleInterval = Double(throttleMs) / 1000.0  // Convert ms to seconds
-      print("YOLOView: throttleInterval enabled - interval: \(throttleMs)ms")
+      
     } else {
       throttleInterval = nil
-      print("YOLOView: throttleInterval disabled")
+     
     }
 
     // Setup inference frequency control
     if let inferenceFreq = config.inferenceFrequency, inferenceFreq > 0 {
       inferenceFrameInterval = 1.0 / Double(inferenceFreq)  // Convert to seconds
-      print(
-        "YOLOView: Inference frequency control enabled - target inference FPS: \(inferenceFreq), interval: \(inferenceFrameInterval! * 1000)ms"
-      )
     } else {
       inferenceFrameInterval = nil
-      print("YOLOView: Inference frequency control disabled")
     }
 
     // Setup frame skipping
     if let skipFrames = config.skipFrames, skipFrames > 0 {
       targetSkipFrames = skipFrames
       frameSkipCount = 0  // Reset counter
-      print("YOLOView: Frame skipping enabled - skip \(skipFrames) frames between inferences")
+     
     } else {
       targetSkipFrames = 0
       frameSkipCount = 0
-      print("YOLOView: Frame skipping disabled")
+
     }
 
     // Initialize timing
@@ -1609,9 +1593,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
               row.map { Double($0) }
             }
             detection["mask"] = maskDataDouble
-            print(
-              "YOLOView: ✅ Added mask data (\(maskData.count)x\(maskData.first?.count ?? 0)) for detection \(detectionIndex)"
-            )
+            
           }
         }
 
@@ -1665,56 +1647,33 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
           ]
 
           detection["obb"] = obbDataMap
-          print(
-            "YOLOView: ✅ Added OBB data: \(obbResult.cls) (\(String(format: "%.1f", Double(obbBox.angle) * 180.0 / Double.pi))° rotation)"
-          )
         }
 
         detections.append(detection)
       }
-
       map["detections"] = detections
-      print("YOLOView: Converted \(detections.count) detections to stream data")
     }
 
     // Add performance metrics (if enabled)
     if config.includeProcessingTimeMs {
       map["processingTimeMs"] = currentProcessingTime  // inference time in ms
-      print(
-        "YOLOView: 📊 Including processingTimeMs: \(currentProcessingTime) ms (includeProcessingTimeMs=\(config.includeProcessingTimeMs))"
-      )
-    } else {
-      print(
-        "YOLOView: ⚠️ Skipping processingTimeMs (includeProcessingTimeMs=\(config.includeProcessingTimeMs))"
-      )
-    }
+    } 
 
     if config.includeFps {
       map["fps"] = currentFps  // FPS value
-      print("YOLOView: 📊 Including fps: \(currentFps) (includeFps=\(config.includeFps))")
-    } else {
-      print("YOLOView: ⚠️ Skipping fps (includeFps=\(config.includeFps))")
-    }
+    } 
 
-    // Add original image (if available and enabled)
+
     if config.includeOriginalImage {
-      if let pixelBuffer = currentBuffer {
-        if let imageData = convertPixelBufferToJPEGData(pixelBuffer) {
+      if let originalImage = result.originalImage {
+        if let imageData = originalImage.jpegData(compressionQuality: 0.9) {
           map["originalImage"] = imageData
-          print("YOLOView: ✅ Added original image data (\(imageData.count) bytes)")
-        }
-      }
-    }
+        } 
+      } 
+    } 
 
     return map
   }
 
-  /// Convert CVPixelBuffer to JPEG data for streaming
-  private func convertPixelBufferToJPEGData(_ pixelBuffer: CVPixelBuffer) -> Data? {
-    let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-    let context = CIContext()
-    guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
-    let uiImage = UIImage(cgImage: cgImage)
-    return uiImage.jpegData(compressionQuality: 0.9)
-  }
+
 }
