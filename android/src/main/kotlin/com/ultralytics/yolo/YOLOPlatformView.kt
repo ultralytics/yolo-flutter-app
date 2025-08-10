@@ -1,4 +1,3 @@
-// YOLOPlatformView.kt - Fixed version with setState resilience
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 package com.ultralytics.yolo
