@@ -1,3 +1,8 @@
+## 0.1.32
+
+- **Bug Fix**: Fix Android crash in YOLOInstanceManager
+  - Added compatibility methods for better API consistency
+
 ## 0.1.31
 
 - **New Feature**: Add `useGpu` parameter for GPU acceleration control
