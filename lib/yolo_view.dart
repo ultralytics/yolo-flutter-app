@@ -407,7 +407,7 @@ class YOLOViewController {
         'YoloViewController: Model switched successfully to $modelPath with task ${task.name}',
       );
     } catch (e) {
-      logInfo('YoloViewController: Error switching model: $e');
+      logInfo('YOLOViewController: Error switching model: $e');
       rethrow;
     }
   }
@@ -844,6 +844,13 @@ class YOLOViewState extends State<YOLOView> {
   void subscribeToResults() => _subscribeToResults();
 
   @visibleForTesting
+  void forceResubscribeToResults() {
+    logInfo('YOLOView: Force resubscribing to results for $_viewId');
+    _cancelResultSubscription();
+    _subscribeToResults();
+  }
+
+  @visibleForTesting
   StreamSubscription<dynamic>? get resultSubscription => _resultSubscription;
 
   @visibleForTesting
@@ -884,6 +891,14 @@ class YOLOViewState extends State<YOLOView> {
   }
 
   void _subscribeToResults() {
+    // Don't recreate subscription if one already exists and is working
+    if (_resultSubscription != null && mounted) {
+      logInfo(
+        'YOLOView: Subscription already exists, skipping recreation for $_viewId',
+      );
+      return;
+    }
+
     _cancelResultSubscription();
 
     logInfo(

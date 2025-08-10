@@ -26,6 +26,10 @@ class YOLOPlatformView(
 ) : PlatformView, MethodChannel.MethodCallHandler {
 
     private val yoloView: YOLOView = YOLOView(context)
+    
+    // Getter for external access to yoloView
+    val yoloViewInstance: YOLOView
+        get() = yoloView
     private val TAG = "YOLOPlatformView"
     
     // Track if we're actively streaming
@@ -120,16 +124,23 @@ class YOLOPlatformView(
         val streamingConfigParam = creationParams?.get("streamingConfig") as? Map<*, *>
         
         val streamConfig = streamingConfigParam?.let { config ->
-            YOLOStreamingConfig(
+            YOLOStreamConfig(
                 includeDetections = config["includeDetections"] as? Boolean ?: true,
-                includePerformanceMetrics = config["includePerformanceMetrics"] as? Boolean ?: false,
+                includeClassifications = config["includeClassifications"] as? Boolean ?: true,
+                includeProcessingTimeMs = config["includeProcessingTimeMs"] as? Boolean ?: true,
+                includeFps = config["includeFps"] as? Boolean ?: true,
+                includeMasks = config["includeMasks"] as? Boolean ?: false,
+                includePoses = config["includePoses"] as? Boolean ?: false,
+                includeOBB = config["includeOBB"] as? Boolean ?: false,
                 includeOriginalImage = config["includeOriginalImage"] as? Boolean ?: false,
-                inferenceFrequency = (config["inferenceFrequency"] as? Number)?.toInt() ?: 30,
-                maxFPS = (config["maxFPS"] as? Number)?.toInt() ?: 30
+                maxFPS = (config["maxFPS"] as? Number)?.toInt(),
+                throttleIntervalMs = (config["throttleInterval"] as? Number)?.toInt(),
+                inferenceFrequency = (config["inferenceFrequency"] as? Number)?.toInt(),
+                skipFrames = (config["skipFrames"] as? Number)?.toInt()
             )
         }
         
-        yoloView.setStreamingConfig(streamConfig)
+        yoloView.setStreamConfig(streamConfig)
         
         // Set up streaming callback with resilience
         yoloView.setStreamCallback { streamData ->
@@ -340,9 +351,10 @@ class YOLOPlatformView(
         
         try {
             yoloView.stop()
-            yoloView.setStreamCallback(null)
-            yoloView.setOnInferenceCallback(null)
-            yoloView.setOnModelLoadCallback(null)
+            // Clear callbacks by setting them to empty implementations
+            yoloView.setStreamCallback { }
+            yoloView.setOnInferenceCallback { }
+            yoloView.setOnModelLoadCallback { }
         } catch (e: Exception) {
             Log.e(TAG, "Error during disposal", e)
         }

@@ -147,30 +147,6 @@ class YOLOPlatformViewFactory(
     fun setActivity(activity: Activity?) {
         this.activity = activity
         Log.d(TAG, "Activity set: ${activity?.javaClass?.simpleName}")
-
-        // If activity is available, notify all active views
-        if (activity != null) {
-            // Iterate over a copy of the values to avoid concurrent modification if a view disposes itself during this call
-            val viewsToNotify = ArrayList(activeViews.values)
-            for (view in viewsToNotify) {
-                try {
-                    // YoloPlatformView's notifyLifecycleOwnerAvailable expects a LifecycleOwner.
-                    // Activity is a LifecycleOwner if it's a ComponentActivity or FragmentActivity.
-                    if (activity is LifecycleOwner) {
-                        view.notifyLifecycleOwnerAvailable(activity as LifecycleOwner)
-                        // It's good practice to log the viewId for easier debugging if multiple views exist.
-                        // Assuming YoloPlatformView has a public 'viewId' property or a getter.
-                        // If not, you might need to adjust how you log this.
-                        // For now, let's assume view.viewId is accessible or use a placeholder.
-                        Log.d(TAG, "Notified YoloPlatformView (viewId: ${view.hashCode()}) that activity is available.")
-                    } else {
-                        Log.w(TAG, "Activity is not a LifecycleOwner, cannot notify view ${view.hashCode()}")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error notifying YoloPlatformView (viewId: ${view.hashCode()}) about available activity", e)
-                }
-            }
-        }
     }
     
     override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
