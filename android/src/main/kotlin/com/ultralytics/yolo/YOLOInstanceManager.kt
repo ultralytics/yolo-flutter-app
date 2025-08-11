@@ -9,16 +9,19 @@ import android.util.Log
 /**
  * Manages multiple YOLO instances with unique IDs
  */
-class YOLOInstanceManager {
-    companion object {
-        private const val TAG = "YOLOInstanceManager"
-        
-        @JvmStatic
-        val shared = YOLOInstanceManager()
-    }
+object YOLOInstanceManager {
+    private const val TAG = "YOLOInstanceManager"
     
+    // Singleton access
+    val shared: YOLOInstanceManager = this
+    
+    // Store YOLO instances by their ID
     private val instances = mutableMapOf<String, YOLO>()
+    
+    // Store loading states to prevent multiple concurrent loads
     private val loadingStates = mutableMapOf<String, Boolean>()
+    
+    // Store classifier options per instance
     private val instanceOptions = mutableMapOf<String, Map<String, Any>>()
     
     init {
@@ -27,9 +30,10 @@ class YOLOInstanceManager {
     }
     
     /**
-     * Creates a new instance placeholder with the given ID
+     * Creates a new instance placeholder
      */
     fun createInstance(instanceId: String) {
+        // Just register the ID, actual YOLO instance created on load
         loadingStates[instanceId] = false
         Log.d(TAG, "Created instance placeholder: $instanceId")
     }
@@ -42,7 +46,7 @@ class YOLOInstanceManager {
     }
     
     /**
-     * Loads a model for a specific instance
+     * Loads a model for a specific instance (overload without useGpu for backward compatibility)
      */
     fun loadModel(
         instanceId: String,
@@ -51,11 +55,20 @@ class YOLOInstanceManager {
         task: YOLOTask,
         callback: (Result<Unit>) -> Unit
     ) {
-        loadModel(instanceId, context, modelPath, task, null, callback)
+        // Call the main implementation with default useGpu = true
+        loadModel(
+            instanceId = instanceId,
+            context = context,
+            modelPath = modelPath,
+            task = task,
+            useGpu = true,
+            classifierOptions = null,
+            callback = callback
+        )
     }
     
     /**
-     * Loads a model for a specific instance with classifier options and GPU control
+     * Loads a model for a specific instance with GPU control and classifier options
      */
     fun loadModel(
         instanceId: String,
@@ -89,7 +102,7 @@ class YOLOInstanceManager {
                 Log.d(TAG, "Stored classifier options for instance $instanceId: $options")
             }
             
-            // Get labels from model metadata or use default
+            // Create YOLO instance with the specified parameters
             val yolo = YOLO(context, modelPath, task, emptyList(), useGpu, classifierOptions)
             instances[instanceId] = yolo
             loadingStates[instanceId] = false
@@ -112,7 +125,10 @@ class YOLOInstanceManager {
         confidenceThreshold: Float? = null,
         iouThreshold: Float? = null
     ): YOLOResult? {
-        val yolo = instances[instanceId] ?: return null
+        val yolo = instances[instanceId] ?: run {
+            Log.e(TAG, "No model loaded for instance: $instanceId")
+            return null
+        }
         
         // Store original thresholds
         val originalConfThreshold = yolo.getConfidenceThreshold()
@@ -122,31 +138,56 @@ class YOLOInstanceManager {
         confidenceThreshold?.let { yolo.setConfidenceThreshold(it) }
         iouThreshold?.let { yolo.setIouThreshold(it) }
         
-        // Run prediction
-        val result = yolo.predict(bitmap)
-        
-        // Restore original thresholds
-        yolo.setConfidenceThreshold(originalConfThreshold)
-        yolo.setIouThreshold(originalIouThreshold)
-        
-        return result
+        return try {
+            val result = yolo.predict(bitmap)
+            
+            // Restore original thresholds
+            yolo.setConfidenceThreshold(originalConfThreshold)
+            yolo.setIouThreshold(originalIouThreshold)
+            
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "Prediction failed for instance $instanceId: ${e.message}")
+            
+            // Restore thresholds even on error
+            yolo.setConfidenceThreshold(originalConfThreshold)
+            yolo.setIouThreshold(originalIouThreshold)
+            
+            null
+        }
     }
     
     /**
-     * Removes an instance
+     * Disposes a specific instance
      */
-    fun removeInstance(instanceId: String) {
+    fun dispose(instanceId: String) {
+        instances[instanceId]?.let { yolo ->
+            try {
+                // YOLO class doesn't have a close() method, just remove from map
+                Log.d(TAG, "Disposing instance: $instanceId")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error disposing instance $instanceId: ${e.message}")
+            }
+        }
         instances.remove(instanceId)
         loadingStates.remove(instanceId)
         instanceOptions.remove(instanceId)
-        Log.d(TAG, "Removed instance: $instanceId")
     }
     
     /**
-     * Gets all active instance IDs
+     * Removes an instance (alias for dispose for compatibility)
      */
-    fun getActiveInstanceIds(): List<String> {
-        return instances.keys.toList()
+    fun removeInstance(instanceId: String) {
+        dispose(instanceId)
+    }
+    
+    /**
+     * Disposes all instances
+     */
+    fun disposeAll() {
+        val allIds = instances.keys.toList()
+        allIds.forEach { dispose(it) }
+        Log.d(TAG, "Disposed all ${allIds.size} instances")
     }
     
     /**
@@ -154,6 +195,13 @@ class YOLOInstanceManager {
      */
     fun hasInstance(instanceId: String): Boolean {
         return instances.containsKey(instanceId)
+    }
+    
+    /**
+     * Gets all active instance IDs
+     */
+    fun getActiveInstanceIds(): List<String> {
+        return instances.keys.toList()
     }
     
     /**
@@ -167,9 +215,6 @@ class YOLOInstanceManager {
      * Clears all instances
      */
     fun clearAll() {
-        instances.clear()
-        loadingStates.clear()
-        instanceOptions.clear()
-        Log.d(TAG, "Cleared all instances")
+        disposeAll()
     }
 }

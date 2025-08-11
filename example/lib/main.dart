@@ -14,7 +14,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       title: 'YOLO useGpu Example',
-
       home: CameraInferenceScreen(),
     );
   }
