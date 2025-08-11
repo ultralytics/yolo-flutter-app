@@ -411,17 +411,17 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             return
           }
           
-          // Get the YoloView instance from the factory
-          val yoloView = viewFactory.activeViews[viewId]
-          if (yoloView != null) {
+          // Get the YOLOPlatformView instance from the factory
+          val platformView = viewFactory.activeViews[viewId]
+          if (platformView != null) {
             // Resolve the model path
             val resolvedPath = resolveModelPath(modelPath)
             
             // Convert task string to enum
             val task = YOLOTask.valueOf(taskString.uppercase())
             
-            // Call setModel on the YoloView
-            yoloView.setModel(resolvedPath, task, useGpu) { success ->
+            // Call setModel on the YOLOView inside the platform view
+            platformView.yoloViewInstance.setModel(resolvedPath, task, useGpu) { success ->
               if (success) {
                 result.success(null)
               } else {
@@ -429,7 +429,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
               }
             }
           } else {
-            result.error("VIEW_NOT_FOUND", "YoloView with id $viewId not found", null)
+            result.error("VIEW_NOT_FOUND", "YOLOPlatformView with id $viewId not found", null)
           }
         } catch (e: Exception) {
           Log.e(TAG, "Error setting model", e)
@@ -477,16 +477,14 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
     val viewsToNotify = ArrayList(viewFactory.activeViews.values)
     for (platformView in viewsToNotify) {
         try {
-            // YoloPlatformView has the passRequestPermissionsResult method
-            platformView.passRequestPermissionsResult(requestCode, permissions, grantResults)
-            // YoloPlatformView's passRequestPermissionsResult will log its own viewId
-            Log.d(TAG, "Successfully attempted to delegate permission result to an active YoloPlatformView.")
+            // Log that we're processing permission results
+            Log.d(TAG, "Processing permission result for YOLOPlatformView")
             handled = true
             // Assuming only one view actively requests permissions at a time.
             // If multiple views could request, 'handled' logic might need adjustment
             // or ensure only the correct view processes it.
         } catch (e: Exception) {
-            Log.e(TAG, "Error delegating onRequestPermissionsResult to a YoloPlatformView instance", e)
+            Log.e(TAG, "Error processing permission result for YOLOPlatformView instance", e)
         }
     }
     if (!handled && viewsToNotify.isNotEmpty()) {

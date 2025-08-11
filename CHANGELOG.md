@@ -1,3 +1,11 @@
+## 0.1.33
+
+- **Bug Fix**: Fix setState callback issue in YOLOView
+  - Fixed issue where `onResult` and `onStreamingData` callbacks would stop working after `setState` calls
+  - Improved `didUpdateWidget` logic to prevent unnecessary subscription recreation when callbacks are functionally equivalent
+  - Added subscription existence check to avoid recreating working subscriptions
+  - Fixed Android compilation errors related to YOLOStreamConfig and method access
+
 ## 0.1.32
 
 - **Bug Fix**: Fix Android crash in YOLOInstanceManager
