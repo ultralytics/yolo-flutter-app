@@ -13,6 +13,7 @@
 //  (detection, segmentation, classification, etc.) inherit from this base class and override
 //  the prediction-specific methods.
 
+import CoreImage
 import Foundation
 import UIKit
 import Vision
@@ -73,6 +74,12 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   /// Flag indicating whether the predictor is currently processing an update.
   public var isUpdating: Bool = false
 
+  /// Stream configuration for controlling what data is included in results.
+  var streamConfig: YOLOStreamConfig?
+
+  /// Original image data captured for streaming (if enabled).
+  var originalImageData: Data?
+
   /// Required initializer for creating predictor instances.
   ///
   /// This empty initializer is required for the factory pattern used in the `create` method.
@@ -85,14 +92,14 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   ///
   /// Cancels any pending vision requests and releases references to avoid memory leaks.
   deinit {
-    print("BasePredictor: deinit called - cleaning up resources")
+
     visionRequest?.cancel()
     visionRequest = nil
     detector = nil
     currentBuffer = nil
     currentOnResultsListener = nil
     currentOnInferenceTimeListener = nil
-    print("BasePredictor: deinit completed")
+    print("BaseP  redictor: deinit completed")
   }
 
   /// Factory method to asynchronously create and initialize a predictor with the specified model.
@@ -244,6 +251,26 @@ public class BasePredictor: Predictor, @unchecked Sendable {
       // so in most cases Vision needs to rotate it for the model to work as expected.
       let imageOrientation: CGImagePropertyOrientation = .up
 
+      // Capture original image data for streaming if needed
+      var originalImageData: Data? = nil
+
+      if let streamConfig = streamConfig {
+
+        if streamConfig.includeOriginalImage {
+
+          if let imageData = convertPixelBufferToJPEGData(pixelBuffer) {
+            originalImageData = imageData
+
+          } else {
+
+          }
+        } else {
+
+        }
+      } else {
+
+      }
+
       // Invoke a VNRequestHandler with that image
       let handler = VNImageRequestHandler(
         cvPixelBuffer: pixelBuffer, orientation: imageOrientation, options: [:])
@@ -256,6 +283,9 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         print(error)
       }
       t1 = CACurrentMediaTime() - t0  // inference dt
+
+      // Store original image data for result creation
+      self.originalImageData = originalImageData
 
       currentBuffer = nil
     }
@@ -353,5 +383,14 @@ public class BasePredictor: Predictor, @unchecked Sendable {
 
     print("an not find input size")
     return (0, 0)
+  }
+
+  /// Convert CVPixelBuffer to JPEG data for streaming
+  private func convertPixelBufferToJPEGData(_ pixelBuffer: CVPixelBuffer) -> Data? {
+    let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+    let context = CIContext()
+    guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
+    let uiImage = UIImage(cgImage: cgImage)
+    return uiImage.jpegData(compressionQuality: 0.9)
   }
 }

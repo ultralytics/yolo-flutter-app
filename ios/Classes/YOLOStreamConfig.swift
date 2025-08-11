@@ -114,6 +114,8 @@ public struct YOLOStreamConfig {
 /// Extension to create YOLOStreamConfig from Dictionary (for Flutter integration)
 extension YOLOStreamConfig {
   public static func from(dict: [String: Any]) -> YOLOStreamConfig {
+    let includeOriginalImage = dict["includeOriginalImage"] as? Bool ?? false
+
     return YOLOStreamConfig(
       includeDetections: dict["includeDetections"] as? Bool ?? true,
       includeClassifications: dict["includeClassifications"] as? Bool ?? true,
@@ -122,7 +124,7 @@ extension YOLOStreamConfig {
       includeMasks: dict["includeMasks"] as? Bool ?? false,
       includePoses: dict["includePoses"] as? Bool ?? false,
       includeOBB: dict["includeOBB"] as? Bool ?? false,
-      includeOriginalImage: dict["includeOriginalImage"] as? Bool ?? false,
+      includeOriginalImage: includeOriginalImage,
       maxFPS: {
         if let maxFPS = dict["maxFPS"] as? Int { return maxFPS }
         if let maxFPS = dict["maxFPS"] as? Double { return Int(maxFPS) }

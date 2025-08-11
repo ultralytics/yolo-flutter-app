@@ -77,9 +77,16 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           return
         }
         var maskResults = Masks(masks: procceessedMasks.1, combinedMask: procceessedMasks.0)
-        let result = YOLOResult(
+        var result = YOLOResult(
           orig_shape: self.inputSize, boxes: boxes, masks: maskResults, speed: self.t2,
           fps: 1 / self.t4, names: self.labels)
+
+        // Add original image data if available
+        if let originalImageData = self.originalImageData {
+          result.originalImage = UIImage(data: originalImageData)
+
+        }
+
         self.updateTime()
         self.currentOnResultsListener?.on(result: result)
       }

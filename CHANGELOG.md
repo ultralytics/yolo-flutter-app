@@ -1,3 +1,9 @@
+## 0.1.34
+
+- **Bug Fix**: Fix originalImage being null in onStreamingData callback
+  - Fixed issue where `originalImage` was consistently null despite `includeOriginalImage: true` being set
+  - Capture original image data in BasePredictor before clearing currentBuffer
+
 ## 0.1.33
 
 - **Bug Fix**: Fix setState callback issue in YOLOView

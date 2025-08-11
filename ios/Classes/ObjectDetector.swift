@@ -94,8 +94,14 @@ class ObjectDetector: BasePredictor {
 
       self.currentOnInferenceTimeListener?.on(inferenceTime: self.t2 * 1000, fpsRate: 1 / self.t4)  // t2 seconds to ms
       //                self.currentOnFpsRateListener?.on(fpsRate: 1 / self.t4)
-      let result = YOLOResult(
+      var result = YOLOResult(
         orig_shape: inputSize, boxes: boxes, speed: self.t2, fps: 1 / self.t4, names: labels)
+
+      // Add original image data if available
+      if let originalImageData = self.originalImageData {
+        result.originalImage = UIImage(data: originalImageData)
+
+      }
 
       self.currentOnResultsListener?.on(result: result)
 
