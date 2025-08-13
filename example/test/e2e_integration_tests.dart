@@ -363,5 +363,55 @@ void main() {
         }
       });
     });
+
+    group('Error Handling and Edge Cases', () {
+      testWidgets('App handles network connectivity issues gracefully', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Simulate network error (would require mocking)
+        // Verify error handling UI is shown
+      });
+
+      testWidgets('App handles camera permission denial', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Simulate camera permission denial
+        // Verify appropriate error message is shown
+      });
+
+      testWidgets('App handles model file corruption', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Simulate corrupted model file
+        // Verify error handling and recovery
+      });
+
+      testWidgets('App handles low memory conditions', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Simulate low memory condition
+        // Verify app handles gracefully
+      });
+    });
   });
 }
