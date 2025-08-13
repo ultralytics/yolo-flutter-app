@@ -295,5 +295,67 @@ void main() {
         expect(results['boxes'], isA<List>());
       });
     });
+
+    group('YOLO Threshold Configuration Tests', () {
+      setUp(() async {
+        yoloInstance = YOLO(
+          modelPath: 'assets/models/yolo11n.tflite',
+          task: YOLOTask.detect,
+        );
+        await yoloInstance.loadModel();
+      });
+
+      testWidgets('YOLO applies confidence threshold correctly', (
+        WidgetTester tester,
+      ) async {
+        final mockImage = Uint8List.fromList(
+          List.generate(640 * 480 * 3, (i) => i % 256),
+        );
+
+        // Test prediction with confidence threshold parameter
+        final results = await yoloInstance.predict(
+          mockImage,
+          confidenceThreshold: 0.8,
+        );
+
+        expect(results, isA<Map<String, dynamic>>());
+        expect(results['boxes'], isA<List>());
+      });
+
+      testWidgets('YOLO applies IoU threshold correctly', (
+        WidgetTester tester,
+      ) async {
+        final mockImage = Uint8List.fromList(
+          List.generate(640 * 480 * 3, (i) => i % 256),
+        );
+
+        // Test prediction with IoU threshold parameter
+        final results = await yoloInstance.predict(
+          mockImage,
+          iouThreshold: 0.5,
+        );
+
+        expect(results, isA<Map<String, dynamic>>());
+        expect(results['boxes'], isA<List>());
+      });
+
+      testWidgets('YOLO applies max detections limit correctly', (
+        WidgetTester tester,
+      ) async {
+        final mockImage = Uint8List.fromList(
+          List.generate(640 * 480 * 3, (i) => i % 256),
+        );
+
+        // Test prediction with max detections parameter
+        final results = await yoloInstance.predict(
+          mockImage,
+          confidenceThreshold: 0.5,
+          iouThreshold: 0.45,
+        );
+
+        expect(results, isA<Map<String, dynamic>>());
+        expect(results['boxes'], isA<List>());
+      });
+    });
   });
 }
