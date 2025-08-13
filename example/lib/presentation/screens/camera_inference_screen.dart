@@ -78,8 +78,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final orientation = MediaQuery.of(context).orientation;
-    final isLandscape = orientation == Orientation.landscape;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final gap = SizedBox(height: isLandscape ? 8 : 12);
 
     return Scaffold(
       body: Stack(
@@ -95,59 +95,22 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               onZoomChanged: (zoomLevel) => mounted ? setState(() => _currentZoomLevel = zoomLevel) : null,
             )
           else if (_isModelLoading)
-            IgnorePointer(
-              child: Container(
-                color: Colors.black87,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Ultralytics logo
-                      Image.asset(
-                        'assets/logo.png',
-                        width: 120,
-                        height: 120,
-                        color: Colors.white.withValues(alpha: 0.8),
-                      ),
-                      const SizedBox(height: 32),
-                      // Loading message
-                      Text(
-                        _loadingMessage,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+            Container(
+              color: Colors.black87,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset('assets/logo.png', width: 120, height: 120, color: Colors.white.withValues(alpha: 0.8)),
+                    const SizedBox(height: 32),
+                    Text(_loadingMessage, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500), textAlign: TextAlign.center),
+                    if (_downloadProgress > 0) ...[
                       const SizedBox(height: 24),
-                      // Progress indicator
-                      if (_downloadProgress > 0)
-                        Column(
-                          children: [
-                            SizedBox(
-                              width: 200,
-                              child: LinearProgressIndicator(
-                                value: _downloadProgress,
-                                backgroundColor: Colors.white24,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                                minHeight: 4,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              '${(_downloadProgress * 100).toStringAsFixed(1)}%',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
+                      SizedBox(width: 200, child: LinearProgressIndicator(value: _downloadProgress, backgroundColor: Colors.white24, valueColor: const AlwaysStoppedAnimation(Colors.white), minHeight: 4)),
+                      const SizedBox(height: 12),
+                      Text('${(_downloadProgress * 100).toStringAsFixed(1)}%', style: const TextStyle(color: Colors.white, fontSize: 14)),
                     ],
-                  ),
+                  ],
                 ),
               ),
             )
@@ -194,15 +157,11 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
                 ),
                 const SizedBox(height: 8),
                 if (_activeSlider == SliderType.confidence)
-                  _buildTopPill(
-                    'CONFIDENCE THRESHOLD: ${_confidenceThreshold.toStringAsFixed(2)}',
-                  ),
+                  _pill('CONFIDENCE THRESHOLD: ${_confidenceThreshold.toStringAsFixed(2)}'),
                 if (_activeSlider == SliderType.iou)
-                  _buildTopPill(
-                    'IOU THRESHOLD: ${_iouThreshold.toStringAsFixed(2)}',
-                  ),
+                  _pill('IOU THRESHOLD: ${_iouThreshold.toStringAsFixed(2)}'),
                 if (_activeSlider == SliderType.numItems)
-                  _buildTopPill('ITEMS MAX: $_numItemsThreshold'),
+                  _pill('ITEMS MAX: $_numItemsThreshold'),
               ],
             ),
           ),
@@ -231,34 +190,13 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             right: isLandscape ? 8 : 16,
             child: Column(
               children: [
-                if (!_isFrontCamera)
-                  _btn(
-                    '${_currentZoomLevel.toStringAsFixed(1)}x',
-                    () {
-                      // Cycle through zoom levels: 0.5x -> 1.0x -> 3.0x -> 0.5x
-                      double nextZoom;
-                      if (_currentZoomLevel < 0.75) {
-                        nextZoom = 1.0;
-                      } else if (_currentZoomLevel < 2.0) {
-                        nextZoom = 3.0;
-                      } else {
-                        nextZoom = 0.5;
-                      }
-                      _setZoomLevel(nextZoom);
-                    },
-                  ),
-                SizedBox(height: isLandscape ? 8 : 12),
-                _btn(Icons.layers, () {
-                  _toggleSlider(SliderType.numItems);
-                }),
-                SizedBox(height: isLandscape ? 8 : 12),
-                _btn(Icons.adjust, () {
-                  _toggleSlider(SliderType.confidence);
-                }),
-                SizedBox(height: isLandscape ? 8 : 12),
-                _btn('assets/iou.png', () {
-                  _toggleSlider(SliderType.iou);
-                }),
+                if (!_isFrontCamera) _btn('${_currentZoomLevel.toStringAsFixed(1)}x', () => _setZoomLevel(_currentZoomLevel < 0.75 ? 1.0 : _currentZoomLevel < 2.0 ? 3.0 : 0.5)),
+                gap,
+                _btn(Icons.layers, () => _toggleSlider(SliderType.numItems)),
+                gap,
+                _btn(Icons.adjust, () => _toggleSlider(SliderType.confidence)),
+                gap,
+                _btn('assets/iou.png', () => _toggleSlider(SliderType.iou)),
                 SizedBox(height: isLandscape ? 16 : 40),
               ],
             ),
@@ -341,22 +279,11 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   /// Builds a pill-shaped container with text
   ///
   /// [label] is the text to display in the pill
-  Widget _buildTopPill(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
+  Widget _pill(String label) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(24)),
+    child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+  );
 
   /// Gets slider configuration based on active type
   double _getSliderValue() => switch (_activeSlider) {
@@ -444,6 +371,15 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     );
   }
 
+  void _showError(String title, String message) => showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+    ),
+  );
+
   Future<void> _loadModelForPlatform() async {
     setState(() {
       _isModelLoading = true;
@@ -464,16 +400,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           _loadingMessage = '';
           _downloadProgress = 0.0;
         });
-        if (modelPath == null && mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Model Not Available'),
-              content: Text('Failed to load ${_selectedModel.modelName} model. Please check your internet connection and try again.'),
-              actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
-            ),
-          );
-        }
+        if (modelPath == null && mounted) _showError('Model Not Available', 'Failed to load ${_selectedModel.modelName} model. Please check your internet connection and try again.');
       }
     } catch (e) {
       if (mounted) {
@@ -482,14 +409,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           _loadingMessage = 'Failed to load model';
           _downloadProgress = 0.0;
         });
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Model Loading Error'),
-            content: Text('Failed to load ${_selectedModel.modelName} model: $e'),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
-          ),
-        );
+        _showError('Model Loading Error', 'Failed to load ${_selectedModel.modelName} model: $e');
       }
     }
   }

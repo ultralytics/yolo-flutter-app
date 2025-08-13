@@ -36,35 +36,20 @@ class ModelManager {
   ModelManager({this.onDownloadProgress, this.onStatusUpdate});
 
   /// Gets the appropriate model path for the current platform and model type.
-  Future<String?> getModelPath(ModelType modelType) async {
-    return Platform.isIOS ? _getIOSModelPath(modelType) 
-         : Platform.isAndroid ? _getAndroidModelPath(modelType) 
-         : null;
-  }
-
-
+  Future<String?> getModelPath(ModelType modelType) async => Platform.isIOS ? _getIOSModelPath(modelType) : Platform.isAndroid ? _getAndroidModelPath(modelType) : null;
   /// Gets the iOS model path (.mlpackage format).
   Future<String?> _getIOSModelPath(ModelType modelType) async {
     _updateStatus('Checking for ${modelType.modelName} model...');
-    
-    // Check bundle
     try {
       final bundleCheck = await _checkModelExistsInBundle(modelType.modelName);
       if (bundleCheck['exists'] == true) return modelType.modelName;
     } catch (_) {}
-    
-    // Check downloaded
     final dir = await getApplicationDocumentsDirectory();
     final modelDir = Directory('${dir.path}/${modelType.modelName}.mlpackage');
-    
     if (await modelDir.exists()) {
-      if (await File('${modelDir.path}/Manifest.json').exists()) {
-        return modelDir.path;
-      }
+      if (await File('${modelDir.path}/Manifest.json').exists()) return modelDir.path;
       await modelDir.delete(recursive: true);
     }
-    
-    // Download
     _updateStatus('Downloading ${modelType.modelName} model...');
     return _downloadIOSModel(modelType);
   }
@@ -84,17 +69,11 @@ class ModelManager {
   Future<String?> _downloadIOSModel(ModelType modelType) async {
     final dir = await getApplicationDocumentsDirectory();
     final modelDir = Directory('${dir.path}/${modelType.modelName}.mlpackage');
-    
     if (await modelDir.exists()) return modelDir.path;
-    
-    // Try to extract from assets first (for SingleImageScreen compatibility)
     try {
-      final assetPath = 'assets/models/${modelType.modelName}.mlpackage.zip';
-      final zipData = await rootBundle.load(assetPath);
+      final zipData = await rootBundle.load('assets/models/${modelType.modelName}.mlpackage.zip');
       return await _extractZip(zipData.buffer.asUint8List(), modelDir, modelType.modelName);
     } catch (_) {}
-    
-    // Download from GitHub
     return await _downloadAndExtract(modelType, modelDir, '.mlpackage.zip');
   }
 
@@ -102,19 +81,13 @@ class ModelManager {
   Future<String?> _getAndroidModelPath(ModelType modelType) async {
     _updateStatus('Checking for ${modelType.modelName} model...');
     final bundledName = '${modelType.modelName}.tflite';
-    
-    // Check assets
     try {
       await rootBundle.load('assets/models/$bundledName');
       return bundledName;
     } catch (_) {}
-    
-    // Check local storage
     final dir = await getApplicationDocumentsDirectory();
     final modelFile = File('${dir.path}/$bundledName');
     if (await modelFile.exists()) return modelFile.path;
-    
-    // Download
     _updateStatus('Downloading ${modelType.modelName} model...');
     final bytes = await _downloadFile('$_modelDownloadBaseUrl/$bundledName');
     if (bytes != null && bytes.isNotEmpty) {
@@ -123,8 +96,6 @@ class ModelManager {
     }
     return null;
   }
-
-
   /// Helper method to download file with progress tracking
   Future<List<int>?> _downloadFile(String url) async {
     try {
@@ -154,19 +125,14 @@ class ModelManager {
       _updateStatus('Extracting model...');
       final archive = ZipDecoder().decodeBytes(bytes);
       await targetDir.create(recursive: true);
-      
-      // Check for redundant directory
       String? prefix;
       if (archive.files.isNotEmpty) {
         final first = archive.files.first.name;
         if (first.contains('/') && first.split('/').first.endsWith('.mlpackage')) {
           final topDir = first.split('/').first;
-          if (archive.files.every((f) => f.name.startsWith('$topDir/') || f.name == topDir)) {
-            prefix = '$topDir/';
-          }
+          if (archive.files.every((f) => f.name.startsWith('$topDir/') || f.name == topDir)) prefix = '$topDir/';
         }
       }
-      
       for (final file in archive) {
         var filename = file.name;
         if (prefix != null) {
@@ -177,7 +143,6 @@ class ModelManager {
           }
         }
         if (filename.isEmpty) continue;
-        
         if (file.isFile) {
           final outputFile = File('${targetDir.path}/$filename');
           await outputFile.parent.create(recursive: true);
@@ -193,17 +158,9 @@ class ModelManager {
   
   /// Helper method to download and extract model
   Future<String?> _downloadAndExtract(ModelType modelType, Directory targetDir, String ext) async {
-    final url = '$_modelDownloadBaseUrl/${modelType.modelName}$ext';
-    final bytes = await _downloadFile(url);
+    final bytes = await _downloadFile('$_modelDownloadBaseUrl/${modelType.modelName}$ext');
     if (bytes == null) return null;
-    
-    if (ext.contains('zip')) {
-      return await _extractZip(bytes, targetDir, modelType.modelName);
-    } else {
-      final file = File(targetDir.path);
-      await file.writeAsBytes(bytes);
-      return file.path;
-    }
+    return ext.contains('zip') ? await _extractZip(bytes, targetDir, modelType.modelName) : (await File(targetDir.path).writeAsBytes(bytes), targetDir.path).$2;
   }
   
   /// Updates the status message

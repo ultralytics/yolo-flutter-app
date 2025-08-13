@@ -42,34 +42,21 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   Future<void> _initializeYOLO() async {
     _modelPath = await _modelManager.getModelPath(ModelType.segment);
     if (_modelPath == null) return;
-    
     _yolo = YOLO(modelPath: _modelPath!, task: YOLOTask.segment);
     try {
       await _yolo.loadModel();
       if (mounted) setState(() => _isModelReady = true);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading model: $e')),
-        );
-      }
+      if (mounted) _showSnackBar('Error loading model: $e');
     }
   }
-
-
   /// Picks an image from the gallery and runs inference
   Future<void> _pickAndPredict() async {
     if (!_isModelReady) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Model is loading, please wait...')),
-        );
-      }
-      return;
+      return _showSnackBar('Model is loading, please wait...');
     }
     final file = await _picker.pickImage(source: ImageSource.gallery);
     if (file == null) return;
-
     final bytes = await file.readAsBytes();
     final result = await _yolo.predict(bytes);
     if (mounted) {
@@ -81,15 +68,14 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
     }
   }
 
+  void _showSnackBar(String msg) => mounted ? ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg))) : null;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Single Image Inference'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.of(context).pop()),
       ),
       body: Column(
         children: [
@@ -104,11 +90,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
               padding: const EdgeInsets.all(8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(width: 10),
-                  Text(Platform.isIOS ? "Preparing local model..." : "Model loading..."),
-                ],
+                children: [const CircularProgressIndicator(), const SizedBox(width: 10), Text(Platform.isIOS ? "Preparing local model..." : "Model loading...")],
               ),
             ),
           Expanded(
@@ -116,11 +98,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
               child: Column(
                 children: [
                   if (_annotatedImage != null || _imageBytes != null)
-                    SizedBox(
-                      height: 300,
-                      width: double.infinity,
-                      child: Image.memory(_annotatedImage ?? _imageBytes!),
-                    ),
+                    SizedBox(height: 300, width: double.infinity, child: Image.memory(_annotatedImage ?? _imageBytes!)),
                   const SizedBox(height: 10),
                   const Text('Detections:'),
                   Text(_detections.toString()),
