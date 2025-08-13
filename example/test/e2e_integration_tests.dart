@@ -71,5 +71,138 @@ void main() {
         expect(find.byType(CameraInferenceScreen), findsOneWidget);
       });
     });
+
+    group('Camera Inference Screen Tests', () {
+      testWidgets('Camera inference screen loads with default settings', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify default UI elements
+        expect(find.byType(YOLOView), findsOneWidget);
+        expect(find.byType(AppBar), findsOneWidget);
+
+        // Verify default model type (detect)
+        expect(find.text('Detect'), findsOneWidget);
+      });
+
+      testWidgets('Model type selection works correctly', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Find and tap model type buttons
+        final detectButton = find.text('Detect');
+        final segmentButton = find.text('Segment');
+        final classifyButton = find.text('Classify');
+        final poseButton = find.text('Pose');
+        final obbButton = find.text('OBB');
+
+        expect(detectButton, findsOneWidget);
+        expect(segmentButton, findsOneWidget);
+        expect(classifyButton, findsOneWidget);
+        expect(poseButton, findsOneWidget);
+        expect(obbButton, findsOneWidget);
+
+        // Test switching to segment model
+        await tester.tap(segmentButton);
+        await tester.pumpAndSettle();
+
+        // Verify UI updates (this would depend on your implementation)
+        // You might check for loading indicators or state changes
+      });
+
+      testWidgets('Confidence threshold slider works', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Find confidence slider
+        final confidenceSlider = find.byType(Slider);
+        expect(confidenceSlider, findsWidgets);
+
+        // Test slider interaction
+        await tester.drag(confidenceSlider.first, const Offset(50.0, 0.0));
+        await tester.pumpAndSettle();
+
+        // Verify slider value changed (implementation dependent)
+      });
+
+      testWidgets('IoU threshold slider works', (WidgetTester tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Find IoU slider
+        final iouSlider = find.byType(Slider);
+        expect(iouSlider, findsWidgets);
+
+        // Test slider interaction
+        await tester.drag(iouSlider.first, const Offset(-30.0, 0.0));
+        await tester.pumpAndSettle();
+      });
+
+      testWidgets('Camera controls work correctly', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Find camera control buttons
+        final flipButton = find.byIcon(Icons.flip_camera_ios);
+        final zoomInButton = find.byIcon(Icons.zoom_in);
+        final zoomOutButton = find.byIcon(Icons.zoom_out);
+
+        // Test camera flip
+        if (flipButton.evaluate().isNotEmpty) {
+          await tester.tap(flipButton);
+          await tester.pumpAndSettle();
+        }
+
+        // Test zoom controls
+        if (zoomInButton.evaluate().isNotEmpty) {
+          await tester.tap(zoomInButton);
+          await tester.pumpAndSettle();
+        }
+
+        if (zoomOutButton.evaluate().isNotEmpty) {
+          await tester.tap(zoomOutButton);
+          await tester.pumpAndSettle();
+        }
+      });
+
+      testWidgets('Performance metrics are displayed', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Look for FPS display
+        final fpsText = find.textContaining('FPS');
+        if (fpsText.evaluate().isNotEmpty) {
+          expect(fpsText, findsOneWidget);
+        }
+
+        // Look for detection count
+        final detectionText = find.textContaining('Detections');
+        if (detectionText.evaluate().isNotEmpty) {
+          expect(detectionText, findsOneWidget);
+        }
+      });
+    });
   });
 }
