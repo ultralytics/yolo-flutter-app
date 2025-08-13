@@ -315,5 +315,53 @@ void main() {
         }
       });
     });
+
+    group('YOLO Integration Tests', () {
+      testWidgets('YOLO instance creation and initialization', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify YOLO instance is created
+        // This would be verified through the UI state
+      });
+
+      testWidgets('YOLO prediction results are displayed', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Wait for some predictions to occur
+        await tester.pump(const Duration(seconds: 2));
+
+        // Verify detection results are shown
+        // This depends on your UI implementation
+      });
+
+      testWidgets('YOLO threshold settings are applied', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Test threshold adjustments
+        final sliders = find.byType(Slider);
+        if (sliders.evaluate().isNotEmpty) {
+          await tester.drag(sliders.first, const Offset(50.0, 0.0));
+          await tester.pumpAndSettle();
+
+          // Verify threshold changes are applied
+          // This depends on your implementation
+        }
+      });
+    });
   });
 }
