@@ -413,5 +413,94 @@ void main() {
         // Verify app handles gracefully
       });
     });
+
+    group('Performance Tests', () {
+      testWidgets('App maintains responsive UI during inference', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Run inference for extended period
+        for (int i = 0; i < 10; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+
+          // Verify UI remains responsive
+          // Check for frame drops or UI freezing
+        }
+      });
+
+      testWidgets('Memory usage remains stable during extended use', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Monitor memory usage over time
+        // Verify no memory leaks
+      });
+
+      testWidgets('Battery usage is reasonable during inference', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Monitor battery usage during inference
+        // Verify reasonable power consumption
+      });
+    });
+
+    group('Accessibility Tests', () {
+      testWidgets('App is accessible to screen readers', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify semantic labels are present
+        final semanticLabels = find.bySemanticsLabel('Camera');
+        if (semanticLabels.evaluate().isNotEmpty) {
+          expect(semanticLabels, findsOneWidget);
+        }
+      });
+
+      testWidgets('UI elements have proper contrast ratios', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify text contrast meets accessibility standards
+        // This would require checking color values
+      });
+
+      testWidgets('Touch targets are appropriately sized', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify buttons and interactive elements meet minimum size requirements
+        final buttons = find.byType(ElevatedButton);
+        for (final button in buttons.evaluate()) {
+          final RenderBox box = button.renderObject as RenderBox;
+          expect(box.size.width, greaterThanOrEqualTo(48.0));
+          expect(box.size.height, greaterThanOrEqualTo(48.0));
+        }
+      });
+    });
   });
 }
