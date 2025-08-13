@@ -36,5 +36,40 @@ void main() {
             null,
           );
     });
+
+    group('App Initialization and Navigation', () {
+      testWidgets('App launches and shows camera inference screen', (
+        WidgetTester tester,
+      ) async {
+        // Build the app
+        await tester.pumpWidget(const MyApp());
+        await tester.pumpAndSettle();
+
+        // Verify the app launches successfully
+        expect(find.byType(CameraInferenceScreen), findsOneWidget);
+        expect(find.text('YOLO useGpu Example'), findsOneWidget);
+
+        // Verify key UI elements are present
+        expect(find.byType(YOLOView), findsOneWidget);
+        expect(find.byType(AppBar), findsOneWidget);
+      });
+
+      testWidgets('App maintains state during hot reload', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(const MyApp());
+        await tester.pumpAndSettle();
+
+        // Verify initial state
+        expect(find.byType(CameraInferenceScreen), findsOneWidget);
+
+        // Simulate hot reload
+        await tester.pumpWidget(const MyApp());
+        await tester.pumpAndSettle();
+
+        // Verify state is maintained
+        expect(find.byType(CameraInferenceScreen), findsOneWidget);
+      });
+    });
   });
 }
