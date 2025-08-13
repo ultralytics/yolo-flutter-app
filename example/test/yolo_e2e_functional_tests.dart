@@ -474,5 +474,38 @@ void main() {
         }
       });
     });
+
+    group('YOLO Resource Management Tests', () {
+      testWidgets('YOLO disposes resources correctly', (
+        WidgetTester tester,
+      ) async {
+        yoloInstance = YOLO(
+          modelPath: 'assets/models/yolo11n.tflite',
+          task: YOLOTask.detect,
+        );
+        await yoloInstance.loadModel();
+
+        await yoloInstance.dispose();
+
+        expect(methodCallLog.last.method, 'dispose');
+      });
+
+      testWidgets('YOLO handles multiple dispose calls gracefully', (
+        WidgetTester tester,
+      ) async {
+        yoloInstance = YOLO(
+          modelPath: 'assets/models/yolo11n.tflite',
+          task: YOLOTask.detect,
+        );
+        await yoloInstance.loadModel();
+
+        // Multiple dispose calls should not throw
+        await yoloInstance.dispose();
+        await yoloInstance.dispose();
+        await yoloInstance.dispose();
+
+        // Should not throw any exceptions
+      });
+    });
   });
 }
