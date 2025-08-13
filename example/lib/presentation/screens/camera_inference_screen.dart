@@ -130,7 +130,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               streamingConfig: const YOLOStreamingConfig.minimal(),
               onResult: _onDetectionResults,
               onPerformanceMetrics: (metrics) {
-                debugPrint('Performance Metrics - FPS: ${metrics.fps}, Processing: ${metrics.processingTimeMs}ms');
+                debugPrint(
+                  'Performance Metrics - FPS: ${metrics.fps}, Processing: ${metrics.processingTimeMs}ms',
+                );
                 if (mounted) {
                   setState(() {
                     _currentFps = metrics.fps;
