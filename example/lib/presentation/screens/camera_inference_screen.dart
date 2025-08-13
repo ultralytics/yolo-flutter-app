@@ -96,7 +96,6 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   void _onDetectionResults(List<YOLOResult> results) {
     if (!mounted) return;
 
-    // Only update detection count - FPS is handled by onPerformanceMetrics
     setState(() {
       _detectionCount = results.length;
     });
