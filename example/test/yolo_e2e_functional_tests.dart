@@ -191,5 +191,85 @@ void main() {
         expect(methodCallLog[0].arguments['task'], 'pose');
       });
     });
+
+    group('YOLO Single Image Prediction Tests', () {
+      setUp(() async {
+        yoloInstance = YOLO(
+          modelPath: 'assets/models/yolo11n.tflite',
+          task: YOLOTask.detect,
+        );
+        await yoloInstance.loadModel();
+      });
+
+      testWidgets('YOLO predicts on single image successfully', (
+        WidgetTester tester,
+      ) async {
+        // Create a mock image
+        final mockImage = Uint8List.fromList(
+          List.generate(640 * 480 * 3, (i) => i % 256),
+        );
+
+        final results = await yoloInstance.predict(mockImage);
+
+        expect(results, isA<Map<String, dynamic>>());
+        expect(results['boxes'], isA<List>());
+        expect(results['boxes'].length, 2);
+        expect(results['processingTimeMs'], isA<double>());
+        expect(results['imageWidth'], 640);
+        expect(results['imageHeight'], 480);
+
+        // Verify the prediction call
+        expect(methodCallLog.length, 2); // loadModel + predict
+        expect(methodCallLog[1].method, 'predictSingleImage');
+        expect(methodCallLog[1].arguments['image'], mockImage);
+      });
+
+      testWidgets('YOLO prediction results have correct structure', (
+        WidgetTester tester,
+      ) async {
+        final mockImage = Uint8List.fromList(
+          List.generate(640 * 480 * 3, (i) => i % 256),
+        );
+
+        final results = await yoloInstance.predict(mockImage);
+
+        // Verify detection structure
+        final boxes = results['boxes'] as List;
+        expect(boxes.length, 2);
+
+        final personDetection = boxes[0];
+        expect(personDetection['classIndex'], 0);
+        expect(personDetection['className'], 'person');
+        expect(personDetection['confidence'], 0.95);
+        expect(personDetection['boundingBox'], isA<Map>());
+        expect(personDetection['normalizedBox'], isA<Map>());
+
+        final carDetection = boxes[1];
+        expect(carDetection['classIndex'], 2);
+        expect(carDetection['className'], 'car');
+        expect(carDetection['confidence'], 0.87);
+      });
+
+      testWidgets('YOLO prediction with different image sizes', (
+        WidgetTester tester,
+      ) async {
+        // Test with different image sizes
+        final imageSizes = [(320, 240), (640, 480), (1280, 720), (1920, 1080)];
+
+        for (final (width, height) in imageSizes) {
+          methodCallLog.clear();
+          final mockImage = Uint8List.fromList(
+            List.generate(width * height * 3, (i) => i % 256),
+          );
+
+          final results = await yoloInstance.predict(mockImage);
+
+          expect(results, isA<Map<String, dynamic>>());
+          expect(results['boxes'], isA<List>());
+          expect(methodCallLog.length, 1);
+          expect(methodCallLog[0].method, 'predictSingleImage');
+        }
+      });
+    });
   });
 }
