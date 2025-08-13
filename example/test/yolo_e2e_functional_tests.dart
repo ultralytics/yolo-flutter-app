@@ -357,5 +357,122 @@ void main() {
         expect(results['boxes'], isA<List>());
       });
     });
+
+    group('YOLO Error Handling Tests', () {
+      testWidgets('YOLO handles model loading failure gracefully', (
+        WidgetTester tester,
+      ) async {
+        // Mock model loading failure
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('yolo_single_image_channel'),
+              (MethodCall methodCall) async {
+                if (methodCall.method == 'loadModel') {
+                  throw PlatformException(
+                    code: 'MODEL_LOAD_ERROR',
+                    message: 'Failed to load model',
+                  );
+                }
+                return null;
+              },
+            );
+
+        yoloInstance = YOLO(
+          modelPath: 'invalid_model_path.tflite',
+          task: YOLOTask.detect,
+        );
+
+        expect(
+          () => yoloInstance.loadModel(),
+          throwsA(isA<PlatformException>()),
+        );
+      });
+
+      testWidgets('YOLO handles prediction failure gracefully', (
+        WidgetTester tester,
+      ) async {
+        // Mock prediction failure
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('yolo_single_image_channel'),
+              (MethodCall methodCall) async {
+                if (methodCall.method == 'loadModel') {
+                  return true;
+                } else if (methodCall.method == 'predictSingleImage') {
+                  throw PlatformException(
+                    code: 'PREDICTION_ERROR',
+                    message: 'Failed to perform prediction',
+                  );
+                }
+                return null;
+              },
+            );
+
+        yoloInstance = YOLO(
+          modelPath: 'assets/models/yolo11n.tflite',
+          task: YOLOTask.detect,
+        );
+        await yoloInstance.loadModel();
+
+        final mockImage = Uint8List.fromList(
+          List.generate(640 * 480 * 3, (i) => i % 256),
+        );
+
+        expect(
+          () => yoloInstance.predict(mockImage),
+          throwsA(isA<PlatformException>()),
+        );
+      });
+    });
+
+    group('YOLO Performance Tests', () {
+      setUp(() async {
+        yoloInstance = YOLO(
+          modelPath: 'assets/models/yolo11n.tflite',
+          task: YOLOTask.detect,
+        );
+        await yoloInstance.loadModel();
+      });
+
+      testWidgets('YOLO prediction performance is reasonable', (
+        WidgetTester tester,
+      ) async {
+        final mockImage = Uint8List.fromList(
+          List.generate(640 * 480 * 3, (i) => i % 256),
+        );
+
+        final stopwatch = Stopwatch()..start();
+        final results = await yoloInstance.predict(mockImage);
+        stopwatch.stop();
+
+        expect(results['processingTimeMs'], isA<double>());
+        expect(results['processingTimeMs'], greaterThan(0));
+
+        // Verify processing time is reasonable (less than 1 second)
+        expect(stopwatch.elapsedMilliseconds, lessThan(1000));
+      });
+
+      testWidgets('YOLO handles multiple rapid predictions', (
+        WidgetTester tester,
+      ) async {
+        final mockImage = Uint8List.fromList(
+          List.generate(640 * 480 * 3, (i) => i % 256),
+        );
+
+        // Perform multiple rapid predictions
+        final futures = <Future<Map<String, dynamic>>>[];
+        for (int i = 0; i < 5; i++) {
+          futures.add(yoloInstance.predict(mockImage));
+        }
+
+        final results = await Future.wait(futures);
+
+        expect(results.length, 5);
+        for (final result in results) {
+          expect(result, isA<Map<String, dynamic>>());
+          expect(result['boxes'], isA<List>());
+        }
+      });
+    });
   });
 }
