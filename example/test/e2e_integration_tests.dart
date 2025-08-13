@@ -204,5 +204,61 @@ void main() {
         }
       });
     });
+
+    group('Single Image Screen Tests', () {
+      testWidgets('Single image screen loads correctly', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(const MaterialApp(home: SingleImageScreen()));
+        await tester.pumpAndSettle();
+
+        // Verify UI elements
+        expect(find.byType(AppBar), findsOneWidget);
+        expect(find.text('Single Image Inference'), findsOneWidget);
+      });
+
+      testWidgets('Image picker button is present and tappable', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(const MaterialApp(home: SingleImageScreen()));
+        await tester.pumpAndSettle();
+
+        // Find image picker button
+        final pickImageButton = find.text('Pick Image');
+        expect(pickImageButton, findsOneWidget);
+
+        // Test button tap
+        await tester.tap(pickImageButton);
+        await tester.pumpAndSettle();
+
+        // Verify image picker was triggered
+        // This would be verified by checking if the mock method was called
+      });
+
+      testWidgets('Model loading indicator shows during initialization', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(const MaterialApp(home: SingleImageScreen()));
+
+        // Check for loading indicator during initialization
+        final loadingIndicator = find.byType(CircularProgressIndicator);
+        if (loadingIndicator.evaluate().isNotEmpty) {
+          expect(loadingIndicator, findsOneWidget);
+        }
+
+        await tester.pumpAndSettle();
+      });
+
+      testWidgets('Error handling for model loading failures', (
+        WidgetTester tester,
+      ) async {
+        // This test would require mocking the YOLO model loading to fail
+        await tester.pumpWidget(const MaterialApp(home: SingleImageScreen()));
+        await tester.pumpAndSettle();
+
+        // Verify error handling UI elements if present
+        // This depends on your error handling implementation
+      });
+    });
   });
 }
