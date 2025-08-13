@@ -271,5 +271,29 @@ void main() {
         }
       });
     });
+
+    group('YOLO Streaming Tests', () {
+      testWidgets('YOLO streaming prediction works correctly', (
+        WidgetTester tester,
+      ) async {
+        yoloInstance = YOLO(
+          modelPath: 'assets/models/yolo11n.tflite',
+          task: YOLOTask.detect,
+        );
+        await yoloInstance.loadModel();
+
+        // Simulate streaming prediction
+        final mockImage = Uint8List.fromList(
+          List.generate(640 * 480 * 3, (i) => i % 256),
+        );
+
+        // This would typically be called by the camera stream
+        // For testing, we'll simulate it
+        final results = await yoloInstance.predict(mockImage);
+
+        expect(results, isA<Map<String, dynamic>>());
+        expect(results['boxes'], isA<List>());
+      });
+    });
   });
 }
