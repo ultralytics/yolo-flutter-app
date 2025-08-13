@@ -52,8 +52,9 @@ class ModelManager {
     final dir = await getApplicationDocumentsDirectory();
     final modelDir = Directory('${dir.path}/${modelType.modelName}.mlpackage');
     if (await modelDir.exists()) {
-      if (await File('${modelDir.path}/Manifest.json').exists())
+      if (await File('${modelDir.path}/Manifest.json').exists()) {
         return modelDir.path;
+      }
       await modelDir.delete(recursive: true);
     }
     _updateStatus('Downloading ${modelType.modelName} model...');
@@ -154,8 +155,9 @@ class ModelManager {
           final topDir = first.split('/').first;
           if (archive.files.every(
             (f) => f.name.startsWith('$topDir/') || f.name == topDir,
-          ))
+          )) {
             prefix = '$topDir/';
+          }
         }
       }
       for (final file in archive) {
@@ -176,7 +178,9 @@ class ModelManager {
       }
       return targetDir.path;
     } catch (_) {
-      if (await targetDir.exists()) await targetDir.delete(recursive: true);
+      if (await targetDir.exists()) {
+        await targetDir.delete(recursive: true);
+      }
       return null;
     }
   }

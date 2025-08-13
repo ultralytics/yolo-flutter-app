@@ -477,11 +477,12 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           _loadingMessage = '';
           _downloadProgress = 0.0;
         });
-        if (modelPath == null && mounted)
+        if (modelPath == null && mounted) {
           _showError(
             'Model Not Available',
             'Failed to load ${_selectedModel.modelName} model. Please check your internet connection and try again.',
           );
+        }
       }
     } catch (e) {
       if (mounted) {
