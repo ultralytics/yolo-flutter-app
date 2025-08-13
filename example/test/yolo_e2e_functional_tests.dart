@@ -127,5 +127,69 @@ void main() {
             null,
           );
     });
+
+    group('YOLO Model Loading Tests', () {
+      testWidgets('YOLO model loads successfully with detect task', (
+        WidgetTester tester,
+      ) async {
+        yoloInstance = YOLO(
+          modelPath: 'assets/models/yolo11n.tflite',
+          task: YOLOTask.detect,
+        );
+
+        final success = await yoloInstance.loadModel();
+
+        expect(success, isTrue);
+        expect(methodCallLog.length, 1);
+        expect(methodCallLog[0].method, 'loadModel');
+        expect(methodCallLog[0].arguments['task'], 'detect');
+        expect(
+          methodCallLog[0].arguments['modelPath'],
+          'assets/models/yolo11n.tflite',
+        );
+      });
+
+      testWidgets('YOLO model loads successfully with segment task', (
+        WidgetTester tester,
+      ) async {
+        yoloInstance = YOLO(
+          modelPath: 'assets/models/yolo11n-seg.mlpackage',
+          task: YOLOTask.segment,
+        );
+
+        final success = await yoloInstance.loadModel();
+
+        expect(success, isTrue);
+        expect(methodCallLog[0].arguments['task'], 'segment');
+      });
+
+      testWidgets('YOLO model loads successfully with classify task', (
+        WidgetTester tester,
+      ) async {
+        yoloInstance = YOLO(
+          modelPath: 'assets/models/yolo11n-cls.tflite',
+          task: YOLOTask.classify,
+        );
+
+        final success = await yoloInstance.loadModel();
+
+        expect(success, isTrue);
+        expect(methodCallLog[0].arguments['task'], 'classify');
+      });
+
+      testWidgets('YOLO model loads successfully with pose task', (
+        WidgetTester tester,
+      ) async {
+        yoloInstance = YOLO(
+          modelPath: 'assets/models/yolo11n-pose.tflite',
+          task: YOLOTask.pose,
+        );
+
+        final success = await yoloInstance.loadModel();
+
+        expect(success, isTrue);
+        expect(methodCallLog[0].arguments['task'], 'pose');
+      });
+    });
   });
 }
