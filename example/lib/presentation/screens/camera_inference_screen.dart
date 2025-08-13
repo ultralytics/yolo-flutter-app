@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import '../../models/model_type.dart';
 import '../../models/slider_type.dart';
 import '../../services/model_manager.dart';
@@ -28,8 +29,6 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   double _iouThreshold = 0.45;
   int _numItemsThreshold = 30;
   double _currentFps = 0.0;
-  int _frameCount = 0;
-  DateTime _lastFpsUpdate = DateTime.now();
 
   SliderType _activeSlider = SliderType.none;
   ModelType _selectedModel = ModelType.detect;
@@ -93,25 +92,10 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   ///
   /// Updates the UI with:
   /// - Number of detections
-  /// - FPS calculation
   /// - Debug information for first few detections
   void _onDetectionResults(List<YOLOResult> results) {
     if (!mounted) return;
 
-    _frameCount++;
-    final now = DateTime.now();
-    final elapsed = now.difference(_lastFpsUpdate).inMilliseconds;
-
-    if (elapsed >= 1000) {
-      final calculatedFps = _frameCount * 1000 / elapsed;
-      debugPrint('Calculated FPS: ${calculatedFps.toStringAsFixed(1)}');
-
-      _currentFps = calculatedFps;
-      _frameCount = 0;
-      _lastFpsUpdate = now;
-    }
-
-    // Still update detection count in the UI
     setState(() {
       _detectionCount = results.length;
     });
@@ -142,8 +126,12 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               controller: _useController ? _yoloController : null,
               modelPath: _modelPath!,
               task: _selectedModel.task,
+              streamingConfig: const YOLOStreamingConfig.minimal(),
               onResult: _onDetectionResults,
               onPerformanceMetrics: (metrics) {
+                debugPrint(
+                  'Performance Metrics - FPS: ${metrics.fps}, Processing: ${metrics.processingTimeMs}ms',
+                );
                 if (mounted) {
                   setState(() {
                     _currentFps = metrics.fps;
@@ -606,8 +594,6 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       // Reset metrics when switching models
       _detectionCount = 0;
       _currentFps = 0.0;
-      _frameCount = 0;
-      _lastFpsUpdate = DateTime.now();
     });
 
     try {
