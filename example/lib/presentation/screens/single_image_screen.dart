@@ -50,6 +50,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       if (mounted) _showSnackBar('Error loading model: $e');
     }
   }
+
   /// Picks an image from the gallery and runs inference
   Future<void> _pickAndPredict() async {
     if (!_isModelReady) {
@@ -61,21 +62,28 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
     final result = await _yolo.predict(bytes);
     if (mounted) {
       setState(() {
-        _detections = result['boxes'] is List ? List<Map<String, dynamic>>.from(result['boxes']) : [];
+        _detections = result['boxes'] is List
+            ? List<Map<String, dynamic>>.from(result['boxes'])
+            : [];
         _annotatedImage = result['annotatedImage'] as Uint8List?;
         _imageBytes = bytes;
       });
     }
   }
 
-  void _showSnackBar(String msg) => mounted ? ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg))) : null;
+  void _showSnackBar(String msg) => mounted
+      ? ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)))
+      : null;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Single Image Inference'),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.of(context).pop()),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: Column(
         children: [
@@ -90,7 +98,15 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
               padding: const EdgeInsets.all(8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [const CircularProgressIndicator(), const SizedBox(width: 10), Text(Platform.isIOS ? "Preparing local model..." : "Model loading...")],
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(width: 10),
+                  Text(
+                    Platform.isIOS
+                        ? "Preparing local model..."
+                        : "Model loading...",
+                  ),
+                ],
               ),
             ),
           Expanded(
@@ -98,7 +114,11 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
               child: Column(
                 children: [
                   if (_annotatedImage != null || _imageBytes != null)
-                    SizedBox(height: 300, width: double.infinity, child: Image.memory(_annotatedImage ?? _imageBytes!)),
+                    SizedBox(
+                      height: 300,
+                      width: double.infinity,
+                      child: Image.memory(_annotatedImage ?? _imageBytes!),
+                    ),
                   const SizedBox(height: 10),
                   const Text('Detections:'),
                   Text(_detections.toString()),
