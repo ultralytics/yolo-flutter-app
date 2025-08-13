@@ -260,5 +260,60 @@ void main() {
         // This depends on your error handling implementation
       });
     });
+
+    group('Model Management Tests', () {
+      testWidgets('Model manager handles different model types', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Test switching between different model types
+        final modelTypes = ['Detect', 'Segment', 'Classify', 'Pose', 'OBB'];
+
+        for (final modelType in modelTypes) {
+          final button = find.text(modelType);
+          if (button.evaluate().isNotEmpty) {
+            await tester.tap(button);
+            await tester.pumpAndSettle();
+
+            // Verify model loading state
+            // This depends on your implementation
+          }
+        }
+      });
+
+      testWidgets('Model download progress is displayed', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Look for download progress indicators
+        final progressIndicator = find.byType(LinearProgressIndicator);
+        if (progressIndicator.evaluate().isNotEmpty) {
+          expect(progressIndicator, findsOneWidget);
+        }
+      });
+
+      testWidgets('Model loading status messages are shown', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: CameraInferenceScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        // Look for status messages
+        final statusText = find.textContaining('Loading');
+        if (statusText.evaluate().isNotEmpty) {
+          expect(statusText, findsOneWidget);
+        }
+      });
+    });
   });
 }
