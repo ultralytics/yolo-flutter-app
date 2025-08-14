@@ -93,6 +93,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
               controller: _yoloController,
               modelPath: _modelPath!,
               task: _selectedModel.task,
+              streamingConfig: const YOLOStreamingConfig.minimal(),
               onResult: _onDetectionResults,
               onPerformanceMetrics: (metrics) =>
                   mounted ? setState(() => _currentFps = metrics.fps) : null,
@@ -464,8 +465,6 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       _downloadProgress = 0.0;
       _detectionCount = 0;
       _currentFps = 0.0;
-      _frameCount = 0;
-      _lastFpsUpdate = DateTime.now();
     });
 
     try {
