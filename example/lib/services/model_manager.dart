@@ -298,20 +298,22 @@ class ModelManager {
 
     final bundledModelName = '${modelType.modelName}.tflite';
     final documentsDir = await getApplicationDocumentsDirectory();
-    
+
     // Check order:
     // 1. Android native assets (android/app/src/main/assets/)
     // 2. Local storage (previously downloaded)
     // 3. Download from GitHub if not found
-    
+
     // Step 1: Check Android native assets first
     try {
       final result = await _channel.invokeMethod('checkModelExists', {
         'modelPath': bundledModelName,
       });
-      
+
       if (result != null && result['exists'] == true) {
-        debugPrint('Found model in Android ${result['location']}: ${result['path']}');
+        debugPrint(
+          'Found model in Android ${result['location']}: ${result['path']}',
+        );
         // Return just the filename for assets, native code will load from assets
         if (result['location'] == 'assets') {
           return bundledModelName;
@@ -322,7 +324,7 @@ class ModelManager {
     } catch (e) {
       debugPrint('Error checking Android assets: $e');
     }
-    
+
     // Step 2: Check local storage (previously downloaded)
     final modelFile = File(
       '${documentsDir.path}/${modelType.modelName}.tflite',
