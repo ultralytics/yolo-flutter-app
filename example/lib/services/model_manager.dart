@@ -296,31 +296,43 @@ class ModelManager {
   Future<String?> _getAndroidModelPath(ModelType modelType) async {
     _updateStatus('Checking for ${modelType.modelName} model...');
 
-    // First check if model exists in assets (bundled)
     final bundledModelName = '${modelType.modelName}.tflite';
-
-    try {
-      // Try to load from assets
-      await rootBundle.load('assets/models/$bundledModelName');
-      debugPrint('Using bundled Android model: $bundledModelName');
-      return bundledModelName;
-    } catch (e) {
-      // Model not in assets, continue to check local storage
-      debugPrint('Model not found in assets, checking local storage...');
-    }
-
-    // Check if model exists in local storage (previously downloaded)
     final documentsDir = await getApplicationDocumentsDirectory();
+    
+    // Check order:
+    // 1. Android native assets (android/app/src/main/assets/)
+    // 2. Local storage (previously downloaded)
+    // 3. Download from GitHub if not found
+    
+    // Step 1: Check Android native assets first
+    try {
+      final result = await _channel.invokeMethod('checkModelExists', {
+        'modelPath': bundledModelName,
+      });
+      
+      if (result != null && result['exists'] == true) {
+        debugPrint('Found model in Android ${result['location']}: ${result['path']}');
+        // Return just the filename for assets, native code will load from assets
+        if (result['location'] == 'assets') {
+          return bundledModelName;
+        }
+        // Return full path for filesystem
+        return result['path'] as String;
+      }
+    } catch (e) {
+      debugPrint('Error checking Android assets: $e');
+    }
+    
+    // Step 2: Check local storage (previously downloaded)
     final modelFile = File(
       '${documentsDir.path}/${modelType.modelName}.tflite',
     );
 
     if (await modelFile.exists()) {
-      debugPrint('Found existing Android model at: ${modelFile.path}');
       return modelFile.path;
     }
 
-    // Download model from GitHub
+    // Step 3: Download model from GitHub
     _updateStatus('Downloading ${modelType.modelName} model...');
 
     final url = '$_modelDownloadBaseUrl/${modelType.modelName}.tflite';
@@ -352,6 +364,7 @@ class ModelManager {
       }
     } catch (e) {
       debugPrint('Failed to download Android model: $e');
+      _updateStatus('Failed to download model: ${e.toString()}');
     }
 
     return null;
