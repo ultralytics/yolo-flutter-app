@@ -20,6 +20,18 @@ import Vision
 
 /// Specialized predictor for YOLO models that detect objects using oriented (rotated) bounding boxes.
 class ObbDetector: BasePredictor, @unchecked Sendable {
+  
+  override func setConfidenceThreshold(confidence: Double) {
+    confidenceThreshold = confidence
+  }
+  
+  override func setIouThreshold(iou: Double) {
+    iouThreshold = iou
+  }
+  
+  override func setNumItemsThreshold(numItems: Int) {
+    numItemsThreshold = numItems
+  }
 
   override func processObservations(for request: VNRequest, error: Error?) {
     if let results = request.results as? [VNCoreMLFeatureValueObservation] {
@@ -27,12 +39,15 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
       if let prediction = results.first?.featureValue.multiArrayValue {
         let nmsResults = postProcessOBB(
           feature: prediction,  // your MLMultiArray
-          confidenceThreshold: 0.25,
-          iouThreshold: 0.45
+          confidenceThreshold: Float(confidenceThreshold),
+          iouThreshold: Float(iouThreshold)
         )
 
         var obbResults: [OBBResult] = []
-        for result in nmsResults {
+        // Apply numItemsThreshold limit
+        let limitedResults = Array(nmsResults.prefix(numItemsThreshold))
+        
+        for result in limitedResults {
           let box = result.box
           let score = result.score
           let clsIdx = labels[result.cls]

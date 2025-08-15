@@ -21,6 +21,18 @@ import Vision
 /// Specialized predictor for YOLO segmentation models that identify objects and their pixel-level masks.
 class Segmenter: BasePredictor, @unchecked Sendable {
   var colorsForMask: [(red: UInt8, green: UInt8, blue: UInt8)] = []
+  
+  override func setConfidenceThreshold(confidence: Double) {
+    confidenceThreshold = confidence
+  }
+  
+  override func setIouThreshold(iou: Double) {
+    iouThreshold = iou
+  }
+  
+  override func setNumItemsThreshold(numItems: Int) {
+    numItemsThreshold = numItems
+  }
 
   override func processObservations(for request: VNRequest, error: Error?) {
     if let results = request.results as? [VNCoreMLFeatureValueObservation] {
@@ -46,7 +58,10 @@ class Segmenter: BasePredictor, @unchecked Sendable {
       var boxes: [Box] = []
       var alphas = [CGFloat]()
 
-      for p in detectedObjects {
+      // Apply numItemsThreshold limit
+      let limitedDetections = Array(detectedObjects.prefix(numItemsThreshold))
+      
+      for p in limitedDetections {
         let box = p.0
         let rect = CGRect(
           x: box.minX / 640, y: box.minY / 640, width: box.width / 640, height: box.height / 640)
@@ -65,7 +80,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
       DispatchQueue.global(qos: .userInitiated).async {
         guard
           let procceessedMasks = generateCombinedMaskImage(
-            detectedObjects: detectedObjects,
+            detectedObjects: limitedDetections,
             protos: masks,
             inputWidth: self.modelInputSize.width,
             inputHeight: self.modelInputSize.height,

@@ -31,6 +31,10 @@ class Classifier: BasePredictor {
     detector.featureProvider = ThresholdProvider(
       iouThreshold: iouThreshold, confidenceThreshold: confidenceThreshold)
   }
+  
+  override func setNumItemsThreshold(numItems: Int) {
+    numItemsThreshold = numItems
+  }
 
   override func processObservations(for request: VNRequest, error: Error?) {
     let imageWidth = inputSize.width
@@ -66,8 +70,9 @@ class Classifier: BasePredictor {
           probs.top1Conf = top1Conf
         }
 
-        // top5
-        let topObservations = sortedMap.prefix(5)
+        // top5 (limited by numItemsThreshold)
+        let maxItems = min(5, numItemsThreshold)
+        let topObservations = sortedMap.prefix(maxItems)
         var top5Labels: [String] = []
         var top5Confs: [Float] = []
 
@@ -85,7 +90,7 @@ class Classifier: BasePredictor {
       var top5: [String] = []
       var top5Confs: [Float] = []
 
-      var candidateNumber = 5
+      var candidateNumber = min(5, numItemsThreshold)
       if observations.count < candidateNumber {
         candidateNumber = observations.count
       }

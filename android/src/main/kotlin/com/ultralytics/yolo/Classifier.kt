@@ -30,6 +30,8 @@ class Classifier(
     private val customOptions: Interpreter.Options? = null,
     private val classifierOptions: Map<String, Any>? = null
 ) : BasePredictor() {
+    
+    private var numItemsThreshold = 30
 
     private val interpreterOptions: Interpreter.Options = (customOptions ?: Interpreter.Options()).apply {
         // If no custom options provided, use default threads
@@ -168,6 +170,11 @@ class Classifier(
 
         Log.d(TAG, "Classifier initialized.")
     }
+    
+    override fun setNumItemsThreshold(n: Int) {
+        numItemsThreshold = n
+        super.setNumItemsThreshold(n)
+    }
 
     override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         t0 = System.nanoTime()
@@ -231,8 +238,9 @@ class Classifier(
 
         // Top1
         val top1 = sorted.firstOrNull()
-        // Top5
-        val top5 = sorted.take(5)
+        // Top5 (limited by numItemsThreshold)
+        val maxItems = minOf(5, numItemsThreshold)
+        val top5 = sorted.take(maxItems)
 
         val top1Label = if (top1 != null) labels.getOrElse(top1.first) { "Unknown" } else "Unknown"
         val top1Score = top1?.second ?: 0f

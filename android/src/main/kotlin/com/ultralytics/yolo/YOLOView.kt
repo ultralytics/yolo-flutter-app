@@ -297,17 +297,20 @@ class YOLOView @JvmOverloads constructor(
 
     fun setConfidenceThreshold(conf: Double) {
         confidenceThreshold = conf
-        (predictor as? ObjectDetector)?.setConfidenceThreshold(conf)
+        // Apply to all predictor types that support thresholds
+        predictor?.setConfidenceThreshold(conf)
     }
 
     fun setIouThreshold(iou: Double) {
         iouThreshold = iou
-        (predictor as? ObjectDetector)?.setIouThreshold(iou)
+        // Apply to all predictor types that support thresholds
+        predictor?.setIouThreshold(iou)
     }
 
     fun setNumItemsThreshold(n: Int) {
         numItemsThreshold = n
-        (predictor as? ObjectDetector)?.setNumItemsThreshold(n)
+        // Apply to all predictor types that support thresholds
+        predictor?.setNumItemsThreshold(n)
     }
     
     fun setZoomLevel(zoomLevel: Float) {
@@ -331,15 +334,18 @@ class YOLOView @JvmOverloads constructor(
         Executors.newSingleThreadExecutor().execute {
             try {
                 val newPredictor = when (task) {
-                    YOLOTask.DETECT -> ObjectDetector(context, modelPath, loadLabels(modelPath), useGpu = useGpu).apply {
-                        setConfidenceThreshold(confidenceThreshold)
-                        setIouThreshold(iouThreshold)
-                        setNumItemsThreshold(numItemsThreshold)
-                    }
+                    YOLOTask.DETECT -> ObjectDetector(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.SEGMENT -> Segmenter(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.CLASSIFY -> Classifier(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.POSE -> PoseEstimator(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.OBB -> ObbDetector(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
+                }
+                
+                // Apply thresholds to all predictor types
+                newPredictor.apply {
+                    setConfidenceThreshold(confidenceThreshold)
+                    setIouThreshold(iouThreshold)
+                    setNumItemsThreshold(numItemsThreshold)
                 }
 
                 post {
