@@ -26,7 +26,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
   // Reference to YOLOView
   private var yoloView: YOLOView?
-  
+
   // Track current threshold values to maintain state
   private var currentConfidenceThreshold: Double = 0.5
   private var currentIouThreshold: Double = 0.45

@@ -21,15 +21,15 @@ import Vision
 /// Specialized predictor for YOLO pose estimation models that identify human body keypoints.
 class PoseEstimater: BasePredictor, @unchecked Sendable {
   var colorsForMask: [(red: UInt8, green: UInt8, blue: UInt8)] = []
-  
+
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
   }
-  
+
   override func setIouThreshold(iou: Double) {
     iouThreshold = iou
   }
-  
+
   override func setNumItemsThreshold(numItems: Int) {
     numItemsThreshold = numItems
   }
@@ -47,7 +47,7 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
 
         // Apply numItemsThreshold limit
         let limitedPreds = Array(preds.prefix(numItemsThreshold))
-        
+
         for person in limitedPreds {
           boxes.append(person.box)
           keypointsList.append(person.keypoints)
@@ -109,7 +109,7 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
 
           // Apply numItemsThreshold limit
           let limitedPreds = Array(preds.prefix(numItemsThreshold))
-          
+
           for person in limitedPreds {
             boxes.append(person.box)
             keypointsList.append(person.keypoints)

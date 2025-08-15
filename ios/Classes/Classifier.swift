@@ -31,7 +31,7 @@ class Classifier: BasePredictor {
     detector.featureProvider = ThresholdProvider(
       iouThreshold: iouThreshold, confidenceThreshold: confidenceThreshold)
   }
-  
+
   override func setNumItemsThreshold(numItems: Int) {
     numItemsThreshold = numItems
   }

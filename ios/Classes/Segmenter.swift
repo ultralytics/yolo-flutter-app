@@ -21,15 +21,15 @@ import Vision
 /// Specialized predictor for YOLO segmentation models that identify objects and their pixel-level masks.
 class Segmenter: BasePredictor, @unchecked Sendable {
   var colorsForMask: [(red: UInt8, green: UInt8, blue: UInt8)] = []
-  
+
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
   }
-  
+
   override func setIouThreshold(iou: Double) {
     iouThreshold = iou
   }
-  
+
   override func setNumItemsThreshold(numItems: Int) {
     numItemsThreshold = numItems
   }
@@ -60,7 +60,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
 
       // Apply numItemsThreshold limit
       let limitedDetections = Array(detectedObjects.prefix(numItemsThreshold))
-      
+
       for p in limitedDetections {
         let box = p.0
         let rect = CGRect(
