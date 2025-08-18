@@ -609,9 +609,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           _downloadProgress = 0.0;
         });
 
-        if (modelPath != null) {
-          debugPrint('CameraInferenceScreen: Model path set to: $modelPath');
-        } else {
+        if (modelPath == null) {
           // Model loading failed
           showDialog(
             context: context,
