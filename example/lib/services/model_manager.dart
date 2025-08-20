@@ -98,13 +98,23 @@ class ModelManager {
   Future<String?> _getAndroidModelPath(ModelType modelType) async {
     _updateStatus('Checking for ${modelType.modelName} model...');
     final bundledName = '${modelType.modelName}.tflite';
+    
+    // Check Android native assets first
     try {
-      await rootBundle.load('assets/models/$bundledName');
-      return bundledName;
+      final result = await _channel.invokeMethod('checkModelExists', {
+        'modelPath': bundledName,
+      });
+      if (result != null && result['exists'] == true) {
+        return result['location'] == 'assets' ? bundledName : result['path'] as String;
+      }
     } catch (_) {}
+    
+    // Check local storage
     final dir = await getApplicationDocumentsDirectory();
     final modelFile = File('${dir.path}/$bundledName');
     if (await modelFile.exists()) return modelFile.path;
+    
+    // Download if not found
     _updateStatus('Downloading ${modelType.modelName} model...');
     final bytes = await _downloadFile('$_modelDownloadBaseUrl/$bundledName');
     if (bytes != null && bytes.isNotEmpty) {
