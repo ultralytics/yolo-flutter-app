@@ -32,7 +32,6 @@ class Classifier: BasePredictor {
       iouThreshold: iouThreshold, confidenceThreshold: confidenceThreshold)
   }
 
-
   override func processObservations(for request: VNRequest, error: Error?) {
     let imageWidth = inputSize.width
     let imageHeight = inputSize.height
