@@ -67,7 +67,7 @@ class ObjectDetector: BasePredictor {
 
       // Limit the number of detections based on numItemsThreshold
       let maxDetections = min(results.count, self.numItemsThreshold)
-      
+
       for i in 0..<maxDetections {
         let prediction = results[i]
         let invertedBox = CGRect(
@@ -135,7 +135,7 @@ class ObjectDetector: BasePredictor {
       if let results = request.results as? [VNRecognizedObjectObservation] {
         // Limit the number of detections based on numItemsThreshold
         let maxDetections = min(results.count, self.numItemsThreshold)
-        
+
         for i in 0..<maxDetections {
           let prediction = results[i]
           let invertedBox = CGRect(
