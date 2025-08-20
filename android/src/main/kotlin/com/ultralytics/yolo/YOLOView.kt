@@ -297,19 +297,16 @@ class YOLOView @JvmOverloads constructor(
 
     fun setConfidenceThreshold(conf: Double) {
         confidenceThreshold = conf
-        // Apply to all predictor types that support thresholds
         predictor?.setConfidenceThreshold(conf)
     }
 
     fun setIouThreshold(iou: Double) {
         iouThreshold = iou
-        // Apply to all predictor types that support thresholds
         predictor?.setIouThreshold(iou)
     }
 
     fun setNumItemsThreshold(n: Int) {
         numItemsThreshold = n
-        // Apply to all predictor types that support thresholds
         predictor?.setNumItemsThreshold(n)
     }
     
