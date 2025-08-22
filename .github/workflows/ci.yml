@@ -28,10 +28,7 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: | 
-          flutter pub get
-          sudo apt-get update
-          sudo apt-get install -y xvfb
+        run: flutter pub get
 
       - name: Create test .env file
         run: |
@@ -40,12 +37,10 @@ jobs:
           echo "FIREBASE_API_KEY=test-key" >> .env
 
       - name: Run tests with coverage
-        run: |
-          xvfb-run flutter test --coverage
+        run: flutter test --coverage
 
       - name: Dart publish dry-run
-        run: |
-          dart pub publish --dry-run
+        run: dart pub publish --dry-run
 
       - name: Upload Coverage Reports to CodeCov
         uses: codecov/codecov-action@v5

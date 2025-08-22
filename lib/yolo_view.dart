@@ -312,7 +312,7 @@ class YOLOViewController {
     if (numItemsThreshold != null) {
       _numItemsThreshold = numItemsThreshold.clamp(1, 100);
     }
-    return _applyThresholds();
+    return await _applyThresholds();
   }
 
   /// Switches between front and back cameras.
@@ -1230,7 +1230,7 @@ class YOLOViewState extends State<YOLOView> {
     double? confidenceThreshold,
     double? iouThreshold,
     int? numItemsThreshold,
-  }) {
+  }) async {
     return _effectiveController.setThresholds(
       confidenceThreshold: confidenceThreshold,
       iouThreshold: iouThreshold,
