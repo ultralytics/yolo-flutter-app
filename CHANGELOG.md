@@ -1,3 +1,7 @@
+## 0.1.36
+
+- **New Feature**: implement UI controls on Android platform
+
 ## 0.1.35
 
 - **Bug Fix**: Fix iOS numItemsThreshold inconsistency with Android

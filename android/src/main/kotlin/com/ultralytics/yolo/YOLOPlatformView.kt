@@ -329,6 +329,11 @@ class YOLOPlatformView(
                     startStreaming()
                     result.success(null)
                 }
+                "setShowUIControls" -> {
+                    val show = call.argument<Boolean>("show") ?: false
+                    Log.d(TAG, "setShowUIControls called with show=$show (no-op on Android)")
+                    result.success(null)
+                }
                 else -> {
                     result.notImplemented()
                 }

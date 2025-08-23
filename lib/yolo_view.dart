@@ -487,6 +487,37 @@ class YOLOViewController {
     }
   }
 
+  /// Sets the visibility of native UI controls on the camera preview.
+  ///
+  /// When true, platform-specific UI elements such as sliders, buttons,
+  /// and labels may be displayed on the camera view. When false, these
+  /// controls are hidden for a cleaner interface.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Show native UI controls
+  /// await controller.setShowUIControls(true);
+  ///
+  /// // Hide native UI controls
+  /// await controller.setShowUIControls(false);
+  /// ```
+  Future<void> setShowUIControls(bool show) async {
+    if (_methodChannel == null) {
+      logInfo(
+        'YOLOViewController: Warning - Cannot set UI controls visibility, view not yet created',
+      );
+      return;
+    }
+    try {
+      await _methodChannel!.invokeMethod('setShowUIControls', {
+        'show': show,
+      });
+      logInfo('YOLOViewController: UI controls visibility set to $show');
+    } catch (e) {
+      logInfo('YOLOViewController: Error setting UI controls visibility: $e');
+    }
+  }
+
   /// Captures the current camera frame with detection overlays.
   ///
   /// Returns the captured image as a Uint8List (JPEG format) that includes

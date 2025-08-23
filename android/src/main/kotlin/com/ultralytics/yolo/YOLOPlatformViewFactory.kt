@@ -193,6 +193,10 @@ class YOLOPlatformViewFactory(
             methodChannel,
             this // Pass the factory itself for disposal callback
         )
+        
+        // Set up method channel handler for the control channel
+        methodChannel.setMethodCallHandler(platformView)
+        
         activeViews[viewId] = platformView
         Log.d(TAG, "Created and stored YOLOPlatformView for viewId: $viewId")
         return platformView
