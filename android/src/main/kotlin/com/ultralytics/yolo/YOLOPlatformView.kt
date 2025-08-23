@@ -279,6 +279,36 @@ class YOLOPlatformView(
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         try {
             when (call.method) {
+                "setConfidenceThreshold" -> {
+                    val threshold = call.argument<Double>("threshold")
+                    if (threshold != null) {
+                        yoloView.setConfidenceThreshold(threshold)
+                        Log.d(TAG, "Confidence threshold updated: $threshold")
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "threshold is required", null)
+                    }
+                }
+                "setIoUThreshold", "setIouThreshold" -> {
+                    val threshold = call.argument<Double>("threshold")
+                    if (threshold != null) {
+                        yoloView.setIouThreshold(threshold)
+                        Log.d(TAG, "IoU threshold updated: $threshold")
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "threshold is required", null)
+                    }
+                }
+                "setNumItemsThreshold" -> {
+                    val numItems = call.argument<Int>("numItems")
+                    if (numItems != null) {
+                        yoloView.setNumItemsThreshold(numItems)
+                        Log.d(TAG, "NumItems threshold updated: $numItems")
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "numItems is required", null)
+                    }
+                }
                 "setThresholds" -> {
                     val confidence = call.argument<Double>("confidenceThreshold")
                     val iou = call.argument<Double>("iouThreshold")
@@ -313,6 +343,51 @@ class YOLOPlatformView(
                             result.error("MODEL_NOT_FOUND", "Failed to load model", null)
                         }
                     }
+                }
+                "switchCamera" -> {
+                    yoloView.switchCamera()
+                    Log.d(TAG, "Camera switched")
+                    result.success(null)
+                }
+                "setZoomLevel" -> {
+                    val zoomLevel = call.argument<Double>("zoomLevel")
+                    if (zoomLevel != null) {
+                        yoloView.setZoomLevel(zoomLevel.toFloat())
+                        Log.d(TAG, "Zoom level set to: $zoomLevel")
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "zoomLevel is required", null)
+                    }
+                }
+                "setStreamingConfig" -> {
+                    // Parse streaming config from arguments
+                    val configMap = call.arguments as? Map<*, *>
+                    if (configMap != null) {
+                        val streamConfig = YOLOStreamConfig(
+                            includeDetections = configMap["includeDetections"] as? Boolean ?: true,
+                            includeClassifications = configMap["includeClassifications"] as? Boolean ?: true,
+                            includeProcessingTimeMs = configMap["includeProcessingTimeMs"] as? Boolean ?: true,
+                            includeFps = configMap["includeFps"] as? Boolean ?: true,
+                            includeMasks = configMap["includeMasks"] as? Boolean ?: false,
+                            includePoses = configMap["includePoses"] as? Boolean ?: false,
+                            includeOBB = configMap["includeOBB"] as? Boolean ?: false,
+                            includeOriginalImage = configMap["includeOriginalImage"] as? Boolean ?: false,
+                            maxFPS = (configMap["maxFPS"] as? Number)?.toInt(),
+                            throttleIntervalMs = (configMap["throttleInterval"] as? Number)?.toInt(),
+                            inferenceFrequency = (configMap["inferenceFrequency"] as? Number)?.toInt(),
+                            skipFrames = (configMap["skipFrames"] as? Number)?.toInt()
+                        )
+                        yoloView.setStreamConfig(streamConfig)
+                        Log.d(TAG, "Streaming config updated")
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "Invalid streaming config", null)
+                    }
+                }
+                "stop" -> {
+                    yoloView.stop()
+                    Log.d(TAG, "Camera and inference stopped")
+                    result.success(null)
                 }
                 "captureFrame" -> {
                     val imageData = yoloView.captureFrame()

@@ -85,10 +85,7 @@ class Classifier: BasePredictor {
       var top5: [String] = []
       var top5Confs: [Float] = []
 
-      var candidateNumber = 5
-      if observations.count < candidateNumber {
-        candidateNumber = observations.count
-      }
+      var candidateNumber = min(5, observations.count)
       if let topObservation = observations.first {
         top1 = topObservation.identifier
         top1Conf = Float(topObservation.confidence)
