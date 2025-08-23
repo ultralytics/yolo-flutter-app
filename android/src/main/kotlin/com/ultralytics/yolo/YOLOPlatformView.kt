@@ -406,7 +406,8 @@ class YOLOPlatformView(
                 }
                 "setShowUIControls" -> {
                     val show = call.argument<Boolean>("show") ?: false
-                    Log.d(TAG, "setShowUIControls called with show=$show (no-op on Android)")
+                    yoloView.setShowUIControls(show)
+                    Log.d(TAG, "setShowUIControls called with show=$show")
                     result.success(null)
                 }
                 else -> {
