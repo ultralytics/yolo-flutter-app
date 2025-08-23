@@ -319,8 +319,6 @@ class YOLOView @JvmOverloads constructor(
         addView(confidenceLabel)
         confidenceLabel.elevation = 1000f
         
-        Log.d(TAG, "UI controls initialized - zoomLabel: ${zoomLabel.id}, cameraButton: ${cameraButton.id}, confidenceLabel: ${confidenceLabel.id}")
-        
         // Initialize scale gesture detector for pinch-to-zoom
         scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
             override fun onScale(detector: ScaleGestureDetector): Boolean {
@@ -352,7 +350,6 @@ class YOLOView @JvmOverloads constructor(
         if (showUIControls) {
             post {
                 confidenceLabel.text = "Confidence: ${String.format("%.2f", conf)}"
-                Log.d(TAG, "Updated confidence label to: ${String.format("%.2f", conf)}")
             }
         }
     }
@@ -368,24 +365,12 @@ class YOLOView @JvmOverloads constructor(
     }
     
     fun setShowUIControls(show: Boolean) {
-        Log.d(TAG, "setShowUIControls called with show=$show")
         showUIControls = show
         // Show/hide all UI controls
         val visibility = if (show) View.VISIBLE else View.GONE
-        Log.d(TAG, "Setting visibility to: $visibility (VISIBLE=${View.VISIBLE}, GONE=${View.GONE})")
-        
         zoomLabel.visibility = visibility
         cameraButton.visibility = visibility
         confidenceLabel.visibility = visibility
-        
-        Log.d(TAG, "UI controls visibility set to: $show")
-        Log.d(TAG, "zoomLabel visibility: ${zoomLabel.visibility}")
-        Log.d(TAG, "cameraButton visibility: ${cameraButton.visibility}")
-        Log.d(TAG, "confidenceLabel visibility: ${confidenceLabel.visibility}")
-        
-        // Force a layout update
-        requestLayout()
-        invalidate()
     }
     
     fun setZoomLevel(zoomLevel: Float) {
