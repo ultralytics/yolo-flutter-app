@@ -1089,19 +1089,19 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   @objc func sliderChanged(_ sender: Any) {
 
     if sender as? UISlider === sliderNumItems {
-      if let detector = videoCapture.predictor as? ObjectDetector {
+      if let basePredictor = videoCapture.predictor as? BasePredictor {
         let numItems = Int(sliderNumItems.value)
-        detector.setNumItemsThreshold(numItems: numItems)
+        basePredictor.setNumItemsThreshold(numItems: numItems)
       }
     }
     let conf = Double(round(100 * sliderConf.value)) / 100
     let iou = Double(round(100 * sliderIoU.value)) / 100
     self.labelSliderConf.text = String(conf) + " Confidence Threshold"
     self.labelSliderIoU.text = String(iou) + " IoU Threshold"
-    if let detector = videoCapture.predictor as? ObjectDetector {
-      detector.setIouThreshold(iou: iou)
-      detector.setConfidenceThreshold(confidence: conf)
-
+    // Apply thresholds to all predictor types via BasePredictor
+    if let basePredictor = videoCapture.predictor as? BasePredictor {
+      basePredictor.setIouThreshold(iou: iou)
+      basePredictor.setConfidenceThreshold(confidence: conf)
     }
   }
 
