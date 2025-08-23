@@ -509,9 +509,7 @@ class YOLOViewController {
       return;
     }
     try {
-      await _methodChannel!.invokeMethod('setShowUIControls', {
-        'show': show,
-      });
+      await _methodChannel!.invokeMethod('setShowUIControls', {'show': show});
       logInfo('YOLOViewController: UI controls visibility set to $show');
     } catch (e) {
       logInfo('YOLOViewController: Error setting UI controls visibility: $e');
