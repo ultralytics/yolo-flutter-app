@@ -283,7 +283,6 @@ class YOLOPlatformView(
                     val threshold = call.argument<Double>("threshold")
                     if (threshold != null) {
                         yoloView.setConfidenceThreshold(threshold)
-                        Log.d(TAG, "Confidence threshold updated: $threshold")
                         result.success(null)
                     } else {
                         result.error("invalid_args", "threshold is required", null)
@@ -293,7 +292,6 @@ class YOLOPlatformView(
                     val threshold = call.argument<Double>("threshold")
                     if (threshold != null) {
                         yoloView.setIouThreshold(threshold)
-                        Log.d(TAG, "IoU threshold updated: $threshold")
                         result.success(null)
                     } else {
                         result.error("invalid_args", "threshold is required", null)
@@ -303,7 +301,6 @@ class YOLOPlatformView(
                     val numItems = call.argument<Int>("numItems")
                     if (numItems != null) {
                         yoloView.setNumItemsThreshold(numItems)
-                        Log.d(TAG, "NumItems threshold updated: $numItems")
                         result.success(null)
                     } else {
                         result.error("invalid_args", "numItems is required", null)
@@ -318,7 +315,6 @@ class YOLOPlatformView(
                     iou?.let { yoloView.setIouThreshold(it) }
                     numItems?.let { yoloView.setNumItemsThreshold(it) }
                     
-                    Log.d(TAG, "Thresholds updated: conf=$confidence, iou=$iou, items=$numItems")
                     result.success(null)
                 }
                 "setModel" -> {
@@ -346,14 +342,12 @@ class YOLOPlatformView(
                 }
                 "switchCamera" -> {
                     yoloView.switchCamera()
-                    Log.d(TAG, "Camera switched")
                     result.success(null)
                 }
                 "setZoomLevel" -> {
                     val zoomLevel = call.argument<Double>("zoomLevel")
                     if (zoomLevel != null) {
                         yoloView.setZoomLevel(zoomLevel.toFloat())
-                        Log.d(TAG, "Zoom level set to: $zoomLevel")
                         result.success(null)
                     } else {
                         result.error("invalid_args", "zoomLevel is required", null)
@@ -402,6 +396,11 @@ class YOLOPlatformView(
                     // Handle reconnection request from Flutter
                     Log.d(TAG, "Received reconnect request from Flutter")
                     startStreaming()
+                    result.success(null)
+                }
+                "setShowUIControls" -> {
+                    val show = call.argument<Boolean>("show") ?: false
+                    yoloView.setShowUIControls(show)
                     result.success(null)
                 }
                 else -> {
