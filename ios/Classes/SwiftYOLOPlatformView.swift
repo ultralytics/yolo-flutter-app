@@ -27,6 +27,11 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   // Reference to YOLOView
   private var yoloView: YOLOView?
 
+  // Track current threshold values to maintain state
+  private var currentConfidenceThreshold: Double = 0.5
+  private var currentIouThreshold: Double = 0.45
+  private var currentNumItemsThreshold: Int = 30
+
   init(
     frame: CGRect,
     viewId: Int64,
@@ -71,6 +76,12 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       // Get new threshold parameters
       let confidenceThreshold = dict["confidenceThreshold"] as? Double ?? 0.5
       let iouThreshold = dict["iouThreshold"] as? Double ?? 0.45
+      let numItemsThreshold = dict["numItemsThreshold"] as? Int ?? 30
+
+      // Store initial thresholds
+      self.currentConfidenceThreshold = confidenceThreshold
+      self.currentIouThreshold = iouThreshold
+      self.currentNumItemsThreshold = numItemsThreshold
 
       // Old threshold parameter for backward compatibility
       let oldThreshold = dict["threshold"] as? Double ?? 0.5
@@ -134,7 +145,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   // Overloaded method for setting just numItemsThreshold
   private func updateThresholds(numItemsThreshold: Int) {
     updateThresholds(
-      confidenceThreshold: Double(self.yoloView?.sliderConf.value ?? 0.5),
+      confidenceThreshold: self.currentConfidenceThreshold,
       iouThreshold: nil,
       numItemsThreshold: numItemsThreshold
     )
@@ -145,6 +156,15 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     confidenceThreshold: Double, iouThreshold: Double?, numItemsThreshold: Int? = nil
   ) {
     guard let yoloView = yoloView else { return }
+
+    // Update stored values
+    self.currentConfidenceThreshold = confidenceThreshold
+    if let iou = iouThreshold {
+      self.currentIouThreshold = iou
+    }
+    if let numItems = numItemsThreshold {
+      self.currentNumItemsThreshold = numItems
+    }
 
     // Set confidence threshold
     yoloView.sliderConf.value = Float(confidenceThreshold)
@@ -212,7 +232,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           let threshold = args["threshold"] as? Double
         {
           self.updateThresholds(
-            confidenceThreshold: Double(self.yoloView?.sliderConf.value ?? 0.5),
+            confidenceThreshold: self.currentConfidenceThreshold,
             iouThreshold: threshold,
             numItemsThreshold: nil
           )

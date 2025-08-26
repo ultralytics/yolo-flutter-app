@@ -1,3 +1,11 @@
+## 0.1.36
+
+- **New Feature**: implement UI controls on Android platform
+
+## 0.1.35
+
+- **Bug Fix**: Fix iOS numItemsThreshold inconsistency with Android
+
 ## 0.1.34
 
 - **Bug Fix**: Fix originalImage being null in onStreamingData callback

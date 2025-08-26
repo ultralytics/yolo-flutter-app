@@ -221,6 +221,9 @@ class YOLOView @JvmOverloads constructor(
     private var iouThreshold = 0.45
     private var numItemsThreshold = 30
     private lateinit var zoomLabel: TextView
+    private lateinit var cameraButton: TextView
+    private lateinit var confidenceLabel: TextView
+    private var showUIControls = false
 
     init {
         // Clear any existing children
@@ -262,14 +265,59 @@ class YOLOView @JvmOverloads constructor(
             ).apply {
                 gravity = Gravity.CENTER
             }
-            text = "1.0x"
-            textSize = 24f
+            text = "ZOOM: 1.0x"
+            textSize = 28f
             setTextColor(Color.WHITE)
-            setBackgroundColor(Color.argb(128, 0, 0, 0))
-            setPadding(16, 8, 16, 8)
+            setBackgroundColor(Color.argb(200, 255, 0, 0))
+            setPadding(20, 15, 20, 15)
             visibility = View.GONE
         }
         addView(zoomLabel)
+        zoomLabel.elevation = 1000f
+        
+        // Add camera switch button
+        cameraButton = TextView(context).apply {
+            layoutParams = LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.END
+                topMargin = 100
+                rightMargin = 50
+            }
+            text = "📷 CAMERA"
+            textSize = 24f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.argb(200, 0, 100, 200))
+            setPadding(20, 15, 20, 15)
+            visibility = View.GONE
+            
+            setOnClickListener {
+                switchCamera()
+            }
+        }
+        addView(cameraButton)
+        cameraButton.elevation = 1000f
+        
+        // Add confidence threshold label
+        confidenceLabel = TextView(context).apply {
+            layoutParams = LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.BOTTOM or Gravity.START
+                bottomMargin = 100
+                leftMargin = 50
+            }
+            text = "Confidence: 0.50"
+            textSize = 20f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.argb(200, 200, 100, 0))
+            setPadding(15, 10, 15, 10)
+            visibility = View.GONE
+        }
+        addView(confidenceLabel)
+        confidenceLabel.elevation = 1000f
         
         // Initialize scale gesture detector for pinch-to-zoom
         scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -297,17 +345,32 @@ class YOLOView @JvmOverloads constructor(
 
     fun setConfidenceThreshold(conf: Double) {
         confidenceThreshold = conf
-        (predictor as? ObjectDetector)?.setConfidenceThreshold(conf)
+        predictor?.setConfidenceThreshold(conf)
+        // Update the confidence label if UI controls are shown
+        if (showUIControls) {
+            post {
+                confidenceLabel.text = "Confidence: ${String.format("%.2f", conf)}"
+            }
+        }
     }
 
     fun setIouThreshold(iou: Double) {
         iouThreshold = iou
-        (predictor as? ObjectDetector)?.setIouThreshold(iou)
+        predictor?.setIouThreshold(iou)
     }
 
     fun setNumItemsThreshold(n: Int) {
         numItemsThreshold = n
-        (predictor as? ObjectDetector)?.setNumItemsThreshold(n)
+        predictor?.setNumItemsThreshold(n)
+    }
+    
+    fun setShowUIControls(show: Boolean) {
+        showUIControls = show
+        // Show/hide all UI controls
+        val visibility = if (show) View.VISIBLE else View.GONE
+        zoomLabel.visibility = visibility
+        cameraButton.visibility = visibility
+        confidenceLabel.visibility = visibility
     }
     
     fun setZoomLevel(zoomLevel: Float) {
@@ -331,15 +394,18 @@ class YOLOView @JvmOverloads constructor(
         Executors.newSingleThreadExecutor().execute {
             try {
                 val newPredictor = when (task) {
-                    YOLOTask.DETECT -> ObjectDetector(context, modelPath, loadLabels(modelPath), useGpu = useGpu).apply {
-                        setConfidenceThreshold(confidenceThreshold)
-                        setIouThreshold(iouThreshold)
-                        setNumItemsThreshold(numItemsThreshold)
-                    }
+                    YOLOTask.DETECT -> ObjectDetector(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.SEGMENT -> Segmenter(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.CLASSIFY -> Classifier(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.POSE -> PoseEstimator(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.OBB -> ObbDetector(context, modelPath, loadLabels(modelPath), useGpu = useGpu)
+                }
+                
+                // Apply thresholds to all predictor types
+                newPredictor.apply {
+                    setConfidenceThreshold(confidenceThreshold)
+                    setIouThreshold(iouThreshold)
+                    setNumItemsThreshold(numItemsThreshold)
                 }
 
                 post {
@@ -1223,8 +1289,10 @@ class YOLOView @JvmOverloads constructor(
     // Scale listener for pinch-to-zoom
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
-            // Show zoom label when pinch starts
-            zoomLabel.visibility = View.VISIBLE
+            // Show zoom label when pinch starts (only if UI controls are not permanently shown)
+            if (!showUIControls) {
+                zoomLabel.visibility = View.VISIBLE
+            }
             return true
         }
         
@@ -1246,10 +1314,12 @@ class YOLOView @JvmOverloads constructor(
         }
         
         override fun onScaleEnd(detector: ScaleGestureDetector) {
-            // Hide zoom label after 2 seconds
-            zoomLabel.postDelayed({
-                zoomLabel.visibility = View.GONE
-            }, 2000)
+            // Hide zoom label after 2 seconds (only if UI controls are not permanently shown)
+            if (!showUIControls) {
+                zoomLabel.postDelayed({
+                    zoomLabel.visibility = View.GONE
+                }, 2000)
+            }
         }
     }
     

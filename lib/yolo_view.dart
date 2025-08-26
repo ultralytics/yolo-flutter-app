@@ -312,7 +312,7 @@ class YOLOViewController {
     if (numItemsThreshold != null) {
       _numItemsThreshold = numItemsThreshold.clamp(1, 100);
     }
-    return _applyThresholds();
+    return await _applyThresholds();
   }
 
   /// Switches between front and back cameras.
@@ -484,6 +484,35 @@ class YOLOViewController {
       logInfo('YOLOViewController: Camera and inference stopped successfully');
     } catch (e) {
       logInfo('YOLOViewController: Error stopping camera and inference: $e');
+    }
+  }
+
+  /// Sets the visibility of native UI controls on the camera preview.
+  ///
+  /// When true, platform-specific UI elements such as sliders, buttons,
+  /// and labels may be displayed on the camera view. When false, these
+  /// controls are hidden for a cleaner interface.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Show native UI controls
+  /// await controller.setShowUIControls(true);
+  ///
+  /// // Hide native UI controls
+  /// await controller.setShowUIControls(false);
+  /// ```
+  Future<void> setShowUIControls(bool show) async {
+    if (_methodChannel == null) {
+      logInfo(
+        'YOLOViewController: Warning - Cannot set UI controls visibility, view not yet created',
+      );
+      return;
+    }
+    try {
+      await _methodChannel!.invokeMethod('setShowUIControls', {'show': show});
+      logInfo('YOLOViewController: UI controls visibility set to $show');
+    } catch (e) {
+      logInfo('YOLOViewController: Error setting UI controls visibility: $e');
     }
   }
 
@@ -1230,7 +1259,7 @@ class YOLOViewState extends State<YOLOView> {
     double? confidenceThreshold,
     double? iouThreshold,
     int? numItemsThreshold,
-  }) {
+  }) async {
     return _effectiveController.setThresholds(
       confidenceThreshold: confidenceThreshold,
       iouThreshold: iouThreshold,

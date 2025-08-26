@@ -32,6 +32,8 @@ class ObbDetector(
     private val useGpu: Boolean = true,
     private val customOptions: Interpreter.Options? = null
 ) : BasePredictor() {
+    
+    private var numItemsThreshold = 30
 
     private val interpreterOptions: Interpreter.Options = (customOptions ?: Interpreter.Options()).apply {
         // If no custom options provided, use default threads
@@ -155,6 +157,11 @@ class ObbDetector(
             .add(CastOp(DataType.FLOAT32))
             .build()
     }
+    
+    override fun setNumItemsThreshold(n: Int) {
+        numItemsThreshold = n
+        super.setNumItemsThreshold(n)
+    }
 
     override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         t0 = System.nanoTime()
@@ -198,12 +205,15 @@ class ObbDetector(
             confidenceThreshold = CONFIDENCE_THRESHOLD,
             iouThreshold = IOU_THRESHOLD
         )
+        
+        // Apply numItemsThreshold limit
+        val limitedDetections = obbDetections.take(numItemsThreshold)
 
-        val annotatedImage = drawOBBsOnBitmap(bitmap, obbDetections)
+        val annotatedImage = drawOBBsOnBitmap(bitmap, limitedDetections)
 
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
-            obb = obbDetections,
+            obb = limitedDetections,
             annotatedImage = annotatedImage,
             speed = t2,
             fps = if (t4 > 0) 1.0 / t4 else 0.0,

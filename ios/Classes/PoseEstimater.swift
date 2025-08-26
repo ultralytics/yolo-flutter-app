@@ -22,6 +22,18 @@ import Vision
 class PoseEstimater: BasePredictor, @unchecked Sendable {
   var colorsForMask: [(red: UInt8, green: UInt8, blue: UInt8)] = []
 
+  override func setConfidenceThreshold(confidence: Double) {
+    confidenceThreshold = confidence
+  }
+
+  override func setIouThreshold(iou: Double) {
+    iouThreshold = iou
+  }
+
+  override func setNumItemsThreshold(numItems: Int) {
+    numItemsThreshold = numItems
+  }
+
   override func processObservations(for request: VNRequest, error: Error?) {
     if let results = request.results as? [VNCoreMLFeatureValueObservation] {
 
@@ -33,7 +45,10 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
         var keypointsList = [Keypoints]()
         var boxes = [Box]()
 
-        for person in preds {
+        // Apply numItemsThreshold limit
+        let limitedPreds = Array(preds.prefix(numItemsThreshold))
+
+        for person in limitedPreds {
           boxes.append(person.box)
           keypointsList.append(person.keypoints)
         }
@@ -92,7 +107,10 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
           var keypointsForImage = [[(x: Float, y: Float)]]()
           var confsList: [[Float]] = []
 
-          for person in preds {
+          // Apply numItemsThreshold limit
+          let limitedPreds = Array(preds.prefix(numItemsThreshold))
+
+          for person in limitedPreds {
             boxes.append(person.box)
             keypointsList.append(person.keypoints)
             keypointsForImage.append(person.keypoints.xyn)

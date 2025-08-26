@@ -41,6 +41,7 @@ class Segmenter(
     private var maskH = 0
     private var maskW = 0
     private var maskC = 0
+    private var numItemsThreshold = 30
 
     // TFLite Interpreter options
     private val interpreterOptions = (customOptions ?: Interpreter.Options()).apply {
@@ -169,6 +170,11 @@ class Segmenter(
             .add(CastOp(DataType.FLOAT32))
             .build()
     }
+    
+    override fun setNumItemsThreshold(n: Int) {
+        numItemsThreshold = n
+        super.setNumItemsThreshold(n)
+    }
 
     override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         t0 = System.nanoTime()
@@ -228,8 +234,11 @@ class Segmenter(
             iouThreshold = IOU_THRESHOLD
         )
 
+        // Apply numItemsThreshold limit
+        val limitedDetections = rawDetections.take(numItemsThreshold)
+        
         val boxes = mutableListOf<Box>()
-        for ((normRect, cls, score, maskCoeffs) in rawDetections) {
+        for ((normRect, cls, score, maskCoeffs) in limitedDetections) {
             // normRect already contains normalized coordinates (0-1)
             
             // Convert to absolute pixel coordinates for xywh
@@ -246,7 +255,7 @@ class Segmenter(
         }
 
         val (combinedMask, probMasks) = generateCombinedMaskImage(
-            detections = rawDetections,
+            detections = limitedDetections,
             protos = output1[0],
             maskW = maskW,
             maskH = maskH,

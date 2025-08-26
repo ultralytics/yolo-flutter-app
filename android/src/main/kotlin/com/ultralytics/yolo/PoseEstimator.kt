@@ -46,6 +46,8 @@ class PoseEstimator(
         private const val INPUT_SIZE = 640
     }
     
+    private var numItemsThreshold = 30
+    
     private val boxPool = ObjectPool<Box>(MAX_POOL_SIZE) { Box(0, "", 0f, RectF(), RectF()) }
     private val keypointsPool = ObjectPool<Keypoints>(MAX_POOL_SIZE) {
         Keypoints(
@@ -240,8 +242,11 @@ class PoseEstimator(
             origHeight = origHeight
         )
 
-        val boxes = rawDetections.map { it.box }
-        val keypointsList = rawDetections.map { it.keypoints }
+        // Apply numItemsThreshold limit
+        val limitedDetections = rawDetections.take(numItemsThreshold)
+        
+        val boxes = limitedDetections.map { it.box }
+        val keypointsList = limitedDetections.map { it.keypoints }
 
 //        val annotatedImage = drawPoseOnBitmap(bitmap, keypointsList, boxes)
 
@@ -448,6 +453,11 @@ class PoseEstimator(
     override fun setIouThreshold(iou: Double) {
         iouThreshold = iou.toFloat()
         super.setIouThreshold(iou)
+    }
+    
+    override fun setNumItemsThreshold(n: Int) {
+        numItemsThreshold = n
+        super.setNumItemsThreshold(n)
     }
 
     override fun getConfidenceThreshold(): Double {
