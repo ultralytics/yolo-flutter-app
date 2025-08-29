@@ -1563,18 +1563,18 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
         // Create synthetic boxes for each pose detection
         for (poseIndex, keypoints) in result.keypointsList.enumerated() {
           var detection: [String: Any] = [:]
-          
+
           // Create minimal detection info for pose
           detection["classIndex"] = 0  // Person class
           detection["className"] = "person"
           detection["confidence"] = 1.0  // Default confidence
-          
+
           // Calculate bounding box from keypoints
           var minX = Float.greatestFiniteMagnitude
           var minY = Float.greatestFiniteMagnitude
           var maxX = -Float.greatestFiniteMagnitude
           var maxY = -Float.greatestFiniteMagnitude
-          
+
           for kp in keypoints.xy {
             if kp.x > 0 && kp.y > 0 {
               minX = min(minX, kp.x)
@@ -1583,7 +1583,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
               maxY = max(maxY, kp.y)
             }
           }
-          
+
           // Create bounding box from keypoints extent
           let boundingBox: [String: Any] = [
             "left": Double(minX),
@@ -1592,7 +1592,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
             "bottom": Double(maxY),
           ]
           detection["boundingBox"] = boundingBox
-          
+
           // Normalized bounding box
           let normalizedBox: [String: Any] = [
             "left": Double(minX / Float(result.origShape.width)),
@@ -1601,7 +1601,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
             "bottom": Double(maxY / Float(result.origShape.height)),
           ]
           detection["normalizedBox"] = normalizedBox
-          
+
           // Add keypoints data
           var keypointsFlat: [Double] = []
           for i in 0..<keypoints.xy.count {
@@ -1615,11 +1615,11 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
           }
           detection["keypoints"] = keypointsFlat
           print("YOLOView: Added pose detection with \(keypoints.xy.count) keypoints")
-          
+
           detections.append(detection)
         }
       }
-      
+
       // Convert detection boxes - CRITICAL: use detectionIndex, not class index
       for (detectionIndex, box) in result.boxes.enumerated() {
         var detection: [String: Any] = [:]
