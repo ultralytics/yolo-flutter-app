@@ -1460,16 +1460,11 @@ class YOLOView @JvmOverloads constructor(
             
             // Special handling for pose task - keypointsList may exist without boxes
             if (config.includePoses && result.keypointsList.isNotEmpty() && result.boxes.isEmpty()) {
-                // Create synthetic boxes for each pose detection
                 for ((poseIndex, keypoints) in result.keypointsList.withIndex()) {
                     val detection = HashMap<String, Any>()
-                    
-                    // Create minimal detection info for pose
                     detection["classIndex"] = 0  // Person class
                     detection["className"] = "person"
-                    detection["confidence"] = 1.0  // Default confidence
-                    
-                    // Calculate bounding box from keypoints
+                    detection["confidence"] = 1.0
                     var minX = Float.MAX_VALUE
                     var minY = Float.MAX_VALUE
                     var maxX = Float.MIN_VALUE
@@ -1483,8 +1478,6 @@ class YOLOView @JvmOverloads constructor(
                             maxY = maxOf(maxY, kp.second)
                         }
                     }
-                    
-                    // Create bounding box from keypoints extent
                     val boundingBox = HashMap<String, Any>()
                     boundingBox["left"] = minX.toDouble()
                     boundingBox["top"] = minY.toDouble()
@@ -1500,7 +1493,6 @@ class YOLOView @JvmOverloads constructor(
                     normalizedBox["bottom"] = (maxY / result.origShape.height).toDouble()
                     detection["normalizedBox"] = normalizedBox
                     
-                    // Add keypoints data
                     val keypointsFlat = mutableListOf<Double>()
                     for (i in keypoints.xy.indices) {
                         keypointsFlat.add(keypoints.xy[i].first.toDouble())

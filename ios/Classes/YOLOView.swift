@@ -1560,16 +1560,11 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
 
       // Special handling for pose task - keypointsList may exist without boxes
       if config.includePoses && !result.keypointsList.isEmpty && result.boxes.isEmpty {
-        // Create synthetic boxes for each pose detection
         for (poseIndex, keypoints) in result.keypointsList.enumerated() {
           var detection: [String: Any] = [:]
-
-          // Create minimal detection info for pose
           detection["classIndex"] = 0  // Person class
           detection["className"] = "person"
-          detection["confidence"] = 1.0  // Default confidence
-
-          // Calculate bounding box from keypoints
+          detection["confidence"] = 1.0
           var minX = Float.greatestFiniteMagnitude
           var minY = Float.greatestFiniteMagnitude
           var maxX = -Float.greatestFiniteMagnitude
@@ -1583,8 +1578,6 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
               maxY = max(maxY, kp.y)
             }
           }
-
-          // Create bounding box from keypoints extent
           let boundingBox: [String: Any] = [
             "left": Double(minX),
             "top": Double(minY),
@@ -1601,8 +1594,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
             "bottom": Double(maxY / Float(result.origShape.height)),
           ]
           detection["normalizedBox"] = normalizedBox
-
-          // Add keypoints data
+          
           var keypointsFlat: [Double] = []
           for i in 0..<keypoints.xy.count {
             keypointsFlat.append(Double(keypoints.xy[i].x))
