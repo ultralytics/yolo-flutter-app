@@ -1594,7 +1594,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
             "bottom": Double(maxY / Float(result.origShape.height)),
           ]
           detection["normalizedBox"] = normalizedBox
-          
+
           var keypointsFlat: [Double] = []
           for i in 0..<keypoints.xy.count {
             keypointsFlat.append(Double(keypoints.xy[i].x))
