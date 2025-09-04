@@ -502,15 +502,12 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Clean up method channel
     methodChannel.setMethodCallHandler(nil)
 
-    // Capture necessary values before async cleanup
     let yoloViewToClean = yoloView
     let viewIdToUnregister = Int(viewId)
     let instanceIdToRemove = flutterViewId
     
-    // Clean up YOLOView reference immediately
     yoloView = nil
     
-    // Perform @MainActor cleanup asynchronously
     Task { @MainActor in
       // Stop the camera capture
       yoloViewToClean?.stop()

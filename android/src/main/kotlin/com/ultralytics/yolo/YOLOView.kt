@@ -1750,7 +1750,7 @@ class YOLOView @JvmOverloads constructor(
 
             // 6) Null out camera and inference machinery
             camera = null
-            predictor?.close()  // Properly close predictor resources
+            predictor?.close()
             predictor = null
             inferenceCallback = null
             streamCallback = null

@@ -1039,7 +1039,6 @@ class YOLOViewState extends State<YOLOView> {
           }
         },
         onError: (dynamic error, StackTrace stackTrace) {
-          // Added StackTrace
           logInfo('Error from detection results stream: $error');
           logInfo('Stack trace from stream error: $stackTrace');
 
