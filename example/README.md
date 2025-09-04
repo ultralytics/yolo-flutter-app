@@ -2,7 +2,6 @@
 
 # Ultralytics YOLO Flutter Example App
 
-
 This example app demonstrates how to use the [Ultralytics YOLO Flutter plugin](https://pub.dev/packages/ultralytics_yolo) (`ultralytics_yolo`) for various computer vision tasks such as [object detection](https://docs.ultralytics.com/tasks/detect/), [segmentation](https://docs.ultralytics.com/tasks/segment/), [classification](https://docs.ultralytics.com/tasks/classify/), [pose estimation](https://docs.ultralytics.com/tasks/pose/), and [oriented bounding box detection](https://docs.ultralytics.com/tasks/obb/).
 
 [![Ultralytics Actions](https://github.com/ultralytics/yolo-flutter-app/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/yolo-flutter-app/actions/workflows/format.yml)

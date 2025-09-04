@@ -848,10 +848,10 @@ class YOLOViewState extends State<YOLOView> {
     // Cancel all timers safely
     _safelyCancelTimer(_subscriptionTimer, 'subscription timer');
     _subscriptionTimer = null;
-    
+
     _safelyCancelTimer(_recreateTimer, 'recreate timer');
     _recreateTimer = null;
-    
+
     _safelyCancelTimer(_errorRetryTimer, 'error retry timer');
     _errorRetryTimer = null;
 

@@ -505,21 +505,21 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     let yoloViewToClean = yoloView
     let viewIdToUnregister = Int(viewId)
     let instanceIdToRemove = flutterViewId
-    
+
     yoloView = nil
-    
+
     Task { @MainActor in
       // Stop the camera capture
       yoloViewToClean?.stop()
-      
+
       // Clear callbacks to prevent retain cycles
       yoloViewToClean?.onDetection = nil
       yoloViewToClean?.onZoomChanged = nil
       yoloViewToClean?.setStreamCallback(nil)
-      
+
       // Remove from factory registry
       SwiftYOLOPlatformViewFactory.unregister(for: viewIdToUnregister)
-      
+
       // Dispose model instance from YOLOInstanceManager
       YOLOInstanceManager.shared.removeInstance(instanceId: instanceIdToRemove)
     }
