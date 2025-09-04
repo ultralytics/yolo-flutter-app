@@ -1706,33 +1706,51 @@ class YOLOView @JvmOverloads constructor(
         Log.d(TAG, "YOLOView.stop() called - tearing down camera")
 
         try {
-            // 1) Unbind all use-cases
-            if (::cameraProviderFuture.isInitialized) {
-                val cameraProvider = cameraProviderFuture.get()
-                Log.d(TAG, "Unbinding all camera use cases")
-                cameraProvider.unbindAll()
-            }
-
-            // 2) Clear the analyzer so no threads keep the camera alive
+            // 1) Clear the analyzer first to stop ongoing processing
             imageAnalysisUseCase?.clearAnalyzer()
+            
+            // 2) Unbind all use-cases
+            if (::cameraProviderFuture.isInitialized) {
+                try {
+                    val cameraProvider = cameraProviderFuture.get(1, TimeUnit.SECONDS)
+                    Log.d(TAG, "Unbinding all camera use cases")
+                    cameraProvider.unbindAll()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error getting camera provider for unbind", e)
+                }
+            }
+            
+            // 3) Clear image analysis use case
             imageAnalysisUseCase = null
 
-            // 3) Detach the PreviewView surface
+            // 4) Detach the PreviewView surface
             previewUseCase?.setSurfaceProvider(null)
+            previewUseCase = null
 
-            // 4) Shutdown the executor
+            // 5) Shutdown the executor with proper timeout
             cameraExecutor?.let { exec ->
                 Log.d(TAG, "Shutting down camera executor")
                 exec.shutdown()
-                if (!exec.awaitTermination(1, TimeUnit.SECONDS)) {
-                    Log.w(TAG, "Executor didn't shut down in time; forcing shutdown")
+                try {
+                    if (!exec.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+                        Log.w(TAG, "Executor didn't shut down in time; forcing shutdown")
+                        exec.shutdownNow()
+                        // Wait a bit longer after forced shutdown
+                        if (!exec.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+                            Log.e(TAG, "Executor failed to terminate after forced shutdown")
+                        }
+                    }
+                } catch (e: InterruptedException) {
+                    Log.e(TAG, "Interrupted while waiting for executor shutdown", e)
                     exec.shutdownNow()
+                    Thread.currentThread().interrupt()
                 }
             }
             cameraExecutor = null
 
-            // 5) Null out camera and inference machinery
+            // 6) Null out camera and inference machinery
             camera = null
+            predictor?.close()  // Properly close predictor resources
             predictor = null
             inferenceCallback = null
             streamCallback = null
