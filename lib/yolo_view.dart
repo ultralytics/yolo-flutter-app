@@ -828,7 +828,7 @@ class YOLOViewState extends State<YOLOView> {
     logInfo('YOLOView.dispose() called - starting cleanup');
 
     // Create a helper method to safely cancel timers
-    void _safelyCancelTimer(Timer? timer, String timerName) {
+    void safelyCancelTimer(Timer? timer, String timerName) {
       try {
         timer?.cancel();
         logInfo('YOLOView: $timerName cancelled successfully');
@@ -846,13 +846,13 @@ class YOLOViewState extends State<YOLOView> {
     _cancelResultSubscription();
 
     // Cancel all timers safely
-    _safelyCancelTimer(_subscriptionTimer, 'subscription timer');
+    safelyCancelTimer(_subscriptionTimer, 'subscription timer');
     _subscriptionTimer = null;
 
-    _safelyCancelTimer(_recreateTimer, 'recreate timer');
+    safelyCancelTimer(_recreateTimer, 'recreate timer');
     _recreateTimer = null;
 
-    _safelyCancelTimer(_errorRetryTimer, 'error retry timer');
+    safelyCancelTimer(_errorRetryTimer, 'error retry timer');
     _errorRetryTimer = null;
 
     // Clean up method channel handler
