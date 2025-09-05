@@ -122,20 +122,33 @@ class YOLOPlatformView(
     private fun setupYOLOViewStreaming(creationParams: Map<String?, Any?>?) {
         val streamingConfigParam = creationParams?.get("streamingConfig") as? Map<*, *>
         
-        val streamConfig = streamingConfigParam?.let { config ->
+        val streamConfig = if (streamingConfigParam != null) {
             YOLOStreamConfig(
-                includeDetections = config["includeDetections"] as? Boolean ?: true,
-                includeClassifications = config["includeClassifications"] as? Boolean ?: true,
-                includeProcessingTimeMs = config["includeProcessingTimeMs"] as? Boolean ?: true,
-                includeFps = config["includeFps"] as? Boolean ?: true,
-                includeMasks = config["includeMasks"] as? Boolean ?: false,
-                includePoses = config["includePoses"] as? Boolean ?: false,
-                includeOBB = config["includeOBB"] as? Boolean ?: false,
-                includeOriginalImage = config["includeOriginalImage"] as? Boolean ?: false,
-                maxFPS = (config["maxFPS"] as? Number)?.toInt(),
-                throttleIntervalMs = (config["throttleInterval"] as? Number)?.toInt(),
-                inferenceFrequency = (config["inferenceFrequency"] as? Number)?.toInt(),
-                skipFrames = (config["skipFrames"] as? Number)?.toInt()
+                includeDetections = streamingConfigParam["includeDetections"] as? Boolean ?: true,
+                includeClassifications = streamingConfigParam["includeClassifications"] as? Boolean ?: true,
+                includeProcessingTimeMs = streamingConfigParam["includeProcessingTimeMs"] as? Boolean ?: true,
+                includeFps = streamingConfigParam["includeFps"] as? Boolean ?: true,
+                includeMasks = streamingConfigParam["includeMasks"] as? Boolean ?: false,
+                includePoses = streamingConfigParam["includePoses"] as? Boolean ?: false,
+                includeOBB = streamingConfigParam["includeOBB"] as? Boolean ?: false,
+                includeOriginalImage = streamingConfigParam["includeOriginalImage"] as? Boolean ?: false,
+                maxFPS = (streamingConfigParam["maxFPS"] as? Number)?.toInt(),
+                throttleIntervalMs = (streamingConfigParam["throttleInterval"] as? Number)?.toInt(),
+                inferenceFrequency = (streamingConfigParam["inferenceFrequency"] as? Number)?.toInt(),
+                skipFrames = (streamingConfigParam["skipFrames"] as? Number)?.toInt()
+            )
+        } else {
+            // Create default config when no streaming config is provided
+            // This ensures onResult callback receives detection data
+            YOLOStreamConfig(
+                includeDetections = true,
+                includeClassifications = true,
+                includeProcessingTimeMs = true,
+                includeFps = true,
+                includeMasks = false,
+                includePoses = false,
+                includeOBB = false,
+                includeOriginalImage = false
             )
         }
         
