@@ -7,19 +7,10 @@ import 'package:ultralytics_yolo/yolo_task.dart';
 /// - '11n' indicates the model size (nano)
 /// - {task} indicates the specific task (detect, segment, classify, pose, obb)
 enum ModelType {
-  /// Object detection model
   detect('yolo11n', YOLOTask.detect),
-
-  /// Instance segmentation model
   segment('yolo11n-seg', YOLOTask.segment),
-
-  /// Image classification model
   classify('yolo11n-cls', YOLOTask.classify),
-
-  /// Pose estimation model
   pose('yolo11n-pose', YOLOTask.pose),
-
-  /// Oriented bounding box detection model
   obb('yolo11n-obb', YOLOTask.obb);
 
   /// The name of the model file (without extension)
@@ -30,3 +21,9 @@ enum ModelType {
 
   const ModelType(this.modelName, this.task);
 }
+
+/// Enum representing different slider types for threshold adjustments.
+///
+/// Each slider type corresponds to a different parameter that can be adjusted
+/// during inference to control the model's behavior.
+enum SliderType { none, numItems, confidence, iou }
