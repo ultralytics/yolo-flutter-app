@@ -24,8 +24,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     self.currentFps = fps
     self.currentProcessingTime = speed
 
-    DispatchQueue.main.async {
-      self.labelFPS.text = String(format: "%.1f FPS - %.1f ms", fps, speed)  // t2 seconds to ms
+    if showUIControls {
+      DispatchQueue.main.async {
+        self.labelFPS.text = String(format: "%.1f FPS - %.1f ms", fps, speed)  // t2 seconds to ms
+      }
     }
   }
 
@@ -530,8 +532,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         ratio = (height / width) / (16.0 / 9.0)
       }
 
-      self.labelSliderNumItems.text =
-        String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
+      if showUIControls {
+        self.labelSliderNumItems.text =
+          String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
+      }
       for i in 0..<boundingBoxViews.count {
         if i < (resultCount) && i < 50 {
           var rect = CGRect.zero
@@ -625,8 +629,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
     } else {
       resultCount = predictions.boxes.count
-      self.labelSliderNumItems.text =
-        String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
+      if showUIControls {
+        self.labelSliderNumItems.text =
+          String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
+      }
 
       let frameAspectRatio = videoCapture.longSide / videoCapture.shortSide
       let viewAspectRatio = width / height
@@ -821,7 +827,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     sliderIoU.addTarget(self, action: #selector(sliderChanged), for: .valueChanged)
     self.addSubview(sliderIoU)
 
-    self.labelSliderNumItems.text = "0 items (max " + String(Int(sliderNumItems.value)) + ")"
+    if showUIControls {
+      self.labelSliderNumItems.text = "0 items (max " + String(Int(sliderNumItems.value)) + ")"
+    }
     self.labelSliderConf.text = "0.25 Confidence Threshold"
     self.labelSliderIoU.text = "0.45 IoU Threshold"
 
