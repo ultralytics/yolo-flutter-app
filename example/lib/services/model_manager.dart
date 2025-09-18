@@ -2,11 +2,10 @@
 
 import 'dart:io';
 import 'package:archive/archive.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import '../models/model_type.dart';
+import '../models/models.dart';
 
 /// Manages YOLO model loading, downloading, and caching.
 ///
@@ -37,108 +36,27 @@ class ModelManager {
   ModelManager({this.onDownloadProgress, this.onStatusUpdate});
 
   /// Gets the appropriate model path for the current platform and model type.
-  /// For iOS: Always downloads model if not found locally to avoid crashes
-  /// For Android: Checks bundled assets first, then downloaded models.
-  ///
-  /// Returns the path to the model file if it exists locally, or null if the model
-  /// needs to be downloaded. The path format depends on the platform:
-  /// - iOS: Path to .mlpackage directory
-  /// - Android: Path to .tflite file
-  Future<String?> getModelPath(ModelType modelType) async {
-    if (Platform.isIOS) {
-      return _getIOSModelPath(modelType);
-    } else if (Platform.isAndroid) {
-      return _getAndroidModelPath(modelType);
-    }
-    return null;
-  }
-
-  /// Check if a model exists in the iOS bundle (Xcode project).
-  /// This is useful to verify if a model is bundled before using it.
-  Future<bool> isModelBundled(ModelType modelType) async {
-    if (!Platform.isIOS) {
-      return false;
-    }
-
-    final bundleCheck = await _checkModelExistsInBundle(modelType.modelName);
-    return bundleCheck['exists'] == true;
-  }
-
-  /// Check if a model exists locally (downloaded).
-  Future<bool> isModelDownloaded(ModelType modelType) async {
-    if (Platform.isIOS) {
-      final documentsDir = await getApplicationDocumentsDirectory();
-      final modelDir = Directory(
-        '${documentsDir.path}/${modelType.modelName}.mlpackage',
-      );
-      return modelDir.exists();
-    } else if (Platform.isAndroid) {
-      final documentsDir = await getApplicationDocumentsDirectory();
-      final modelFile = File(
-        '${documentsDir.path}/${modelType.modelName}.tflite',
-      );
-      return modelFile.exists();
-    }
-    return false;
-  }
-
-  /// Download model if not available locally.
-  Future<String?> downloadModelIfNeeded(ModelType modelType) async {
-    if (Platform.isIOS) {
-      return _downloadIOSModel(modelType);
-    }
-    // Android download is handled in getAndroidModelPath
-    return null;
-  }
+  Future<String?> getModelPath(ModelType modelType) async => Platform.isIOS
+      ? _getIOSModelPath(modelType)
+      : Platform.isAndroid
+      ? _getAndroidModelPath(modelType)
+      : null;
 
   /// Gets the iOS model path (.mlpackage format).
-  /// This method checks in the following order:
-  /// 1. Bundle models (if exists, returns model name)
-  /// 2. Downloaded models (returns full path)
-  /// 3. Downloads the model if not found
-  ///
-  /// Checks for the model in the app's documents directory and downloads it if needed.
-  /// Returns the path to the .mlpackage directory if successful, null otherwise.
   Future<String?> _getIOSModelPath(ModelType modelType) async {
     _updateStatus('Checking for ${modelType.modelName} model...');
-
-    // Step 1: Check if model exists in iOS bundle
     try {
       final bundleCheck = await _checkModelExistsInBundle(modelType.modelName);
-      if (bundleCheck['exists'] == true) {
-        debugPrint(
-          'Found bundled iOS model: ${modelType.modelName} at ${bundleCheck['location']}',
-        );
-        // For bundled models, return just the model name
-        // The native code will resolve the actual path
-        return modelType.modelName;
-      }
-    } catch (e) {
-      debugPrint('Error checking bundle for model: $e');
-    }
-
-    // Step 2: Check downloaded models
-    final documentsDir = await getApplicationDocumentsDirectory();
-    final modelDir = Directory(
-      '${documentsDir.path}/${modelType.modelName}.mlpackage',
-    );
-
+      if (bundleCheck['exists'] == true) return modelType.modelName;
+    } catch (_) {}
+    final dir = await getApplicationDocumentsDirectory();
+    final modelDir = Directory('${dir.path}/${modelType.modelName}.mlpackage');
     if (await modelDir.exists()) {
-      // Verify it's a valid mlpackage by checking for Manifest.json
-      final manifestFile = File('${modelDir.path}/Manifest.json');
-      if (await manifestFile.exists()) {
-        debugPrint('Found downloaded iOS model at: ${modelDir.path}');
+      if (await File('${modelDir.path}/Manifest.json').exists()) {
         return modelDir.path;
-      } else {
-        debugPrint(
-          'Invalid mlpackage directory (missing Manifest.json), removing...',
-        );
-        await modelDir.delete(recursive: true);
       }
+      await modelDir.delete(recursive: true);
     }
-
-    // Step 3: Model not found anywhere, download it
-    debugPrint('Model not found locally or in bundle, downloading...');
     _updateStatus('Downloading ${modelType.modelName} model...');
     return _downloadIOSModel(modelType);
   }
@@ -147,343 +65,153 @@ class ModelManager {
   Future<Map<String, dynamic>> _checkModelExistsInBundle(
     String modelName,
   ) async {
-    if (!Platform.isIOS) {
-      return {'exists': false};
-    }
-
+    if (!Platform.isIOS) return {'exists': false};
     try {
       final result = await _channel.invokeMethod('checkModelExists', {
         'modelPath': modelName,
       });
       return Map<String, dynamic>.from(result);
-    } catch (e) {
-      debugPrint('Error checking model in bundle: $e');
+    } catch (_) {
       return {'exists': false};
     }
   }
 
-  /// Download iOS model (.mlpackage format).
+  /// Download iOS model (.mlpackage format) or extract from assets
   Future<String?> _downloadIOSModel(ModelType modelType) async {
-    final documentsDir = await getApplicationDocumentsDirectory();
-    final modelDir = Directory(
-      '${documentsDir.path}/${modelType.modelName}.mlpackage',
-    );
-
-    // If already exists, return it
-    if (await modelDir.exists()) {
-      return modelDir.path;
-    }
-
-    _updateStatus('Downloading ${modelType.modelName} model...');
-
-    final zipFile = File(
-      '${documentsDir.path}/${modelType.modelName}.mlpackage.zip',
-    );
-    final url = '$_modelDownloadBaseUrl/${modelType.modelName}.mlpackage.zip';
-
+    final dir = await getApplicationDocumentsDirectory();
+    final modelDir = Directory('${dir.path}/${modelType.modelName}.mlpackage');
+    if (await modelDir.exists()) return modelDir.path;
     try {
-      final client = http.Client();
-      final request = await client.send(http.Request('GET', Uri.parse(url)));
-      final contentLength = request.contentLength ?? 0;
-
-      // Download with progress tracking
-      final bytes = <int>[];
-      int downloadedBytes = 0;
-
-      await for (final chunk in request.stream) {
-        bytes.addAll(chunk);
-        downloadedBytes += chunk.length;
-
-        if (contentLength > 0) {
-          final progress = downloadedBytes / contentLength;
-          onDownloadProgress?.call(progress);
-        }
-      }
-
-      await zipFile.writeAsBytes(bytes);
-      client.close();
-
-      // Extract the zip file
-      _updateStatus('Extracting model...');
-      final archive = ZipDecoder().decodeBytes(await zipFile.readAsBytes());
-
-      // Check if the archive has a redundant top-level directory
-      // This happens when the mlpackage directory itself was zipped
-      bool hasRedundantDirectory = false;
-      String? redundantDirPrefix;
-
-      // Check if all files start with the same directory name
-      if (archive.files.isNotEmpty) {
-        final firstPath = archive.files.first.name;
-        if (firstPath.contains('/')) {
-          final topDir = firstPath.split('/').first;
-          // Check if it's a redundant mlpackage directory
-          if (topDir.endsWith('.mlpackage')) {
-            // Check if ALL files start with this directory
-            hasRedundantDirectory = archive.files.every(
-              (f) => f.name.startsWith('$topDir/') || f.name == topDir,
-            );
-            if (hasRedundantDirectory) {
-              redundantDirPrefix = '$topDir/';
-              debugPrint('Detected redundant directory structure: $topDir');
-            }
-          }
-        }
-      }
-
-      // Create the mlpackage directory first
-      await modelDir.create(recursive: true);
-      debugPrint('Created mlpackage directory: ${modelDir.path}');
-
-      for (final file in archive) {
-        String filename = file.name;
-
-        // Remove redundant directory prefix if present
-        if (hasRedundantDirectory && redundantDirPrefix != null) {
-          if (filename.startsWith(redundantDirPrefix)) {
-            filename = filename.substring(redundantDirPrefix.length);
-          } else if (filename == redundantDirPrefix.replaceAll('/', '')) {
-            // Skip the directory entry itself
-            continue;
-          }
-        }
-
-        // Skip empty filenames
-        if (filename.isEmpty) continue;
-
-        if (file.isFile) {
-          final data = file.content as List<int>;
-          // Extract files into the mlpackage directory
-          final outputFile = File('${modelDir.path}/$filename');
-          await outputFile.parent.create(recursive: true);
-          await outputFile.writeAsBytes(data);
-          debugPrint('Extracted: ${outputFile.path}');
-        } else if (!hasRedundantDirectory) {
-          // Only create directories if we're not stripping a redundant prefix
-          final dir = Directory('${modelDir.path}/$filename');
-          await dir.create(recursive: true);
-          debugPrint('Created directory: ${dir.path}');
-        }
-      }
-
-      // Clean up zip file
-      await zipFile.delete();
-
-      // Verify extraction
-      if (await modelDir.exists()) {
-        return modelDir.path;
-      } else {
-        debugPrint('Error: mlpackage directory not found after extraction');
-      }
-    } catch (e) {
-      debugPrint('Failed to download/extract iOS model: $e');
-      if (await zipFile.exists()) {
-        await zipFile.delete();
-      }
-      // Clean up the model directory if extraction failed
-      if (await modelDir.exists()) {
-        await modelDir.delete(recursive: true);
-      }
-    }
-
-    return null;
+      final zipData = await rootBundle.load(
+        'assets/models/${modelType.modelName}.mlpackage.zip',
+      );
+      return await _extractZip(
+        zipData.buffer.asUint8List(),
+        modelDir,
+        modelType.modelName,
+      );
+    } catch (_) {}
+    return await _downloadAndExtract(modelType, modelDir, '.mlpackage.zip');
   }
 
   /// Gets the Android model path (.tflite format)
-  ///
-  /// Checks for the model in the app's assets and local storage, and downloads it if needed.
-  /// Returns the path to the .tflite file if successful, null otherwise.
   Future<String?> _getAndroidModelPath(ModelType modelType) async {
     _updateStatus('Checking for ${modelType.modelName} model...');
+    final bundledName = '${modelType.modelName}.tflite';
 
-    final bundledModelName = '${modelType.modelName}.tflite';
-    final documentsDir = await getApplicationDocumentsDirectory();
-
-    // Check order:
-    // 1. Android native assets (android/app/src/main/assets/)
-    // 2. Local storage (previously downloaded)
-    // 3. Download from GitHub if not found
-
-    // Step 1: Check Android native assets first
+    // Check Android native assets first
     try {
       final result = await _channel.invokeMethod('checkModelExists', {
-        'modelPath': bundledModelName,
+        'modelPath': bundledName,
       });
-
       if (result != null && result['exists'] == true) {
-        debugPrint(
-          'Found model in Android ${result['location']}: ${result['path']}',
-        );
-        // Return just the filename for assets, native code will load from assets
-        if (result['location'] == 'assets') {
-          return bundledModelName;
-        }
-        // Return full path for filesystem
-        return result['path'] as String;
+        return result['location'] == 'assets'
+            ? bundledName
+            : result['path'] as String;
       }
-    } catch (e) {
-      debugPrint('Error checking Android assets: $e');
-    }
+    } catch (_) {}
 
-    // Step 2: Check local storage (previously downloaded)
-    final modelFile = File(
-      '${documentsDir.path}/${modelType.modelName}.tflite',
-    );
+    // Check local storage
+    final dir = await getApplicationDocumentsDirectory();
+    final modelFile = File('${dir.path}/$bundledName');
+    if (await modelFile.exists()) return modelFile.path;
 
-    if (await modelFile.exists()) {
+    // Download if not found
+    _updateStatus('Downloading ${modelType.modelName} model...');
+    final bytes = await _downloadFile('$_modelDownloadBaseUrl/$bundledName');
+    if (bytes != null && bytes.isNotEmpty) {
+      await modelFile.writeAsBytes(bytes);
       return modelFile.path;
     }
+    return null;
+  }
 
-    // Step 3: Download model from GitHub
-    _updateStatus('Downloading ${modelType.modelName} model...');
-
-    final url = '$_modelDownloadBaseUrl/${modelType.modelName}.tflite';
-
+  /// Helper method to download file with progress tracking
+  Future<List<int>?> _downloadFile(String url) async {
     try {
       final client = http.Client();
       final request = await client.send(http.Request('GET', Uri.parse(url)));
       final contentLength = request.contentLength ?? 0;
-
-      // Download with progress tracking
       final bytes = <int>[];
       int downloadedBytes = 0;
 
       await for (final chunk in request.stream) {
         bytes.addAll(chunk);
         downloadedBytes += chunk.length;
-
         if (contentLength > 0) {
-          final progress = downloadedBytes / contentLength;
-          onDownloadProgress?.call(progress);
+          onDownloadProgress?.call(downloadedBytes / contentLength);
         }
       }
-
       client.close();
-
-      if (bytes.isNotEmpty) {
-        await modelFile.writeAsBytes(bytes);
-        return modelFile.path;
-      }
-    } catch (e) {
-      debugPrint('Failed to download Android model: $e');
-      _updateStatus('Failed to download model: ${e.toString()}');
+      return bytes;
+    } catch (_) {
+      return null;
     }
-
-    return null;
   }
 
-  /// Clears all downloaded models from local storage
-  ///
-  /// This removes both iOS (.mlpackage) and Android (.tflite) models
-  /// from the app's documents directory.
-  Future<void> clearCache() async {
-    _updateStatus('Clearing model cache...');
-    final documentsDir = await getApplicationDocumentsDirectory();
-
-    // Clear all model files
-    for (final modelType in ModelType.values) {
-      // Android models
-      final tfliteFile = File(
-        '${documentsDir.path}/${modelType.modelName}.tflite',
-      );
-      if (await tfliteFile.exists()) {
-        await tfliteFile.delete();
-        debugPrint(
-          'Deleted cached Android model: ${modelType.modelName}.tflite',
-        );
-      }
-
-      // iOS models
-      final mlPackageDir = Directory(
-        '${documentsDir.path}/${modelType.modelName}.mlpackage',
-      );
-      if (await mlPackageDir.exists()) {
-        await mlPackageDir.delete(recursive: true);
-        debugPrint(
-          'Deleted cached iOS model: ${modelType.modelName}.mlpackage',
-        );
-      }
-    }
-
-    debugPrint('Model cache cleared successfully');
-    _updateStatus('Cache cleared');
-  }
-
-  /// Force re-download a specific model (useful for debugging).
-  Future<String?> forceDownloadModel(ModelType modelType) async {
-    _updateStatus('Force downloading ${modelType.modelName} model...');
-
-    if (Platform.isIOS) {
-      // Delete existing model if any
-      final documentsDir = await getApplicationDocumentsDirectory();
-      final modelDir = Directory(
-        '${documentsDir.path}/${modelType.modelName}.mlpackage',
-      );
-      if (await modelDir.exists()) {
-        await modelDir.delete(recursive: true);
-        debugPrint('Deleted existing model before re-download');
-      }
-
-      return _downloadIOSModel(modelType);
-    } else if (Platform.isAndroid) {
-      // Delete existing model if any
-      final documentsDir = await getApplicationDocumentsDirectory();
-      final modelFile = File(
-        '${documentsDir.path}/${modelType.modelName}.tflite',
-      );
-      if (await modelFile.exists()) {
-        await modelFile.delete();
-        debugPrint('Deleted existing model before re-download');
-      }
-
-      // Re-download by calling the existing download logic
-      _updateStatus('Downloading ${modelType.modelName} model...');
-      final url = '$_modelDownloadBaseUrl/${modelType.modelName}.tflite';
-
-      try {
-        final client = http.Client();
-        final request = await client.send(http.Request('GET', Uri.parse(url)));
-        final contentLength = request.contentLength ?? 0;
-
-        // Download with progress tracking
-        final bytes = <int>[];
-        int downloadedBytes = 0;
-
-        await for (final chunk in request.stream) {
-          bytes.addAll(chunk);
-          downloadedBytes += chunk.length;
-
-          if (contentLength > 0) {
-            final progress = downloadedBytes / contentLength;
-            onDownloadProgress?.call(progress);
+  /// Helper method to extract zip file
+  Future<String?> _extractZip(
+    List<int> bytes,
+    Directory targetDir,
+    String modelName,
+  ) async {
+    try {
+      _updateStatus('Extracting model...');
+      final archive = ZipDecoder().decodeBytes(bytes);
+      await targetDir.create(recursive: true);
+      String? prefix;
+      if (archive.files.isNotEmpty) {
+        final first = archive.files.first.name;
+        if (first.contains('/') &&
+            first.split('/').first.endsWith('.mlpackage')) {
+          final topDir = first.split('/').first;
+          if (archive.files.every(
+            (f) => f.name.startsWith('$topDir/') || f.name == topDir,
+          )) {
+            prefix = '$topDir/';
           }
         }
-
-        client.close();
-
-        if (bytes.isNotEmpty) {
-          await modelFile.writeAsBytes(bytes);
-          return modelFile.path;
-        }
-      } catch (e) {
-        debugPrint('Failed to download Android model: $e');
       }
+      for (final file in archive) {
+        var filename = file.name;
+        if (prefix != null) {
+          if (filename.startsWith(prefix)) {
+            filename = filename.substring(prefix.length);
+          } else if (filename == prefix.replaceAll('/', '')) {
+            continue;
+          }
+        }
+        if (filename.isEmpty) continue;
+        if (file.isFile) {
+          final outputFile = File('${targetDir.path}/$filename');
+          await outputFile.parent.create(recursive: true);
+          await outputFile.writeAsBytes(file.content as List<int>);
+        }
+      }
+      return targetDir.path;
+    } catch (_) {
+      if (await targetDir.exists()) {
+        await targetDir.delete(recursive: true);
+      }
+      return null;
     }
-
-    return null;
   }
 
-  /// Checks if a model is available locally (either bundled or downloaded)
-  ///
-  /// Returns true if the model exists and is ready to use, false otherwise.
-  Future<bool> isModelAvailable(ModelType modelType) async {
-    final path = await getModelPath(modelType);
-    return path != null;
+  /// Helper method to download and extract model
+  Future<String?> _downloadAndExtract(
+    ModelType modelType,
+    Directory targetDir,
+    String ext,
+  ) async {
+    final bytes = await _downloadFile(
+      '$_modelDownloadBaseUrl/${modelType.modelName}$ext',
+    );
+    if (bytes == null) return null;
+    return ext.contains('zip')
+        ? await _extractZip(bytes, targetDir, modelType.modelName)
+        : (await File(targetDir.path).writeAsBytes(bytes), targetDir.path).$2;
   }
 
-  /// Updates the status message and logs it
-  void _updateStatus(String message) {
-    debugPrint('ModelManager: $message');
-    onStatusUpdate?.call(message);
-  }
+  /// Updates the status message
+  void _updateStatus(String message) => onStatusUpdate?.call(message);
 }
