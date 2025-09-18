@@ -1475,8 +1475,7 @@ class YOLOView @JvmOverloads constructor(
         // Convert detection results (if enabled)
         if (config.includeDetections) {
             val detections = ArrayList<Map<String, Any>>()
-            
-            // Special handling for pose task - keypointsList may exist without boxes
+
             if (config.includePoses && result.keypointsList.isNotEmpty() && result.boxes.isEmpty()) {
                 for ((poseIndex, keypoints) in result.keypointsList.withIndex()) {
                     val detection = HashMap<String, Any>()

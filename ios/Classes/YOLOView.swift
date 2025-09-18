@@ -1566,7 +1566,6 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
     if config.includeDetections {
       var detections: [[String: Any]] = []
 
-      // Special handling for pose task - keypointsList may exist without boxes
       if config.includePoses && !result.keypointsList.isEmpty && result.boxes.isEmpty {
         for (poseIndex, keypoints) in result.keypointsList.enumerated() {
           var detection: [String: Any] = [:]
