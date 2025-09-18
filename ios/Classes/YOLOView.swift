@@ -1562,7 +1562,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
       if config.includePoses && !result.keypointsList.isEmpty && result.boxes.isEmpty {
         for (poseIndex, keypoints) in result.keypointsList.enumerated() {
           var detection: [String: Any] = [:]
-          detection["classIndex"] = 0  // Person class
+          detection["classIndex"] = 0
           detection["className"] = "person"
           detection["confidence"] = 1.0
           var minX = Float.greatestFiniteMagnitude
@@ -1588,10 +1588,10 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
 
           // Normalized bounding box
           let normalizedBox: [String: Any] = [
-            "left": Double(minX / Float(result.origShape.width)),
-            "top": Double(minY / Float(result.origShape.height)),
-            "right": Double(maxX / Float(result.origShape.width)),
-            "bottom": Double(maxY / Float(result.origShape.height)),
+            "left": Double(minX / Float(result.orig_shape.width)),
+            "top": Double(minY / Float(result.orig_shape.height)),
+            "right": Double(maxX / Float(result.orig_shape.width)),
+            "bottom": Double(maxY / Float(result.orig_shape.height)),
           ]
           detection["normalizedBox"] = normalizedBox
 

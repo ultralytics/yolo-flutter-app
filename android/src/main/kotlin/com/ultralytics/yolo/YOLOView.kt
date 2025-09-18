@@ -1447,6 +1447,24 @@ class YOLOView @JvmOverloads constructor(
     }
     
     /**
+     * Flattens keypoints data into a single array format: [x1, y1, conf1, x2, y2, conf2, ...]
+     */
+    private fun flattenKeypoints(keypoints: YOLOResult.Keypoints): List<Double> {
+        val flattened = mutableListOf<Double>()
+        for (i in keypoints.xy.indices) {
+            flattened.add(keypoints.xy[i].first.toDouble())
+            flattened.add(keypoints.xy[i].second.toDouble())
+            val confidence = if (i < keypoints.conf.size) {
+                keypoints.conf[i].toDouble()
+            } else {
+                0.0
+            }
+            flattened.add(confidence)
+        }
+        return flattened
+    }
+
+    /**
      * Convert YOLOResult to a Map for streaming (ported from archived YOLOPlatformView)
      * Uses detection index correctly to avoid class index confusion
      */
@@ -1462,7 +1480,7 @@ class YOLOView @JvmOverloads constructor(
             if (config.includePoses && result.keypointsList.isNotEmpty() && result.boxes.isEmpty()) {
                 for ((poseIndex, keypoints) in result.keypointsList.withIndex()) {
                     val detection = HashMap<String, Any>()
-                    detection["classIndex"] = 0  // Person class
+                    detection["classIndex"] = 0
                     detection["className"] = "person"
                     detection["confidence"] = 1.0
                     var minX = Float.MAX_VALUE
@@ -1493,16 +1511,7 @@ class YOLOView @JvmOverloads constructor(
                     normalizedBox["bottom"] = (maxY / result.origShape.height).toDouble()
                     detection["normalizedBox"] = normalizedBox
                     
-                    val keypointsFlat = mutableListOf<Double>()
-                    for (i in keypoints.xy.indices) {
-                        keypointsFlat.add(keypoints.xy[i].first.toDouble())
-                        keypointsFlat.add(keypoints.xy[i].second.toDouble())
-                        if (i < keypoints.conf.size) {
-                            keypointsFlat.add(keypoints.conf[i].toDouble())
-                        } else {
-                            keypointsFlat.add(0.0)
-                        }
-                    }
+                    val keypointsFlat = flattenKeypoints(keypoints)
                     detection["keypoints"] = keypointsFlat
                     Log.d(TAG, "Added pose detection with ${keypoints.xy.size} keypoints")
                     
@@ -1545,22 +1554,10 @@ class YOLOView @JvmOverloads constructor(
                 }
                 
                 // Add pose keypoints (if available and enabled)
-                // For pose task, keypointsList may be separate from boxes
                 if (config.includePoses && result.keypointsList.isNotEmpty()) {
-                    // Try to match keypoints to detection by index
                     if (detectionIndex < result.keypointsList.size) {
                         val keypoints = result.keypointsList[detectionIndex]
-                        // Convert to flat array [x1, y1, conf1, x2, y2, conf2, ...]
-                        val keypointsFlat = mutableListOf<Double>()
-                        for (i in keypoints.xy.indices) {
-                            keypointsFlat.add(keypoints.xy[i].first.toDouble())
-                            keypointsFlat.add(keypoints.xy[i].second.toDouble())
-                            if (i < keypoints.conf.size) {
-                                keypointsFlat.add(keypoints.conf[i].toDouble())
-                            } else {
-                                keypointsFlat.add(0.0) // Default confidence if missing
-                            }
-                        }
+                        val keypointsFlat = flattenKeypoints(keypoints)
                         detection["keypoints"] = keypointsFlat
                         Log.d(TAG, "Added keypoints data (${keypoints.xy.size} points) for detection $detectionIndex")
                     }
