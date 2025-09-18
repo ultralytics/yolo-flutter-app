@@ -72,7 +72,6 @@ android {
             cmake {
                 cppFlags ""
                 arguments "-DANDROID_STL=c++_shared"
-                // NDK r28: ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES is ON by default
             }
         }
 
