@@ -1706,10 +1706,10 @@ class YOLOView @JvmOverloads constructor(
         Log.d(TAG, "YOLOView.stop() called - tearing down camera")
 
         try {
-            // 1) Clear the analyzer first to stop ongoing processing
+            // Clear the analyzer first to stop ongoing processing
             imageAnalysisUseCase?.clearAnalyzer()
-            
-            // 2) Unbind all use-cases
+
+            // Unbind all use-cases
             if (::cameraProviderFuture.isInitialized) {
                 try {
                     val cameraProvider = cameraProviderFuture.get(1, TimeUnit.SECONDS)
@@ -1720,14 +1720,14 @@ class YOLOView @JvmOverloads constructor(
                 }
             }
             
-            // 3) Clear image analysis use case
+            // Clear image analysis use case
             imageAnalysisUseCase = null
 
-            // 4) Detach the PreviewView surface
+            // Detach the PreviewView surface
             previewUseCase?.setSurfaceProvider(null)
             previewUseCase = null
 
-            // 5) Shutdown the executor with proper timeout
+            // Shutdown the executor with proper timeout
             cameraExecutor?.let { exec ->
                 Log.d(TAG, "Shutting down camera executor")
                 exec.shutdown()
@@ -1748,7 +1748,7 @@ class YOLOView @JvmOverloads constructor(
             }
             cameraExecutor = null
 
-            // 6) Null out camera and inference machinery
+            // Null out camera and inference machinery
             camera = null
             predictor?.close()
             predictor = null
