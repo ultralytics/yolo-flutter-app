@@ -1706,10 +1706,7 @@ class YOLOView @JvmOverloads constructor(
         Log.d(TAG, "YOLOView.stop() called - tearing down camera")
 
         try {
-            // Clear the analyzer first to stop ongoing processing
             imageAnalysisUseCase?.clearAnalyzer()
-
-            // Unbind all use-cases
             if (::cameraProviderFuture.isInitialized) {
                 try {
                     val cameraProvider = cameraProviderFuture.get(1, TimeUnit.SECONDS)
@@ -1719,15 +1716,12 @@ class YOLOView @JvmOverloads constructor(
                     Log.e(TAG, "Error getting camera provider for unbind", e)
                 }
             }
-            
-            // Clear image analysis use case
+
             imageAnalysisUseCase = null
 
-            // Detach the PreviewView surface
             previewUseCase?.setSurfaceProvider(null)
             previewUseCase = null
 
-            // Shutdown the executor with proper timeout
             cameraExecutor?.let { exec ->
                 Log.d(TAG, "Shutting down camera executor")
                 exec.shutdown()
@@ -1735,7 +1729,6 @@ class YOLOView @JvmOverloads constructor(
                     if (!exec.awaitTermination(500, TimeUnit.MILLISECONDS)) {
                         Log.w(TAG, "Executor didn't shut down in time; forcing shutdown")
                         exec.shutdownNow()
-                        // Wait a bit longer after forced shutdown
                         if (!exec.awaitTermination(500, TimeUnit.MILLISECONDS)) {
                             Log.e(TAG, "Executor failed to terminate after forced shutdown")
                         }
@@ -1748,7 +1741,6 @@ class YOLOView @JvmOverloads constructor(
             }
             cameraExecutor = null
 
-            // Null out camera and inference machinery
             camera = null
             predictor?.close()
             predictor = null

@@ -827,7 +827,6 @@ class YOLOViewState extends State<YOLOView> {
   void dispose() {
     logInfo('YOLOView.dispose() called - starting cleanup');
 
-    // Create a helper method to safely cancel timers
     void safelyCancelTimer(Timer? timer, String timerName) {
       try {
         timer?.cancel();
@@ -845,7 +844,6 @@ class YOLOViewState extends State<YOLOView> {
     // Cancel event subscriptions with error handling
     _cancelResultSubscription();
 
-    // Cancel all timers safely
     safelyCancelTimer(_subscriptionTimer, 'subscription timer');
     _subscriptionTimer = null;
 
@@ -879,7 +877,6 @@ class YOLOViewState extends State<YOLOView> {
           })
           .catchError((e) {
             logInfo('YOLOView: Error disposing model instance: $e');
-            // Continue disposal even if this fails
             return null;
           });
     }
@@ -956,8 +953,6 @@ class YOLOViewState extends State<YOLOView> {
     // Cancel any existing subscription timer
     _subscriptionTimer?.cancel();
 
-    // Immediately create the real subscription without delay
-    // This fixes the race condition issue while maintaining test compatibility
     try {
       _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
         (dynamic event) {
@@ -1063,7 +1058,6 @@ class YOLOViewState extends State<YOLOView> {
       logInfo('YOLOView: Event stream listener setup complete for $_viewId');
     } catch (e) {
       logInfo('YOLOView: Error setting up event stream: $e');
-      // Retry subscription setup after a short delay if initial setup fails
       _subscriptionTimer?.cancel();
       _subscriptionTimer = Timer(const Duration(milliseconds: 100), () {
         if (mounted) {
