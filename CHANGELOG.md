@@ -1,3 +1,12 @@
+## 0.1.37
+
+- **Critical Update**: Add Android 16KB page size support for Android 15+ compatibility
+  - Upgraded to NDK r28 for automatic 16KB page size alignment
+  - Updated Google AI Edge LiteRT (TensorFlow Lite) from 1.2.0 to 1.4.0
+  - Ensured compatibility with Google Play's November 2025 requirement
+  - Native libraries now support both 4KB (current) and 16KB (future) page sizes
+  - Updated Android Gradle Plugin to 8.5.2 and Gradle to 8.7
+
 ## 0.1.36
 
 - **New Feature**: implement UI controls on Android platform
