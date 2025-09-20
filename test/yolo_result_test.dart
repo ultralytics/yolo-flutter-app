@@ -3,7 +3,7 @@
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ultralytics_yolo/yolo_result.dart';
+import 'package:ultralytics_yolo/models/yolo_result.dart';
 
 void main() {
   group('YOLOResult', () {

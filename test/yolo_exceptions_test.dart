@@ -1,7 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ultralytics_yolo/yolo_exceptions.dart';
+import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
 
 void main() {
   group('YOLOException', () {
