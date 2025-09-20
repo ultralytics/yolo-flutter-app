@@ -4,6 +4,7 @@
 
 import 'dart:typed_data';
 import 'dart:ui';
+import '../utils/map_converter.dart';
 
 /// Represents a detection result from YOLO models.
 ///
@@ -96,58 +97,37 @@ class YOLOResult {
   /// - 'mask': (optional) List of List of double
   /// - 'keypoints': (optional) List of double in x,y,confidence triplets
   factory YOLOResult.fromMap(Map<dynamic, dynamic> map) {
-    final classIndex = map['classIndex'] as int;
-    final className = map['className'] as String;
-    final confidence = (map['confidence'] as num).toDouble();
+    final classIndex = MapConverter.safeGetInt(map, 'classIndex');
+    final className = MapConverter.safeGetString(map, 'className');
+    final confidence = MapConverter.safeGetDouble(map, 'confidence');
 
-    // Parse bounding box
-    final boxMap = map['boundingBox'] as Map<dynamic, dynamic>;
-    final boundingBox = Rect.fromLTRB(
-      (boxMap['left'] as num).toDouble(),
-      (boxMap['top'] as num).toDouble(),
-      (boxMap['right'] as num).toDouble(),
-      (boxMap['bottom'] as num).toDouble(),
+    final boxMap = MapConverter.convertToTypedMapSafe(
+      map['boundingBox'] as Map<dynamic, dynamic>?,
     );
+    final boundingBox = boxMap != null
+        ? MapConverter.convertBoundingBox(boxMap)
+        : Rect.zero;
 
-    // Parse normalized bounding box
-    final normalizedBoxMap = map['normalizedBox'] as Map<dynamic, dynamic>;
-    final normalizedBox = Rect.fromLTRB(
-      (normalizedBoxMap['left'] as num).toDouble(),
-      (normalizedBoxMap['top'] as num).toDouble(),
-      (normalizedBoxMap['right'] as num).toDouble(),
-      (normalizedBoxMap['bottom'] as num).toDouble(),
+    final normalizedBoxMap = MapConverter.convertToTypedMapSafe(
+      map['normalizedBox'] as Map<dynamic, dynamic>?,
     );
+    final normalizedBox = normalizedBoxMap != null
+        ? MapConverter.convertBoundingBox(normalizedBoxMap)
+        : Rect.zero;
 
-    // Parse mask if available
     List<List<double>>? mask;
     if (map.containsKey('mask') && map['mask'] != null) {
       final maskData = map['mask'] as List<dynamic>;
-      mask = maskData
-          .map(
-            (row) => (row as List<dynamic>)
-                .map((val) => (val as num).toDouble())
-                .toList(),
-          )
-          .toList();
+      mask = MapConverter.convertMaskData(maskData);
     }
 
-    // Parse keypoints if available
     List<Point>? keypoints;
     List<double>? keypointConfidences;
     if (map.containsKey('keypoints') && map['keypoints'] != null) {
       final keypointsData = map['keypoints'] as List<dynamic>;
-      keypoints = [];
-      keypointConfidences = [];
-
-      for (var i = 0; i < keypointsData.length; i += 3) {
-        keypoints.add(
-          Point(
-            (keypointsData[i] as num).toDouble(),
-            (keypointsData[i + 1] as num).toDouble(),
-          ),
-        );
-        keypointConfidences.add((keypointsData[i + 2] as num).toDouble());
-      }
+      final keypointResult = MapConverter.convertKeypoints(keypointsData);
+      keypoints = keypointResult.keypoints;
+      keypointConfidences = keypointResult.confidences;
     }
 
     return YOLOResult(
@@ -162,11 +142,6 @@ class YOLOResult {
     );
   }
 
-  /// Converts this [YOLOResult] to a map representation.
-  ///
-  /// This method is used for serializing the result for platform channel
-  /// communication. The returned map contains all the properties of this
-  /// result in a format suitable for transmission across platform channels.
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       'classIndex': classIndex,
@@ -236,7 +211,6 @@ class YOLODetectionResults {
   /// This annotated image includes bounding boxes, class labels,
   /// confidence scores, and other task-specific visualizations
   /// (masks for segmentation, keypoints for pose estimation).
-  /// May be null if annotation was disabled.
   final Uint8List? annotatedImage;
 
   /// The time taken to process the image in milliseconds.
@@ -259,7 +233,6 @@ class YOLODetectionResults {
   /// - 'annotatedImage': (optional) Uint8List of image data
   /// - 'processingTimeMs': double representing processing time
   factory YOLODetectionResults.fromMap(Map<dynamic, dynamic> map) {
-    // Parse detections
     final detectionsData = map['detections'] as List<dynamic>?;
     final detections = detectionsData != null
         ? detectionsData
@@ -267,13 +240,12 @@ class YOLODetectionResults {
               .toList()
         : <YOLOResult>[];
 
-    // Parse annotated image if available
-    final annotatedImage = map['annotatedImage'] as Uint8List?;
+    final annotatedImage = MapConverter.safeGetUint8List(map, 'annotatedImage');
 
-    // Parse processing time
-    final processingTimeMs = map.containsKey('processingTimeMs')
-        ? (map['processingTimeMs'] as num).toDouble()
-        : 0.0;
+    final processingTimeMs = MapConverter.safeGetDouble(
+      map,
+      'processingTimeMs',
+    );
 
     return YOLODetectionResults(
       detections: detections,
@@ -293,20 +265,13 @@ class YOLODetectionResults {
 
 /// Represents a point in 2D space.
 ///
-/// Used primarily for representing keypoint locations in pose estimation
-/// results. Coordinates are typically in pixel space relative to the
-/// original image dimensions.
-///
 /// Example:
 /// ```dart
 /// final point = Point(150.5, 200.0);
 /// print('Point at (${point.x}, ${point.y})');
 /// ```
 class Point {
-  /// The x-coordinate of the point.
   final double x;
-
-  /// The y-coordinate of the point.
   final double y;
 
   Point(this.x, this.y);
@@ -314,7 +279,10 @@ class Point {
   Map<String, double> toMap() => {'x': x, 'y': y};
 
   factory Point.fromMap(Map<dynamic, dynamic> map) {
-    return Point((map['x'] as num).toDouble(), (map['y'] as num).toDouble());
+    return Point(
+      MapConverter.safeGetDouble(map, 'x'),
+      MapConverter.safeGetDouble(map, 'y'),
+    );
   }
 
   @override
