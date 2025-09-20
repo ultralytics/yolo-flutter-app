@@ -5,6 +5,7 @@ import 'package:archive/archive.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:ultralytics_yolo/utils/map_converter.dart';
 import '../models/models.dart';
 
 /// Manages YOLO model loading, downloading, and caching.
@@ -70,7 +71,7 @@ class ModelManager {
       final result = await _channel.invokeMethod('checkModelExists', {
         'modelPath': modelName,
       });
-      return Map<String, dynamic>.from(result);
+      return MapConverter.convertToTypedMap(result);
     } catch (_) {
       return {'exists': false};
     }

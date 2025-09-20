@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/models/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:ultralytics_yolo/utils/error_handler.dart';
 import '../../models/models.dart';
 import '../../services/model_manager.dart';
 
@@ -233,8 +234,13 @@ class CameraInferenceController extends ChangeNotifier {
     } catch (e) {
       if (_isDisposed) return;
 
+      final error = YOLOErrorHandler.handleError(
+        e,
+        'Failed to load model ${_selectedModel.modelName} for task ${_selectedModel.task.name}',
+      );
+
       _isModelLoading = false;
-      _loadingMessage = 'Failed to load model';
+      _loadingMessage = 'Failed to load model: ${error.message}';
       _downloadProgress = 0.0;
       notifyListeners();
       rethrow;
