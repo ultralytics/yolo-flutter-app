@@ -315,7 +315,6 @@ class YOLO {
     );
   }
 
-  /// Disposes this YOLO instance and releases all resources
   Future<void> dispose() async {
     await _modelManager.dispose();
     YOLOInstanceManager.unregisterInstance(_instanceId);
