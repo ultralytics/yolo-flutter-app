@@ -206,6 +206,9 @@ class YOLO {
     double? confidenceThreshold,
     double? iouThreshold,
   }) async {
+    if (!_isInitialized) {
+      await loadModel();
+    }
     return await _inference.predict(
       imageBytes,
       confidenceThreshold: confidenceThreshold,

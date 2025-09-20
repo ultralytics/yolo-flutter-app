@@ -85,7 +85,9 @@ void main() {
   });
 
   group('YOLO Error Handling', () {
-    const MethodChannel channel = MethodChannel('yolo_single_image_channel');
+    const MethodChannel channel = MethodChannel(
+      'yolo_single_image_channel_default',
+    );
     final List<MethodCall> log = <MethodCall>[];
 
     setUp(() {
