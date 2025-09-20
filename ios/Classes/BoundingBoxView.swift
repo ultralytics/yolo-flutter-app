@@ -63,7 +63,6 @@ class BoundingBoxView {
     textLayer.isHidden = false  // Make the text layer visible
     textLayer.foregroundColor = UIColor.white.withAlphaComponent(alpha).cgColor  // Set text color
 
-    // Calculate the text size and position based on the label content
     let attributes = [NSAttributedString.Key.font: textLayer.font as Any]
     let textRect = label.boundingRect(
       with: CGSize(width: 400, height: 100),
@@ -71,7 +70,6 @@ class BoundingBoxView {
       attributes: attributes, context: nil)
     let textSize = CGSize(width: textRect.width + 12, height: textRect.height)  // Add padding to the text size
 
-    // Get screen bounds from the parent layer or use screen bounds as fallback
     let screenBounds: CGRect
     if let superlayer = shapeLayer.superlayer {
       screenBounds = superlayer.bounds
@@ -79,7 +77,6 @@ class BoundingBoxView {
       screenBounds = UIScreen.main.bounds
     }
 
-    // Calculate initial label position (above the bounding box)
     var labelX = frame.origin.x - 2
     var labelY = frame.origin.y - textSize.height - 2
 

@@ -154,7 +154,6 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           return
         }
 
-        // Create the instance in the manager
         YOLOInstanceManager.shared.createInstance(instanceId: instanceId)
 
         // Register a new channel for this instance
@@ -308,7 +307,6 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         // Remove existing instance before loading new model to prevent memory leaks
         YOLOInstanceManager.shared.removeInstance(instanceId: instanceId)
 
-        // Create instance if not exists
         YOLOInstanceManager.shared.createInstance(instanceId: instanceId)
 
         // Try to find the YOLOView - if we don't have viewIdInt, we need to search

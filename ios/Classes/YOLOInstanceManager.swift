@@ -14,13 +14,11 @@ class YOLOInstanceManager {
   private var loadCompletionHandlers: [String: [(Result<YOLO, Error>) -> Void]] = [:]
 
   private init() {
-    // Initialize default instance for backward compatibility
     createInstance(instanceId: "default")
   }
 
   /// Creates a new YOLO instance with the given ID
   func createInstance(instanceId: String) {
-    // Initialize empty handlers for this instance
     loadCompletionHandlers[instanceId] = []
     loadingStates[instanceId] = false
   }
@@ -261,7 +259,6 @@ class YOLOInstanceManager {
   private func convertToFlutterFormat(result: YOLOResult) -> [String: Any] {
     var flutterBoxes: [[String: Any]] = []
 
-    // Get image dimensions for normalization
     let imageWidth = result.orig_shape.width
     let imageHeight = result.orig_shape.height
 
@@ -291,8 +288,6 @@ class YOLOInstanceManager {
         "height": Int(imageHeight),
       ],
     ]
-
-    // Add task-specific data based on what's available in result
 
     // Pose estimation - keypoints
     if !result.keypointsList.isEmpty {
@@ -363,7 +358,6 @@ class YOLOInstanceManager {
       for obbResult in result.obb {
         let box = obbResult.box
 
-        // Calculate the 4 corner points of the OBB
         let angle = box.angle
         let cx = box.cx
         let cy = box.cy
@@ -373,7 +367,6 @@ class YOLOInstanceManager {
         let cos_a = cos(angle)
         let sin_a = sin(angle)
 
-        // Calculate corner points
         let dx1 = w / 2 * cos_a
         let dy1 = w / 2 * sin_a
         let dx2 = h / 2 * sin_a

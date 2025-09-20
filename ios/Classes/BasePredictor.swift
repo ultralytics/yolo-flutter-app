@@ -120,7 +120,6 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     useGpu: Bool = true,
     completion: @escaping (Result<BasePredictor, Error>) -> Void
   ) {
-    // Create an instance (synchronously, cheap)
     let predictor = Self.init()
 
     // Kick off the expensive loading on a background thread

@@ -315,7 +315,6 @@ class PoseEstimator(
                 val rawKy = features[5 + k * 3 + 1][j]
                 val kpC   = features[5 + k * 3 + 2][j]
 
-                // Check if values are already in pixel coordinates (>1) or normalized (0-1)
                 val isNormalized = rawKx <= 1.0f && rawKy <= 1.0f
                 
                 val finalKx: Float
