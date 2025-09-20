@@ -6,7 +6,6 @@ import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
 import 'package:ultralytics_yolo/yolo_instance_manager.dart';
 import 'package:ultralytics_yolo/core/yolo_inference.dart';
 import 'package:ultralytics_yolo/core/yolo_model_manager.dart';
-import 'package:ultralytics_yolo/core/yolo_static_methods.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
 
 export 'models/yolo_task.dart';
@@ -223,7 +222,22 @@ class YOLO {
   /// [modelPath] The path to check
   /// returns A map containing information about the model existence and location
   static Future<Map<String, dynamic>> checkModelExists(String modelPath) async {
-    return await YOLOStaticMethods.checkModelExists(modelPath);
+    try {
+      final channel = ChannelConfig.createSingleImageChannel();
+      final result = await channel.invokeMethod('checkModelExists', {
+        'modelPath': modelPath,
+      });
+
+      if (result is Map) {
+        return Map<String, dynamic>.fromEntries(
+          result.entries.map((e) => MapEntry(e.key.toString(), e.value)),
+        );
+      }
+
+      return {'exists': false, 'path': modelPath, 'location': 'unknown'};
+    } catch (e) {
+      return {'exists': false, 'path': modelPath, 'error': e.toString()};
+    }
   }
 
   /// Gets the available storage paths for the app.
@@ -236,7 +250,22 @@ class YOLO {
   ///
   /// These paths can be used to save or load models.
   static Future<Map<String, String?>> getStoragePaths() async {
-    return await YOLOStaticMethods.getStoragePaths();
+    try {
+      final channel = ChannelConfig.createSingleImageChannel();
+      final result = await channel.invokeMethod('getStoragePaths');
+
+      if (result is Map) {
+        return Map<String, String?>.fromEntries(
+          result.entries.map(
+            (e) => MapEntry(e.key.toString(), e.value as String?),
+          ),
+        );
+      }
+
+      return {};
+    } catch (e) {
+      return {};
+    }
   }
 
   /// Creates a YOLO instance with classifier options for custom preprocessing

@@ -118,66 +118,6 @@ class YOLOModelManager {
     _viewId = viewId;
   }
 
-  /// Gets metadata for a model at the specified path
-  Future<Map<String, dynamic>> getModelMetadata(String modelPath) async {
-    try {
-      final result = await _channel.invokeMethod('getModelMetadata', {
-        'modelPath': modelPath,
-      });
-
-      if (result is Map) {
-        return Map<String, dynamic>.fromEntries(
-          result.entries.map((e) => MapEntry(e.key.toString(), e.value)),
-        );
-      }
-
-      return {};
-    } on PlatformException catch (e) {
-      throw YOLOErrorHandler.handleError(
-        e,
-        'Failed to get metadata for model $modelPath',
-      );
-    } catch (e) {
-      throw YOLOErrorHandler.handleError(
-        e,
-        'Failed to get metadata for model $modelPath',
-      );
-    }
-  }
-
-  /// Validates that a model file exists and is accessible
-  Future<bool> validateModelFile(String modelPath) async {
-    try {
-      final result = await _channel.invokeMethod('checkModelExists', {
-        'modelPath': modelPath,
-      });
-
-      if (result is Map) {
-        return result['exists'] == true;
-      }
-
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Checks if a model is compatible with the specified task
-  Future<bool> isModelCompatible(String modelPath, YOLOTask task) async {
-    try {
-      final metadata = await getModelMetadata(modelPath);
-
-      if (metadata.containsKey('supportedTasks')) {
-        final supportedTasks = metadata['supportedTasks'] as List<dynamic>?;
-        return supportedTasks?.contains(task.name) ?? false;
-      }
-
-      return true;
-    } catch (e) {
-      return true;
-    }
-  }
-
   Future<void> dispose() async {
     try {
       await _channel.invokeMethod('disposeInstance', {
