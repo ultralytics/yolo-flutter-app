@@ -1,7 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/services.dart';
-import '../utils/error_handler.dart';
 
 /// Centralized channel configuration for YOLO operations.
 ///
@@ -50,45 +49,6 @@ class ChannelConfig {
   /// Returns an EventChannel configured for detection results
   static EventChannel createDetectionResultsChannel(String viewId) {
     return EventChannel('$detectionResultsPrefix$viewId');
-  }
-
-  /// Safely invokes a method on a channel with error handling.
-  ///
-  /// [channel] The method channel to invoke on
-  /// [method] The method name to invoke
-  /// [arguments] Optional arguments to pass to the method
-  /// Returns the result of the method call
-  static Future<T?> safeInvokeMethod<T>(
-    MethodChannel channel,
-    String method, {
-    dynamic arguments,
-  }) async {
-    try {
-      return await channel.invokeMethod<T>(method, arguments);
-    } on PlatformException catch (e) {
-      throw YOLOErrorHandler.handleError(
-        e,
-        'Method channel call failed: $method',
-      );
-    } catch (e) {
-      throw YOLOErrorHandler.handleError(
-        e,
-        'Method channel call failed: $method',
-      );
-    }
-  }
-
-  /// Safely invokes a method with void return type.
-  ///
-  /// [channel] The method channel to invoke on
-  /// [method] The method name to invoke
-  /// [arguments] Optional arguments to pass to the method
-  static Future<void> safeInvokeVoidMethod(
-    MethodChannel channel,
-    String method, {
-    dynamic arguments,
-  }) async {
-    await safeInvokeMethod<void>(channel, method, arguments: arguments);
   }
 
   /// Validates method call arguments for common patterns.

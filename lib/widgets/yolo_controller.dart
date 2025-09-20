@@ -1,15 +1,14 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/services.dart';
-import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
+import 'package:ultralytics_yolo/utils/logger.dart';
 
 /// Controller for managing YOLO detection settings and camera controls.
 class YOLOViewController {
   MethodChannel? _methodChannel;
   int? _viewId;
-
   double _confidenceThreshold = 0.5;
   double _iouThreshold = 0.45;
   int _numItemsThreshold = 30;
@@ -19,6 +18,8 @@ class YOLOViewController {
   int get numItemsThreshold => _numItemsThreshold;
   bool get isInitialized => _methodChannel != null && _viewId != null;
 
+  YOLOViewController();
+
   void init(MethodChannel methodChannel, int viewId) {
     _methodChannel = methodChannel;
     _viewId = viewId;
@@ -26,16 +27,16 @@ class YOLOViewController {
   }
 
   Future<void> _applyThresholds() async {
-    if (_methodChannel == null) return;
-
-    try {
-      await _methodChannel!.invokeMethod('setThresholds', {
-        'confidenceThreshold': _confidenceThreshold,
-        'iouThreshold': _iouThreshold,
-        'numItemsThreshold': _numItemsThreshold,
-      });
-    } catch (e) {
-      logInfo('YOLOViewController: Error applying thresholds: $e');
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setThresholds', {
+          'confidenceThreshold': _confidenceThreshold,
+          'iouThreshold': _iouThreshold,
+          'numItemsThreshold': _numItemsThreshold,
+        });
+      } catch (e) {
+        logInfo('Error applying thresholds: $e');
+      }
     }
   }
 
@@ -47,9 +48,7 @@ class YOLOViewController {
           'threshold': _confidenceThreshold,
         });
       } catch (e) {
-        logInfo('YOLOViewController: Error setting confidence threshold: $e');
-        // Fallback to _applyThresholds if individual method fails
-        await _applyThresholds();
+        logInfo('Error setting confidence threshold: $e');
       }
     }
   }
@@ -62,9 +61,7 @@ class YOLOViewController {
           'threshold': _iouThreshold,
         });
       } catch (e) {
-        logInfo('YOLOViewController: Error setting IoU threshold: $e');
-        // Fallback to _applyThresholds if individual method fails
-        await _applyThresholds();
+        logInfo('Error setting IoU threshold: $e');
       }
     }
   }
@@ -77,9 +74,7 @@ class YOLOViewController {
           'numItems': _numItemsThreshold,
         });
       } catch (e) {
-        logInfo('YOLOViewController: Error setting num items threshold: $e');
-        // Fallback to _applyThresholds if individual method fails
-        await _applyThresholds();
+        logInfo('Error setting num items threshold: $e');
       }
     }
   }
@@ -92,11 +87,24 @@ class YOLOViewController {
     if (confidenceThreshold != null) {
       _confidenceThreshold = confidenceThreshold.clamp(0.0, 1.0);
     }
-    if (iouThreshold != null) _iouThreshold = iouThreshold.clamp(0.0, 1.0);
+    if (iouThreshold != null) {
+      _iouThreshold = iouThreshold.clamp(0.0, 1.0);
+    }
     if (numItemsThreshold != null) {
       _numItemsThreshold = numItemsThreshold.clamp(1, 100);
     }
-    await _applyThresholds();
+
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setThresholds', {
+          'confidenceThreshold': _confidenceThreshold,
+          'iouThreshold': _iouThreshold,
+          'numItemsThreshold': _numItemsThreshold,
+        });
+      } catch (e) {
+        logInfo('Error setting thresholds: $e');
+      }
+    }
   }
 
   Future<void> switchCamera() async {
@@ -104,7 +112,7 @@ class YOLOViewController {
       try {
         await _methodChannel!.invokeMethod('switchCamera');
       } catch (e) {
-        logInfo('YOLOViewController: Error switching camera: $e');
+        logInfo('Error switching camera: $e');
       }
     }
   }
@@ -114,7 +122,7 @@ class YOLOViewController {
       try {
         await _methodChannel!.invokeMethod('zoomIn');
       } catch (e) {
-        logInfo('YOLOViewController: Error zooming in: $e');
+        logInfo('Error zooming in: $e');
       }
     }
   }
@@ -124,7 +132,7 @@ class YOLOViewController {
       try {
         await _methodChannel!.invokeMethod('zoomOut');
       } catch (e) {
-        logInfo('YOLOViewController: Error zooming out: $e');
+        logInfo('Error zooming out: $e');
       }
     }
   }
@@ -136,22 +144,17 @@ class YOLOViewController {
           'zoomLevel': zoomLevel,
         });
       } catch (e) {
-        logInfo('YOLOViewController: Error setting zoom level: $e');
+        logInfo('Error setting zoom level: $e');
       }
     }
   }
 
   Future<void> switchModel(String modelPath, YOLOTask task) async {
     if (_methodChannel != null && _viewId != null) {
-      try {
-        await _methodChannel!.invokeMethod('setModel', {
-          'modelPath': modelPath,
-          'task': task.name,
-        });
-      } catch (e) {
-        logInfo('YOLOViewController: Error switching model: $e');
-        rethrow;
-      }
+      await _methodChannel!.invokeMethod('setModel', {
+        'modelPath': modelPath,
+        'task': task.name,
+      });
     }
   }
 
@@ -173,7 +176,7 @@ class YOLOViewController {
           'skipFrames': config.skipFrames,
         });
       } catch (e) {
-        logInfo('YOLOViewController: Error setting streaming config: $e');
+        logInfo('Error setting streaming config: $e');
       }
     }
   }
@@ -183,7 +186,7 @@ class YOLOViewController {
       try {
         await _methodChannel!.invokeMethod('stop');
       } catch (e) {
-        logInfo('YOLOViewController: Error stopping: $e');
+        logInfo('Error stopping: $e');
       }
     }
   }
@@ -193,22 +196,21 @@ class YOLOViewController {
       try {
         await _methodChannel!.invokeMethod('setShowUIControls', {'show': show});
       } catch (e) {
-        logInfo('YOLOViewController: Error setting UI controls: $e');
+        logInfo('Error setting UI controls: $e');
       }
     }
   }
 
   Future<Uint8List?> captureFrame() async {
-    if (_methodChannel == null) return null;
-
-    try {
-      final result = await _methodChannel!.invokeMethod<dynamic>(
-        'captureFrame',
-      );
-      return result is Uint8List ? result : null;
-    } catch (e) {
-      logInfo('YOLOViewController: Error capturing frame: $e');
-      return null;
+    if (_methodChannel != null) {
+      try {
+        final result = await _methodChannel!.invokeMethod('captureFrame');
+        return result is Uint8List ? result : null;
+      } catch (e) {
+        logInfo('Error capturing frame: $e');
+        return null;
+      }
     }
+    return null;
   }
 }
