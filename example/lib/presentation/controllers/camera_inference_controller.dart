@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/models/yolo_result.dart';
-import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/utils/error_handler.dart';
 import '../../models/models.dart';
 import '../../services/model_manager.dart';

@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:typed_data';
+import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
 import 'package:ultralytics_yolo/yolo_instance_manager.dart';
@@ -236,7 +237,11 @@ class YOLO {
 
       return {'exists': false, 'path': modelPath, 'location': 'unknown'};
     } catch (e) {
-      return {'exists': false, 'path': modelPath, 'error': e.toString()};
+      String errorMessage = e.toString();
+      if (e is PlatformException && e.message != null) {
+        errorMessage = e.message!;
+      }
+      return {'exists': false, 'path': modelPath, 'error': errorMessage};
     }
   }
 

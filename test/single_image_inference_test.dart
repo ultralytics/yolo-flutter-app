@@ -1,7 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 
 void main() {
   group('YOLOViewController', () {
