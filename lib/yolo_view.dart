@@ -827,6 +827,15 @@ class YOLOViewState extends State<YOLOView> {
   void dispose() {
     logInfo('YOLOView.dispose() called - starting cleanup');
 
+    void safelyCancelTimer(Timer? timer, String timerName) {
+      try {
+        timer?.cancel();
+        logInfo('YOLOView: $timerName cancelled successfully');
+      } catch (e) {
+        logInfo('YOLOView: Error cancelling $timerName: $e');
+      }
+    }
+
     // Stop camera and inference before disposing
     _effectiveController.stop().catchError((e) {
       logInfo('YOLOView: Error stopping camera during dispose: $e');
@@ -835,16 +844,13 @@ class YOLOViewState extends State<YOLOView> {
     // Cancel event subscriptions with error handling
     _cancelResultSubscription();
 
-    // Cancel any pending subscription timer
-    _subscriptionTimer?.cancel();
+    safelyCancelTimer(_subscriptionTimer, 'subscription timer');
     _subscriptionTimer = null;
 
-    // Cancel any pending recreate timer
-    _recreateTimer?.cancel();
+    safelyCancelTimer(_recreateTimer, 'recreate timer');
     _recreateTimer = null;
 
-    // Cancel any pending error retry timer
-    _errorRetryTimer?.cancel();
+    safelyCancelTimer(_errorRetryTimer, 'error retry timer');
     _errorRetryTimer = null;
 
     // Clean up method channel handler
@@ -861,6 +867,7 @@ class YOLOViewState extends State<YOLOView> {
       logInfo(
         'YOLOView.dispose() - disposing model instance with viewId: $_viewId',
       );
+      // Use catchError to handle async disposal without blocking
       const MethodChannel('yolo_single_image_channel')
           .invokeMethod('disposeInstance', {'instanceId': _viewId})
           .then((_) {
@@ -870,6 +877,7 @@ class YOLOViewState extends State<YOLOView> {
           })
           .catchError((e) {
             logInfo('YOLOView: Error disposing model instance: $e');
+            return null;
           });
     }
 
@@ -945,22 +953,7 @@ class YOLOViewState extends State<YOLOView> {
     // Cancel any existing subscription timer
     _subscriptionTimer?.cancel();
 
-    // IMPORTANT: Test compatibility workaround
-    // Tests expect _resultSubscription to be non-null immediately after calling _subscribeToResults().
-    // However, we need a 200ms delay for EventChannel to be ready on the native side.
-    // Solution: Create a dummy subscription immediately, then replace it with the real one after delay.
-    // TODO: Consider refactoring this when Flutter test framework supports async subscription testing better.
-    final controller = StreamController<dynamic>();
-    _resultSubscription = controller.stream.listen((_) {});
-
-    // Add short delay to wait for EventChannel to be ready on native side
-    // This prevents sink connection failures and MissingPluginException in real app usage
-    _subscriptionTimer = Timer(const Duration(milliseconds: 200), () {
-      if (!mounted) return;
-
-      // Cancel the dummy subscription and create the real one
-      _resultSubscription?.cancel();
-
+    try {
       _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
         (dynamic event) {
           if (event is Map && event.containsKey('test')) {
@@ -1041,7 +1034,6 @@ class YOLOViewState extends State<YOLOView> {
           }
         },
         onError: (dynamic error, StackTrace stackTrace) {
-          // Added StackTrace
           logInfo('Error from detection results stream: $error');
           logInfo('Stack trace from stream error: $stackTrace');
 
@@ -1064,10 +1056,15 @@ class YOLOViewState extends State<YOLOView> {
         },
       );
       logInfo('YOLOView: Event stream listener setup complete for $_viewId');
-      // Close the dummy controller as it's no longer needed
-      // The real EventChannel subscription is now active
-      controller.close();
-    });
+    } catch (e) {
+      logInfo('YOLOView: Error setting up event stream: $e');
+      _subscriptionTimer?.cancel();
+      _subscriptionTimer = Timer(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _subscribeToResults();
+        }
+      });
+    }
   }
 
   @visibleForTesting
