@@ -8,7 +8,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('YOLO Error Handling', () {
-    const MethodChannel channel = MethodChannel('yolo_single_image_channel_default');
+    const MethodChannel channel = MethodChannel(
+      'yolo_single_image_channel_default',
+    );
 
     tearDown(() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
