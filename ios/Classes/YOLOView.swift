@@ -1566,6 +1566,59 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
     if config.includeDetections {
       var detections: [[String: Any]] = []
 
+      if config.includePoses && !result.keypointsList.isEmpty && result.boxes.isEmpty {
+        for (poseIndex, keypoints) in result.keypointsList.enumerated() {
+          var detection: [String: Any] = [:]
+          detection["classIndex"] = 0
+          detection["className"] = "person"
+          detection["confidence"] = 1.0
+          var minX = Float.greatestFiniteMagnitude
+          var minY = Float.greatestFiniteMagnitude
+          var maxX = -Float.greatestFiniteMagnitude
+          var maxY = -Float.greatestFiniteMagnitude
+
+          for kp in keypoints.xy {
+            if kp.x > 0 && kp.y > 0 {
+              minX = min(minX, kp.x)
+              minY = min(minY, kp.y)
+              maxX = max(maxX, kp.x)
+              maxY = max(maxY, kp.y)
+            }
+          }
+          let boundingBox: [String: Any] = [
+            "left": Double(minX),
+            "top": Double(minY),
+            "right": Double(maxX),
+            "bottom": Double(maxY),
+          ]
+          detection["boundingBox"] = boundingBox
+
+          // Normalized bounding box
+          let normalizedBox: [String: Any] = [
+            "left": Double(minX / Float(result.orig_shape.width)),
+            "top": Double(minY / Float(result.orig_shape.height)),
+            "right": Double(maxX / Float(result.orig_shape.width)),
+            "bottom": Double(maxY / Float(result.orig_shape.height)),
+          ]
+          detection["normalizedBox"] = normalizedBox
+
+          var keypointsFlat: [Double] = []
+          for i in 0..<keypoints.xy.count {
+            keypointsFlat.append(Double(keypoints.xy[i].x))
+            keypointsFlat.append(Double(keypoints.xy[i].y))
+            if i < keypoints.conf.count {
+              keypointsFlat.append(Double(keypoints.conf[i]))
+            } else {
+              keypointsFlat.append(0.0)
+            }
+          }
+          detection["keypoints"] = keypointsFlat
+          print("YOLOView: Added pose detection with \(keypoints.xy.count) keypoints")
+
+          detections.append(detection)
+        }
+      }
+
       // Convert detection boxes - CRITICAL: use detectionIndex, not class index
       for (detectionIndex, box) in result.boxes.enumerated() {
         var detection: [String: Any] = [:]
@@ -1610,9 +1663,9 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
           let keypoints = result.keypointsList[detectionIndex]
           // Convert to flat array [x1, y1, conf1, x2, y2, conf2, ...]
           var keypointsFlat: [Double] = []
-          for i in 0..<keypoints.xyn.count {
-            keypointsFlat.append(Double(keypoints.xyn[i].x))
-            keypointsFlat.append(Double(keypoints.xyn[i].y))
+          for i in 0..<keypoints.xy.count {
+            keypointsFlat.append(Double(keypoints.xy[i].x))
+            keypointsFlat.append(Double(keypoints.xy[i].y))
             if i < keypoints.conf.count {
               keypointsFlat.append(Double(keypoints.conf[i]))
             } else {
@@ -1621,7 +1674,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
           }
           detection["keypoints"] = keypointsFlat
           print(
-            "YOLOView: Added keypoints data (\(keypoints.xyn.count) points) for detection \(detectionIndex)"
+            "YOLOView: Added keypoints data (\(keypoints.xy.count) points) for detection \(detectionIndex)"
           )
         }
 

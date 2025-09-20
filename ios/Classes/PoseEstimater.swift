@@ -56,7 +56,6 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
           orig_shape: inputSize, boxes: boxes, masks: nil, probs: nil, keypointsList: keypointsList,
           annotatedImage: nil, speed: 0, fps: 0, originalImage: nil, names: labels)
 
-        // Add original image data if available
         if let originalImageData = self.originalImageData {
           result.originalImage = UIImage(data: originalImageData)
 

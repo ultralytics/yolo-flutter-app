@@ -40,11 +40,9 @@ class Classifier: BasePredictor {
 
     if let observation = request.results as? [VNCoreMLFeatureValueObservation] {
 
-      // Get the MLMultiArray from the observation
       let multiArray = observation.first?.featureValue.multiArrayValue
 
       if let multiArray = multiArray {
-        // Initialize an array to store the classes
         var valuesArray = [Double]()
         for i in 0..<multiArray.count {
           let value = multiArray[i].doubleValue
@@ -113,7 +111,6 @@ class Classifier: BasePredictor {
       orig_shape: inputSize, boxes: [], probs: probs, speed: self.t2, fps: 1 / self.t4,
       names: labels)
 
-    // Add original image data if available
     if let originalImageData = self.originalImageData {
       result.originalImage = UIImage(data: originalImageData)
 
@@ -139,11 +136,9 @@ class Classifier: BasePredictor {
       if let observation = request.results as? [VNCoreMLFeatureValueObservation] {
         var recognitions: [[String: Any]] = []
 
-        // Get the MLMultiArray from the observation
         let multiArray = observation.first?.featureValue.multiArrayValue
 
         if let multiArray = multiArray {
-          // Initialize an array to store the classes
           var valuesArray = [Double]()
           for i in 0..<multiArray.count {
             let value = multiArray[i].doubleValue
