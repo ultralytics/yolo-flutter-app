@@ -4,8 +4,8 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/yolo.dart';
-import 'package:ultralytics_yolo/yolo_platform_interface.dart';
-import 'package:ultralytics_yolo/yolo_method_channel.dart';
+import 'package:ultralytics_yolo/platform/yolo_platform_interface.dart';
+import 'package:ultralytics_yolo/platform/yolo_platform_impl.dart';
 import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:flutter/services.dart';

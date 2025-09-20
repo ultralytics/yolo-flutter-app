@@ -2,7 +2,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
-import 'package:ultralytics_yolo/yolo_platform_interface.dart';
+import 'package:ultralytics_yolo/platform/yolo_platform_interface.dart';
 
 class MockYOLOPlatform with MockPlatformInterfaceMixin implements YOLOPlatform {
   @override

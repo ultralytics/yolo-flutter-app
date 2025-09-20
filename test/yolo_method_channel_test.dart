@@ -2,7 +2,7 @@
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ultralytics_yolo/yolo_method_channel.dart';
+import 'package:ultralytics_yolo/platform/yolo_platform_impl.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
