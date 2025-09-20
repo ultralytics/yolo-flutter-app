@@ -32,8 +32,20 @@ class YOLOErrorHandler {
         );
 
       case 'UNSUPPORTED_TASK':
+        String taskName = 'unknown';
+        if (context != null && context.contains('task ')) {
+          final match = RegExp(r'task (\w+)').firstMatch(context);
+          if (match != null) {
+            taskName = match.group(1) ?? 'unknown';
+          }
+        }
         return ModelLoadingException(
-          '${contextPrefix}Unsupported task type: ${e.message}',
+          '${contextPrefix}Unsupported task type: $taskName',
+        );
+
+      case 'MODEL_FILE_ERROR':
+        return ModelLoadingException(
+          '${contextPrefix}Failed to load model: ${e.message}',
         );
 
       case 'MODEL_NOT_LOADED':
@@ -44,6 +56,11 @@ class YOLOErrorHandler {
       case 'INVALID_IMAGE':
         return InvalidInputException(
           '${contextPrefix}Invalid image format or corrupted image data',
+        );
+
+      case 'IMAGE_LOAD_ERROR':
+        return InferenceException(
+          '${contextPrefix}Platform error during inference: ${e.message}',
         );
 
       case 'INFERENCE_ERROR':
@@ -69,6 +86,20 @@ class YOLOErrorHandler {
 
     if (e is YOLOException) {
       return e;
+    }
+
+    if (e.toString().contains('MissingPluginException')) {
+      if (context != null && context.contains('load model')) {
+        return ModelLoadingException(
+          '${contextPrefix}Model loading failed: $e',
+        );
+      } else if (context != null && context.contains('switch to model')) {
+        return ModelLoadingException(
+          '${contextPrefix}Model switching failed: $e',
+        );
+      } else if (context != null && context.contains('predict')) {
+        return InferenceException('${contextPrefix}Inference failed: $e');
+      }
     }
 
     return InferenceException('${contextPrefix}Unknown error: $e');

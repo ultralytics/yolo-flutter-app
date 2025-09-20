@@ -7,10 +7,12 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
-import 'package:ultralytics_yolo/yolo_result.dart';
-import 'package:ultralytics_yolo/yolo_task.dart';
+import 'package:ultralytics_yolo/models/yolo_result.dart';
+import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
+import 'package:ultralytics_yolo/utils/map_converter.dart';
+import 'package:ultralytics_yolo/config/channel_config.dart';
 
 /// Controller for interacting with a [YOLOView] widget.
 ///
@@ -744,11 +746,8 @@ class YOLOViewState extends State<YOLOView> {
   void initState() {
     super.initState();
 
-    final resultChannelName = 'com.ultralytics.yolo/detectionResults_$_viewId';
-    _resultEventChannel = EventChannel(resultChannelName);
-
-    final controlChannelName = 'com.ultralytics.yolo/controlChannel_$_viewId';
-    _methodChannel = MethodChannel(controlChannelName);
+    _resultEventChannel = ChannelConfig.createDetectionResultsChannel(_viewId);
+    _methodChannel = ChannelConfig.createControlChannel(_viewId);
 
     _setupController();
 
@@ -868,7 +867,7 @@ class YOLOViewState extends State<YOLOView> {
         'YOLOView.dispose() - disposing model instance with viewId: $_viewId',
       );
       // Use catchError to handle async disposal without blocking
-      const MethodChannel('yolo_single_image_channel')
+      ChannelConfig.createSingleImageChannel()
           .invokeMethod('disposeInstance', {'instanceId': _viewId})
           .then((_) {
             logInfo(
@@ -956,6 +955,11 @@ class YOLOViewState extends State<YOLOView> {
     try {
       _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
         (dynamic event) {
+          logInfo('YOLOView: Received event: ${event.runtimeType}');
+          if (event is Map) {
+            logInfo('YOLOView: Event keys: ${event.keys.toList()}');
+          }
+
           if (event is Map && event.containsKey('test')) {
             logInfo('YOLOView: Received test message: ${event['test']}');
             return;
@@ -966,7 +970,7 @@ class YOLOViewState extends State<YOLOView> {
             if (widget.onStreamingData != null) {
               try {
                 // Comprehensive mode: Pass all data via onStreamingData
-                final streamData = Map<String, dynamic>.from(event);
+                final streamData = MapConverter.convertToTypedMap(event);
                 widget.onStreamingData!(streamData);
               } catch (e, s) {
                 logInfo('Error processing streaming data: $e');
@@ -978,7 +982,9 @@ class YOLOViewState extends State<YOLOView> {
               // Handle detection results
               if (widget.onResult != null && event.containsKey('detections')) {
                 try {
+                  logInfo('YOLOView: Processing detection results...');
                   final List<dynamic> detections = event['detections'] ?? [];
+                  logInfo('YOLOView: Found ${detections.length} detections');
 
                   for (var i = 0; i < detections.length && i < 3; i++) {
                     final detection = detections[i];
@@ -990,6 +996,9 @@ class YOLOViewState extends State<YOLOView> {
                   }
 
                   final results = _parseDetectionResults(event);
+                  logInfo(
+                    'YOLOView: Parsed ${results.length} results, calling onResult callback',
+                  );
                   widget.onResult!(results);
                 } catch (e, s) {
                   logInfo('Error parsing detection results: $e');
@@ -1014,9 +1023,11 @@ class YOLOViewState extends State<YOLOView> {
               // Handle performance metrics
               if (widget.onPerformanceMetrics != null) {
                 try {
+                  logInfo('YOLOView: Processing performance metrics...');
                   final metrics = YOLOPerformanceMetrics.fromMap(
-                    Map<String, dynamic>.from(event),
+                    MapConverter.convertToTypedMap(event),
                   );
+                  logInfo('YOLOView: FPS: ${metrics.fps}');
                   widget.onPerformanceMetrics!(metrics);
                 } catch (e, s) {
                   logInfo('Error parsing performance metrics: $e');
@@ -1108,15 +1119,51 @@ class YOLOViewState extends State<YOLOView> {
     }
 
     try {
-      final results = detectionsData.map((detection) {
+      final results = <YOLOResult>[];
+
+      for (final detection in detectionsData) {
+        if (detection is! Map) {
+          logInfo('YOLOView: Skipping non-map detection: $detection');
+          continue;
+        }
+
+        // Validate required fields are present and valid
+        if (!detection.containsKey('classIndex') ||
+            !detection.containsKey('className') ||
+            !detection.containsKey('confidence') ||
+            !detection.containsKey('boundingBox') ||
+            !detection.containsKey('normalizedBox')) {
+          logInfo(
+            'YOLOView: Skipping detection with missing required fields: $detection',
+          );
+          continue;
+        }
+
+        // Validate that the values are not null/empty
+        final classIndex = detection['classIndex'];
+        final className = detection['className'];
+        final confidence = detection['confidence'];
+        final boundingBox = detection['boundingBox'];
+        final normalizedBox = detection['normalizedBox'];
+
+        if (classIndex == null ||
+            className == null ||
+            confidence == null ||
+            boundingBox == null ||
+            normalizedBox == null) {
+          logInfo('YOLOView: Skipping detection with null values: $detection');
+          continue;
+        }
+
         try {
-          return YOLOResult.fromMap(detection);
+          final result = YOLOResult.fromMap(detection);
+          results.add(result);
         } catch (e) {
           logInfo('YOLOView: Error parsing single detection: $e');
           logInfo('YOLOView: Problem detection data: $detection');
-          rethrow;
+          // Skip this detection and continue with others
         }
-      }).toList();
+      }
 
       return results;
     } catch (e) {
