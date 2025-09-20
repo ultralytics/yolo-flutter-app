@@ -1,9 +1,9 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 import 'yolo_platform_interface.dart';
+import '../config/channel_config.dart';
 
 /// An implementation of [YOLOPlatform] that uses method channels.
 ///
@@ -20,7 +20,7 @@ class YOLOMethodChannel extends YOLOPlatform {
   /// This channel is used for single image predictions and other
   /// operations that don't require a platform view.
   @visibleForTesting
-  final methodChannel = const MethodChannel('yolo_single_image_channel');
+  final methodChannel = ChannelConfig.createSingleImageChannel();
 
   @override
   Future<String?> getPlatformVersion() async {
