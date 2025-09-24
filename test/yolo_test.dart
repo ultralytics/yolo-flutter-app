@@ -6,6 +6,9 @@ import 'package:ultralytics_yolo/platform/yolo_platform_interface.dart';
 import 'package:ultralytics_yolo/platform/yolo_platform_impl.dart';
 import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
+import 'package:ultralytics_yolo/utils/map_converter.dart';
+import 'package:ultralytics_yolo/utils/error_handler.dart';
+import 'package:ultralytics_yolo/config/channel_config.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:flutter/services.dart';
 import 'utils/test_helpers.dart';
@@ -213,80 +216,198 @@ void main() {
     });
   });
 
-  group('Test Helpers Integration', () {
-    test('YOLOTestHelpers methods work correctly', () {
-      final mockResult = YOLOTestHelpers.createMockDetectionResult(
-        numDetections: 2,
-        includeKeypoints: true,
-        includeMask: true,
+  group('Error Handling', () {
+    test('YOLOException types work correctly', () {
+      final modelException = ModelLoadingException('Model failed to load');
+      final inferenceException = InferenceException('Inference failed');
+      final invalidInputException = InvalidInputException('Invalid input');
+      final modelNotLoadedException = ModelNotLoadedException(
+        'Model not loaded',
       );
 
-      expect(mockResult, isA<Map<String, dynamic>>());
-      expect(mockResult['detections'], isA<List>());
-      expect(mockResult['detections'].length, 2);
-      expect(mockResult['annotatedImage'], isA<Uint8List>());
+      expect(modelException, isA<YOLOException>());
+      expect(inferenceException, isA<YOLOException>());
+      expect(invalidInputException, isA<YOLOException>());
+      expect(modelNotLoadedException, isA<YOLOException>());
 
-      final mockYOLOResult = YOLOTestHelpers.createMockYOLOResult(
-        className: 'car',
-        confidence: 0.85,
-        includeKeypoints: true,
-        includeMask: true,
-      );
-
-      expect(mockYOLOResult.className, 'car');
-      expect(mockYOLOResult.confidence, 0.85);
-      expect(mockYOLOResult.keypoints, isNotNull);
-      expect(mockYOLOResult.mask, isNotNull);
-
-      final mockMetrics = YOLOTestHelpers.createMockPerformanceMetrics(
-        fps: 25.0,
-        processingTimeMs: 40.0,
-      );
-
-      expect(mockMetrics['fps'], 25.0);
-      expect(mockMetrics['processingTimeMs'], 40.0);
-      expect(mockMetrics['timestamp'], isA<int>());
-
-      final mockStreamData = YOLOTestHelpers.createMockStreamingData(
-        includeDetections: true,
-        includePerformance: true,
-        includeOriginalImage: true,
-      );
-
-      expect(mockStreamData['detections'], isNotNull);
-      expect(mockStreamData['performance'], isNotNull);
-      expect(mockStreamData['originalImage'], isNotNull);
-
-      final mockModelResult = YOLOTestHelpers.createMockModelExistsResult(
-        exists: true,
-        location: 'assets',
-      );
-
-      expect(mockModelResult['exists'], true);
-      expect(mockModelResult['location'], 'assets');
-      expect(mockModelResult['path'], isA<String>());
-
-      final mockPaths = YOLOTestHelpers.createMockStoragePaths();
-
-      expect(mockPaths['internal'], isA<String>());
-      expect(mockPaths['cache'], isA<String>());
-      expect(mockPaths['external'], isA<String>());
-      expect(mockPaths['externalCache'], isA<String>());
+      expect(modelException.message, 'Model failed to load');
+      expect(inferenceException.message, 'Inference failed');
+      expect(invalidInputException.message, 'Invalid input');
+      expect(modelNotLoadedException.message, 'Model not loaded');
     });
 
-    test('YOLOTestHelpers.waitForCondition works correctly', () async {
-      bool conditionMet = false;
+    test('YOLOException toString works correctly', () {
+      final exception = ModelLoadingException('Test error');
+      expect(exception.toString(), 'ModelLoadingException: Test error');
+    });
+  });
 
-      Future.delayed(const Duration(milliseconds: 100), () {
-        conditionMet = true;
-      });
-
-      await YOLOTestHelpers.waitForCondition(
-        () => conditionMet,
-        timeout: const Duration(seconds: 1),
+  group('Streaming Config', () {
+    test('YOLOStreamingConfig constructor works correctly', () {
+      const config = YOLOStreamingConfig(
+        includeDetections: false,
+        includeMasks: true,
+        maxFPS: 25,
+        throttleInterval: Duration(milliseconds: 200),
       );
 
-      expect(conditionMet, true);
+      expect(config.includeDetections, false);
+      expect(config.includeMasks, true);
+      expect(config.maxFPS, 25);
+      expect(config.throttleInterval, const Duration(milliseconds: 200));
+    });
+  });
+
+  group('Performance Metrics', () {
+    test('YOLOPerformanceMetrics fromMap with int values', () {
+      final data = {'fps': 30, 'processingTimeMs': 25, 'frameNumber': 100};
+
+      final metrics = YOLOPerformanceMetrics.fromMap(data);
+
+      expect(metrics.fps, 30.0);
+      expect(metrics.processingTimeMs, 25.0);
+      expect(metrics.frameNumber, 100);
+      expect(metrics.timestamp, isA<DateTime>());
+    });
+
+    test('YOLOPerformanceMetrics toMap works correctly', () {
+      final timestamp = DateTime.now();
+      final metrics = YOLOPerformanceMetrics(
+        fps: 30.0,
+        processingTimeMs: 25.0,
+        frameNumber: 100,
+        timestamp: timestamp,
+      );
+
+      final map = metrics.toMap();
+
+      expect(map['fps'], 30.0);
+      expect(map['processingTimeMs'], 25.0);
+      expect(map['frameNumber'], 100);
+      expect(map['timestamp'], timestamp.millisecondsSinceEpoch);
+    });
+  });
+
+  group('Map Converter', () {
+    test('convertToTypedMapSafe works correctly', () {
+      final input = {'key1': 'value1', 'key2': 123, 'key3': true};
+      final result = MapConverter.convertToTypedMapSafe(input);
+
+      expect(result, isNotNull);
+      expect(result, isA<Map<String, dynamic>>());
+      expect(result!['key1'], 'value1');
+      expect(result['key2'], 123);
+      expect(result['key3'], true);
+    });
+
+    test('convertToTypedMapSafe handles null input', () {
+      final result = MapConverter.convertToTypedMapSafe(null);
+      expect(result, isNull);
+    });
+
+    test('convertBoundingBox works correctly', () {
+      final boxMap = {
+        'left': 10.0,
+        'top': 20.0,
+        'right': 110.0,
+        'bottom': 220.0,
+      };
+
+      final rect = MapConverter.convertBoundingBox(boxMap);
+
+      expect(rect.left, 10.0);
+      expect(rect.top, 20.0);
+      expect(rect.right, 110.0);
+      expect(rect.bottom, 220.0);
+    });
+  });
+
+  group('Critical Functionality', () {
+    test('YOLOInstanceManager works correctly', () {
+      const instanceId = 'test_instance';
+      final yolo = YOLO(modelPath: 'test.tflite', task: YOLOTask.detect);
+
+      YOLOInstanceManager.registerInstance(instanceId, yolo);
+      final retrieved = YOLOInstanceManager.getInstance(instanceId);
+
+      expect(retrieved, isNotNull);
+      expect(retrieved, equals(yolo));
+
+      YOLOInstanceManager.unregisterInstance(instanceId);
+      expect(YOLOInstanceManager.getInstance(instanceId), isNull);
+    });
+
+    test('ChannelConfig creates channels correctly', () {
+      final controlChannel = ChannelConfig.createControlChannel('test123');
+      final detectionChannel = ChannelConfig.createDetectionResultsChannel(
+        'test123',
+      );
+
+      expect(
+        controlChannel.name,
+        'com.ultralytics.yolo/controlChannel_test123',
+      );
+      expect(
+        detectionChannel.name,
+        'com.ultralytics.yolo/detectionResults_test123',
+      );
+    });
+
+    test('ErrorHandler handles different exception types', () {
+      final platformException = PlatformException(
+        code: 'MODEL_NOT_FOUND',
+        message: 'Model not found',
+      );
+      final handledException = YOLOErrorHandler.handlePlatformException(
+        platformException,
+        context: 'Loading model',
+      );
+
+      expect(handledException, isA<ModelLoadingException>());
+      expect(handledException.message, contains('Model not found'));
+    });
+  });
+
+  group('YOLO Core API Tests', () {
+    test('YOLO constructor with multi-instance', () {
+      final yolo = YOLO(
+        modelPath: 'test_model.tflite',
+        task: YOLOTask.detect,
+        useMultiInstance: true,
+      );
+
+      expect(yolo.modelPath, 'test_model.tflite');
+      expect(yolo.task, YOLOTask.detect);
+      expect(yolo.instanceId, isNotEmpty);
+      expect(yolo.instanceId, isNot('default'));
+    });
+
+    test('YOLO constructor with classifier options', () {
+      final yolo = YOLO.withClassifierOptions(
+        modelPath: 'classifier_model.tflite',
+        task: YOLOTask.classify,
+        classifierOptions: {
+          'enable1ChannelSupport': true,
+          'expectedChannels': 1,
+        },
+      );
+
+      expect(yolo.modelPath, 'classifier_model.tflite');
+      expect(yolo.task, YOLOTask.classify);
+    });
+
+    test('YOLO setViewId works', () {
+      final yolo = YOLO(modelPath: 'test.tflite', task: YOLOTask.detect);
+      yolo.setViewId(123);
+      expect(yolo, isNotNull);
+    });
+
+    test('YOLO static methods work', () async {
+      final modelExists = await YOLO.checkModelExists('test_model.tflite');
+      expect(modelExists, isA<Map<String, dynamic>>());
+
+      final storagePaths = await YOLO.getStoragePaths();
+      expect(storagePaths, isA<Map<String, String?>>());
     });
   });
 }
