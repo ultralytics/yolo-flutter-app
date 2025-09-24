@@ -296,5 +296,62 @@ void main() {
 
       debugDefaultTargetPlatformOverride = null;
     });
+
+    testWidgets('handles streaming data correctly', (
+      WidgetTester tester,
+    ) async {
+      final mockChannel = YOLOTestHelpers.setupMockChannel();
+      final List<Map<String, dynamic>> capturedStreamData = [];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOView(
+            modelPath: 'assets/yolo.tflite',
+            task: YOLOTask.detect,
+            controller: YOLOViewController()..init(mockChannel, 1),
+            onStreamingData: (data) {
+              capturedStreamData.add(data);
+            },
+          ),
+        ),
+      );
+
+      expect(find.byType(YOLOView), findsOneWidget);
+      expect(capturedStreamData, isEmpty);
+    });
+
+    testWidgets('handles different camera resolutions', (
+      WidgetTester tester,
+    ) async {
+      const resolutions = ['720p', '1080p', '4K'];
+
+      for (final resolution in resolutions) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: YOLOView(
+              modelPath: 'test_model.tflite',
+              task: YOLOTask.detect,
+              cameraResolution: resolution,
+            ),
+          ),
+        );
+
+        expect(find.byType(YOLOView), findsOneWidget);
+      }
+    });
+
+    testWidgets('handles showNativeUI parameter', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: YOLOView(
+            modelPath: 'test_model.tflite',
+            task: YOLOTask.detect,
+            showNativeUI: true,
+          ),
+        ),
+      );
+
+      expect(find.byType(YOLOView), findsOneWidget);
+    });
   });
 }
