@@ -483,6 +483,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             // Assuming only one view actively requests permissions at a time.
             // If multiple views could request, 'handled' logic might need adjustment
             // or ensure only the correct view processes it.
+            platformView.yoloViewInstance.onRequestPermissionsResult(requestCode, permissions, grantResults)
         } catch (e: Exception) {
             Log.e(TAG, "Error processing permission result for YOLOPlatformView instance", e)
         }

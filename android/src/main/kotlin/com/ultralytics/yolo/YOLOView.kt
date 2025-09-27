@@ -1449,7 +1449,7 @@ class YOLOView @JvmOverloads constructor(
     /**
      * Flattens keypoints data into a single array format: [x1, y1, conf1, x2, y2, conf2, ...]
      */
-    private fun flattenKeypoints(keypoints: YOLOResult.Keypoints): List<Double> {
+    private fun flattenKeypoints(keypoints: Keypoints): List<Double> {
         val flattened = mutableListOf<Double>()
         for (i in keypoints.xy.indices) {
             flattened.add(keypoints.xy[i].first.toDouble())
@@ -1794,7 +1794,7 @@ class YOLOView @JvmOverloads constructor(
             cameraExecutor = null
 
             camera = null
-            predictor?.close()
+            (predictor as? BasePredictor)?.close()
             predictor = null
             inferenceCallback = null
             streamCallback = null
