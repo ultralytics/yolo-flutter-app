@@ -48,6 +48,12 @@ abstract class BasePredictor : Predictor {
     var pendingBitmapFrame: Bitmap? = null
     var isFrontCamera: Boolean = false
 
+    fun close() {
+        if (isInterpreterInitialized()) {
+            interpreter.close()
+        }
+    }
+
     protected fun updateTiming() {
         val now = System.nanoTime()
         val dt = (now - t0) / 1e9
