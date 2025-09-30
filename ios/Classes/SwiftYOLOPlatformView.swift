@@ -426,31 +426,22 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Use the parsed stream config (no more hardcoding)
     let finalStreamConfig = streamConfig
 
-    print(
-      "SwiftYOLOPlatformView: 🔍 Final stream config - includeOriginalImage: \(finalStreamConfig.includeOriginalImage)"
-    )
-
     // Configure YOLOView with the stream config
     yoloView.setStreamConfig(finalStreamConfig)
 
     // Set up streaming callback to forward data to Flutter via event channel
     yoloView.setStreamCallback { [weak self] streamData in
-      // Forward streaming data from YOLOView to Flutter
       self?.sendStreamDataToFlutter(streamData)
     }
   }
 
   /// Send stream data to Flutter via event channel
   private func sendStreamDataToFlutter(_ streamData: [String: Any]) {
-
     guard let eventSink = self.eventSink else {
-
       return
     }
 
-    // Send event on main thread
     DispatchQueue.main.async {
-
       eventSink(streamData)
     }
   }
@@ -464,14 +455,11 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink)
     -> FlutterError?
   {
-
     self.eventSink = events
-
     return nil
   }
 
   public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-
     self.eventSink = nil
     return nil
   }

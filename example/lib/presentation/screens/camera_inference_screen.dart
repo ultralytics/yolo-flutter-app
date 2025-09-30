@@ -28,8 +28,6 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   double _iouThreshold = 0.45;
   int _numItemsThreshold = 30;
   double _currentFps = 0.0;
-  int _frameCount = 0;
-  DateTime _lastFpsUpdate = DateTime.now();
   SliderType _activeSlider = SliderType.none;
   ModelType _selectedModel = ModelType.detect;
   bool _isModelLoading = false;
@@ -68,15 +66,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   /// - FPS calculation
   void _onDetectionResults(List<YOLOResult> results) {
     if (!mounted) return;
-    _frameCount++;
-    final now = DateTime.now();
-    final elapsed = now.difference(_lastFpsUpdate).inMilliseconds;
-    if (elapsed >= 1000) {
-      _currentFps = _frameCount * 1000 / elapsed;
-      _frameCount = 0;
-      _lastFpsUpdate = now;
-    }
-    setState(() => _detectionCount = results.length);
+    setState(() {
+      _detectionCount = results.length;
+    });
   }
 
   @override
