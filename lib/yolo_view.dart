@@ -450,7 +450,7 @@ class YOLOViewController {
         'includeOBB': config.includeOBB,
         'includeOriginalImage': config.includeOriginalImage,
         'maxFPS': config.maxFPS,
-        'throttleInterval': config.throttleInterval?.inMilliseconds,
+        'throttleIntervalMs': config.throttleInterval?.inMilliseconds,
         'inferenceFrequency': config.inferenceFrequency,
         'skipFrames': config.skipFrames,
       });
@@ -752,12 +752,6 @@ class YOLOViewState extends State<YOLOView> {
 
     _setupController();
 
-    if (widget.onResult != null ||
-        widget.onPerformanceMetrics != null ||
-        widget.onStreamingData != null) {
-      _subscribeToResults();
-    }
-
     // Apply initial streaming config if provided
     if (widget.streamingConfig != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -936,21 +930,12 @@ class YOLOViewState extends State<YOLOView> {
   }
 
   void _subscribeToResults() {
-    // Don't recreate subscription if one already exists and is working
-    if (_resultSubscription != null && mounted) {
-      logInfo(
-        'YOLOView: Subscription already exists, skipping recreation for $_viewId',
-      );
-      return;
-    }
-
     _cancelResultSubscription();
 
     logInfo(
       'YOLOView: Setting up event stream listener for channel: ${_resultEventChannel.name}',
     );
 
-    // Cancel any existing subscription timer
     _subscriptionTimer?.cancel();
 
     try {
@@ -1140,7 +1125,7 @@ class YOLOViewState extends State<YOLOView> {
 
     // Add streaming config to creation params if provided
     if (widget.streamingConfig != null) {
-      final streamConfig = {
+      final streamConfig = <String, dynamic>{
         'includeDetections': widget.streamingConfig!.includeDetections,
         'includeClassifications':
             widget.streamingConfig!.includeClassifications,
@@ -1151,10 +1136,24 @@ class YOLOViewState extends State<YOLOView> {
         'includePoses': widget.streamingConfig!.includePoses,
         'includeOBB': widget.streamingConfig!.includeOBB,
         'includeOriginalImage': widget.streamingConfig!.includeOriginalImage,
-        'maxFPS': widget.streamingConfig!.maxFPS,
-        'throttleInterval':
-            widget.streamingConfig!.throttleInterval?.inMilliseconds,
       };
+
+      // Only include optional parameters if they are not null
+      if (widget.streamingConfig!.maxFPS != null) {
+        streamConfig['maxFPS'] = widget.streamingConfig!.maxFPS;
+      }
+      if (widget.streamingConfig!.throttleInterval != null) {
+        streamConfig['throttleIntervalMs'] =
+            widget.streamingConfig!.throttleInterval!.inMilliseconds;
+      }
+      if (widget.streamingConfig!.inferenceFrequency != null) {
+        streamConfig['inferenceFrequency'] =
+            widget.streamingConfig!.inferenceFrequency;
+      }
+      if (widget.streamingConfig!.skipFrames != null) {
+        streamConfig['skipFrames'] = widget.streamingConfig!.skipFrames;
+      }
+
       creationParams['streamingConfig'] = streamConfig;
     }
 
