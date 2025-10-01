@@ -5,6 +5,8 @@ import 'package:archive/archive.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:ultralytics_yolo/utils/map_converter.dart';
+import 'package:ultralytics_yolo/config/channel_config.dart';
 import '../models/models.dart';
 
 /// Manages YOLO model loading, downloading, and caching.
@@ -19,9 +21,8 @@ class ModelManager {
   static const String _modelDownloadBaseUrl =
       'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0';
 
-  static const MethodChannel _channel = MethodChannel(
-    'yolo_single_image_channel',
-  );
+  static final MethodChannel _channel =
+      ChannelConfig.createSingleImageChannel();
 
   /// Callback for download progress updates (0.0 to 1.0)
   final void Function(double progress)? onDownloadProgress;
@@ -70,7 +71,7 @@ class ModelManager {
       final result = await _channel.invokeMethod('checkModelExists', {
         'modelPath': modelName,
       });
-      return Map<String, dynamic>.from(result);
+      return MapConverter.convertToTypedMap(result);
     } catch (_) {
       return {'exists': false};
     }

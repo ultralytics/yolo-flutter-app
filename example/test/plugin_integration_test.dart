@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'package:ultralytics_yolo/yolo.dart';
-import 'package:ultralytics_yolo/yolo_platform_interface.dart';
+import 'package:ultralytics_yolo/platform/yolo_platform_interface.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

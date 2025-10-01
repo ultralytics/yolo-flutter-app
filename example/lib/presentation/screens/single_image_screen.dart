@@ -5,6 +5,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/yolo.dart';
+import 'package:ultralytics_yolo/utils/map_converter.dart';
+import 'package:ultralytics_yolo/utils/error_handler.dart';
 import '../../services/model_manager.dart';
 import '../../models/models.dart';
 
@@ -47,7 +49,13 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       await _yolo.loadModel();
       if (mounted) setState(() => _isModelReady = true);
     } catch (e) {
-      if (mounted) _showSnackBar('Error loading model: $e');
+      if (mounted) {
+        final error = YOLOErrorHandler.handleError(
+          e,
+          'Failed to load model $_modelPath for task ${YOLOTask.segment.name}',
+        );
+        _showSnackBar('Error loading model: ${error.message}');
+      }
     }
   }
 
@@ -63,7 +71,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
     if (mounted) {
       setState(() {
         _detections = result['boxes'] is List
-            ? List<Map<String, dynamic>>.from(result['boxes'])
+            ? MapConverter.convertBoxesList(result['boxes'] as List)
             : [];
         _annotatedImage = result['annotatedImage'] as Uint8List?;
         _imageBytes = bytes;

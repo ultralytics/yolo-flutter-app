@@ -2,7 +2,7 @@
 
 name: ultralytics_yolo_example
 description: "Demonstrates how to use the ultralytics_yolo plugin."
-publish_to: "none" # Remove this line if you wish to publish to pub.dev
+publish_to: "none"
 
 environment:
   sdk: ^3.8.1
@@ -13,9 +13,9 @@ dependencies:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4
   image_picker: ^0.8.7
-  path_provider: ^2.0.0 # Adjust version as needed
-  archive: ^3.0.0 # Adjust version as needed, for unzipping
-  http: ^1.0.0 # For downloading models
+  path_provider: ^2.0.0
+  archive: ^3.0.0
+  http: ^1.0.0
 
   ultralytics_yolo:
     path: ../

@@ -2,58 +2,53 @@
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
+import 'utils/test_helpers.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('YOLOViewController', () {
     late YOLOViewController controller;
-    final List<MethodCall> log = <MethodCall>[];
+    late MethodChannel mockChannel;
+    late List<MethodCall> log;
 
     setUp(() {
       controller = YOLOViewController();
-      log.clear();
-
-      // Note: Cannot test _init directly as it's private
-      // Controller methods will handle missing channel gracefully
+      final setup = YOLOTestHelpers.createYOLOTestSetup();
+      mockChannel = setup.$1;
+      log = setup.$2;
     });
 
     tearDown(() {
-      // No cleanup needed since we don't mock channels
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(mockChannel, null);
+      log.clear();
     });
 
-    test('default values are set correctly', () {
+    test('default values and threshold clamping', () {
       expect(controller.confidenceThreshold, 0.5);
       expect(controller.iouThreshold, 0.45);
       expect(controller.numItemsThreshold, 30);
-    });
 
-    test('setConfidenceThreshold clamps values', () async {
-      await controller.setConfidenceThreshold(1.5);
+      // Test clamping
+      controller.setConfidenceThreshold(1.5);
       expect(controller.confidenceThreshold, 1.0);
-
-      await controller.setConfidenceThreshold(-0.5);
+      controller.setConfidenceThreshold(-0.5);
       expect(controller.confidenceThreshold, 0.0);
-    });
 
-    test('setIoUThreshold clamps values', () async {
-      await controller.setIoUThreshold(1.2);
+      controller.setIoUThreshold(1.2);
       expect(controller.iouThreshold, 1.0);
-
-      await controller.setIoUThreshold(-0.1);
+      controller.setIoUThreshold(-0.1);
       expect(controller.iouThreshold, 0.0);
-    });
 
-    test('setNumItemsThreshold clamps values', () async {
-      await controller.setNumItemsThreshold(150);
+      controller.setNumItemsThreshold(150);
       expect(controller.numItemsThreshold, 100);
-
-      await controller.setNumItemsThreshold(0);
+      controller.setNumItemsThreshold(0);
       expect(controller.numItemsThreshold, 1);
     });
 
-    test('setThresholds updates multiple values at once', () async {
+    test('setThresholds updates values correctly', () async {
       await controller.setThresholds(
         confidenceThreshold: 0.8,
         iouThreshold: 0.6,
@@ -63,33 +58,50 @@ void main() {
       expect(controller.confidenceThreshold, 0.8);
       expect(controller.iouThreshold, 0.6);
       expect(controller.numItemsThreshold, 50);
-    });
 
-    test('setThresholds updates only provided values', () async {
+      // Test partial updates
       await controller.setThresholds(confidenceThreshold: 0.7);
-
       expect(controller.confidenceThreshold, 0.7);
-      expect(controller.iouThreshold, 0.45); // unchanged
-      expect(controller.numItemsThreshold, 30); // unchanged
+      expect(controller.iouThreshold, 0.6); // unchanged
+      expect(controller.numItemsThreshold, 50); // unchanged
     });
 
-    test('switchCamera handles uninitialized channel gracefully', () async {
-      // Should not throw when no method channel is set
-      expect(() => controller.switchCamera(), returnsNormally);
+    test('platform methods work with initialized channel', () async {
+      controller.init(mockChannel, 1);
+
+      // Test threshold methods
+      YOLOTestHelpers.validateThresholdBehavior(controller, log, mockChannel);
+
+      // Test camera controls
+      await controller.switchCamera();
+      YOLOTestHelpers.assertMethodCalled(log, 'switchCamera');
+
+      await controller.zoomIn();
+      YOLOTestHelpers.assertMethodCalled(log, 'zoomIn');
+
+      await controller.zoomOut();
+      YOLOTestHelpers.assertMethodCalled(log, 'zoomOut');
+
+      await controller.setZoomLevel(2.0);
+      YOLOTestHelpers.assertMethodCalled(
+        log,
+        'setZoomLevel',
+        arguments: {'zoomLevel': 2.0},
+      );
+
+      // Test capture frame
+      final result = await controller.captureFrame();
+      expect(result, isA<Uint8List>());
+      YOLOTestHelpers.assertMethodCalled(log, 'captureFrame');
     });
 
-    test(
-      'methods handle platform channel not initialized gracefully',
-      () async {
-        final uninitializedController = YOLOViewController();
-
-        // Should not throw, just log warning
-        expect(
-          () => uninitializedController.setConfidenceThreshold(0.8),
-          returnsNormally,
-        );
-        expect(() => uninitializedController.switchCamera(), returnsNormally);
-      },
-    );
+    test('methods handle uninitialized channel gracefully', () async {
+      final uninitializedController = YOLOViewController();
+      expect(
+        () => uninitializedController.setConfidenceThreshold(0.8),
+        returnsNormally,
+      );
+      expect(() => uninitializedController.switchCamera(), returnsNormally);
+    });
   });
 }
