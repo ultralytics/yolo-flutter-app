@@ -61,10 +61,12 @@ model.export(
     nms=True,  # Include NMS in the model
 )
 ```
+
 ### ⚠️ Important: NMS Requirement for iOS Detection Models
 
 **Detection models MUST be exported with `nms=True` for iOS:**
-```python
+
+````python
 # ✅ CORRECT - Detection with NMS
 model = YOLO("yolo11n.pt")
 model.export(format="coreml", nms=True, imgsz=640)
@@ -77,9 +79,7 @@ seg_model = YOLO("yolo11n-seg.pt")
 seg_model.export(format="coreml", imgsz=640)  # nms=False by default
 
 
-
 #### Advanced Export Options
-
 ```python
 # For different YOLO tasks
 tasks = {"segment": "yolo11n-seg.pt", "classify": "yolo11n-cls.pt", "pose": "yolo11n-pose.pt", "obb": "yolo11n-obb.pt"}
@@ -92,7 +92,7 @@ for task, model_path in tasks.items():
 
     # Export TFLite
     model.export(format="tflite", imgsz=640)
-```
+````
 
 ## 🏗️ Platform Integration
 
