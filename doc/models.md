@@ -61,21 +61,22 @@ model.export(
     nms=True,  # Include NMS in the model
 )
 ```
+### ⚠️ Important: NMS Requirement for iOS Detection Models
 
-#### Export to LiteRT/TFLite (Android/iOS)
-
+**Detection models MUST be exported with `nms=True` for iOS:**
 ```python
-from ultralytics import YOLO
-
-# Load a YOLOv11 model
+# ✅ CORRECT - Detection with NMS
 model = YOLO("yolo11n.pt")
+model.export(format="coreml", nms=True, imgsz=640)
 
-# Export to TFLite with quantization
-model.export(
-    format="tflite",
-    imgsz=640,
-)
-```
+# ❌ WRONG - Detection without NMS (will fail to load)
+model.export(format="coreml", nms=False, imgsz=640)
+
+# ✅ CORRECT - Segmentation without NMS
+seg_model = YOLO("yolo11n-seg.pt")
+seg_model.export(format="coreml", imgsz=640)  # nms=False by default
+
+
 
 #### Advanced Export Options
 
