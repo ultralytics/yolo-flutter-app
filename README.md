@@ -90,6 +90,14 @@ You can get the model in one of the following ways:
 
 3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
 
+### Export Models for iOS
+```python
+# Detection REQUIRES nms=True
+YOLO("yolo11n.pt").export(format="coreml", nms=True)
+
+# All other tasks use nms=False (default)
+YOLO("yolo11n-seg.pt").export(format="coreml")
+
 **[📥 Download Models](doc/install.md#models)** |
 
 Bundle the model with your app using the following method.
