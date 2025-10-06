@@ -1,3 +1,15 @@
+## 0.1.38
+
+- **Android Build Fixes**
+  - Updated Gradle wrapper to 8.7 to match newer Android Gradle Plugin
+  - Bumped Android Gradle Plugin to 8.6.0 and Kotlin to 2.0.20
+  - Increased Gradle JVM memory and limited workers to mitigate Jetifier OOM
+  - Ensured NDK r28 is used (16KB page size compatibility) via `ndkVersion = "28.0.13004108"`
+  - Added safer Java compile fork settings for large projects
+
+- **Example App**
+  - Camera Inference Screen fixes for Detection and FPS
+
 ## 0.1.37
 
 - **Critical Update**: Add Android 16KB page size support for Android 15+ compatibility
