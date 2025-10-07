@@ -35,7 +35,7 @@ Edit `ios/Podfile` and set the minimum iOS version:
 
 ```ruby
 # ios/Podfile
-platform :ios, '13.0'  # Minimum iOS 12.0 required
+platform :ios, '13.0'  # Minimum iOS 13.0 required
 ```
 
 #### 2. Camera Permission (Optional)
@@ -193,7 +193,7 @@ android {
 
 | Platform    | Minimum Version | Recommended   |
 | ----------- | --------------- | ------------- |
-| **iOS**     | 12.0+           | 14.0+         |
+| **iOS**     | 13.0+           | 14.0+         |
 | **Android** | API 24+         | API 28+       |
 | **Flutter** | 3.3.0+          | Latest stable |
 | **Dart**    | 3.0.0+          | Latest stable |
