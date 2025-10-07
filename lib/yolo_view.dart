@@ -70,7 +70,6 @@ class _YOLOViewState extends State<YOLOView> {
     super.initState();
     _setupController();
     _setupChannels();
-    _subscribeToResults();
   }
 
   void _setupController() {
@@ -290,7 +289,7 @@ class _YOLOViewState extends State<YOLOView> {
     };
 
     if (widget.streamingConfig != null) {
-      creationParams['streamingConfig'] = {
+      final streamConfig = <String, dynamic>{
         'includeDetections': widget.streamingConfig!.includeDetections,
         'includeClassifications':
             widget.streamingConfig!.includeClassifications,
@@ -301,10 +300,24 @@ class _YOLOViewState extends State<YOLOView> {
         'includePoses': widget.streamingConfig!.includePoses,
         'includeOBB': widget.streamingConfig!.includeOBB,
         'includeOriginalImage': widget.streamingConfig!.includeOriginalImage,
-        'maxFPS': widget.streamingConfig!.maxFPS,
-        'throttleInterval':
-            widget.streamingConfig!.throttleInterval?.inMilliseconds,
       };
+
+      if (widget.streamingConfig!.maxFPS != null) {
+        streamConfig['maxFPS'] = widget.streamingConfig!.maxFPS;
+      }
+      if (widget.streamingConfig!.throttleInterval != null) {
+        streamConfig['throttleIntervalMs'] =
+            widget.streamingConfig!.throttleInterval!.inMilliseconds;
+      }
+      if (widget.streamingConfig!.inferenceFrequency != null) {
+        streamConfig['inferenceFrequency'] =
+            widget.streamingConfig!.inferenceFrequency;
+      }
+      if (widget.streamingConfig!.skipFrames != null) {
+        streamConfig['skipFrames'] = widget.streamingConfig!.skipFrames;
+      }
+
+      creationParams['streamingConfig'] = streamConfig;
     }
 
     return creationParams;
@@ -320,6 +333,12 @@ class _YOLOViewState extends State<YOLOView> {
 
     if (widget.streamingConfig != null) {
       _effectiveController.setStreamingConfig(widget.streamingConfig!);
+    }
+
+    if (widget.onResult != null ||
+        widget.onPerformanceMetrics != null ||
+        widget.onStreamingData != null) {
+      _subscribeToResults();
     }
   }
 
