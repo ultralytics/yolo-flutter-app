@@ -1560,7 +1560,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
   /// Uses detection index correctly to avoid class index confusion
   private func convertResultToStreamData(_ result: YOLOResult) -> [String: Any] {
     var map: [String: Any] = [:]
-    guard let config = streamConfig else { return map }
+    let config = streamConfig ?? YOLOStreamConfig.DEFAULT
 
     // Convert detection results (if enabled)
     if config.includeDetections {
@@ -1717,11 +1717,11 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
 
     // Add performance metrics (if enabled)
     if config.includeProcessingTimeMs {
-      map["processingTimeMs"] = currentProcessingTime  // inference time in ms
+      map["processingTimeMs"] = result.speed * 1000
     }
 
     if config.includeFps {
-      map["fps"] = currentFps  // FPS value
+      map["fps"] = result.fps ?? 0.0
     }
 
     if config.includeOriginalImage {
