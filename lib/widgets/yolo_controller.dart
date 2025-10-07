@@ -171,7 +171,7 @@ class YOLOViewController {
           'includeOBB': config.includeOBB,
           'includeOriginalImage': config.includeOriginalImage,
           'maxFPS': config.maxFPS,
-          'throttleInterval': config.throttleInterval?.inMilliseconds,
+          'throttleIntervalMs': config.throttleInterval?.inMilliseconds,
           'inferenceFrequency': config.inferenceFrequency,
           'skipFrames': config.skipFrames,
         });
