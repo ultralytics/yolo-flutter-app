@@ -1,3 +1,15 @@
+## 0.1.38
+
+- **Bug Fix**: iOS performance metrics not updating in `YOLOView`
+  - Moved EventChannel subscription from `initState` to `_onPlatformViewCreated` to ensure native channel readiness on iOS
+  - Aligned streaming config key with iOS by renaming `throttleInterval` to `throttleIntervalMs` when sending params
+  - iOS now sources performance metrics from the latest inference result: `processingTimeMs = result.speed * 1000`, `fps = result.fps`
+  - Added fallback to `YOLOStreamConfig.DEFAULT` when stream config is nil on iOS
+  - Minor cleanup in `SwiftYOLOPlatformView.swift` for streamlined event dispatch
+
+- **Example App**
+  - Camera Inference Screen fixes for Detection and FPS
+
 ## 0.1.37
 
 - **Critical Update**: Add Android 16KB page size support for Android 15+ compatibility
