@@ -58,7 +58,7 @@ jobs:
           git tag -a "${{ github.event.inputs.tag_name }}" -m "$(git log -1 --pretty=%B)"
           git push origin "${{ github.event.inputs.tag_name }}"
       - name: Set up Python environment
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.x"
       - name: Install dependencies
