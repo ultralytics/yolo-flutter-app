@@ -5,7 +5,7 @@
 
 version: 2
 updates:
-  - package-ecosystem: swift
+  - package-ecosystem: pub
     directory: "/"
     schedule:
       interval: monthly
