@@ -29,7 +29,7 @@ dependencies:
 
 dev_dependencies:
   coverage: ^1.13.1
-  flutter_lints: ^5.0.0
+  flutter_lints: ">=5.0.0 <7.0.0"
   flutter_test:
     sdk: flutter
   mockito: ^5.4.4
