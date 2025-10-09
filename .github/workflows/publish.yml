@@ -29,7 +29,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets._GITHUB_TOKEN }}
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.x"
       - uses: astral-sh/setup-uv@v6
@@ -92,7 +92,7 @@ jobs:
     permissions:
       id-token: write # for pub.dev trusted publishing
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: package
           path: .
