@@ -60,6 +60,7 @@ class YOLOPlatformView(
         val taskString = creationParams?.get("task") as? String ?: "detect"
         val confidenceParam = creationParams?.get("confidenceThreshold") as? Double ?: 0.5
         val iouParam = creationParams?.get("iouThreshold") as? Double ?: 0.45
+        val showOverlaysParam = creationParams?.get("showOverlays") as? Boolean ?: true
 
         // Set up the method channel handler
         methodChannel?.setMethodCallHandler(this)
@@ -68,6 +69,7 @@ class YOLOPlatformView(
         Log.d(TAG, "Setting initial thresholds: conf=$confidenceParam, iou=$iouParam")
         yoloView.setConfidenceThreshold(confidenceParam)
         yoloView.setIouThreshold(iouParam)
+        yoloView.setShowOverlays(showOverlaysParam)
         
         // Configure YOLOView streaming functionality
         setupYOLOViewStreaming(creationParams)
@@ -317,6 +319,15 @@ class YOLOPlatformView(
                         result.success(null)
                     } else {
                         result.error("invalid_args", "numItems is required", null)
+                    }
+                }
+                "setShowOverlays" -> {
+                    val show = call.argument<Boolean>("show")
+                    if (show != null) {
+                        yoloView.setShowOverlays(show)
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "show is required", null)
                     }
                 }
                 "setThresholds" -> {

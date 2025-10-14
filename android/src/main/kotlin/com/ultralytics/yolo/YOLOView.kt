@@ -220,6 +220,7 @@ class YOLOView @JvmOverloads constructor(
     private var confidenceThreshold = 0.25  // initial value
     private var iouThreshold = 0.45
     private var numItemsThreshold = 30
+    private var showOverlays = true
     private lateinit var zoomLabel: TextView
     private lateinit var cameraButton: TextView
     private lateinit var confidenceLabel: TextView
@@ -362,6 +363,10 @@ class YOLOView @JvmOverloads constructor(
     fun setNumItemsThreshold(n: Int) {
         numItemsThreshold = n
         predictor?.setNumItemsThreshold(n)
+    }
+    
+    fun setShowOverlays(show: Boolean) {
+        showOverlays = show
     }
     
     fun setShowUIControls(show: Boolean) {
@@ -718,6 +723,10 @@ class YOLOView @JvmOverloads constructor(
             super.onDraw(canvas)
             val result = inferenceResult ?: return
             
+            // Only draw overlays if showOverlays is true
+            if (!showOverlays) {
+                return
+            }
 
             val iw = result.origShape.width.toFloat()
             val ih = result.origShape.height.toFloat()
