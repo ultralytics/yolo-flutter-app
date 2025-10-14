@@ -100,7 +100,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       // Hide native UI controls by default
       yoloView?.showUIControls = false
-      
+
       // Set overlay visibility
       yoloView?.showOverlays = showOverlays
 
