@@ -173,6 +173,17 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
+  // Flag to control bounding box overlay visibility
+  private var _showOverlays: Bool = true
+
+  /// Property to get or set the visibility of bounding box overlays
+  public var showOverlays: Bool {
+    get { return _showOverlays }
+    set {
+      _showOverlays = newValue
+    }
+  }
+
   let obbRenderer = OBBRenderer()
 
   private let minimumZoom: CGFloat = 1.0
@@ -620,8 +631,12 @@ public class YOLOView: UIView, VideoCaptureDelegate {
           }
           displayRect = VNImageRectForNormalizedRect(displayRect, Int(width), Int(height))
 
-          boundingBoxViews[i].show(
-            frame: displayRect, label: label, color: boxColor, alpha: alpha)
+          if _showOverlays {
+            boundingBoxViews[i].show(
+              frame: displayRect, label: label, color: boxColor, alpha: alpha)
+          } else {
+            boundingBoxViews[i].hide()
+          }
 
         } else {
           boundingBoxViews[i].hide()
@@ -699,12 +714,16 @@ public class YOLOView: UIView, VideoCaptureDelegate {
           rect.size.width *= videoCapture.longSide * scaleX
           rect.size.height *= videoCapture.shortSide * scaleY
 
-          boundingBoxViews[i].show(
-            frame: rect,
-            label: label,
-            color: boxColor,
-            alpha: alpha
-          )
+          if _showOverlays {
+            boundingBoxViews[i].show(
+              frame: rect,
+              label: label,
+              color: boxColor,
+              alpha: alpha
+            )
+          } else {
+            boundingBoxViews[i].hide()
+          }
         } else {
           boundingBoxViews[i].hide()
         }
