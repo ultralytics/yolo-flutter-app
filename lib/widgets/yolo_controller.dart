@@ -201,6 +201,16 @@ class YOLOViewController {
     }
   }
 
+  Future<void> setShowOverlays(bool show) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setShowOverlays', {'show': show});
+      } catch (e) {
+        logInfo('Error setting overlay visibility: $e');
+      }
+    }
+  }
+
   Future<Uint8List?> captureFrame() async {
     if (_methodChannel != null) {
       try {
