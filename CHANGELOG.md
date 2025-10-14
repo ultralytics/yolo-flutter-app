@@ -1,3 +1,17 @@
+## 0.1.39
+
+- **Bug Fix**: Fix `showOverlays` parameter not hiding native platform bounding boxes
+  - **Flutter**: Added `showOverlays` parameter to creation parameters passed to native code
+  - **Flutter**: Added `setShowOverlays()` method to `YOLOViewController` for dynamic overlay control
+  - **iOS**: Added `showOverlays` property to `YOLOView` class with getter/setter
+  - **iOS**: Modified bounding box rendering logic to respect `showOverlays` parameter
+  - **iOS**: Added `setShowOverlays` method channel handler in `SwiftYOLOPlatformView`
+  - **Android**: Added `showOverlays` property and `setShowOverlays()` method to `YOLOView` class
+  - **Android**: Modified `onDraw()` method to check `showOverlays` before drawing overlays
+  - **Android**: Added `setShowOverlays` method channel handler in `YOLOPlatformView`
+  - **Usage**: `YOLOView(showOverlays: false)` now properly hides both Flutter and native overlays
+  - **Dynamic Control**: Use `yoloController.setShowOverlays(false)` to toggle overlays at runtime
+
 ## 0.1.38
 
 - **Bug Fix**: iOS performance metrics not updating in `YOLOView`
