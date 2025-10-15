@@ -31,6 +31,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   private var currentConfidenceThreshold: Double = 0.5
   private var currentIouThreshold: Double = 0.45
   private var currentNumItemsThreshold: Int = 30
+  private var currentShowOverlays: Bool = true
 
   init(
     frame: CGRect,
@@ -77,11 +78,13 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       let confidenceThreshold = dict["confidenceThreshold"] as? Double ?? 0.5
       let iouThreshold = dict["iouThreshold"] as? Double ?? 0.45
       let numItemsThreshold = dict["numItemsThreshold"] as? Int ?? 30
+      let showOverlays = dict["showOverlays"] as? Bool ?? true
 
       // Store initial thresholds
       self.currentConfidenceThreshold = confidenceThreshold
       self.currentIouThreshold = iouThreshold
       self.currentNumItemsThreshold = numItemsThreshold
+      self.currentShowOverlays = showOverlays
 
       // Old threshold parameter for backward compatibility
       let oldThreshold = dict["threshold"] as? Double ?? 0.5
@@ -97,6 +100,9 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       // Hide native UI controls by default
       yoloView?.showUIControls = false
+
+      // Set overlay visibility
+      yoloView?.showOverlays = showOverlays
 
       // Configure YOLOView streaming functionality
       setupYOLOViewStreaming(args: dict)
@@ -294,6 +300,21 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           result(
             FlutterError(
               code: "invalid_args", message: "Invalid arguments for setShowUIControls", details: nil
+            ))
+        }
+
+      case "setShowOverlays":
+        // Method to toggle bounding box overlay visibility
+        if let args = call.arguments as? [String: Any],
+          let show = args["show"] as? Bool
+        {
+          self.currentShowOverlays = show
+          yoloView?.showOverlays = show
+          result(nil)  // Success
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for setShowOverlays", details: nil
             ))
         }
 
