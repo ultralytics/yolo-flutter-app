@@ -98,8 +98,9 @@ YOLO("yolo11n.pt").export(format="coreml", nms=True)
 
 # All other tasks use nms=False (default)
 YOLO("yolo11n-seg.pt").export(format="coreml")
+```
 
-**[📥 Download Models](doc/install.md#models)** |
+**[📥 Download Models](doc/install.md#models)**
 
 Bundle the model with your app using the following method.
 
