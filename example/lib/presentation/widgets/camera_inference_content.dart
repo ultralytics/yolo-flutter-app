@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:ultralytics_yolo/models/yolo_model_spec.dart';
 import '../controllers/camera_inference_controller.dart';
 import 'model_loading_overlay.dart';
 
@@ -18,8 +19,12 @@ class CameraInferenceContent extends StatelessWidget {
       return YOLOView(
         key: const ValueKey('yolo_view_static'),
         controller: controller.yoloController,
-        modelPath: controller.modelPath!,
-        task: controller.selectedModel.task,
+        models: [
+          YOLOModelSpec(
+            modelPath: controller.modelPath!,
+            task: controller.selectedModel.task,
+          ),
+        ],
         streamingConfig: const YOLOStreamingConfig.minimal(),
         onResult: controller.onDetectionResults,
         onPerformanceMetrics: (metrics) =>

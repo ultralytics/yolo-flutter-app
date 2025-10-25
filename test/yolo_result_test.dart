@@ -140,6 +140,7 @@ void main() {
         confidence: 0.9,
         boundingBox: testBoundingBox,
         normalizedBox: testNormalizedBox,
+        modelName: 'testModel',
         keypoints: keypoints,
         keypointConfidences: keypointConfidences,
         mask: mask,
@@ -162,6 +163,7 @@ void main() {
         confidence: 0.85,
         boundingBox: testBoundingBox,
         normalizedBox: testNormalizedBox,
+        modelName: 'testModel',
       );
 
       final map = result.toMap();
@@ -185,6 +187,7 @@ void main() {
         confidence: 0.95,
         boundingBox: rect,
         normalizedBox: normalizedRect,
+        modelName: 'testModel',
         keypoints: keypoints,
         keypointConfidences: confidences,
       );
@@ -236,6 +239,7 @@ void main() {
         confidence: 0.95,
         boundingBox: rect,
         normalizedBox: normalizedRect,
+        modelName: 'testModel',
         keypoints: keypoints,
         keypointConfidences: confidences,
       );
@@ -259,6 +263,7 @@ void main() {
           confidence: 0.9,
           boundingBox: const Rect.fromLTWH(0, 0, 100, 200),
           normalizedBox: const Rect.fromLTWH(0, 0, 0.5, 1.0),
+          modelName: 'testModel',
         ),
       ];
       final imageBytes = Uint8List.fromList([1, 2, 3, 4]);
@@ -315,6 +320,7 @@ void main() {
           confidence: 0.9,
           boundingBox: const Rect.fromLTWH(0, 0, 100, 200),
           normalizedBox: const Rect.fromLTWH(0, 0, 0.5, 1.0),
+          modelName: 'testModel',
         ),
       ];
       final imageBytes = Uint8List.fromList([1, 2, 3, 4]);

@@ -20,6 +20,7 @@ import '../utils/map_converter.dart';
 ///   confidence: 0.95,
 ///   boundingBox: Rect.fromLTWH(100, 100, 200, 300),
 ///   normalizedBox: Rect.fromLTWH(0.1, 0.1, 0.2, 0.3),
+///   modelName: 'yolo11n',
 /// );
 /// ```
 class YOLOResult {
@@ -55,6 +56,12 @@ class YOLOResult {
   /// resolution-independent processing.
   final Rect normalizedBox;
 
+  /// The name of the model that produced this detection.
+  ///
+  /// This is typically the basename of the model file without extension,
+  /// e.g., "/path/to/yolo11n.tflite" -> "yolo11n".
+  final String modelName;
+
   /// The segmentation mask for instance segmentation tasks.
   ///
   /// Only available when using segmentation models (YOLOTask.segment).
@@ -80,6 +87,7 @@ class YOLOResult {
     required this.confidence,
     required this.boundingBox,
     required this.normalizedBox,
+    required this.modelName,
     this.mask,
     this.keypoints,
     this.keypointConfidences,
@@ -96,6 +104,7 @@ class YOLOResult {
   /// - 'normalizedBox': Map with 'left', 'top', 'right', 'bottom'
   /// - 'mask': (optional) List of List of double
   /// - 'keypoints': (optional) List of double in x,y,confidence triplets
+  /// - 'modelName': (required) String identifying the source model
   factory YOLOResult.fromMap(Map<dynamic, dynamic> map) {
     final classIndex = MapConverter.safeGetInt(map, 'classIndex');
     final className = MapConverter.safeGetString(map, 'className');
@@ -114,6 +123,8 @@ class YOLOResult {
     final normalizedBox = normalizedBoxMap != null
         ? MapConverter.convertBoundingBox(normalizedBoxMap)
         : Rect.zero;
+
+    final modelName = MapConverter.safeGetString(map, 'modelName');
 
     List<List<double>>? mask;
     if (map.containsKey('mask') && map['mask'] != null) {
@@ -136,6 +147,7 @@ class YOLOResult {
       confidence: confidence,
       boundingBox: boundingBox,
       normalizedBox: normalizedBox,
+      modelName: modelName,
       mask: mask,
       keypoints: keypoints,
       keypointConfidences: keypointConfidences,
@@ -159,6 +171,7 @@ class YOLOResult {
         'right': normalizedBox.right,
         'bottom': normalizedBox.bottom,
       },
+      'modelName': modelName,
     };
 
     if (mask != null) {

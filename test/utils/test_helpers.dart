@@ -45,6 +45,8 @@ class YOLOTestHelpers {
               return createMockDetectionResult();
             case 'setModel':
               return true;
+            case 'setModels':
+              return true;
             case 'setThresholds':
               return true;
             case 'setConfidenceThreshold':
@@ -125,6 +127,7 @@ class YOLOTestHelpers {
           'right': 0.2 + (i * 0.1),
           'bottom': 0.3 + (i * 0.1),
         },
+        'modelName': 'testModel',
       };
 
       if (includeKeypoints) {
@@ -225,6 +228,7 @@ class YOLOTestHelpers {
       confidence: confidence,
       boundingBox: const Rect.fromLTRB(10, 10, 110, 210),
       normalizedBox: const Rect.fromLTRB(0.1, 0.1, 0.2, 0.3),
+      modelName: 'testModel',
       keypoints: keypoints != null ? _keypointsToList(keypoints) : null,
       keypointConfidences: keypointConfidences,
       mask: mask,
@@ -384,6 +388,10 @@ class YOLOTestHelpers {
               return createMockDetectionResult();
             },
             'setModel': (call) {
+              log.add(call);
+              return true;
+            },
+            'setModels': (call) {
               log.add(call);
               return true;
             },

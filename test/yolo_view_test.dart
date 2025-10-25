@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:ultralytics_yolo/models/yolo_model_spec.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/models/yolo_result.dart';
@@ -136,7 +137,14 @@ void main() {
       // Test minimal parameters
       await tester.pumpWidget(
         const MaterialApp(
-          home: YOLOView(modelPath: 'test_model.tflite', task: YOLOTask.detect),
+          home: YOLOView(
+            models: const [
+              YOLOModelSpec(
+                modelPath: 'test_model.tflite',
+                task: YOLOTask.detect,
+              ),
+            ],
+          ),
         ),
       );
       expect(find.byType(YOLOView), findsOneWidget);
@@ -146,8 +154,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: YOLOView(
-            modelPath: 'test_model.tflite',
-            task: YOLOTask.detect,
+            models: const [
+              YOLOModelSpec(
+                modelPath: 'test_model.tflite',
+                task: YOLOTask.detect,
+              ),
+            ],
             controller: controller,
           ),
         ),
@@ -158,8 +170,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: YOLOView(
-            modelPath: 'custom_model.tflite',
-            task: YOLOTask.segment,
+            models: const [
+              YOLOModelSpec(
+                modelPath: 'custom_model.tflite',
+                task: YOLOTask.segment,
+              ),
+            ],
             cameraResolution: '1080p',
             onResult: (results) {},
             onPerformanceMetrics: (metrics) {},
@@ -176,18 +192,20 @@ void main() {
       expect(YOLOTask.values.contains(YOLOTask.segment), true);
 
       const widget1 = YOLOView(
-        modelPath: 'test_model.tflite',
-        task: YOLOTask.detect,
+        models: [
+          YOLOModelSpec(modelPath: 'test_model.tflite', task: YOLOTask.detect),
+        ],
       );
       const widget2 = YOLOView(
-        modelPath: 'test_model.tflite',
-        task: YOLOTask.segment,
+        models: [
+          YOLOModelSpec(modelPath: 'test_model.tflite', task: YOLOTask.segment),
+        ],
       );
 
-      expect(widget1.task, YOLOTask.detect);
-      expect(widget2.task, YOLOTask.segment);
-      expect(widget1.modelPath, isA<String>());
-      expect(widget1.modelPath.isNotEmpty, true);
+      expect(widget1.models.first.task, YOLOTask.detect);
+      expect(widget2.models.first.task, YOLOTask.segment);
+      expect(widget1.models.first.modelPath, isA<String>());
+      expect(widget1.models.first.modelPath.isNotEmpty, true);
     });
 
     testWidgets('handles callbacks correctly', (WidgetTester tester) async {
@@ -198,8 +216,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: YOLOView(
-            modelPath: 'assets/yolo.tflite',
-            task: YOLOTask.detect,
+            models: const [
+              YOLOModelSpec(
+                modelPath: 'assets/yolo.tflite',
+                task: YOLOTask.detect,
+              ),
+            ],
             controller: YOLOViewController()..init(mockChannel, 1),
             onResult: (results) {
               capturedResults.addAll(results);
@@ -221,7 +243,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final mockChannel = YOLOTestHelpers.setupMockChannel(
-        customResponses: {'setModel': (_) => Future.value(null)},
+        customResponses: {'setModels': (_) => Future.value(null)},
       );
       final controller = YOLOViewController()..init(mockChannel, 1);
 
@@ -229,8 +251,12 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: YOLOView(
-              modelPath: 'assets/yolo_old.tflite',
-              task: YOLOTask.detect,
+              models: const [
+                YOLOModelSpec(
+                  modelPath: 'assets/yolo_old.tflite',
+                  task: YOLOTask.detect,
+                ),
+              ],
               controller: controller,
             ),
           ),
@@ -241,8 +267,12 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: YOLOView(
-              modelPath: 'assets/yolo_new.tflite',
-              task: YOLOTask.segment,
+              models: const [
+                YOLOModelSpec(
+                  modelPath: 'assets/yolo_new.tflite',
+                  task: YOLOTask.segment,
+                ),
+              ],
               controller: controller,
             ),
           ),
@@ -266,8 +296,12 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: YOLOView(
-              modelPath: 'assets/yolo.tflite',
-              task: YOLOTask.detect,
+              models: const [
+                YOLOModelSpec(
+                  modelPath: 'assets/yolo.tflite',
+                  task: YOLOTask.detect,
+                ),
+              ],
               controller: controller,
             ),
           ),
@@ -288,7 +322,11 @@ void main() {
 
       await tester.pumpWidget(
         const MaterialApp(
-          home: YOLOView(modelPath: 'model.tflite', task: YOLOTask.detect),
+          home: YOLOView(
+            models: const [
+              YOLOModelSpec(modelPath: 'model.tflite', task: YOLOTask.detect),
+            ],
+          ),
         ),
       );
 
@@ -306,8 +344,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: YOLOView(
-            modelPath: 'assets/yolo.tflite',
-            task: YOLOTask.detect,
+            models: const [
+              YOLOModelSpec(
+                modelPath: 'assets/yolo.tflite',
+                task: YOLOTask.detect,
+              ),
+            ],
             controller: YOLOViewController()..init(mockChannel, 1),
             onStreamingData: (data) {
               capturedStreamData.add(data);
@@ -329,8 +371,12 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: YOLOView(
-              modelPath: 'test_model.tflite',
-              task: YOLOTask.detect,
+              models: const [
+                YOLOModelSpec(
+                  modelPath: 'test_model.tflite',
+                  task: YOLOTask.detect,
+                ),
+              ],
               cameraResolution: resolution,
             ),
           ),
@@ -344,8 +390,12 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: YOLOView(
-            modelPath: 'test_model.tflite',
-            task: YOLOTask.detect,
+            models: const [
+              YOLOModelSpec(
+                modelPath: 'test_model.tflite',
+                task: YOLOTask.detect,
+              ),
+            ],
             showNativeUI: true,
           ),
         ),

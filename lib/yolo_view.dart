@@ -13,11 +13,11 @@ import 'package:ultralytics_yolo/utils/map_converter.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/widgets/yolo_overlay.dart';
+import 'package:ultralytics_yolo/models/yolo_model_spec.dart';
 
 /// A Flutter widget that displays a real-time camera preview with YOLO object detection.
 class YOLOView extends StatefulWidget {
-  final String modelPath;
-  final YOLOTask task;
+  final List<YOLOModelSpec> models;
   final YOLOViewController? controller;
   final String cameraResolution;
   final Function(List<YOLOResult>)? onResult;
@@ -34,8 +34,7 @@ class YOLOView extends StatefulWidget {
 
   const YOLOView({
     super.key,
-    required this.modelPath,
-    required this.task,
+    required this.models,
     this.controller,
     this.cameraResolution = '720p',
     this.onResult,
@@ -210,11 +209,9 @@ class _YOLOViewState extends State<YOLOView> {
       _subscribeToResults();
     }
 
-    // Handle model or task changes
-    if (_platformViewId != null &&
-        (oldWidget.modelPath != widget.modelPath ||
-            oldWidget.task != widget.task)) {
-      _effectiveController.switchModel(widget.modelPath, widget.task);
+    // Handle models changes
+    if (_platformViewId != null && oldWidget.models != widget.models) {
+      _effectiveController.switchModels(widget.models);
     }
   }
 
@@ -279,8 +276,7 @@ class _YOLOViewState extends State<YOLOView> {
 
   Map<String, dynamic> _buildCreationParams() {
     final creationParams = <String, dynamic>{
-      'modelPath': widget.modelPath,
-      'task': widget.task.name,
+      'models': widget.models.map((m) => m.toMap()).toList(),
       'confidenceThreshold': widget.confidenceThreshold,
       'iouThreshold': widget.iouThreshold,
       'numItemsThreshold': _effectiveController.numItemsThreshold,

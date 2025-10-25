@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
+import 'package:ultralytics_yolo/models/yolo_model_spec.dart';
 
 void main() {
   runApp(const MyApp());
@@ -24,11 +25,14 @@ class YOLOScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('YOLO Detection')),
       body: YOLOView(
-        modelPath: 'yolo11n',
-        task: YOLOTask.detect,
+        models: const [
+          YOLOModelSpec(modelPath: 'yolo11n', task: YOLOTask.detect),
+        ],
         onResult: (results) {
           for (final result in results) {
-            debugPrint('${result.className}: ${result.confidence}');
+            debugPrint(
+              '${result.modelName} ${result.className}: ${result.confidence}',
+            );
           }
         },
       ),
