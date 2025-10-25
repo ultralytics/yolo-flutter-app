@@ -213,6 +213,9 @@ class YOLOView @JvmOverloads constructor(
     private var cameraExecutor: ExecutorService? = null
     private var imageAnalysisUseCase: ImageAnalysis? = null
 
+    // Reusable executor for multi-model inference
+    private var multiPredictExecutor: ExecutorService? = null
+
     // Zoom related
     private var currentZoomRatio = 1.0f
     private var minZoomRatio = 1.0f
@@ -650,8 +653,9 @@ class YOLOView @JvmOverloads constructor(
                 val isLandscape = orientationDevice == Configuration.ORIENTATION_LANDSCAPE
                 val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
 
-                // Prepare executor for parallel inference
-                val exec = Executors.newFixedThreadPool(predictorsList.size.coerceAtLeast(1))
+                // Prepare executor for parallel inference (reused)
+                val exec = multiPredictExecutor ?: Executors.newFixedThreadPool(predictorsList.size.coerceAtLeast(1))
+                    .also { multiPredictExecutor = it }
                 val futures = mutableListOf<java.util.concurrent.Future<Pair<String, YOLOResult?>>>()
                 for ((modelNameLocal, pred) in predictorsList) {
                     futures.add(exec.submit<Pair<String, YOLOResult?>> {
@@ -692,7 +696,7 @@ class YOLOView @JvmOverloads constructor(
                         Log.e(TAG, "Error getting future result", e)
                     }
                 }
-                exec.shutdown()
+                // keep executor for reuse
 
                 // Build combined YOLOResult for overlay (render all tasks together)
                 val combinedBoxes = mutableListOf<Box>()
@@ -2025,26 +2029,56 @@ class YOLOView @JvmOverloads constructor(
                     return@execute
                 }
 
+                // Prevent redundant reloads: compare incoming spec vs. currently loaded predictors by modelName (basename)
+                val incomingNames = models.map { it.first.substringAfterLast("/").substringBeforeLast(".") }
+                val currentNames = predictorsList.map { it.first }
+                val isSameList = incomingNames.size == currentNames.size &&
+                        incomingNames.zip(currentNames).all { (a, b) -> a == b }
+                if (isSameList) {
+                    Log.d(TAG, "setModels ignored: identical model list already loaded")
+                    post { callback?.invoke(true) }
+                    return@execute
+                }
+
+                // Shutdown previous inference executor to free resources
+                multiPredictExecutor?.let { exec ->
+                    exec.shutdownNow()
+                    multiPredictExecutor = null
+                }
                 // Load predictors in parallel
                 val pool = Executors.newFixedThreadPool(models.size.coerceAtLeast(1))
                 val futures = models.map { (path, task) ->
                     pool.submit<Pair<String, Predictor>?> {
                         try {
                             val labels = loadLabels(path)
-                            val predictor: Predictor = when (task) {
-                                YOLOTask.DETECT -> ObjectDetector(context, path, labels, useGpu = useGpu)
-                                YOLOTask.SEGMENT -> Segmenter(context, path, labels, useGpu = useGpu)
-                                YOLOTask.CLASSIFY -> Classifier(context, path, labels, useGpu = useGpu)
-                                YOLOTask.POSE -> PoseEstimator(context, path, labels, useGpu = useGpu)
-                                YOLOTask.OBB -> ObbDetector(context, path, labels, useGpu = useGpu)
+                            fun buildPredictor(gpu: Boolean): Predictor {
+                                return when (task) {
+                                    YOLOTask.DETECT -> ObjectDetector(context, path, labels, useGpu = gpu)
+                                    YOLOTask.SEGMENT -> Segmenter(context, path, labels, useGpu = gpu)
+                                    YOLOTask.CLASSIFY -> Classifier(context, path, labels, useGpu = gpu)
+                                    YOLOTask.POSE -> PoseEstimator(context, path, labels, useGpu = gpu)
+                                    YOLOTask.OBB -> ObbDetector(context, path, labels, useGpu = gpu)
+                                }
+                            }
+
+                            var pred: Predictor? = null
+                            if (useGpu) {
+                                try {
+                                    pred = buildPredictor(true)
+                                } catch (gpuErr: Exception) {
+                                    Log.w(TAG, "GPU init failed for $path, falling back to CPU", gpuErr)
+                                }
+                            }
+                            if (pred == null) {
+                                pred = buildPredictor(false)
                             }
                             // Apply thresholds
-                            predictor.setConfidenceThreshold(confidenceThreshold)
-                            predictor.setIouThreshold(iouThreshold)
-                            predictor.setNumItemsThreshold(numItemsThreshold)
+                            pred.setConfidenceThreshold(confidenceThreshold)
+                            pred.setIouThreshold(iouThreshold)
+                            pred.setNumItemsThreshold(numItemsThreshold)
                             // Derive modelName (basename without extension)
                             val modelNameLocal = path.substringAfterLast("/").substringBeforeLast(".")
-                            Pair(modelNameLocal, predictor)
+                            Pair(modelNameLocal, pred)
                         } catch (e: Exception) {
                             Log.e(TAG, "Failed to load predictor for $path", e)
                             null
@@ -2069,6 +2103,9 @@ class YOLOView @JvmOverloads constructor(
                     // Replace with new list
                     predictorsList = loaded
                     modelName = if (loaded.size == 1) loaded.first().first else "multi"
+                    // Recreate reusable inference executor matching number of models
+                    multiPredictExecutor?.shutdownNow()
+                    multiPredictExecutor = Executors.newFixedThreadPool(loaded.size.coerceAtLeast(1))
                     modelLoadCallback?.invoke(loaded.isNotEmpty())
                     callback?.invoke(loaded.isNotEmpty())
                     Log.d(TAG, "Loaded ${loaded.size} predictors")

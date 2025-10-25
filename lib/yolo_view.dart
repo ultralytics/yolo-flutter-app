@@ -1,7 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:async';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
@@ -210,7 +210,8 @@ class _YOLOViewState extends State<YOLOView> {
     }
 
     // Handle models changes
-    if (_platformViewId != null && oldWidget.models != widget.models) {
+    if (_platformViewId != null &&
+        !listEquals(oldWidget.models, widget.models)) {
       _effectiveController.switchModels(widget.models);
     }
   }
