@@ -353,6 +353,36 @@ void main() {
       );
     });
 
+    test('ChannelConfig handles default instance ID correctly', () {
+      // Test that 'default' instance ID does not append suffix
+      final defaultChannel = ChannelConfig.createSingleImageChannel(
+        instanceId: 'default',
+      );
+      expect(
+        defaultChannel.name,
+        'yolo_single_image_channel',
+        reason: 'Default instance should use base channel name without suffix',
+      );
+
+      // Test that null instance ID also uses base channel name
+      final nullChannel = ChannelConfig.createSingleImageChannel();
+      expect(
+        nullChannel.name,
+        'yolo_single_image_channel',
+        reason: 'Null instance should use base channel name without suffix',
+      );
+
+      // Test that custom instance ID appends suffix
+      final customChannel = ChannelConfig.createSingleImageChannel(
+        instanceId: 'custom_123',
+      );
+      expect(
+        customChannel.name,
+        'yolo_single_image_channel_custom_123',
+        reason: 'Custom instance should append instance ID as suffix',
+      );
+    });
+
     test('ErrorHandler handles different exception types', () {
       final platformException = PlatformException(
         code: 'MODEL_NOT_FOUND',
