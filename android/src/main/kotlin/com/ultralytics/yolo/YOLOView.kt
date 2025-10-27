@@ -204,6 +204,11 @@ class YOLOView @JvmOverloads constructor(
     private var task: YOLOTask = YOLOTask.DETECT
     private var modelName: String = "Model"
 
+    // Overlay diagnostics
+    private var overlayLastBranch: String = ""
+    private var overlayLastBoxesDrawn: Int = 0
+    private var boxModelNames: MutableList<String> = mutableListOf()
+
     // Camera config
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
@@ -642,6 +647,7 @@ class YOLOView @JvmOverloads constructor(
         }
         // Multi-model path: if multiple predictors are configured, run predictions in parallel and stream combined results
         if (predictorsList.isNotEmpty()) {
+            Log.d(TAG, "Check predictors list for multi-model inference: ${predictorsList.size} models configured")
             // Check if we should run inference on this frame
             if (!shouldRunInference()) {
                 Log.d(TAG, "Skipping inference due to frequency control (multi-model)")
@@ -664,16 +670,16 @@ class YOLOView @JvmOverloads constructor(
                             val res = if (isLandscape) {
                                 pred.predict(
                                     bitmap,
-                                    imageProxy.width,
-                                    imageProxy.height,
+                                    w,
+                                    h,
                                     rotateForCamera = true,
                                     isLandscape = isLandscape
                                 )
                             } else {
                                 pred.predict(
                                     bitmap,
-                                    imageProxy.height,
-                                    imageProxy.width,
+                                    h,
+                                    w,
                                     rotateForCamera = true,
                                     isLandscape = isLandscape
                                 )
@@ -704,6 +710,7 @@ class YOLOView @JvmOverloads constructor(
                 val combinedObb = mutableListOf<OBBResult>()
                 val combinedMasksRows = mutableListOf<List<List<Float>>>()
 
+                val combinedBoxModelNames = mutableListOf<String>()
                 var totalSpeed = 0.0
                 var fpsValue: Double? = null
 
@@ -714,8 +721,9 @@ class YOLOView @JvmOverloads constructor(
                 // Prefer names from the first model (overlay uses cls/index primarily)
                 val names = perModelResults.firstOrNull()?.second?.names ?: emptyList()
 
-                for ((_, res) in perModelResults) {
+                for ((modelNameLocal, res) in perModelResults) {
                     combinedBoxes.addAll(res.boxes)
+                    repeat(res.boxes.size) { combinedBoxModelNames.add(modelNameLocal) }
                     combinedKeypoints.addAll(res.keypointsList)
                     combinedObb.addAll(res.obb)
                     res.masks?.let { m ->
@@ -729,8 +737,11 @@ class YOLOView @JvmOverloads constructor(
 
                 val combinedMasks = if (combinedMasksRows.isNotEmpty()) Masks(combinedMasksRows, null) else null
 
+                val baseShape = perModelResults.firstOrNull()?.second?.origShape
+                    ?: Size(w, h)
+
                 val combinedResult = YOLOResult(
-                    origShape = Size(origW, origH),
+                    origShape = baseShape,
                     boxes = combinedBoxes,
                     masks = combinedMasks,
                     probs = null,
@@ -743,6 +754,7 @@ class YOLOView @JvmOverloads constructor(
                     names = names
                 )
 
+                boxModelNames = combinedBoxModelNames
                 inferenceResult = combinedResult
 
                 // Streaming callback for combined results (with output throttling)
@@ -783,6 +795,9 @@ class YOLOView @JvmOverloads constructor(
                         }
                         enhancedStreamData["timestamp"] = System.currentTimeMillis()
                         enhancedStreamData["frameNumber"] = frameNumberCounter++
+                        // Overlay diagnostics
+                        enhancedStreamData["overlayBranch"] = overlayLastBranch
+                        enhancedStreamData["boxesDrawn"] = overlayLastBoxesDrawn
 
                         callback.invoke(enhancedStreamData)
                     } else {
@@ -795,79 +810,82 @@ class YOLOView @JvmOverloads constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Error during parallel multi-model prediction", e)
             }
-            imageProxy.close()
-            return
-        }
-
-        predictor?.let { p ->
-            // Check if we should run inference on this frame
-            if (!shouldRunInference()) {
-                Log.d(TAG, "Skipping inference due to frequency control")
-                imageProxy.close()
-                return
-            }
-
-            try {
-                // Get device orientation
-                val orientation = context.resources.configuration.orientation
-                val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
-
-                // Check if using front camera
-                val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
-
-                // Set camera facing information in predictor
-                (p as? BasePredictor)?.isFrontCamera = isFrontCamera
-
-                // For camera feed, we typically rotate the bitmap
-                // In landscape mode, we don't rotate, so width/height should match actual bitmap dimensions
-                val result = if (isLandscape) {
-                    p.predict(bitmap, w, h, rotateForCamera = true, isLandscape = isLandscape)
-                } else {
-                    // In portrait mode, keep the original behavior (h, w)
-                    p.predict(bitmap, h, w, rotateForCamera = true, isLandscape = isLandscape)
-                }
-
-                // Apply originalImage if streaming config requires it
-                val resultWithOriginalImage = if (streamConfig?.includeOriginalImage == true) {
-                    result.copy(originalImage = bitmap)  // Reuse bitmap from ImageProxy conversion
-                } else {
-                    result
-                }
-
-                inferenceResult = resultWithOriginalImage
-
-                // Log
-
-                // Callback
-                inferenceCallback?.invoke(resultWithOriginalImage)
-
-                // Streaming callback (with output throttling)
-                streamCallback?.let { callback ->
-                    if (shouldProcessFrame()) {
-                        updateLastInferenceTime()
-
-                        // Convert to stream data and send
-                        val streamData = convertResultToStreamData(resultWithOriginalImage)
-                        // Add timestamp and frame info
-                        val enhancedStreamData = HashMap<String, Any>(streamData)
-                        enhancedStreamData["timestamp"] = System.currentTimeMillis()
-                        enhancedStreamData["frameNumber"] = frameNumberCounter++
-
-                        callback.invoke(enhancedStreamData)
-                    } else {
-                        Log.d(TAG, "Skipping frame output due to throttling")
-                    }
-                }
-
-                // Update overlay
-                post {
-                    overlayView.invalidate()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during prediction", e)
-            }
         }
         imageProxy.close()
+        return
+        // predictor?.let { p ->
+        //     // Check if we should run inference on this frame
+        //     if (!shouldRunInference()) {
+        //         Log.d(TAG, "Skipping inference due to frequency control")
+        //         imageProxy.close()
+        //         return
+        //     }
+
+        //     try {
+        //         // Get device orientation
+        //         val orientation = context.resources.configuration.orientation
+        //         val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
+
+        //         // Check if using front camera
+        //         val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
+
+        //         // Set camera facing information in predictor
+        //         (p as? BasePredictor)?.isFrontCamera = isFrontCamera
+
+        //         // For camera feed, we typically rotate the bitmap
+        //         // In landscape mode, we don't rotate, so width/height should match actual bitmap dimensions
+        //         val result = if (isLandscape) {
+        //             p.predict(bitmap, w, h, rotateForCamera = true, isLandscape = isLandscape)
+        //         } else {
+        //             // In portrait mode, keep the original behavior (h, w)
+        //             p.predict(bitmap, h, w, rotateForCamera = true, isLandscape = isLandscape)
+        //         }
+
+        //         // Apply originalImage if streaming config requires it
+        //         val resultWithOriginalImage = if (streamConfig?.includeOriginalImage == true) {
+        //             result.copy(originalImage = bitmap)  // Reuse bitmap from ImageProxy conversion
+        //         } else {
+        //             result
+        //         }
+
+        //         inferenceResult = resultWithOriginalImage
+        //         boxModelNames = MutableList(resultWithOriginalImage.boxes.size) { modelName }
+
+        //         // Log
+
+        //         // Callback
+        //         inferenceCallback?.invoke(resultWithOriginalImage)
+
+        //         // Streaming callback (with output throttling)
+        //         streamCallback?.let { callback ->
+        //             if (shouldProcessFrame()) {
+        //                 updateLastInferenceTime()
+
+        //                 // Convert to stream data and send
+        //                 val streamData = convertResultToStreamData(resultWithOriginalImage)
+        //                 // Add timestamp and frame info
+        //                 val enhancedStreamData = HashMap<String, Any>(streamData)
+        //                 enhancedStreamData["timestamp"] = System.currentTimeMillis()
+        //                 enhancedStreamData["frameNumber"] = frameNumberCounter++
+        //                 // Overlay diagnostics
+        //                 enhancedStreamData["overlayBranch"] = overlayLastBranch
+        //                 enhancedStreamData["boxesDrawn"] = overlayLastBoxesDrawn
+
+        //                 callback.invoke(enhancedStreamData)
+        //             } else {
+        //                 Log.d(TAG, "Skipping frame output due to throttling")
+        //             }
+        //         }
+
+        //         // Update overlay
+        //         post {
+        //             overlayView.invalidate()
+        //         }
+        //     } catch (e: Exception) {
+        //         Log.e(TAG, "Error during prediction", e)
+        //     }
+        // }
+        // imageProxy.close()
     }
 
     // endregion
@@ -899,6 +917,9 @@ class YOLOView @JvmOverloads constructor(
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             val result = inferenceResult ?: return
+            // Reset diagnostics at draw start
+            overlayLastBoxesDrawn = 0
+            overlayLastBranch = "none"
 
             // Only draw overlays if showOverlays is true
             if (!showOverlays) {
@@ -940,6 +961,8 @@ class YOLOView @JvmOverloads constructor(
                     Log.d(TAG, "Drawing DETECT boxes: ${result.boxes.size}")
 
                     // Debug first box coordinates
+                    overlayLastBranch = "unified"
+                    overlayLastBoxesDrawn = result.boxes.size
                     if (result.boxes.isNotEmpty()) {
                         val firstBox = result.boxes[0]
                         Log.d(TAG, "=== First Box Debug ===")
@@ -953,7 +976,7 @@ class YOLOView @JvmOverloads constructor(
                         )
                     }
 
-                    for (box in result.boxes) {
+                    for ((i, box) in result.boxes.withIndex()) {
                         val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
                         val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
                         val newColor = Color.argb(
@@ -1012,7 +1035,8 @@ class YOLOView @JvmOverloads constructor(
                         )
 
                         // Label text
-                        val labelText = "${box.cls} ${"%.1f".format(box.conf * 100)}%"
+                        val modelLabel = if (boxModelNames.size > i) boxModelNames[i] else modelName
+                        val labelText = "${box.cls} (${modelLabel}) ${"%.1f".format(box.conf * 100)}% native"
                         paint.textSize = 40f
                         val fm = paint.fontMetrics
                         val textWidth = paint.measureText(labelText)
