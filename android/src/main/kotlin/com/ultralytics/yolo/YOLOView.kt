@@ -213,6 +213,10 @@ class YOLOView @JvmOverloads constructor(
     private var inferenceResult: YOLOResult? = null
     private var predictor: Predictor? = null
     private var predictorsList: List<Pair<String, Predictor>> = emptyList()
+    private val predictorsLock = Any()
+
+    @Volatile
+    private var modelGeneration: Int = 0
     private var task: YOLOTask = YOLOTask.DETECT
     private var modelName: String = "Model"
 
@@ -774,10 +778,11 @@ class YOLOView @JvmOverloads constructor(
             return
         }
         // Multi-model path: if multiple predictors are configured, run predictions in parallel and stream combined results
-        if (predictorsList.isNotEmpty()) {
+        val localPredictors = synchronized(predictorsLock) { predictorsList.toList() }
+        if (localPredictors.isNotEmpty()) {
             Log.d(
                 TAG,
-                "Check predictors list for multi-model inference: ${predictorsList.size} models configured"
+                "Check predictors list for multi-model inference: ${localPredictors.size} models configured"
             )
             // Check if we should run inference on this frame
             if (!shouldRunInference()) {
@@ -791,12 +796,13 @@ class YOLOView @JvmOverloads constructor(
                 val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
 
                 // Prepare executor for parallel inference (reused)
+                val generationSnapshot = modelGeneration
                 val exec = multiPredictExecutor
-                    ?: Executors.newFixedThreadPool(predictorsList.size.coerceAtLeast(1))
+                    ?: Executors.newFixedThreadPool(localPredictors.size.coerceAtLeast(1))
                         .also { multiPredictExecutor = it }
                 val futures =
                     mutableListOf<java.util.concurrent.Future<Pair<String, YOLOResult?>>>()
-                for ((modelNameLocal, pred) in predictorsList) {
+                for ((modelNameLocal, pred) in localPredictors) {
                     futures.add(exec.submit<Pair<String, YOLOResult?>> {
                         try {
                             (pred as? BasePredictor)?.isFrontCamera = isFrontCamera
@@ -840,6 +846,11 @@ class YOLOView @JvmOverloads constructor(
                     }
                 }
                 // keep executor for reuse
+                if (generationSnapshot != modelGeneration) {
+                    Log.d(TAG, "Model generation changed; discarding frame")
+                    imageProxy.close()
+                    return
+                }
 
                 // Build combined YOLOResult for overlay (render all tasks together)
                 val combinedBoxes = mutableListOf<Box>()
@@ -1094,181 +1105,181 @@ class YOLOView @JvmOverloads constructor(
             val dy = (vh - scaledH) / 2f
 
             // Check if using front camera
-                        val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
+            val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
 
-                        // Unified overlay: if multiple predictors loaded, draw all modalities regardless of task
-                        if (predictorsList.isNotEmpty()) {
-                            overlayLastBranch = "unified"
-                            overlayLastBoxesDrawn = result.boxes.size
+            // Unified overlay: if multiple predictors loaded, draw all modalities regardless of task
+            if (predictorsList.isNotEmpty()) {
+                overlayLastBranch = "unified"
+                overlayLastBoxesDrawn = result.boxes.size
 
-                            // Draw DETECTION boxes
-                            for ((i, box) in result.boxes.withIndex()) {
-                                val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
-                                val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
-                                val newColor = Color.argb(
-                                    alpha,
-                                    Color.red(baseColor),
-                                    Color.green(baseColor),
-                                    Color.blue(baseColor)
-                                )
+                // Draw DETECTION boxes
+                for ((i, box) in result.boxes.withIndex()) {
+                    val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
+                    val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
+                    val newColor = Color.argb(
+                        alpha,
+                        Color.red(baseColor),
+                        Color.green(baseColor),
+                        Color.blue(baseColor)
+                    )
 
-                                var left = box.xywh.left * scale + dx
-                                var top = box.xywh.top * scale + dy
-                                var right = box.xywh.right * scale + dx
-                                var bottom = box.xywh.bottom * scale + dy
+                    var left = box.xywh.left * scale + dx
+                    var top = box.xywh.top * scale + dy
+                    var right = box.xywh.right * scale + dx
+                    var bottom = box.xywh.bottom * scale + dy
 
-                                if (isFrontCamera) {
-                                    val flippedLeft = vw - right
-                                    val flippedRight = vw - left
-                                    left = flippedLeft
-                                    right = flippedRight
-                                }
+                    if (isFrontCamera) {
+                        val flippedLeft = vw - right
+                        val flippedRight = vw - left
+                        left = flippedLeft
+                        right = flippedRight
+                    }
 
-                                paint.color = newColor
-                                paint.style = Paint.Style.STROKE
-                                paint.strokeWidth = BOX_LINE_WIDTH
-                                canvas.drawRoundRect(
-                                    left, top, right, bottom,
-                                    BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
-                                    paint
-                                )
+                    paint.color = newColor
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = BOX_LINE_WIDTH
+                    canvas.drawRoundRect(
+                        left, top, right, bottom,
+                        BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
+                        paint
+                    )
 
-                                // Label text with model name
-                                val modelLabel = if (boxModelNames.size > i) boxModelNames[i] else modelName
-                                val labelText = "${box.cls} (${modelLabel}) ${"%.1f".format(box.conf * 100)}% native"
-                                paint.textSize = 40f
-                                val fm = paint.fontMetrics
-                                val textWidth = paint.measureText(labelText)
-                                val textHeight = fm.bottom - fm.top
-                                val pad = 8f
+                    // Label text with model name
+                    val modelLabel = if (boxModelNames.size > i) boxModelNames[i] else modelName
+                    val labelText = "${box.cls} (${modelLabel}) ${"%.1f".format(box.conf * 100)}% native"
+                    paint.textSize = 40f
+                    val fm = paint.fontMetrics
+                    val textWidth = paint.measureText(labelText)
+                    val textHeight = fm.bottom - fm.top
+                    val pad = 8f
 
-                                val labelBoxHeight = textHeight + 2 * pad
-                                var labelBottom = top
-                                var labelTop = labelBottom - labelBoxHeight
-                                if (labelTop < 0) {
-                                    labelTop = top
-                                    labelBottom = labelTop + labelBoxHeight
-                                }
-                                val labelLeft = left
-                                val labelRight = left + textWidth + 2 * pad
-                                val bgRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
+                    val labelBoxHeight = textHeight + 2 * pad
+                    var labelBottom = top
+                    var labelTop = labelBottom - labelBoxHeight
+                    if (labelTop < 0) {
+                        labelTop = top
+                        labelBottom = labelTop + labelBoxHeight
+                    }
+                    val labelLeft = left
+                    val labelRight = left + textWidth + 2 * pad
+                    val bgRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
 
-                                paint.style = Paint.Style.FILL
-                                paint.color = newColor
-                                canvas.drawRoundRect(bgRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
+                    paint.style = Paint.Style.FILL
+                    paint.color = newColor
+                    canvas.drawRoundRect(bgRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
 
-                                paint.color = Color.WHITE
-                                val centerY = (bgRect.top + bgRect.bottom) / 2
-                                val baseline = centerY - (fm.descent + fm.ascent) / 2
-                                canvas.drawText(labelText, bgRect.left + pad, baseline, paint)
+                    paint.color = Color.WHITE
+                    val centerY = (bgRect.top + bgRect.bottom) / 2
+                    val baseline = centerY - (fm.descent + fm.ascent) / 2
+                    canvas.drawText(labelText, bgRect.left + pad, baseline, paint)
+                }
+
+                // Draw SEGMENTATION mask if available
+                result.masks?.combinedMask?.let { maskBitmap ->
+                    val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
+                    val dst = RectF(dx, dy, dx + scaledW, dy + scaledH)
+                    val maskPaint = Paint().apply { alpha = 128 }
+
+                    if (isFrontCamera) {
+                        canvas.save()
+                        canvas.translate(vw / 2f, 0f)
+                        canvas.scale(-1f, 1f)
+                        canvas.translate(-vw / 2f, 0f)
+                        canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                        canvas.restore()
+                    } else {
+                        canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                    }
+                }
+
+                // Draw POSE keypoints/skeleton if available
+                for (person in result.keypointsList) {
+                    val points = arrayOfNulls<PointF>(person.xyn.size)
+                    for (i in person.xyn.indices) {
+                        val kp = person.xyn[i]
+                        val conf = person.conf[i]
+                        if (conf > 0.25f) {
+                            val pxCam = kp.first * iw
+                            val pyCam = kp.second * ih
+                            var px = pxCam * scale + dx
+                            var py = pyCam * scale + dy
+
+                            if (isFrontCamera) {
+                                px = vw - px
                             }
 
-                            // Draw SEGMENTATION mask if available
-                            result.masks?.combinedMask?.let { maskBitmap ->
-                                val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
-                                val dst = RectF(dx, dy, dx + scaledW, dy + scaledH)
-                                val maskPaint = Paint().apply { alpha = 128 }
-
-                                if (isFrontCamera) {
-                                    canvas.save()
-                                    canvas.translate(vw / 2f, 0f)
-                                    canvas.scale(-1f, 1f)
-                                    canvas.translate(-vw / 2f, 0f)
-                                    canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
-                                    canvas.restore()
-                                } else {
-                                    canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
-                                }
-                            }
-
-                            // Draw POSE keypoints/skeleton if available
-                            for (person in result.keypointsList) {
-                                val points = arrayOfNulls<PointF>(person.xyn.size)
-                                for (i in person.xyn.indices) {
-                                    val kp = person.xyn[i]
-                                    val conf = person.conf[i]
-                                    if (conf > 0.25f) {
-                                        val pxCam = kp.first * iw
-                                        val pyCam = kp.second * ih
-                                        var px = pxCam * scale + dx
-                                        var py = pyCam * scale + dy
-
-                                        if (isFrontCamera) {
-                                            px = vw - px
-                                        }
-
-                                        val colorIdx = if (i < kptColorIndices.size) kptColorIndices[i] else 0
-                                        val rgbArray = posePalette[colorIdx % posePalette.size]
-                                        paint.color = Color.argb(
-                                            255,
-                                            rgbArray[0].toInt().coerceIn(0, 255),
-                                            rgbArray[1].toInt().coerceIn(0, 255),
-                                            rgbArray[2].toInt().coerceIn(0, 255)
-                                        )
-                                        paint.style = Paint.Style.FILL
-                                        canvas.drawCircle(px, py, KEYPOINT_LINE_WIDTH, paint)
-                                        points[i] = PointF(px, py)
-                                    }
-                                }
-
-                                // Skeleton lines
-                                paint.style = Paint.Style.STROKE
-                                paint.strokeWidth = KEYPOINT_LINE_WIDTH
-                                for (edgeIdx in skeleton.indices) {
-                                    val (a, b) = skeleton[edgeIdx]
-                                    val p1 = points.getOrNull(a - 1)
-                                    val p2 = points.getOrNull(b - 1)
-                                    if (p1 != null && p2 != null) {
-                                        val colorIdx = if (edgeIdx < limbColorIndices.size) limbColorIndices[edgeIdx] else 0
-                                        val rgbArray = posePalette[colorIdx % posePalette.size]
-                                        paint.color = Color.argb(
-                                            255,
-                                            rgbArray[0].toInt().coerceIn(0, 255),
-                                            rgbArray[1].toInt().coerceIn(0, 255),
-                                            rgbArray[2].toInt().coerceIn(0, 255)
-                                        )
-                                        canvas.drawLine(p1.x, p1.y, p2.x, p2.y, paint)
-                                    }
-                                }
-                            }
-
-                            // Draw OBB polygons if available
-                            for (obbRes in result.obb) {
-                                val alpha = (obbRes.confidence * 255).toInt().coerceIn(0, 255)
-                                val baseColor = ultralyticsColors[obbRes.index % ultralyticsColors.size]
-                                val newColor = Color.argb(
-                                    alpha,
-                                    Color.red(baseColor),
-                                    Color.green(baseColor),
-                                    Color.blue(baseColor)
-                                )
-
-                                paint.color = newColor
-                                paint.style = Paint.Style.STROKE
-                                paint.strokeWidth = BOX_LINE_WIDTH
-
-                                val polygon = obbRes.box.toPolygon().map { pt ->
-                                    var x = pt.x * scaledW + dx
-                                    val y = pt.y * scaledH + dy
-                                    if (isFrontCamera) x = vw - x
-                                    PointF(x, y)
-                                }
-
-                                val path = android.graphics.Path()
-                                if (polygon.isNotEmpty()) {
-                                    path.moveTo(polygon[0].x, polygon[0].y)
-                                    for (k in 1 until polygon.size) {
-                                        path.lineTo(polygon[k].x, polygon[k].y)
-                                    }
-                                    path.close()
-                                    canvas.drawPath(path, paint)
-                                }
-                            }
-
-                            return
+                            val colorIdx = if (i < kptColorIndices.size) kptColorIndices[i] else 0
+                            val rgbArray = posePalette[colorIdx % posePalette.size]
+                            paint.color = Color.argb(
+                                255,
+                                rgbArray[0].toInt().coerceIn(0, 255),
+                                rgbArray[1].toInt().coerceIn(0, 255),
+                                rgbArray[2].toInt().coerceIn(0, 255)
+                            )
+                            paint.style = Paint.Style.FILL
+                            canvas.drawCircle(px, py, KEYPOINT_LINE_WIDTH, paint)
+                            points[i] = PointF(px, py)
                         }
+                    }
 
-                        when (task) {
+                    // Skeleton lines
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = KEYPOINT_LINE_WIDTH
+                    for (edgeIdx in skeleton.indices) {
+                        val (a, b) = skeleton[edgeIdx]
+                        val p1 = points.getOrNull(a - 1)
+                        val p2 = points.getOrNull(b - 1)
+                        if (p1 != null && p2 != null) {
+                            val colorIdx = if (edgeIdx < limbColorIndices.size) limbColorIndices[edgeIdx] else 0
+                            val rgbArray = posePalette[colorIdx % posePalette.size]
+                            paint.color = Color.argb(
+                                255,
+                                rgbArray[0].toInt().coerceIn(0, 255),
+                                rgbArray[1].toInt().coerceIn(0, 255),
+                                rgbArray[2].toInt().coerceIn(0, 255)
+                            )
+                            canvas.drawLine(p1.x, p1.y, p2.x, p2.y, paint)
+                        }
+                    }
+                }
+
+                // Draw OBB polygons if available
+                for (obbRes in result.obb) {
+                    val alpha = (obbRes.confidence * 255).toInt().coerceIn(0, 255)
+                    val baseColor = ultralyticsColors[obbRes.index % ultralyticsColors.size]
+                    val newColor = Color.argb(
+                        alpha,
+                        Color.red(baseColor),
+                        Color.green(baseColor),
+                        Color.blue(baseColor)
+                    )
+
+                    paint.color = newColor
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = BOX_LINE_WIDTH
+
+                    val polygon = obbRes.box.toPolygon().map { pt ->
+                        var x = pt.x * scaledW + dx
+                        val y = pt.y * scaledH + dy
+                        if (isFrontCamera) x = vw - x
+                        PointF(x, y)
+                    }
+
+                    val path = android.graphics.Path()
+                    if (polygon.isNotEmpty()) {
+                        path.moveTo(polygon[0].x, polygon[0].y)
+                        for (k in 1 until polygon.size) {
+                            path.lineTo(polygon[k].x, polygon[k].y)
+                        }
+                        path.close()
+                        canvas.drawPath(path, paint)
+                    }
+                }
+
+                return
+            }
+
+            when (task) {
                 // ----------------------------------------
                 // DETECT
                 // ----------------------------------------
@@ -2443,8 +2454,28 @@ class YOLOView @JvmOverloads constructor(
     ) {
         Executors.newSingleThreadExecutor().execute {
             try {
+                modelGeneration++
                 if (models.isEmpty()) {
-                    post { callback?.invoke(false) }
+                    try {
+                        // Shutdown inference executor
+                        multiPredictExecutor?.shutdownNow()
+                        multiPredictExecutor = null
+                        // Close and clear predictors
+                        (predictor as? BasePredictor)?.close()
+                        predictor = null
+                        predictorsList.forEach { (_, p) -> (p as? BasePredictor)?.close() }
+                        predictorsList = emptyList()
+                        // Clear inference state
+                        inferenceResult = null
+                        boxModelNames.clear()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error while clearing models", e)
+                    } finally {
+                        post {
+                            modelLoadCallback?.invoke(true)
+                            callback?.invoke(true)
+                        }
+                    }
                     return@execute
                 }
 
@@ -2506,7 +2537,7 @@ class YOLOView @JvmOverloads constructor(
                             }
 
                             var pred: Predictor? = null
-                            if (useGpu) {
+                            if (useGpu && models.size == 1) {
                                 try {
                                     pred = buildPredictor(true)
                                 } catch (gpuErr: Exception) {
@@ -2546,17 +2577,27 @@ class YOLOView @JvmOverloads constructor(
 
                 post {
                     // Release previous predictor(s)
+                    val oldPredictors = synchronized(predictorsLock) {
+                        val old = predictorsList
+                        predictorsList = loaded
+                        old
+                    }
                     (predictor as? BasePredictor)?.close()
                     predictor = null
-                    predictorsList.forEach { (_, p) -> (p as? BasePredictor)?.close() }
-                    // Replace with new list
-                    predictorsList = loaded
                     modelName = if (loaded.size == 1) loaded.first().first else "multi"
                     // Recreate reusable inference executor matching number of models
                     multiPredictExecutor?.shutdownNow()
                     multiPredictExecutor =
                         Executors.newFixedThreadPool(loaded.size.coerceAtLeast(1))
                     modelLoadCallback?.invoke(loaded.isNotEmpty())
+                    // Delay closing old predictors to avoid GPU delegate races
+                    Executors.newSingleThreadExecutor().execute {
+                        try {
+                            Thread.sleep(200)
+                        } catch (_: InterruptedException) {
+                        }
+                        oldPredictors.forEach { (_, p) -> (p as? BasePredictor)?.close() }
+                    }
                     callback?.invoke(loaded.isNotEmpty())
                     Log.d(TAG, "Loaded ${loaded.size} predictors")
                 }
