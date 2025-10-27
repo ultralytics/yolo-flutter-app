@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -237,13 +238,22 @@ class _YOLOViewState extends State<YOLOView> {
       children: [
         _buildCameraView(),
         if (widget.showOverlays && _currentDetections.isNotEmpty)
-          YOLOOverlay(
-            detections: _currentDetections,
-            showConfidence: true,
-            showClassName: true,
-            theme: widget.overlayTheme,
-            onDetectionTap: (detection) {
-              logInfo('YOLOView: Detection tapped: ${detection.className}');
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final viewSize = Size(
+                constraints.maxWidth,
+                constraints.maxHeight,
+              );
+              final transformed = _transformDetectionsForView(viewSize);
+              return YOLOOverlay(
+                detections: transformed,
+                showConfidence: true,
+                showClassName: true,
+                theme: widget.overlayTheme,
+                onDetectionTap: (detection) {
+                  logInfo('YOLOView: Detection tapped: ${detection.className}');
+                },
+              );
             },
           ),
       ],
@@ -358,6 +368,85 @@ class _YOLOViewState extends State<YOLOView> {
       default:
         return null;
     }
+  }
+
+  // Helper: transform detections from image-space to view-space using normalizedBox and center-crop
+  List<YOLOResult> _transformDetectionsForView(Size viewSize) {
+    if (_currentDetections.isEmpty) return _currentDetections;
+
+    // Try to estimate source image width/height from first detection using normalized vs pixel box
+    double? iw;
+    double? ih;
+    for (final d in _currentDetections) {
+      final nb = d.normalizedBox;
+      final bb = d.boundingBox;
+      final nw = (nb.right - nb.left).abs();
+      final nh = (nb.bottom - nb.top).abs();
+      if (nw > 0 && nh > 0 && bb.width > 0 && bb.height > 0) {
+        iw = bb.width / nw;
+        ih = bb.height / nh;
+        break;
+      }
+    }
+    if (iw == null || ih == null || iw <= 0 || ih <= 0) {
+      // Fallback: no transform
+      return _currentDetections;
+    }
+
+    final vw = viewSize.width;
+    final vh = viewSize.height;
+    if (vw <= 0 || vh <= 0) return _currentDetections;
+
+    final scale = math.max(vw / iw, vh / ih);
+    final scaledW = iw * scale;
+    final scaledH = ih * scale;
+    final dx = (vw - scaledW) / 2.0;
+    final dy = (vh - scaledH) / 2.0;
+
+    Rect _toViewRect(Rect imgRect) {
+      double left = imgRect.left * scale + dx;
+      double top = imgRect.top * scale + dy;
+      double right = imgRect.right * scale + dx;
+      double bottom = imgRect.bottom * scale + dy;
+
+      // If front camera mirroring is needed, we would flip horizontally here.
+      // Without an explicit signal from native, keep as-is to avoid double flipping.
+      // Example (if needed):
+      // if (_isFrontCamera) {
+      //   final flippedLeft = vw - right;
+      //   final flippedRight = vw - left;
+      //   left = flippedLeft;
+      //   right = flippedRight;
+      // }
+
+      // Clamp to view bounds
+      left = left.clamp(0.0, vw);
+      right = right.clamp(0.0, vw);
+      top = top.clamp(0.0, vh);
+      bottom = bottom.clamp(0.0, vh);
+
+      return Rect.fromLTRB(left, top, right, bottom);
+    }
+
+    // Create transformed copies (only boundingBox is changed, normalizedBox stays as original)
+    final out = <YOLOResult>[];
+    for (final d in _currentDetections) {
+      final transformedBox = _toViewRect(d.boundingBox);
+      out.add(
+        YOLOResult(
+          classIndex: d.classIndex,
+          className: d.className,
+          confidence: d.confidence,
+          boundingBox: transformedBox,
+          normalizedBox: d.normalizedBox,
+          modelName: d.modelName,
+          mask: d.mask,
+          keypoints: d.keypoints,
+          keypointConfidences: d.keypointConfidences,
+        ),
+      );
+    }
+    return out;
   }
 
   // Public methods for external control
