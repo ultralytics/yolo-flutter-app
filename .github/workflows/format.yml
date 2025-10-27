@@ -25,7 +25,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"  # Pin Python version here
+          python-version: "3.13"
       - name: Run Ultralytics Actions
         uses: ultralytics/actions@main
         with:
