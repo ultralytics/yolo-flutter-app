@@ -114,48 +114,42 @@ class YOLOPlatformView(
                 // Callback for compatibility
             }
 
-            // Load models or single model
-            val useGpu = creationParams?.get("useGpu") as? Boolean ?: true
-            val modelsArg = creationParams?.get("models") as? List<*>
-            if (modelsArg != null && modelsArg.isNotEmpty()) {
-                val pairs = modelsArg.mapNotNull { item ->
-                    (item as? Map<*, *>)?.let { m ->
-                        val path = m["modelPath"] as? String
-                        val taskStr = m["task"] as? String
-                        if (path != null && taskStr != null) {
-                            val resolved = resolveModelPath(context, path)
-                            val task = YOLOTask.valueOf(taskStr.uppercase())
-                            Pair(resolved, task)
-                        } else null
-                    }
-                }
-                if (pairs.isNotEmpty()) {
-                    Log.d(TAG, "Initializing with ${pairs.size} models")
-                    yoloView.setModels(pairs, useGpu) { success ->
-                        if (success) {
-                            Log.d(TAG, "Models loaded successfully")
-                            initialized = true
-                            // Start streaming if not already started
-                            startStreaming()
+            // Load models (multi-model required)
+                        val useGpu = creationParams?.get("useGpu") as? Boolean ?: true
+                        val modelsArg = creationParams?.get("models") as? List<*>
+                        if (modelsArg != null && modelsArg.isNotEmpty()) {
+                            val pairs = modelsArg.mapNotNull { item ->
+                                (item as? Map<*, *>)?.let { m ->
+                                    val path = m["modelPath"] as? String
+                                    val taskStr = m["task"] as? String
+                                    if (path != null && taskStr != null) {
+                                        val resolved = resolveModelPath(context, path)
+                                        val task = YOLOTask.valueOf(taskStr.uppercase())
+                                        Pair(resolved, task)
+                                    } else null
+                                }
+                            }
+                            if (pairs.isNotEmpty()) {
+                                Log.d(TAG, "Initializing with ${pairs.size} models")
+                                yoloView.setModels(pairs, useGpu) { success ->
+                                    if (success) {
+                                        Log.d(TAG, "Models loaded successfully")
+                                        initialized = true
+                                        // Start streaming if not already started
+                                        startStreaming()
+                                    } else {
+                                        Log.w(TAG, "Failed to load models")
+                                        initialized = true
+                                    }
+                                }
+                            } else {
+                                Log.w(TAG, "No valid models provided; skipping model load")
+                                initialized = true
+                            }
                         } else {
-                            Log.w(TAG, "Failed to load models")
+                            Log.w(TAG, "No models provided in creationParams; skipping model load")
                             initialized = true
                         }
-                    }
-                } else {
-                    // Fallback to single model
-                    val resolvedPath = resolveModelPath(context, modelPath)
-                    val task = YOLOTask.valueOf(taskString.uppercase())
-                    Log.d(TAG, "Initializing with model: $resolvedPath, task: $task")
-                    yoloView.setModel(resolvedPath, task, useGpu)
-                }
-            } else {
-                // Fallback to single model
-                val resolvedPath = resolveModelPath(context, modelPath)
-                val task = YOLOTask.valueOf(taskString.uppercase())
-                Log.d(TAG, "Initializing with model: $resolvedPath, task: $task")
-                yoloView.setModel(resolvedPath, task, useGpu)
-            }
 
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing YOLOPlatformView", e)
@@ -418,44 +412,9 @@ class YOLOPlatformView(
                     }
                 }
 
-                "setModels_DEPRECATED" -> {
-                    // Multi-model setter: parse models list and (for now) load the first entry.
-                    // Note: Full multi-model pipeline handled in YOLOView; this is a forward-compatible API.
-                    val args = call.arguments as? Map<*, *>
-                    val modelsList = args?.get("models") as? List<*>
-                    val useGpu = args?.get("useGpu") as? Boolean ?: true
 
-                    if (modelsList == null || modelsList.isEmpty()) {
-                        result.error("invalid_args", "models is required and must be non-empty", null)
-                        return
-                    }
 
-                    val first = modelsList.first() as? Map<*, *>
-                    val modelPathRaw = first?.get("modelPath") as? String
-                    val taskString = (first?.get("task") as? String) ?: "detect"
 
-                    if (modelPathRaw == null) {
-                        result.error("invalid_args", "First models entry must include modelPath", null)
-                        return
-                    }
-
-                    val resolvedPath = resolveModelPath(context, modelPathRaw)
-                    val task = YOLOTask.valueOf(taskString.uppercase())
-
-                    yoloView.setModel(resolvedPath, task, useGpu) { success ->
-                        if (success) {
-                            Log.d(TAG, "Loaded first model from setModels successfully")
-                            result.success(null)
-                        } else {
-                            Log.e(TAG, "Failed to load first model from setModels")
-                            result.error("MODEL_NOT_FOUND", "Failed to load first model from models list", null)
-                        }
-                    }
-                }
-
-                "switchCamera_DEPRECATED" -> {
-                    result.notImplemented()
-                }
 
                 "setModels" -> {
                     val modelsArg = call.argument<List<Map<String, Any>>>("models")
