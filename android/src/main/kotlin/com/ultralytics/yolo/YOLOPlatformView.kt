@@ -55,9 +55,19 @@ class YOLOPlatformView(
         }
         Log.d(TAG, "YOLOPlatformView[$viewId init]: Initialized with viewUniqueId: $viewUniqueId")
 
-        // Parse model path and task from creation params
+        // Parse models list or fallback to single model
+        val modelsArg = creationParams?.get("models") as? List<*>
         var modelPath = creationParams?.get("modelPath") as? String ?: "yolo11n"
-        val taskString = creationParams?.get("task") as? String ?: "detect"
+        var taskString = creationParams?.get("task") as? String ?: "detect"
+        if (modelsArg != null && modelsArg.isNotEmpty()) {
+            val first = modelsArg.first() as? Map<*, *>
+            if (first != null) {
+                val mPath = first["modelPath"] as? String
+                val mTask = (first["task"] as? String) ?: (first["modelTask"] as? String)
+                if (mPath != null) modelPath = mPath
+                if (mTask != null) taskString = mTask
+            }
+        }
         val confidenceParam = creationParams?.get("confidenceThreshold") as? Double ?: 0.5
         val iouParam = creationParams?.get("iouThreshold") as? Double ?: 0.45
         val showOverlaysParam = creationParams?.get("showOverlays") as? Boolean ?: true
@@ -406,6 +416,45 @@ class YOLOPlatformView(
                             result.error("MODEL_NOT_FOUND", "Failed to load model", null)
                         }
                     }
+                }
+
+                "setModels_DEPRECATED" -> {
+                    // Multi-model setter: parse models list and (for now) load the first entry.
+                    // Note: Full multi-model pipeline handled in YOLOView; this is a forward-compatible API.
+                    val args = call.arguments as? Map<*, *>
+                    val modelsList = args?.get("models") as? List<*>
+                    val useGpu = args?.get("useGpu") as? Boolean ?: true
+
+                    if (modelsList == null || modelsList.isEmpty()) {
+                        result.error("invalid_args", "models is required and must be non-empty", null)
+                        return
+                    }
+
+                    val first = modelsList.first() as? Map<*, *>
+                    val modelPathRaw = first?.get("modelPath") as? String
+                    val taskString = (first?.get("task") as? String) ?: "detect"
+
+                    if (modelPathRaw == null) {
+                        result.error("invalid_args", "First models entry must include modelPath", null)
+                        return
+                    }
+
+                    val resolvedPath = resolveModelPath(context, modelPathRaw)
+                    val task = YOLOTask.valueOf(taskString.uppercase())
+
+                    yoloView.setModel(resolvedPath, task, useGpu) { success ->
+                        if (success) {
+                            Log.d(TAG, "Loaded first model from setModels successfully")
+                            result.success(null)
+                        } else {
+                            Log.e(TAG, "Failed to load first model from setModels")
+                            result.error("MODEL_NOT_FOUND", "Failed to load first model from models list", null)
+                        }
+                    }
+                }
+
+                "switchCamera_DEPRECATED" -> {
+                    result.notImplemented()
                 }
 
                 "setModels" -> {

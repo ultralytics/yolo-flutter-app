@@ -1,13 +1,11 @@
-// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
-import 'package:ultralytics_yolo/models/yolo_model_spec.dart';
 import '../controllers/camera_inference_controller.dart';
 import 'model_loading_overlay.dart';
 
-/// Main content widget that handles the camera view and loading states
+/// Main content widget that handles the camera view and loading states.
+/// Uses the controller-provided models list and does not directly handle model paths.
 class CameraInferenceContent extends StatelessWidget {
   const CameraInferenceContent({super.key, required this.controller});
 
@@ -15,31 +13,31 @@ class CameraInferenceContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (controller.modelPath != null && !controller.isModelLoading) {
+    // When models are ready and not loading, show the YOLOView with controller-provided models
+    if (!controller.isModelLoading && controller.modelsForView.isNotEmpty) {
       return YOLOView(
         key: const ValueKey('yolo_view_static'),
         controller: controller.yoloController,
-        models: [
-          YOLOModelSpec(
-            modelPath: controller.modelPath!,
-            task: controller.selectedModel.task,
-          ),
-        ],
+        models: controller.modelsForView,
         streamingConfig: const YOLOStreamingConfig.minimal(),
         onResult: controller.onDetectionResults,
         onPerformanceMetrics: (metrics) =>
             controller.onPerformanceMetrics(metrics.fps),
         onZoomChanged: controller.onZoomChanged,
       );
-    } else if (controller.isModelLoading) {
+    }
+
+    // Show loading overlay while models are being prepared
+    if (controller.isModelLoading) {
       return ModelLoadingOverlay(
         loadingMessage: controller.loadingMessage,
         downloadProgress: controller.downloadProgress,
       );
-    } else {
-      return const Center(
-        child: Text('No model loaded', style: TextStyle(color: Colors.white)),
-      );
     }
+
+    // Fallback state when no models have been loaded yet
+    return const Center(
+      child: Text('No model loaded', style: TextStyle(color: Colors.white)),
+    );
   }
 }

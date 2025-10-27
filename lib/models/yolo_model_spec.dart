@@ -14,52 +14,68 @@ import 'yolo_task.dart';
 
 @immutable
 class YOLOModelSpec {
-  /// Absolute or bundle-relative path to the model file.
-  final String modelPath;
+  /// Absolute or bundle-relative path to the model file. Optional when [type] is provided.
+  final String? modelPath;
+
+  /// Logical model type/name (e.g. "yolo11n"). Optional when [modelPath] is provided.
+  final String? type;
 
   /// The YOLO task type that the model performs.
   final YOLOTask task;
 
-  const YOLOModelSpec({required this.modelPath, required this.task});
+  const YOLOModelSpec({this.modelPath, this.type, required this.task})
+    : assert(
+        modelPath != null || type != null,
+        'Provide either modelPath or type',
+      );
 
-  /// Returns the basename of [modelPath] without file extension.
+  /// Returns the effective model name (type).
   ///
-  /// Examples:
-  /// - "/path/to/yolo11n.tflite" -> "yolo11n"
-  /// - "assets/models/my_model.mlmodelc" -> "my_model"
+  /// If [type] is provided, it is returned as-is.
+  /// Otherwise, derives the basename from [modelPath] without extension.
   String get modelName {
+    if (type != null && type!.isNotEmpty) return type!;
+    final path = modelPath ?? '';
     // Normalize slashes for cross-platform paths
-    final normalized = modelPath.replaceAll('\\', '/');
+    final normalized = path.replaceAll('\\', '/');
     final base = normalized.split('/').isNotEmpty
         ? normalized.split('/').last
         : normalized;
 
     final dotIdx = base.lastIndexOf('.');
-    if (dotIdx > 0) {
-      return base.substring(0, dotIdx);
-    }
-    return base;
+    return dotIdx > 0 ? base.substring(0, dotIdx) : base;
   }
 
-  YOLOModelSpec copyWith({String? modelPath, YOLOTask? task}) {
+  YOLOModelSpec copyWith({String? modelPath, String? type, YOLOTask? task}) {
     return YOLOModelSpec(
       modelPath: modelPath ?? this.modelPath,
+      type: type ?? this.type,
       task: task ?? this.task,
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'modelPath': modelPath,
+    final map = <String, dynamic>{
+      'modelName': modelName,
       'task': task.name, // dart enum name: detect/segment/classify/pose/obb
     };
+    if (modelPath != null && modelPath!.isNotEmpty) {
+      map['modelPath'] = modelPath;
+    }
+    return map;
   }
 
   factory YOLOModelSpec.fromMap(Map<dynamic, dynamic> map) {
-    final path = map['modelPath'] as String? ?? '';
+    final path = map['modelPath'] as String?;
+    // Prefer explicit modelName/type if provided
+    final type = (map['modelName'] as String?) ?? (map['type'] as String?);
     final taskRaw = (map['task'] as String? ?? '').toLowerCase();
 
-    return YOLOModelSpec(modelPath: path, task: _parseTask(taskRaw));
+    return YOLOModelSpec(
+      modelPath: path,
+      type: type,
+      task: _parseTask(taskRaw),
+    );
   }
 
   static YOLOTask _parseTask(String value) {
@@ -92,16 +108,17 @@ class YOLOModelSpec {
 
   @override
   String toString() =>
-      'YOLOModelSpec(modelPath: $modelPath, task: ${task.name})';
+      'YOLOModelSpec(modelPath: $modelPath, type: $type, task: ${task.name})';
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is YOLOModelSpec &&
         other.modelPath == modelPath &&
+        other.type == type &&
         other.task == task;
   }
 
   @override
-  int get hashCode => Object.hash(modelPath, task);
+  int get hashCode => Object.hash(modelPath, type, task);
 }

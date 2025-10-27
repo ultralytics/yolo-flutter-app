@@ -846,6 +846,7 @@ class YOLOView @JvmOverloads constructor(
                 val combinedKeypoints = mutableListOf<Keypoints>()
                 val combinedObb = mutableListOf<OBBResult>()
                 val combinedMasksRows = mutableListOf<List<List<Float>>>()
+                var firstCombinedMaskBitmap: Bitmap? = null
 
                 val combinedBoxModelNames = mutableListOf<String>()
                 var totalSpeed = 0.0
@@ -866,6 +867,9 @@ class YOLOView @JvmOverloads constructor(
                     res.masks?.let { m ->
                         combinedMasksRows.addAll(m.masks)
                     }
+                    res.masks?.combinedMask?.let { bmp ->
+                        if (firstCombinedMaskBitmap == null) firstCombinedMaskBitmap = bmp
+                    }
                     totalSpeed += res.speed
                     if (fpsValue == null && res.fps != null) {
                         fpsValue = res.fps
@@ -873,7 +877,7 @@ class YOLOView @JvmOverloads constructor(
                 }
 
                 val combinedMasks =
-                    if (combinedMasksRows.isNotEmpty()) Masks(combinedMasksRows, null) else null
+                    if (combinedMasksRows.isNotEmpty()) Masks(combinedMasksRows, firstCombinedMaskBitmap) else null
 
                 val baseShape = perModelResults.firstOrNull()?.second?.origShape
                     ?: Size(w, h)
@@ -1090,10 +1094,181 @@ class YOLOView @JvmOverloads constructor(
             val dy = (vh - scaledH) / 2f
 
             // Check if using front camera
-            val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
+                        val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
 
+                        // Unified overlay: if multiple predictors loaded, draw all modalities regardless of task
+                        if (predictorsList.isNotEmpty()) {
+                            overlayLastBranch = "unified"
+                            overlayLastBoxesDrawn = result.boxes.size
 
-            when (task) {
+                            // Draw DETECTION boxes
+                            for ((i, box) in result.boxes.withIndex()) {
+                                val alpha = (box.conf * 255).toInt().coerceIn(0, 255)
+                                val baseColor = ultralyticsColors[box.index % ultralyticsColors.size]
+                                val newColor = Color.argb(
+                                    alpha,
+                                    Color.red(baseColor),
+                                    Color.green(baseColor),
+                                    Color.blue(baseColor)
+                                )
+
+                                var left = box.xywh.left * scale + dx
+                                var top = box.xywh.top * scale + dy
+                                var right = box.xywh.right * scale + dx
+                                var bottom = box.xywh.bottom * scale + dy
+
+                                if (isFrontCamera) {
+                                    val flippedLeft = vw - right
+                                    val flippedRight = vw - left
+                                    left = flippedLeft
+                                    right = flippedRight
+                                }
+
+                                paint.color = newColor
+                                paint.style = Paint.Style.STROKE
+                                paint.strokeWidth = BOX_LINE_WIDTH
+                                canvas.drawRoundRect(
+                                    left, top, right, bottom,
+                                    BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
+                                    paint
+                                )
+
+                                // Label text with model name
+                                val modelLabel = if (boxModelNames.size > i) boxModelNames[i] else modelName
+                                val labelText = "${box.cls} (${modelLabel}) ${"%.1f".format(box.conf * 100)}% native"
+                                paint.textSize = 40f
+                                val fm = paint.fontMetrics
+                                val textWidth = paint.measureText(labelText)
+                                val textHeight = fm.bottom - fm.top
+                                val pad = 8f
+
+                                val labelBoxHeight = textHeight + 2 * pad
+                                var labelBottom = top
+                                var labelTop = labelBottom - labelBoxHeight
+                                if (labelTop < 0) {
+                                    labelTop = top
+                                    labelBottom = labelTop + labelBoxHeight
+                                }
+                                val labelLeft = left
+                                val labelRight = left + textWidth + 2 * pad
+                                val bgRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
+
+                                paint.style = Paint.Style.FILL
+                                paint.color = newColor
+                                canvas.drawRoundRect(bgRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
+
+                                paint.color = Color.WHITE
+                                val centerY = (bgRect.top + bgRect.bottom) / 2
+                                val baseline = centerY - (fm.descent + fm.ascent) / 2
+                                canvas.drawText(labelText, bgRect.left + pad, baseline, paint)
+                            }
+
+                            // Draw SEGMENTATION mask if available
+                            result.masks?.combinedMask?.let { maskBitmap ->
+                                val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
+                                val dst = RectF(dx, dy, dx + scaledW, dy + scaledH)
+                                val maskPaint = Paint().apply { alpha = 128 }
+
+                                if (isFrontCamera) {
+                                    canvas.save()
+                                    canvas.translate(vw / 2f, 0f)
+                                    canvas.scale(-1f, 1f)
+                                    canvas.translate(-vw / 2f, 0f)
+                                    canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                                    canvas.restore()
+                                } else {
+                                    canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                                }
+                            }
+
+                            // Draw POSE keypoints/skeleton if available
+                            for (person in result.keypointsList) {
+                                val points = arrayOfNulls<PointF>(person.xyn.size)
+                                for (i in person.xyn.indices) {
+                                    val kp = person.xyn[i]
+                                    val conf = person.conf[i]
+                                    if (conf > 0.25f) {
+                                        val pxCam = kp.first * iw
+                                        val pyCam = kp.second * ih
+                                        var px = pxCam * scale + dx
+                                        var py = pyCam * scale + dy
+
+                                        if (isFrontCamera) {
+                                            px = vw - px
+                                        }
+
+                                        val colorIdx = if (i < kptColorIndices.size) kptColorIndices[i] else 0
+                                        val rgbArray = posePalette[colorIdx % posePalette.size]
+                                        paint.color = Color.argb(
+                                            255,
+                                            rgbArray[0].toInt().coerceIn(0, 255),
+                                            rgbArray[1].toInt().coerceIn(0, 255),
+                                            rgbArray[2].toInt().coerceIn(0, 255)
+                                        )
+                                        paint.style = Paint.Style.FILL
+                                        canvas.drawCircle(px, py, KEYPOINT_LINE_WIDTH, paint)
+                                        points[i] = PointF(px, py)
+                                    }
+                                }
+
+                                // Skeleton lines
+                                paint.style = Paint.Style.STROKE
+                                paint.strokeWidth = KEYPOINT_LINE_WIDTH
+                                for (edgeIdx in skeleton.indices) {
+                                    val (a, b) = skeleton[edgeIdx]
+                                    val p1 = points.getOrNull(a - 1)
+                                    val p2 = points.getOrNull(b - 1)
+                                    if (p1 != null && p2 != null) {
+                                        val colorIdx = if (edgeIdx < limbColorIndices.size) limbColorIndices[edgeIdx] else 0
+                                        val rgbArray = posePalette[colorIdx % posePalette.size]
+                                        paint.color = Color.argb(
+                                            255,
+                                            rgbArray[0].toInt().coerceIn(0, 255),
+                                            rgbArray[1].toInt().coerceIn(0, 255),
+                                            rgbArray[2].toInt().coerceIn(0, 255)
+                                        )
+                                        canvas.drawLine(p1.x, p1.y, p2.x, p2.y, paint)
+                                    }
+                                }
+                            }
+
+                            // Draw OBB polygons if available
+                            for (obbRes in result.obb) {
+                                val alpha = (obbRes.confidence * 255).toInt().coerceIn(0, 255)
+                                val baseColor = ultralyticsColors[obbRes.index % ultralyticsColors.size]
+                                val newColor = Color.argb(
+                                    alpha,
+                                    Color.red(baseColor),
+                                    Color.green(baseColor),
+                                    Color.blue(baseColor)
+                                )
+
+                                paint.color = newColor
+                                paint.style = Paint.Style.STROKE
+                                paint.strokeWidth = BOX_LINE_WIDTH
+
+                                val polygon = obbRes.box.toPolygon().map { pt ->
+                                    var x = pt.x * scaledW + dx
+                                    val y = pt.y * scaledH + dy
+                                    if (isFrontCamera) x = vw - x
+                                    PointF(x, y)
+                                }
+
+                                val path = android.graphics.Path()
+                                if (polygon.isNotEmpty()) {
+                                    path.moveTo(polygon[0].x, polygon[0].y)
+                                    for (k in 1 until polygon.size) {
+                                        path.lineTo(polygon[k].x, polygon[k].y)
+                                    }
+                                    path.close()
+                                    canvas.drawPath(path, paint)
+                                }
+                            }
+
+                            return
+                        }
+
+                        when (task) {
                 // ----------------------------------------
                 // DETECT
                 // ----------------------------------------

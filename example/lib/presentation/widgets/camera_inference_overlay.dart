@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../controllers/camera_inference_controller.dart';
 import 'detection_stats_display.dart';
-import 'model_selector.dart';
+
 import 'threshold_pill.dart';
 
 /// Top overlay widget containing model selector, stats, and threshold pills
@@ -27,10 +27,28 @@ class CameraInferenceOverlay extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          ModelSelector(
-            selectedModel: controller.selectedModel,
-            isModelLoading: controller.isModelLoading,
-            onModelChanged: controller.changeModel,
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            alignment: WrapAlignment.center,
+            children: ModelType.values.map((model) {
+              final isSelected = controller.activeModels.contains(model);
+              return ChoiceChip(
+                label: Text(model.name.toUpperCase()),
+                selected: isSelected,
+                onSelected: controller.isModelLoading
+                    ? null
+                    : (enabled) =>
+                          controller.toggleActiveModel(model, enabled: enabled),
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.black : Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                selectedColor: Colors.white,
+                backgroundColor: Colors.black.withValues(alpha: 0.0),
+              );
+            }).toList(),
           ),
           SizedBox(height: isLandscape ? 8 : 12),
           DetectionStatsDisplay(
