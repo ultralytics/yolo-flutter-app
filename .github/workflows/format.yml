@@ -33,7 +33,7 @@ jobs:
           labels: true # Auto-label issues/PRs using AI
           python: true # Format Python with Ruff and docformatter
           prettier: true # Format YAML, JSON, Markdown, CSS
-          swift: false # Format Swift (requires macos-latest)
+          swift: true # Format Swift (requires macos-latest)
           dart: true # Format Dart/Flutter
           spelling: true # Check spelling with codespell
           links: false # Check broken links with Lychee
