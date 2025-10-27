@@ -115,41 +115,41 @@ class YOLOPlatformView(
             }
 
             // Load models (multi-model required)
-                        val useGpu = creationParams?.get("useGpu") as? Boolean ?: true
-                        val modelsArg = creationParams?.get("models") as? List<*>
-                        if (modelsArg != null && modelsArg.isNotEmpty()) {
-                            val pairs = modelsArg.mapNotNull { item ->
-                                (item as? Map<*, *>)?.let { m ->
-                                    val path = m["modelPath"] as? String
-                                    val taskStr = m["task"] as? String
-                                    if (path != null && taskStr != null) {
-                                        val resolved = resolveModelPath(context, path)
-                                        val task = YOLOTask.valueOf(taskStr.uppercase())
-                                        Pair(resolved, task)
-                                    } else null
-                                }
-                            }
-                            if (pairs.isNotEmpty()) {
-                                Log.d(TAG, "Initializing with ${pairs.size} models")
-                                yoloView.setModels(pairs, useGpu) { success ->
-                                    if (success) {
-                                        Log.d(TAG, "Models loaded successfully")
-                                        initialized = true
-                                        // Start streaming if not already started
-                                        startStreaming()
-                                    } else {
-                                        Log.w(TAG, "Failed to load models")
-                                        initialized = true
-                                    }
-                                }
-                            } else {
-                                Log.w(TAG, "No valid models provided; skipping model load")
-                                initialized = true
-                            }
+            val useGpu = creationParams?.get("useGpu") as? Boolean ?: true
+            val modelsArg = creationParams?.get("models") as? List<*>
+            if (modelsArg != null && modelsArg.isNotEmpty()) {
+                val pairs = modelsArg.mapNotNull { item ->
+                    (item as? Map<*, *>)?.let { m ->
+                        val path = m["modelPath"] as? String
+                        val taskStr = m["task"] as? String
+                        if (path != null && taskStr != null) {
+                            val resolved = resolveModelPath(context, path)
+                            val task = YOLOTask.valueOf(taskStr.uppercase())
+                            Pair(resolved, task)
+                        } else null
+                    }
+                }
+                if (pairs.isNotEmpty()) {
+                    Log.d(TAG, "Initializing with ${pairs.size} models")
+                    yoloView.setModels(pairs, useGpu) { success ->
+                        if (success) {
+                            Log.d(TAG, "Models loaded successfully")
+                            initialized = true
+                            // Start streaming if not already started
+                            startStreaming()
                         } else {
-                            Log.w(TAG, "No models provided in creationParams; skipping model load")
+                            Log.w(TAG, "Failed to load models")
                             initialized = true
                         }
+                    }
+                } else {
+                    Log.w(TAG, "No valid models provided; skipping model load")
+                    initialized = true
+                }
+            } else {
+                Log.w(TAG, "No models provided in creationParams; skipping model load")
+                initialized = true
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing YOLOPlatformView", e)
@@ -411,9 +411,6 @@ class YOLOPlatformView(
                         }
                     }
                 }
-
-
-
 
 
                 "setModels" -> {
