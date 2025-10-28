@@ -81,9 +81,6 @@ class YOLOResult {
   /// and ranges from 0.0 to 1.0.
   final List<double>? keypointConfidences;
 
-  /// Source model name (basename without extension).
-  final String modelName;
-
   YOLOResult({
     required this.classIndex,
     required this.className,
