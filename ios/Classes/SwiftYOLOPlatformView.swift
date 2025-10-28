@@ -70,7 +70,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         }
 
         if let dict = args as? [String: Any] {
-            // Prefer 'models' list when provided
+            // Prefer 'models' list when provided (temporary until multi-model implemented)
             var modelName: String? = dict["modelPath"] as? String
             var taskRaw: String? = dict["task"] as? String
             if let models = dict["models"] as? [[String: Any]], let first = models.first {
@@ -405,6 +405,52 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
                         FlutterError(
                             code: "invalid_args", message: "Invalid arguments for setModel",
                             details: nil))
+                }
+
+            case "setModels":
+                // Multi-model setter: parse models list; for now load the first entry
+                if let args = call.arguments as? [String: Any],
+                    let models = args["models"] as? [[String: Any]],
+                    !models.isEmpty
+                {
+                    let first = models[0]
+                    if let modelPath = first["modelPath"] as? String,
+                        let taskString = first["task"] as? String
+                    {
+                        let task = YOLOTask.fromString(taskString)
+                        self.yoloView?.setModel(modelPathOrName: modelPath, task: task) {
+                            modelResult in
+                            switch modelResult {
+                            case .success:
+                                result(nil)
+                            case .failure(let error):
+                                result(
+                                    FlutterError(
+                                        code: "MODEL_NOT_FOUND",
+                                        message:
+                                            "Failed to load first model from models list: \(modelPath) - \(error.localizedDescription)",
+                                        details: nil
+                                    )
+                                )
+                            }
+                        }
+                    } else {
+                        result(
+                            FlutterError(
+                                code: "invalid_args",
+                                message: "First models entry must include modelPath and task",
+                                details: nil
+                            )
+                        )
+                    }
+                } else {
+                    result(
+                        FlutterError(
+                            code: "invalid_args",
+                            message: "models is required and must be non-empty",
+                            details: nil
+                        )
+                    )
                 }
 
             case "captureFrame":
