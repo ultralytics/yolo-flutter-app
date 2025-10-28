@@ -139,8 +139,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     var task = YOLOTask.detect
     var colors: [String: UIColor] = [:]
     var modelName: String = ""
-    // For multi-model support: last known model names per box and generation counter
-    var lastBoxModelNames: [String] = []
+    // Multi-model support
+    private var predictorsList: [(String, Predictor)] = []
+    private var lastBoxModelNames: [String] = []
     private var modelGeneration: Int = 0
     var classes: [String] = []
     let maxBoundingBoxViews = 100
@@ -377,6 +378,199 @@ public class YOLOView: UIView, VideoCaptureDelegate {
                     handleFailure(error)
                 }
             }
+        }
+    }
+
+    // Multi-model API: load multiple predictors and merge their results
+    public func setModels(
+        _ models: [(String, YOLOTask)], completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        // Increment generation to invalidate in-flight frames
+        self.modelGeneration &+= 1
+        if models.isEmpty {
+            self.videoCapture.predictor = nil
+            self.predictorsList = []
+            self.lastBoxModelNames = []
+            completion?(.success(()))
+            return
+        }
+        let group = DispatchGroup()
+        var loaded: [(String, Predictor)] = []
+        var firstError: Error?
+        let queue = DispatchQueue(
+            label: "yolo.multimodel.load", qos: .userInitiated, attributes: .concurrent)
+        for (pathOrName, task) in models {
+            group.enter()
+            queue.async {
+                // Resolve model URL similar to setModel
+                var url: URL?
+                let lower = pathOrName.lowercased()
+                let fm = FileManager.default
+                if lower.hasSuffix(".mlmodel") || lower.hasSuffix(".mlpackage")
+                    || lower.hasSuffix(".mlmodelc")
+                {
+                    let possible = URL(fileURLWithPath: pathOrName)
+                    var isDir: ObjCBool = false
+                    if fm.fileExists(atPath: possible.path, isDirectory: &isDir) {
+                        url = possible
+                    }
+                } else {
+                    if let compiled = Bundle.main.url(
+                        forResource: pathOrName, withExtension: "mlmodelc")
+                    {
+                        url = compiled
+                    } else if let pkg = Bundle.main.url(
+                        forResource: pathOrName, withExtension: "mlpackage")
+                    {
+                        url = pkg
+                    }
+                }
+                guard let modelURL = url else {
+                    firstError = NSError(
+                        domain: "YOLOView", code: -1,
+                        userInfo: [NSLocalizedDescriptionKey: "Model not found: \(pathOrName)"])
+                    group.leave()
+                    return
+                }
+                let modelBaseName = modelURL.deletingPathExtension().lastPathComponent
+                // Create predictor per task
+                let appendPredictor: (Predictor) -> Void = { p in
+                    // Propagate stream config to base predictors if applicable
+                    if let bp = p as? BasePredictor {
+                        bp.streamConfig = self.streamConfig
+                    }
+                    loaded.append((modelBaseName, p))
+                }
+                switch task {
+                case .classify:
+                    Classifier.create(unwrappedModelURL: modelURL, isRealTime: true) { result in
+                        switch result {
+                        case .success(let p): appendPredictor(p)
+                        case .failure(let e): firstError = e
+                        }
+                        group.leave()
+                    }
+                case .segment:
+                    Segmenter.create(unwrappedModelURL: modelURL, isRealTime: true) { result in
+                        switch result {
+                        case .success(let p): appendPredictor(p)
+                        case .failure(let e): firstError = e
+                        }
+                        group.leave()
+                    }
+                case .pose:
+                    PoseEstimater.create(unwrappedModelURL: modelURL, isRealTime: true) { result in
+                        switch result {
+                        case .success(let p): appendPredictor(p)
+                        case .failure(let e): firstError = e
+                        }
+                        group.leave()
+                    }
+                case .obb:
+                    ObbDetector.create(unwrappedModelURL: modelURL, isRealTime: true) { result in
+                        switch result {
+                        case .success(let p): appendPredictor(p)
+                        case .failure(let e): firstError = e
+                        }
+                        group.leave()
+                    }
+                default:
+                    ObjectDetector.create(unwrappedModelURL: modelURL, isRealTime: true) { result in
+                        switch result {
+                        case .success(let p): appendPredictor(p)
+                        case .failure(let e): firstError = e
+                        }
+                        group.leave()
+                    }
+                }
+            }
+        }
+        group.notify(queue: .main) {
+            if !loaded.isEmpty {
+                // Install multi predictor
+                let multi = MultiPredictor(
+                    predictors: loaded,
+                    onBoxMap: { [weak self] names in
+                        self?.lastBoxModelNames = names
+                    })
+                self.videoCapture.predictor = multi
+                completion?(.success(()))
+            } else {
+                completion?(
+                    .failure(
+                        firstError
+                            ?? NSError(
+                                domain: "YOLOView", code: -2,
+                                userInfo: [NSLocalizedDescriptionKey: "Failed to load models"])))
+            }
+        }
+    }
+
+    // MultiPredictor: merges results from multiple predictors by running predictOnImage synchronously
+    private class MultiPredictor: Predictor {
+        var labels: [String] = []
+        var isUpdating: Bool = false
+        private let predictors: [(String, Predictor)]
+        private let onBoxMap: ([String]) -> Void
+        init(predictors: [(String, Predictor)], onBoxMap: @escaping ([String]) -> Void) {
+            self.predictors = predictors
+            self.onBoxMap = onBoxMap
+        }
+        func predict(
+            sampleBuffer: CMSampleBuffer, onResultsListener: ResultsListener?,
+            onInferenceTime: InferenceTimeListener?
+        ) {
+            guard let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+            let ciImage = CIImage(cvPixelBuffer: pb)
+            var mergedBoxes: [Box] = []
+            var mergedMasks: [[[Float]]] = []
+            var mergedKeypoints: [Keypoints] = []
+            var mergedObb: [OBBResult] = []
+            var names: [String] = []
+            var totalSpeed: Double = 0.0
+            var fps: Double? = nil
+            var boxModelNames: [String] = []
+            for (name, p) in predictors {
+                let res = p.predictOnImage(image: ciImage)
+                if names.isEmpty { names = res.names }
+                mergedBoxes.append(contentsOf: res.boxes)
+                boxModelNames.append(contentsOf: Array(repeating: name, count: res.boxes.count))
+                if let m = res.masks?.masks { mergedMasks.append(contentsOf: m) }
+                mergedKeypoints.append(contentsOf: res.keypointsList)
+                mergedObb.append(contentsOf: res.obb)
+                totalSpeed += res.speed
+                if fps == nil, let f = res.fps { fps = f }
+            }
+            let masks: Masks? =
+                mergedMasks.isEmpty ? nil : Masks(masks: mergedMasks, combinedMask: nil)
+            let result = YOLOResult(
+                orig_shape: CGSize(
+                    width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb)),
+                boxes: mergedBoxes,
+                masks: masks,
+                probs: nil,
+                keypointsList: mergedKeypoints,
+                obb: mergedObb,
+                annotatedImage: nil,
+                speed: totalSpeed,
+                fps: fps,
+                originalImage: nil,
+                names: names
+            )
+            // Publish per-box model mapping
+            onBoxMap(boxModelNames)
+            onResultsListener?.on(result: result)
+            onInferenceTime?.on(inferenceTime: totalSpeed, fpsRate: fps ?? 0.0)
+        }
+        func predictOnImage(image: CIImage) -> YOLOResult {
+            // Fallback: run first predictor only
+            guard let first = predictors.first else {
+                return YOLOResult(
+                    orig_shape: image.extent.size, boxes: [], masks: nil, probs: nil,
+                    keypointsList: [], obb: [], annotatedImage: nil, speed: 0, fps: 0,
+                    originalImage: nil, names: [])
+            }
+            return first.1.predictOnImage(image: image)
         }
     }
 
@@ -1236,14 +1430,23 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
         self.videoCapture.captureSession.beginConfiguration()
         let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput
-        self.videoCapture.captureSession.removeInput(currentInput!)
-        guard let currentPosition = currentInput?.device.position else { return }
+        if let currentInput = currentInput {
+            self.videoCapture.captureSession.removeInput(currentInput)
+        }
+        guard let currentPosition = currentInput?.device.position else {
+            self.videoCapture.captureSession.commitConfiguration()
+            return
+        }
 
         let nextCameraPosition: AVCaptureDevice.Position = currentPosition == .back ? .front : .back
 
-        let newCameraDevice = bestCaptureDevice(position: nextCameraPosition)
+        guard let newCameraDevice = bestCaptureDevice(position: nextCameraPosition) else {
+            self.videoCapture.captureSession.commitConfiguration()
+            return
+        }
 
         guard let videoInput1 = try? AVCaptureDeviceInput(device: newCameraDevice) else {
+            self.videoCapture.captureSession.commitConfiguration()
             return
         }
 

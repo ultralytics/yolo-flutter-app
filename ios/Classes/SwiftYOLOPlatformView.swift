@@ -127,6 +127,18 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
             // Register this view with the factory
             if let yoloView = yoloView {
                 SwiftYOLOPlatformViewFactory.register(yoloView, for: Int(viewId))
+                // If full models list provided, prefer initializing via setModels
+                if let models = dict["models"] as? [[String: Any]], !models.isEmpty {
+                    let pairs: [(String, YOLOTask)] = models.compactMap { m in
+                        guard let path = m["modelPath"] as? String,
+                            let taskStr = m["task"] as? String
+                        else { return nil }
+                        return (path, YOLOTask.fromString(taskStr))
+                    }
+                    if !pairs.isEmpty {
+                        yoloView.setModels(pairs) { _ in /* ignore init completion */ }
+                    }
+                }
             }
         }
     }
@@ -408,19 +420,28 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
                 }
 
             case "setModels":
-                // Multi-model setter: parse models list; for now load the first entry
+                // Multi-model setter: parse full models list and forward to YOLOView.setModels
                 if let args = call.arguments as? [String: Any],
                     let models = args["models"] as? [[String: Any]],
                     !models.isEmpty
                 {
-                    let first = models[0]
-                    if let modelPath = first["modelPath"] as? String,
-                        let taskString = first["task"] as? String
-                    {
-                        let task = YOLOTask.fromString(taskString)
-                        self.yoloView?.setModel(modelPathOrName: modelPath, task: task) {
-                            modelResult in
-                            switch modelResult {
+                    let pairs: [(String, YOLOTask)] = models.compactMap { m in
+                        guard let path = m["modelPath"] as? String,
+                            let taskStr = m["task"] as? String
+                        else { return nil }
+                        return (path, YOLOTask.fromString(taskStr))
+                    }
+                    if pairs.isEmpty {
+                        result(
+                            FlutterError(
+                                code: "invalid_args",
+                                message: "No valid models provided",
+                                details: nil
+                            )
+                        )
+                    } else {
+                        self.yoloView?.setModels(pairs) { setResult in
+                            switch setResult {
                             case .success:
                                 result(nil)
                             case .failure(let error):
@@ -428,20 +449,12 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
                                     FlutterError(
                                         code: "MODEL_NOT_FOUND",
                                         message:
-                                            "Failed to load first model from models list: \(modelPath) - \(error.localizedDescription)",
+                                            "Failed to load models: \(error.localizedDescription)",
                                         details: nil
                                     )
                                 )
                             }
                         }
-                    } else {
-                        result(
-                            FlutterError(
-                                code: "invalid_args",
-                                message: "First models entry must include modelPath and task",
-                                details: nil
-                            )
-                        )
                     }
                 } else {
                     result(
