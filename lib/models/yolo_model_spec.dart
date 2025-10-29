@@ -1,5 +1,5 @@
 /// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-
+library;
 // lib/models/yolo_model_spec.dart
 //
 // A simple data model representing a YOLO model specification used by YOLOView.

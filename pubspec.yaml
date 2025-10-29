@@ -28,6 +28,7 @@ dependencies:
   plugin_platform_interface: ^2.0.2
 
 dev_dependencies:
+  meta: 1.16.0
   coverage: ^1.13.1
   flutter_lints: ">=5.0.0 <7.0.0"
   flutter_test:

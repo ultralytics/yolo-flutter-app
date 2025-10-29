@@ -136,8 +136,9 @@ class YOLODetectionPainter extends CustomPainter {
 
   String _buildLabelText(YOLOResult detection) {
     final parts = <String>[];
-    if (showClassName)
+    if (showClassName) {
       parts.add('${detection.className} (${detection.modelName}) flutter');
+    }
     if (showConfidence) {
       parts.add('${(detection.confidence * 100).toStringAsFixed(1)}%');
     }

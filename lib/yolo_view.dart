@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/models/yolo_result.dart';
-import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:ultralytics_yolo/utils/map_converter.dart';
@@ -403,21 +402,11 @@ class _YOLOViewState extends State<YOLOView> {
     final dx = (vw - scaledW) / 2.0;
     final dy = (vh - scaledH) / 2.0;
 
-    Rect _toViewRect(Rect imgRect) {
+    Rect toViewRect(Rect imgRect) {
       double left = imgRect.left * scale + dx;
       double top = imgRect.top * scale + dy;
       double right = imgRect.right * scale + dx;
       double bottom = imgRect.bottom * scale + dy;
-
-      // If front camera mirroring is needed, we would flip horizontally here.
-      // Without an explicit signal from native, keep as-is to avoid double flipping.
-      // Example (if needed):
-      // if (_isFrontCamera) {
-      //   final flippedLeft = vw - right;
-      //   final flippedRight = vw - left;
-      //   left = flippedLeft;
-      //   right = flippedRight;
-      // }
 
       // Clamp to view bounds
       left = left.clamp(0.0, vw);
@@ -431,7 +420,7 @@ class _YOLOViewState extends State<YOLOView> {
     // Create transformed copies (only boundingBox is changed, normalizedBox stays as original)
     final out = <YOLOResult>[];
     for (final d in _currentDetections) {
-      final transformedBox = _toViewRect(d.boundingBox);
+      final transformedBox = toViewRect(d.boundingBox);
       out.add(
         YOLOResult(
           classIndex: d.classIndex,

@@ -138,7 +138,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: YOLOView(
-            models: const [
+            models: [
               YOLOModelSpec(
                 modelPath: 'test_model.tflite',
                 task: YOLOTask.detect,
@@ -205,7 +205,7 @@ void main() {
       expect(widget1.models.first.task, YOLOTask.detect);
       expect(widget2.models.first.task, YOLOTask.segment);
       expect(widget1.models.first.modelPath, isA<String>());
-      expect(widget1.models.first.modelPath.isNotEmpty, true);
+      expect(widget1.models.first.modelPath?.isNotEmpty ?? false, true);
     });
 
     testWidgets('handles callbacks correctly', (WidgetTester tester) async {
@@ -323,7 +323,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: YOLOView(
-            models: const [
+            models: [
               YOLOModelSpec(modelPath: 'model.tflite', task: YOLOTask.detect),
             ],
           ),
@@ -390,7 +390,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: YOLOView(
-            models: const [
+            models: [
               YOLOModelSpec(
                 modelPath: 'test_model.tflite',
                 task: YOLOTask.detect,
