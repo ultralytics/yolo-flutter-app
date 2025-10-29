@@ -217,6 +217,8 @@ class YOLOView @JvmOverloads constructor(
 
     @Volatile
     private var modelGeneration: Int = 0
+    private var lastLoggedPredictorCount: Int = -1
+    private var lastLoggedGeneration: Int = -1
     private var task: YOLOTask = YOLOTask.DETECT
     private var modelName: String = "Model"
 
@@ -780,10 +782,11 @@ class YOLOView @JvmOverloads constructor(
         // Multi-model path: if multiple predictors are configured, run predictions in parallel and stream combined results
         val localPredictors = synchronized(predictorsLock) { predictorsList.toList() }
         if (localPredictors.isNotEmpty()) {
-            Log.d(
-                TAG,
-                "Check predictors list for multi-model inference: ${localPredictors.size} models configured"
-            )
+            if (lastLoggedPredictorCount != localPredictors.size || lastLoggedGeneration != modelGeneration) {
+                Log.d(TAG, "Multi-model inference configured: ${localPredictors.size} models (gen=$modelGeneration)")
+                lastLoggedPredictorCount = localPredictors.size
+                lastLoggedGeneration = modelGeneration
+            }
             // Check if we should run inference on this frame
             if (!shouldRunInference()) {
                 Log.d(TAG, "Skipping inference due to frequency control (multi-model)")
