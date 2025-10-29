@@ -22,7 +22,7 @@ class DetectionStatsDisplay extends StatelessWidget {
           Text(
             'DETECTIONS: $detectionCount',
             style: const TextStyle(
-              color: Colors.white,
+              color: Colors.black,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -30,7 +30,7 @@ class DetectionStatsDisplay extends StatelessWidget {
           Text(
             'FPS: ${currentFps.toStringAsFixed(1)}',
             style: const TextStyle(
-              color: Colors.white,
+              color: Colors.black,
               fontWeight: FontWeight.w600,
             ),
           ),
