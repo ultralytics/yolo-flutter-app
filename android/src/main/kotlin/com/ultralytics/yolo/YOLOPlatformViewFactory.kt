@@ -84,7 +84,7 @@ class CustomStreamHandler(private val viewId: Int) : EventChannel.StreamHandler 
     }
     
     override fun onCancel(arguments: Any?) {
-        Log.d(TAG, "Event channel for view $viewId cancelled after ${System.currentTimeMillis() - sinkSetTime}ms, clearing sink")
+        Log.d(TAG, "Event channel for view $viewId canceled after ${System.currentTimeMillis() - sinkSetTime}ms, clearing sink")
         
         // Ensure we're on the main thread for sink operations
         if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
