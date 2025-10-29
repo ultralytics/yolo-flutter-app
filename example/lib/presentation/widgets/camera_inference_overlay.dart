@@ -40,7 +40,7 @@ class CameraInferenceOverlay extends StatelessWidget {
                     ? null
                     : (enabled) =>
                           controller.toggleActiveModel(model, enabled: enabled),
-                labelStyle: TextStyle(
+                labelStyle: const TextStyle(
                   color: Colors.black,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
