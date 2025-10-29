@@ -75,7 +75,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
                     keypointList.append(keypoint.xyn)
                     confsList.append(keypoint.conf)
                 }
-                self.drawKeypoints(
+                drawKeypoints(
                     keypointsList: keypointList,
                     confsList: confsList,
                     boundingBoxes: result.boxes,
