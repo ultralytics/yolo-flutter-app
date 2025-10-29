@@ -58,49 +58,52 @@ public class YOLOView: UIView, VideoCaptureDelegate {
             }
         }
 
-        if task == .segment {
-            DispatchQueue.main.async {
-                if let maskImage = result.masks?.combinedMask {
+        DispatchQueue.main.async {
+            // SEGMENT: draw combined mask if available
+            if let maskImage = result.masks?.combinedMask, let maskLayer = self.maskLayer {
+                maskLayer.isHidden = false
+                maskLayer.frame = self.overlayLayer.bounds
+                maskLayer.contents = maskImage
+            }
 
-                    guard let maskLayer = self.maskLayer else { return }
-
-                    maskLayer.isHidden = false
-
-                    maskLayer.frame = self.overlayLayer.bounds
-                    maskLayer.contents = maskImage
-
-                    self.videoCapture.predictor.isUpdating = false
-                } else {
-                    self.videoCapture.predictor.isUpdating = false
+            // POSE: draw keypoints/skeleton if available
+            self.removeAllSubLayers(parentLayer: self.poseLayer)
+            if !result.keypointsList.isEmpty, let poseLayer = self.poseLayer {
+                var keypointList = [[(x: Float, y: Float)]]()
+                var confsList = [[Float]]()
+                for keypoint in result.keypointsList {
+                    keypointList.append(keypoint.xyn)
+                    confsList.append(keypoint.conf)
                 }
+                self.drawKeypoints(
+                    keypointsList: keypointList,
+                    confsList: confsList,
+                    boundingBoxes: result.boxes,
+                    on: poseLayer,
+                    imageViewSize: self.overlayLayer.frame.size,
+                    originalImageSize: result.orig_shape
+                )
             }
-        } else if task == .classify {
-            self.overlayYOLOClassificationsCALayer(on: self, result: result)
-        } else if task == .pose {
-            self.removeAllSubLayers(parentLayer: poseLayer)
-            var keypointList = [[(x: Float, y: Float)]]()
-            var confsList = [[Float]]()
 
-            for keypoint in result.keypointsList {
-                keypointList.append(keypoint.xyn)
-                confsList.append(keypoint.conf)
+            // OBB: draw oriented boxes if available
+            if !result.obb.isEmpty, let obbLayer = self.obbLayer {
+                let obbDetections = result.obb
+                self.obbRenderer.drawObbDetectionsWithReuse(
+                    obbDetections: obbDetections,
+                    on: obbLayer,
+                    imageViewSize: self.overlayLayer.frame.size,
+                    originalImageSize: result.orig_shape,
+                    lineWidth: 3
+                )
             }
-            guard let poseLayer = poseLayer else { return }
-            drawKeypoints(
-                keypointsList: keypointList, confsList: confsList, boundingBoxes: result.boxes,
-                on: poseLayer, imageViewSize: overlayLayer.frame.size,
-                originalImageSize: result.orig_shape)
-        } else if task == .obb {
-            //            self.setupObbLayerIfNeeded()
-            guard let obbLayer = self.obbLayer else { return }
-            let obbDetections = result.obb
-            self.obbRenderer.drawObbDetectionsWithReuse(
-                obbDetections: obbDetections,
-                on: obbLayer,
-                imageViewSize: self.overlayLayer.frame.size,
-                originalImageSize: result.orig_shape,  // 例
-                lineWidth: 3
-            )
+
+            // CLASSIFY: overlay top1 label if available
+            if result.probs != nil {
+                self.overlayYOLOClassificationsCALayer(on: self, result: result)
+            }
+
+            // Mark predictor as updated
+            self.videoCapture.predictor.isUpdating = false
         }
     }
 
@@ -768,7 +771,11 @@ public class YOLOView: UIView, VideoCaptureDelegate {
                         confidence = CGFloat(prediction.conf)
                         let colorIndex = prediction.index % ultralyticsColors.count
                         boxColor = ultralyticsColors[colorIndex]
-                        label = String(format: "%@ %.1f", bestClass, confidence * 100)
+                        let modelLabel =
+                            (i < self.lastBoxModelNames.count)
+                            ? self.lastBoxModelNames[i] : self.modelName
+                        label = String(
+                            format: "%@ (%@) %.1f", bestClass, modelLabel, confidence * 100)
                         alpha = CGFloat((confidence - 0.2) / (1.0 - 0.2) * 0.9)
                     default:
                         let prediction = predictions.boxes[i]
@@ -776,7 +783,11 @@ public class YOLOView: UIView, VideoCaptureDelegate {
                         rect = prediction.xywhn
                         bestClass = prediction.cls
                         confidence = CGFloat(prediction.conf)
-                        label = String(format: "%@ %.1f", bestClass, confidence * 100)
+                        let modelLabel =
+                            (i < self.lastBoxModelNames.count)
+                            ? self.lastBoxModelNames[i] : self.modelName
+                        label = String(
+                            format: "%@ (%@) %.1f", bestClass, modelLabel, confidence * 100)
                         let colorIndex = prediction.index % ultralyticsColors.count
                         boxColor = ultralyticsColors[colorIndex]
                         alpha = CGFloat((confidence - 0.2) / (1.0 - 0.2) * 0.9)
@@ -906,7 +917,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
                     let colorIndex = predictions.boxes[i].index % ultralyticsColors.count
                     boxColor = ultralyticsColors[colorIndex]
-                    label = String(format: "%@ %.1f", bestClass, confidence * 100)
+                    let modelLabel =
+                        (i < self.lastBoxModelNames.count)
+                        ? self.lastBoxModelNames[i] : self.modelName
+                    label = String(format: "%@ (%@) %.1f", bestClass, modelLabel, confidence * 100)
                     alpha = CGFloat((confidence - 0.2) / (1.0 - 0.2) * 0.9)
 
                     rect.origin.x = rect.origin.x * videoCapture.longSide * scaleX - offsetX
@@ -1949,7 +1963,10 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
                 }
 
                 // Source model name (single-model placeholder; will be per-box for multi-model)
-                detection["modelName"] = self.modelName
+                let modelNameForBox =
+                    (detectionIndex < self.lastBoxModelNames.count
+                        ? self.lastBoxModelNames[detectionIndex] : self.modelName)
+                detection["modelName"] = modelNameForBox
 
                 // Add mask data for segmentation (if available and enabled)
                 if config.includeMasks && result.masks?.masks != nil
