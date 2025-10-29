@@ -143,11 +143,13 @@ class YOLOPlatformView(
                         }
                     }
                 } else {
-                    Log.w(TAG, "No valid models provided; skipping model load")
+                    Log.e(TAG, "No valid 'models' entries; inference will not start. Camera will be stopped.")
+                    yoloView.stop()
                     initialized = true
                 }
             } else {
-                Log.w(TAG, "No models provided in creationParams; skipping model load")
+                Log.e(TAG, "Missing 'models' in creationParams; inference will not start. Camera will be stopped.")
+                yoloView.stop()
                 initialized = true
             }
 
