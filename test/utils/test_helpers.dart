@@ -415,6 +415,10 @@ class YOLOTestHelpers {
               log.add(call);
               return true;
             },
+            'stop': (call) {
+              log.add(call);
+              return true;
+            },
             'zoomIn': (call) {
               log.add(call);
               return true;
@@ -428,6 +432,14 @@ class YOLOTestHelpers {
               return true;
             },
             'setShowUIControls': (call) {
+              log.add(call);
+              return true;
+            },
+            'setShowOverlays': (call) {
+              log.add(call);
+              return true;
+            },
+            'setStreamingConfig': (call) {
               log.add(call);
               return true;
             },
