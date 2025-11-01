@@ -30,8 +30,9 @@ class YOLOOverlay extends StatelessWidget {
         theme: theme,
       ),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTapDown: (details) => _handleTap(details, context),
-        child: Container(),
+        child: const SizedBox.expand(),
       ),
     );
   }
@@ -39,8 +40,7 @@ class YOLOOverlay extends StatelessWidget {
   void _handleTap(TapDownDetails details, BuildContext context) {
     if (onDetectionTap == null) return;
 
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final localPosition = renderBox.globalToLocal(details.globalPosition);
+    final localPosition = details.localPosition;
 
     for (final detection in detections) {
       if (_isPointInBoundingBox(localPosition, detection)) {
@@ -136,7 +136,9 @@ class YOLODetectionPainter extends CustomPainter {
 
   String _buildLabelText(YOLOResult detection) {
     final parts = <String>[];
-    if (showClassName) parts.add(detection.className);
+    if (showClassName) {
+      parts.add('${detection.className} (${detection.modelName}) flutter');
+    }
     if (showConfidence) {
       parts.add('${(detection.confidence * 100).toStringAsFixed(1)}%');
     }

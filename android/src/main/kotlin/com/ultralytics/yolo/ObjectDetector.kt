@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 package com.ultralytics.yolo
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.RectF
@@ -30,6 +31,7 @@ import java.nio.charset.StandardCharsets
 
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+
 /**
  * High-performance ObjectDetector that assumes no 90-degree rotation is needed
  * - Performs "resize -> getPixels -> ByteBuffer" in one pass, minimizing Canvas drawing
@@ -46,6 +48,7 @@ class ObjectDetector(
     // Inference output dimensions
     private var out1 = 0
     private var out2 = 0
+
     // Three image processors: camera portrait, camera landscape, and single images
     private lateinit var imageProcessorCameraPortrait: ImageProcessor
     private lateinit var imageProcessorCameraPortraitFront: ImageProcessor
@@ -53,11 +56,12 @@ class ObjectDetector(
     private lateinit var imageProcessorSingleImage: ImageProcessor
 
 
-//    companion object {
+    //    companion object {
 //
 //    }
     // Reuse inference output array ([1][out1][out2])
     private lateinit var rawOutput: Array<Array<FloatArray>>
+
     // Transposed array for post-processing
     private lateinit var predictions: Array<FloatArray>
 
@@ -78,7 +82,7 @@ class ObjectDetector(
         if (customOptions == null) {
             setNumThreads(Runtime.getRuntime().availableProcessors())
         }
-        
+
         // If customOptions is provided, only add GPU delegate if requested
         if (useGpu) {
             try {
@@ -95,7 +99,7 @@ class ObjectDetector(
     // Otherwise, keep it in this class as usual
     init {
         val assetManager = context.assets
-        val modelBuffer  = YOLOUtils.loadModelFile(context, modelPath)
+        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
         /* --- Get labels from metadata (try Appended ZIP → FlatBuffers in order) --- */
         var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
@@ -114,13 +118,19 @@ class ObjectDetector(
         }
 
         if (!labelsWereLoaded) {
-            Log.w(TAG, "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
+            Log.w(
+                TAG,
+                "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list."
+            )
             // If labels were passed via constructor and not overridden, they will be used.
             // If no labels were passed and none loaded, this.labels will be what was passed or an uninitialized/empty list
             // depending on how the 'labels' property was handled if it was nullable or had a default.
             // Given 'override var labels: List<String>' is passed in constructor, it will hold the passed value.
             if (this.labels.isEmpty()) {
-                 Log.w(TAG, "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names.")
+                Log.w(
+                    TAG,
+                    "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names."
+                )
             }
         }
 
@@ -155,9 +165,9 @@ class ObjectDetector(
         // Allocate inference output arrays
         rawOutput = Array(1) { Array(out1) { FloatArray(out2) } }
         predictions = Array(out2) { FloatArray(out1) }
-        
+
         // Initialize three image processors:
-        
+
         // 1. For camera feed in portrait mode - includes 270-degree rotation
         imageProcessorCameraPortrait = ImageProcessor.Builder()
             .add(Rot90Op(3))  // 270-degree rotation (3 * 90 degrees) for back camera
@@ -165,7 +175,7 @@ class ObjectDetector(
             .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
             .add(CastOp(INPUT_IMAGE_TYPE))
             .build()
-            
+
         // 2. For front camera in portrait mode - 90-degree rotation
         imageProcessorCameraPortraitFront = ImageProcessor.Builder()
             .add(Rot90Op(1))  // 90-degree rotation for front camera
@@ -173,21 +183,21 @@ class ObjectDetector(
             .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
             .add(CastOp(INPUT_IMAGE_TYPE))
             .build()
-            
+
         // 3. For camera feed in landscape mode - no rotation needed
         imageProcessorCameraLandscape = ImageProcessor.Builder()
             .add(ResizeOp(inputSize.height, inputSize.width, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
             .add(CastOp(INPUT_IMAGE_TYPE))
             .build()
-            
+
         // 4. For single images - no rotation needed
         imageProcessorSingleImage = ImageProcessor.Builder()
             .add(ResizeOp(inputSize.height, inputSize.width, ResizeOp.ResizeMethod.BILINEAR))
             .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
             .add(CastOp(INPUT_IMAGE_TYPE))
             .build()
-            
+
         Log.d("TAG", "ObjectDetector initialized.")
     }
 
@@ -217,6 +227,7 @@ class ObjectDetector(
                     Log.d(TAG, "Associated file contents:\n$fileString")
 
                     val yaml = Yaml()
+
                     @Suppress("UNCHECKED_CAST")
                     val data = yaml.load<Map<String, Any>>(fileString)
                     if (data != null && data.containsKey("names")) {
@@ -263,7 +274,13 @@ class ObjectDetector(
      * @param rotateForCamera Whether this is a camera feed that requires rotation (true) or a single image (false)
      * @return YOLOResult containing detection results
      */
-    override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
+    override fun predict(
+        bitmap: Bitmap,
+        origWidth: Int,
+        origHeight: Int,
+        rotateForCamera: Boolean,
+        isLandscape: Boolean
+    ): YOLOResult {
         val overallStartTime = System.nanoTime()
         var stageStartTime = System.nanoTime()
 
@@ -280,7 +297,7 @@ class ObjectDetector(
         // Apply rotation for camera frames, process without rotation for single images
         // Clear inputBuffer before reuse to avoid memory leaks
         inputBuffer.clear()
-        
+
         val processedImage = if (rotateForCamera) {
             // Use appropriate camera processor based on orientation
             if (isLandscape) {
@@ -297,11 +314,11 @@ class ObjectDetector(
             // Use single image processor (no rotation) for regular images
             imageProcessorSingleImage.process(tensorImage)
         }
-        
+
         // Reuse our direct ByteBuffer instead of the processedImage.buffer
         inputBuffer.put(processedImage.buffer)
         inputBuffer.rewind()
-        
+
         var preprocessTimeMs = (System.nanoTime() - stageStartTime) / 1_000_000.0
         Log.d(TAG, "Predict Stage: Preprocessing done in $preprocessTimeMs ms")
         stageStartTime = System.nanoTime()
@@ -353,7 +370,7 @@ class ObjectDetector(
                     (boxArray[0] + boxArray[2]) * origWidth,    // right
                     (boxArray[1] + boxArray[3]) * origHeight    // bottom
                 )
-                
+
                 // Create xywhn (normalized coordinates 0-1)
                 val normRect = RectF(
                     boxArray[0],                    // normalized x
@@ -361,12 +378,13 @@ class ObjectDetector(
                     boxArray[0] + boxArray[2],      // normalized right
                     boxArray[1] + boxArray[3]       // normalized bottom
                 )
-                
+
                 // Ensure coordinates are valid
-                if (rect.left >= 0 && rect.top >= 0 && 
+                if (rect.left >= 0 && rect.top >= 0 &&
                     rect.right <= origWidth && rect.bottom <= origHeight &&
-                    rect.width() > 0 && rect.height() > 0) {
-                    
+                    rect.width() > 0 && rect.height() > 0
+                ) {
+
                     val classIdx = boxArray[5].toInt()
                     val label = if (classIdx in labels.indices) labels[classIdx] else "Unknown"
                     boxes.add(Box(classIdx, label, boxArray[4], rect, normRect))
@@ -379,7 +397,10 @@ class ObjectDetector(
         Log.d(TAG, "Predict Stage: Postprocessing done in $postprocessTimeMs ms")
 
         val totalMs = (System.nanoTime() - overallStartTime) / 1_000_000.0
-        Log.d(TAG, "Predict Total time: $totalMs ms (Pre: $preprocessTimeMs, Inf: $inferenceTimeMs, Post: $postprocessTimeMs)")
+        Log.d(
+            TAG,
+            "Predict Total time: $totalMs ms (Pre: $preprocessTimeMs, Inf: $inferenceTimeMs, Post: $postprocessTimeMs)"
+        )
 
         updateTiming() // This updates t0, t1, t2, t3, t4 based on its own logic
 
@@ -432,10 +453,12 @@ class ObjectDetector(
 
     companion object {
         private const val TAG = "ObjectDetector"
+
         // Load JNI library
         init {
             System.loadLibrary("ultralytics")
         }
+
         private const val INPUT_MEAN = 0f
         private const val INPUT_STANDARD_DEVIATION = 255f
         private val INPUT_IMAGE_TYPE = DataType.FLOAT32

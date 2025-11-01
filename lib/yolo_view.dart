@@ -1,23 +1,23 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:async';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/models/yolo_result.dart';
-import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:ultralytics_yolo/utils/map_converter.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/widgets/yolo_overlay.dart';
+import 'package:ultralytics_yolo/models/yolo_model_spec.dart';
 
 /// A Flutter widget that displays a real-time camera preview with YOLO object detection.
 class YOLOView extends StatefulWidget {
-  final String modelPath;
-  final YOLOTask task;
+  final List<YOLOModelSpec> models;
   final YOLOViewController? controller;
   final String cameraResolution;
   final Function(List<YOLOResult>)? onResult;
@@ -34,8 +34,7 @@ class YOLOView extends StatefulWidget {
 
   const YOLOView({
     super.key,
-    required this.modelPath,
-    required this.task,
+    required this.models,
     this.controller,
     this.cameraResolution = '720p',
     this.onResult,
@@ -210,11 +209,10 @@ class _YOLOViewState extends State<YOLOView> {
       _subscribeToResults();
     }
 
-    // Handle model or task changes
+    // Handle models changes
     if (_platformViewId != null &&
-        (oldWidget.modelPath != widget.modelPath ||
-            oldWidget.task != widget.task)) {
-      _effectiveController.switchModel(widget.modelPath, widget.task);
+        !listEquals(oldWidget.models, widget.models)) {
+      _effectiveController.switchModels(widget.models);
     }
   }
 
@@ -239,13 +237,22 @@ class _YOLOViewState extends State<YOLOView> {
       children: [
         _buildCameraView(),
         if (widget.showOverlays && _currentDetections.isNotEmpty)
-          YOLOOverlay(
-            detections: _currentDetections,
-            showConfidence: true,
-            showClassName: true,
-            theme: widget.overlayTheme,
-            onDetectionTap: (detection) {
-              logInfo('YOLOView: Detection tapped: ${detection.className}');
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final viewSize = Size(
+                constraints.maxWidth,
+                constraints.maxHeight,
+              );
+              final transformed = _transformDetectionsForView(viewSize);
+              return YOLOOverlay(
+                detections: transformed,
+                showConfidence: true,
+                showClassName: true,
+                theme: widget.overlayTheme,
+                onDetectionTap: (detection) {
+                  logInfo('YOLOView: Detection tapped: ${detection.className}');
+                },
+              );
             },
           ),
       ],
@@ -279,8 +286,7 @@ class _YOLOViewState extends State<YOLOView> {
 
   Map<String, dynamic> _buildCreationParams() {
     final creationParams = <String, dynamic>{
-      'modelPath': widget.modelPath,
-      'task': widget.task.name,
+      'models': widget.models.map((m) => m.toMap()).toList(),
       'confidenceThreshold': widget.confidenceThreshold,
       'iouThreshold': widget.iouThreshold,
       'numItemsThreshold': _effectiveController.numItemsThreshold,
@@ -361,6 +367,75 @@ class _YOLOViewState extends State<YOLOView> {
       default:
         return null;
     }
+  }
+
+  // Helper: transform detections from image-space to view-space using normalizedBox and center-crop
+  List<YOLOResult> _transformDetectionsForView(Size viewSize) {
+    if (_currentDetections.isEmpty) return _currentDetections;
+
+    // Try to estimate source image width/height from first detection using normalized vs pixel box
+    double? iw;
+    double? ih;
+    for (final d in _currentDetections) {
+      final nb = d.normalizedBox;
+      final bb = d.boundingBox;
+      final nw = (nb.right - nb.left).abs();
+      final nh = (nb.bottom - nb.top).abs();
+      if (nw > 0 && nh > 0 && bb.width > 0 && bb.height > 0) {
+        iw = bb.width / nw;
+        ih = bb.height / nh;
+        break;
+      }
+    }
+    if (iw == null || ih == null || iw <= 0 || ih <= 0) {
+      // Fallback: no transform
+      return _currentDetections;
+    }
+
+    final vw = viewSize.width;
+    final vh = viewSize.height;
+    if (vw <= 0 || vh <= 0) return _currentDetections;
+
+    final scale = math.max(vw / iw, vh / ih);
+    final scaledW = iw * scale;
+    final scaledH = ih * scale;
+    final dx = (vw - scaledW) / 2.0;
+    final dy = (vh - scaledH) / 2.0;
+
+    Rect toViewRect(Rect imgRect) {
+      double left = imgRect.left * scale + dx;
+      double top = imgRect.top * scale + dy;
+      double right = imgRect.right * scale + dx;
+      double bottom = imgRect.bottom * scale + dy;
+
+      // Clamp to view bounds
+      left = left.clamp(0.0, vw);
+      right = right.clamp(0.0, vw);
+      top = top.clamp(0.0, vh);
+      bottom = bottom.clamp(0.0, vh);
+
+      return Rect.fromLTRB(left, top, right, bottom);
+    }
+
+    // Create transformed copies (only boundingBox is changed, normalizedBox stays as original)
+    final out = <YOLOResult>[];
+    for (final d in _currentDetections) {
+      final transformedBox = toViewRect(d.boundingBox);
+      out.add(
+        YOLOResult(
+          classIndex: d.classIndex,
+          className: d.className,
+          confidence: d.confidence,
+          boundingBox: transformedBox,
+          normalizedBox: d.normalizedBox,
+          modelName: d.modelName,
+          mask: d.mask,
+          keypoints: d.keypoints,
+          keypointConfidences: d.keypointConfidences,
+        ),
+      );
+    }
+    return out;
   }
 
   // Public methods for external control
