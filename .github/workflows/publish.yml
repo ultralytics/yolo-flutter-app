@@ -92,7 +92,7 @@ jobs:
     permissions:
       id-token: write # for pub.dev trusted publishing
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: package
           path: .
