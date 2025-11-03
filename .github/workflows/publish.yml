@@ -76,7 +76,7 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: dart pub publish --dry-run
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: package
           path: .
