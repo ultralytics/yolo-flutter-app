@@ -40,6 +40,12 @@ class YOLO {
   /// The unique instance ID for this YOLO instance
   String get instanceId => _instanceId;
 
+  /// Returns `true` if initialization has been attempted (via [loadModel] or
+  /// automatically in the constructor), `false` otherwise. This can be used to
+  /// check if initialization has been started before calling [predict] to avoid
+  /// catching [ModelNotLoadedException].
+  bool get isInitialized => _isInitialized;
+
   /// Path to the YOLO model file. This can be:
   /// - An asset path (e.g., 'assets/models/yolo11n.tflite')
   /// - An absolute file path (e.g., '/data/user/0/com.example.app/files/models/yolo11n.tflite')
