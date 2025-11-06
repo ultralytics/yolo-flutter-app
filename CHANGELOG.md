@@ -2,8 +2,9 @@
 
 - **Bug Fix**: Fix double overlay rendering when using `onResult` callback with native overlays enabled
   - **Root Cause**: When `showOverlays: true` and `onResult` callback was set, both native and Flutter overlays were rendering simultaneously, causing duplicate bounding boxes
-  - **Flutter**: Fixed build method condition to only show Flutter overlay when native overlays are disabled (`!widget.showOverlays`)
-  - **Impact**: Eliminates duplicate bounding boxes, improves performance by reducing unnecessary setState calls, and maintains full callback functionality
+  - **Flutter**: Added safeguard to clear existing `_currentDetections` when double-overlay scenario is detected
+  - **Behavior**: Preserves original `showOverlays` contract (controls Flutter overlay) while preventing double rendering when native overlays are also enabled
+  - **Impact**: Eliminates duplicate bounding boxes, improves performance by reducing unnecessary setState calls, and maintains full callback functionality without breaking existing API contract
 
 ## 0.1.39
 
@@ -22,6 +23,7 @@
 ## 0.1.38
 
 - **Bug Fix**: iOS performance metrics not updating in `YOLOView`
+
   - Moved EventChannel subscription from `initState` to `_onPlatformViewCreated` to ensure native channel readiness on iOS
   - Aligned streaming config key with iOS by renaming `throttleInterval` to `throttleIntervalMs` when sending params
   - iOS now sources performance metrics from the latest inference result: `processingTimeMs = result.speed * 1000`, `fps = result.fps`

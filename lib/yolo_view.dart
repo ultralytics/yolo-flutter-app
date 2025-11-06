@@ -131,7 +131,13 @@ class _YOLOViewState extends State<YOLOView> {
     try {
       final results = _parseDetectionResults(event);
 
-      if (!widget.showOverlays) {
+      if (widget.showOverlays && widget.onResult != null) {
+        if (_currentDetections.isNotEmpty) {
+          setState(() {
+            _currentDetections = [];
+          });
+        }
+      } else {
         setState(() {
           _currentDetections = results;
         });
@@ -249,7 +255,7 @@ class _YOLOViewState extends State<YOLOView> {
       children: [
         _buildCameraView(),
 
-        if (!widget.showOverlays && _currentDetections.isNotEmpty)
+        if (widget.showOverlays && _currentDetections.isNotEmpty)
           YOLOOverlay(
             detections: _currentDetections,
             showConfidence: true,
