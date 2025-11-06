@@ -130,9 +130,13 @@ class _YOLOViewState extends State<YOLOView> {
 
     try {
       final results = _parseDetectionResults(event);
-      setState(() {
-        _currentDetections = results;
-      });
+
+      if (!widget.showOverlays) {
+        setState(() {
+          _currentDetections = results;
+        });
+      }
+
       widget.onResult!(results);
     } catch (e) {
       logInfo('YOLOView: Error parsing detection results: $e');
@@ -210,6 +214,12 @@ class _YOLOViewState extends State<YOLOView> {
       _subscribeToResults();
     }
 
+    if (!oldWidget.showOverlays && widget.showOverlays) {
+      setState(() {
+        _currentDetections = [];
+      });
+    }
+
     // Handle model or task changes
     if (_platformViewId != null &&
         (oldWidget.modelPath != widget.modelPath ||
@@ -238,7 +248,8 @@ class _YOLOViewState extends State<YOLOView> {
     return Stack(
       children: [
         _buildCameraView(),
-        if (widget.showOverlays && _currentDetections.isNotEmpty)
+
+        if (!widget.showOverlays && _currentDetections.isNotEmpty)
           YOLOOverlay(
             detections: _currentDetections,
             showConfidence: true,
