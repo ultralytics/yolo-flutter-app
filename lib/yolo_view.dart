@@ -226,6 +226,14 @@ class _YOLOViewState extends State<YOLOView> {
       });
     }
 
+    if (oldWidget.onResult == null &&
+        widget.onResult != null &&
+        widget.showOverlays) {
+      setState(() {
+        _currentDetections = [];
+      });
+    }
+
     // Handle model or task changes
     if (_platformViewId != null &&
         (oldWidget.modelPath != widget.modelPath ||
