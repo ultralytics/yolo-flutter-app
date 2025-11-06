@@ -220,7 +220,9 @@ class _YOLOViewState extends State<YOLOView> {
       _subscribeToResults();
     }
 
-    if (!oldWidget.showOverlays && widget.showOverlays) {
+    if (!oldWidget.showOverlays &&
+        widget.showOverlays &&
+        widget.onResult != null) {
       setState(() {
         _currentDetections = [];
       });
