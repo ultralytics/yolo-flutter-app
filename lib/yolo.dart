@@ -40,10 +40,9 @@ class YOLO {
   /// The unique instance ID for this YOLO instance
   String get instanceId => _instanceId;
 
-  /// Returns `true` if initialization has been attempted (via [loadModel] or
-  /// automatically in the constructor), `false` otherwise. This can be used to
-  /// check if initialization has been started before calling [predict] to avoid
-  /// catching [ModelNotLoadedException].
+  /// Returns `true` if the model has been successfully loaded via [loadModel],
+  /// `false` otherwise. This can be used to check if the model is ready before
+  /// calling [predict] to avoid catching [ModelNotLoadedException].
   bool get isInitialized => _isInitialized;
 
   /// Path to the YOLO model file. This can be:
@@ -93,7 +92,6 @@ class YOLO {
       YOLOInstanceManager.registerInstance(_instanceId, this);
     } else {
       _instanceId = 'default';
-      _isInitialized = true;
     }
 
     _initializeComponents();
@@ -156,10 +154,11 @@ class YOLO {
   ///
   /// throws [ModelLoadingException] if the model file cannot be found
   Future<bool> loadModel() async {
-    if (!_isInitialized) {
+    final success = await _modelManager.loadModel();
+    if (success) {
       _isInitialized = true;
     }
-    return await _modelManager.loadModel();
+    return success;
   }
 
   /// Runs inference on a single image.
@@ -212,7 +211,12 @@ class YOLO {
     double? iouThreshold,
   }) async {
     if (!_isInitialized) {
-      await loadModel();
+      final success = await loadModel();
+      if (!success) {
+        throw ModelNotLoadedException(
+          'Model failed to load. Cannot perform inference.',
+        );
+      }
     }
     return await _inference.predict(
       imageBytes,
