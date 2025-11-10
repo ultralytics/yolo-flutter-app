@@ -20,6 +20,7 @@ import '../utils/map_converter.dart';
 ///   confidence: 0.95,
 ///   boundingBox: Rect.fromLTWH(100, 100, 200, 300),
 ///   normalizedBox: Rect.fromLTWH(0.1, 0.1, 0.2, 0.3),
+///   modelName: 'yolo11n',
 /// );
 /// ```
 class YOLOResult {
@@ -55,6 +56,12 @@ class YOLOResult {
   /// resolution-independent processing.
   final Rect normalizedBox;
 
+  /// The name of the model that produced this detection.
+  ///
+  /// This is typically the basename of the model file without extension,
+  /// e.g., "/path/to/yolo11n.tflite" -> "yolo11n".
+  final String modelName;
+
   /// The segmentation mask for instance segmentation tasks.
   ///
   /// Only available when using segmentation models (YOLOTask.segment).
@@ -83,6 +90,7 @@ class YOLOResult {
     this.mask,
     this.keypoints,
     this.keypointConfidences,
+    this.modelName = '',
   });
 
   /// Creates a [YOLOResult] from a map representation.
@@ -96,17 +104,24 @@ class YOLOResult {
   /// - 'normalizedBox': Map with 'left', 'top', 'right', 'bottom'
   /// - 'mask': (optional) List of List of double
   /// - 'keypoints': (optional) List of double in x,y,confidence triplets
+  /// - 'modelName': (required) String identifying the source model
   factory YOLOResult.fromMap(Map<dynamic, dynamic> map) {
     final classIndex = MapConverter.safeGetInt(map, 'classIndex');
     final className = MapConverter.safeGetString(map, 'className');
     final confidence = MapConverter.safeGetDouble(map, 'confidence');
 
-    final boxMap = MapConverter.convertToTypedMapSafe(
+    // Prefer viewBoundingBox when available, otherwise fallback to boundingBox
+    final viewBoxMap = MapConverter.convertToTypedMapSafe(
+      map['viewBoundingBox'] as Map<dynamic, dynamic>?,
+    );
+    final imgBoxMap = MapConverter.convertToTypedMapSafe(
       map['boundingBox'] as Map<dynamic, dynamic>?,
     );
-    final boundingBox = boxMap != null
-        ? MapConverter.convertBoundingBox(boxMap)
-        : Rect.zero;
+    final boundingBox = viewBoxMap != null
+        ? MapConverter.convertBoundingBox(viewBoxMap)
+        : (imgBoxMap != null
+              ? MapConverter.convertBoundingBox(imgBoxMap)
+              : Rect.zero);
 
     final normalizedBoxMap = MapConverter.convertToTypedMapSafe(
       map['normalizedBox'] as Map<dynamic, dynamic>?,
@@ -130,6 +145,10 @@ class YOLOResult {
       keypointConfidences = keypointResult.confidences;
     }
 
+    final modelName = map['modelName'] is String
+        ? (map['modelName'] as String)
+        : '';
+
     return YOLOResult(
       classIndex: classIndex,
       className: className,
@@ -139,6 +158,7 @@ class YOLOResult {
       mask: mask,
       keypoints: keypoints,
       keypointConfidences: keypointConfidences,
+      modelName: modelName,
     );
   }
 
@@ -159,6 +179,7 @@ class YOLOResult {
         'right': normalizedBox.right,
         'bottom': normalizedBox.bottom,
       },
+      'modelName': modelName,
     };
 
     if (mask != null) {
@@ -170,7 +191,9 @@ class YOLOResult {
       for (var i = 0; i < keypoints!.length; i++) {
         keypointsData.add(keypoints![i].x);
         keypointsData.add(keypoints![i].y);
-        keypointsData.add(keypointConfidences![i]);
+        keypointsData.add(
+          i < keypointConfidences!.length ? keypointConfidences![i] : 0.0,
+        );
       }
       map['keypoints'] = keypointsData;
     }
@@ -180,25 +203,11 @@ class YOLOResult {
 
   @override
   String toString() {
-    return 'YOLOResult{classIndex: $classIndex, className: $className, confidence: $confidence, boundingBox: $boundingBox}';
+    return 'YOLOResult{classIndex: $classIndex, className: $className, confidence: $confidence, boundingBox: $boundingBox, modelName: $modelName}';
   }
 }
 
 /// Represents a collection of detection results from YOLO models.
-///
-/// This class encapsulates the complete output from a YOLO inference,
-/// including all detected objects, an optional annotated image showing
-/// the detections, and performance metrics.
-///
-/// Example:
-/// ```dart
-/// final results = await yolo.predict(imageBytes);
-/// print('Found ${results.detections.length} objects');
-/// print('Processing took ${results.processingTimeMs}ms');
-/// if (results.annotatedImage != null) {
-///   // Display or save the annotated image
-/// }
-/// ```
 class YOLODetectionResults {
   /// List of all objects detected in the image.
   ///
@@ -241,7 +250,6 @@ class YOLODetectionResults {
         : <YOLOResult>[];
 
     final annotatedImage = MapConverter.safeGetUint8List(map, 'annotatedImage');
-
     final processingTimeMs = MapConverter.safeGetDouble(
       map,
       'processingTimeMs',
@@ -264,12 +272,6 @@ class YOLODetectionResults {
 }
 
 /// Represents a point in 2D space.
-///
-/// Example:
-/// ```dart
-/// final point = Point(150.5, 200.0);
-/// print('Point at (${point.x}, ${point.y})');
-/// ```
 class Point {
   final double x;
   final double y;

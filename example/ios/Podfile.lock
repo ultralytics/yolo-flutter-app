@@ -31,10 +31,10 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
-  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
-  path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
-  ultralytics_yolo: 650ea1417a5b3ef9b1acc55e6edef5385018d3b5
+  image_picker_ios: 4f2f91b01abdb52842a8e277617df877e40f905b
+  integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
+  path_provider_foundation: 0b743cbb62d8e47eab856f09262bb8c1ddcfe6ba
+  ultralytics_yolo: c550236eb35c549df15ce6dfca979414d7b70248
 
 PODFILE CHECKSUM: aa0167f03b8e053ccf09114d1dcefce0c4f64aba
 

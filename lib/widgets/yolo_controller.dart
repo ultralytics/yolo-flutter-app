@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
+import 'package:ultralytics_yolo/models/yolo_model_spec.dart';
 
 /// Controller for managing YOLO detection settings and camera controls.
 class YOLOViewController {
@@ -155,6 +156,18 @@ class YOLOViewController {
         'modelPath': modelPath,
         'task': task.name,
       });
+    }
+  }
+
+  Future<void> switchModels(List<YOLOModelSpec> models) async {
+    if (_methodChannel != null && _viewId != null) {
+      try {
+        await _methodChannel!.invokeMethod('setModels', {
+          'models': models.map((m) => m.toMap()).toList(),
+        });
+      } catch (e) {
+        logInfo('Error switching models: $e');
+      }
     }
   }
 
