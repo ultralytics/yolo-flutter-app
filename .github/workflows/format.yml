@@ -30,6 +30,7 @@ jobs:
         uses: ultralytics/actions@main
         with:
           token: ${{ secrets._GITHUB_TOKEN || secrets.GITHUB_TOKEN }} # Auto-generated token
+          python-version: "3.13" # Pin to 3.13 to avoid Python 3.14 compatibility issues
           labels: true # Auto-label issues/PRs using AI
           python: true # Format Python with Ruff and docformatter
           prettier: true # Format YAML, JSON, Markdown, CSS

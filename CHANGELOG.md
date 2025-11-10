@@ -1,3 +1,12 @@
+## 0.1.41
+
+- **Bug Fix**: Fix `MissingPluginException` for default YOLO instances
+  - Fixed critical issue where creating YOLO instances without `useMultiInstance: true` resulted in `MissingPluginException: No implementation found for method predictSingleImage on channel yolo_single_image_channel_default`
+  - Modified `ChannelConfig.createChannel()` to treat `'default'` instance ID as null for backward compatibility
+  - The native side registers the default channel as `yolo_single_image_channel` without any suffix
+  - Now properly handles default instances by not appending `_default` suffix to channel name
+  - **Upgrade Note**: If you experienced `MissingPluginException` errors with v0.1.38+, this version resolves the issue
+
 ## 0.1.40
 
 - **Bug Fix**: Fix double overlay rendering when using `onResult` callback with native overlays enabled
