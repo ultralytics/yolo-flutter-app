@@ -7,7 +7,6 @@
   - Now properly handles default instances by not appending `_default` suffix to channel name
   - **Upgrade Note**: If you experienced `MissingPluginException` errors with v0.1.38+, this version resolves the issue
 
-
 ## 0.1.40
 
 - **Bug Fix**: Fix double overlay rendering when using `onResult` callback with native overlays enabled
