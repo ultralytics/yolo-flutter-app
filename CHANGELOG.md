@@ -1,3 +1,11 @@
+## 0.1.40
+
+- **Bug Fix**: Fix double overlay rendering when using `onResult` callback with native overlays enabled
+  - **Root Cause**: When `showOverlays: true` and `onResult` callback was set, both native and Flutter overlays were rendering simultaneously, causing duplicate bounding boxes
+  - **Flutter**: Added safeguard to clear existing `_currentDetections` when double-overlay scenario is detected
+  - **Behavior**: Preserves original `showOverlays` contract (controls Flutter overlay) while preventing double rendering when native overlays are also enabled
+  - **Impact**: Eliminates duplicate bounding boxes, improves performance by reducing unnecessary setState calls, and maintains full callback functionality without breaking existing API contract
+
 ## 0.1.39
 
 - **Bug Fix**: Fix `showOverlays` parameter not hiding native platform bounding boxes
