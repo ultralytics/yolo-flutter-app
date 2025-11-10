@@ -74,7 +74,7 @@ jobs:
         shell: bash
       - name: Notify Success
         if: success() && github.event.inputs.publish_tag == 'true'
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@v2.1.1
         with:
           webhook-type: incoming-webhook
           webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUBWEB }}
