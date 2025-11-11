@@ -3,13 +3,32 @@
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/models/yolo_result.dart';
 
-/// A widget that displays detection overlays on top of the camera view.
+/// A widget that displays detection overlays on top of the camera view or custom images.
+///
+/// When used with custom images (e.g., from HTTP/RTSP sources), provide [imageRect]
+/// and [imageSize] to properly position and scale the detection overlays.
+///
+/// Example usage with custom image:
+/// ```dart
+/// Stack(
+///   children: [
+///     Image.network('http://camera-url/image.jpg'),
+///     YOLOOverlay(
+///       detections: yoloResults,
+///       imageRect: Rect.fromLTWH(x, y, width, height), // Image position/size on screen
+///       imageSize: Size(originalWidth, originalHeight), // Original image dimensions
+///     ),
+///   ],
+/// )
+/// ```
 class YOLOOverlay extends StatelessWidget {
   final List<YOLOResult> detections;
   final bool showConfidence;
   final bool showClassName;
   final YOLOOverlayTheme theme;
   final void Function(YOLOResult detection)? onDetectionTap;
+  final Rect? imageRect;
+  final Size? imageSize;
 
   const YOLOOverlay({
     super.key,
@@ -18,6 +37,8 @@ class YOLOOverlay extends StatelessWidget {
     this.showClassName = true,
     this.theme = const YOLOOverlayTheme(),
     this.onDetectionTap,
+    this.imageRect,
+    this.imageSize,
   });
 
   @override
@@ -28,6 +49,8 @@ class YOLOOverlay extends StatelessWidget {
         showConfidence: showConfidence,
         showClassName: showClassName,
         theme: theme,
+        imageRect: imageRect,
+        imageSize: imageSize,
       ),
       child: GestureDetector(
         onTapDown: (details) => _handleTap(details, context),
@@ -51,10 +74,32 @@ class YOLOOverlay extends StatelessWidget {
   }
 
   bool _isPointInBoundingBox(Offset point, YOLOResult detection) {
-    return point.dx >= detection.boundingBox.left &&
-        point.dx <= detection.boundingBox.right &&
-        point.dy >= detection.boundingBox.top &&
-        point.dy <= detection.boundingBox.bottom;
+    Rect detectionRect = detection.boundingBox;
+
+    if (imageRect != null && imageSize != null) {
+      detectionRect = _transformRect(detection.boundingBox);
+    }
+
+    return point.dx >= detectionRect.left &&
+        point.dx <= detectionRect.right &&
+        point.dy >= detectionRect.top &&
+        point.dy <= detectionRect.bottom;
+  }
+
+  Rect _transformRect(Rect originalRect) {
+    if (imageRect == null || imageSize == null) {
+      return originalRect;
+    }
+
+    final scaleX = imageRect!.width / imageSize!.width;
+    final scaleY = imageRect!.height / imageSize!.height;
+
+    return Rect.fromLTRB(
+      imageRect!.left + originalRect.left * scaleX,
+      imageRect!.top + originalRect.top * scaleY,
+      imageRect!.left + originalRect.right * scaleX,
+      imageRect!.top + originalRect.bottom * scaleY,
+    );
   }
 }
 
@@ -64,12 +109,16 @@ class YOLODetectionPainter extends CustomPainter {
   final bool showConfidence;
   final bool showClassName;
   final YOLOOverlayTheme theme;
+  final Rect? imageRect;
+  final Size? imageSize;
 
   YOLODetectionPainter({
     required this.detections,
     required this.showConfidence,
     required this.showClassName,
     required this.theme,
+    this.imageRect,
+    this.imageSize,
   });
 
   @override
@@ -88,14 +137,34 @@ class YOLODetectionPainter extends CustomPainter {
       ..strokeWidth = theme.boundingBoxWidth
       ..style = PaintingStyle.stroke;
 
-    final rect = Rect.fromLTRB(
+    Rect rect = Rect.fromLTRB(
       detection.boundingBox.left,
       detection.boundingBox.top,
       detection.boundingBox.right,
       detection.boundingBox.bottom,
     );
 
+    if (imageRect != null && imageSize != null) {
+      rect = _transformRect(rect);
+    }
+
     canvas.drawRect(rect, paint);
+  }
+
+  Rect _transformRect(Rect originalRect) {
+    if (imageRect == null || imageSize == null) {
+      return originalRect;
+    }
+
+    final scaleX = imageRect!.width / imageSize!.width;
+    final scaleY = imageRect!.height / imageSize!.height;
+
+    return Rect.fromLTRB(
+      imageRect!.left + originalRect.left * scaleX,
+      imageRect!.top + originalRect.top * scaleY,
+      imageRect!.left + originalRect.right * scaleX,
+      imageRect!.top + originalRect.bottom * scaleY,
+    );
   }
 
   void _drawLabel(Canvas canvas, YOLOResult detection) {
@@ -113,11 +182,16 @@ class YOLODetectionPainter extends CustomPainter {
 
     textPainter.layout();
 
+    Rect detectionRect = detection.boundingBox;
+    if (imageRect != null && imageSize != null) {
+      detectionRect = _transformRect(detection.boundingBox);
+    }
+
     final labelRect = Rect.fromLTRB(
-      detection.boundingBox.left,
-      detection.boundingBox.top - textPainter.height - 4,
-      detection.boundingBox.left + textPainter.width + 8,
-      detection.boundingBox.top,
+      detectionRect.left,
+      detectionRect.top - textPainter.height - 4,
+      detectionRect.left + textPainter.width + 8,
+      detectionRect.top,
     );
 
     // Draw background
@@ -127,10 +201,7 @@ class YOLODetectionPainter extends CustomPainter {
     // Draw text
     textPainter.paint(
       canvas,
-      Offset(
-        detection.boundingBox.left + 4,
-        detection.boundingBox.top - textPainter.height,
-      ),
+      Offset(detectionRect.left + 4, detectionRect.top - textPainter.height),
     );
   }
 
@@ -149,7 +220,9 @@ class YOLODetectionPainter extends CustomPainter {
         (oldDelegate.detections != detections ||
             oldDelegate.showConfidence != showConfidence ||
             oldDelegate.showClassName != showClassName ||
-            oldDelegate.theme != theme);
+            oldDelegate.theme != theme ||
+            oldDelegate.imageRect != imageRect ||
+            oldDelegate.imageSize != imageSize);
   }
 }
 

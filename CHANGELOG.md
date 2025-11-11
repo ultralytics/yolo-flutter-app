@@ -1,3 +1,12 @@
+## 0.1.42
+
+- **New Feature**: Add support for custom image sources in `YOLOOverlay`
+  - Added optional `imageRect` and `imageSize` parameters to `YOLOOverlay` widget
+  - Enables proper positioning of detection overlays on images from HTTP/RTSP sources or local files
+  - Automatically transforms detection coordinates from original image space to displayed image space
+  - Fully backward compatible - existing code continues to work without changes
+  - Resolves issue where overlays appeared outside image bounds when using non-camera image sources
+
 ## 0.1.41
 
 - **Bug Fix**: Fix `MissingPluginException` for default YOLO instances
@@ -32,6 +41,7 @@
 ## 0.1.38
 
 - **Bug Fix**: iOS performance metrics not updating in `YOLOView`
+
   - Moved EventChannel subscription from `initState` to `_onPlatformViewCreated` to ensure native channel readiness on iOS
   - Aligned streaming config key with iOS by renaming `throttleInterval` to `throttleIntervalMs` when sending params
   - iOS now sources performance metrics from the latest inference result: `processingTimeMs = result.speed * 1000`, `fps = result.fps`
