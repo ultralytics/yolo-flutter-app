@@ -41,7 +41,6 @@
 ## 0.1.38
 
 - **Bug Fix**: iOS performance metrics not updating in `YOLOView`
-
   - Moved EventChannel subscription from `initState` to `_onPlatformViewCreated` to ensure native channel readiness on iOS
   - Aligned streaming config key with iOS by renaming `throttleInterval` to `throttleIntervalMs` when sending params
   - iOS now sources performance metrics from the latest inference result: `processingTimeMs = result.speed * 1000`, `fps = result.fps`
