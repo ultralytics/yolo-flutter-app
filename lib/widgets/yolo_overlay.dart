@@ -39,7 +39,11 @@ class YOLOOverlay extends StatelessWidget {
     this.onDetectionTap,
     this.imageRect,
     this.imageSize,
-  });
+  }) : assert(
+         (imageRect == null && imageSize == null) ||
+             (imageRect != null && imageSize != null),
+         'imageRect and imageSize must be provided together or both be null',
+       );
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +92,10 @@ class YOLOOverlay extends StatelessWidget {
 
   Rect _transformRect(Rect originalRect) {
     if (imageRect == null || imageSize == null) {
+      return originalRect;
+    }
+
+    if (imageSize!.width <= 0 || imageSize!.height <= 0) {
       return originalRect;
     }
 
@@ -153,6 +161,10 @@ class YOLODetectionPainter extends CustomPainter {
 
   Rect _transformRect(Rect originalRect) {
     if (imageRect == null || imageSize == null) {
+      return originalRect;
+    }
+
+    if (imageSize!.width <= 0 || imageSize!.height <= 0) {
       return originalRect;
     }
 
