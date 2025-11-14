@@ -457,6 +457,12 @@ class AdvancedCameraScreen extends StatelessWidget {
 }
 ```
 
+> Tip: Each detection map in `data['detections']` contains `viewBoundingBox`
+> coordinates (always aligned with the preview). For pose models, you also get
+> `viewKeypoints` (flat `x, y, confidence` triples) that already include the
+> camera crop and mirroring, so you can interpret head tilts directly in
+> screen space without extra math.
+
 ## 🔄 Dynamic Model Management
 
 ### Dynamic Model Switching
