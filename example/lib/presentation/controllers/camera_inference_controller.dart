@@ -37,7 +37,6 @@ class CameraInferenceController extends ChangeNotifier {
   final Set<ModelType> _activeModels = {
     // Default to a useful multi-model demo (segment + pose)
     ModelType.segment,
-    ModelType.pose,
   };
 
   // Loaded model paths per model type (computed via ModelManager)

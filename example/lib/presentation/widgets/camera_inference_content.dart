@@ -19,7 +19,7 @@ class CameraInferenceContent extends StatelessWidget {
         key: const ValueKey('yolo_view_static'),
         controller: controller.yoloController,
         models: controller.modelsForView,
-        streamingConfig: const YOLOStreamingConfig.minimal(),
+        streamingConfig: const YOLOStreamingConfig.full(),
         onResult: controller.onDetectionResults,
         onPerformanceMetrics: (metrics) =>
             controller.onPerformanceMetrics(metrics.fps),
