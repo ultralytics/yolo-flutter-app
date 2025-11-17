@@ -59,20 +59,37 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         }
 
         DispatchQueue.main.async {
-            // SEGMENT: draw combined mask if available
-            if let maskImage = result.masks?.combinedMask, let maskLayer = self.maskLayer {
-                maskLayer.isHidden = false
-                maskLayer.frame = self.overlayLayer.bounds
-                maskLayer.contents = maskImage
-            }
+            // Respect global overlay visibility for mask/pose layers as well
+            if !self._showOverlays {
+                // Hide/clear mask layer if overlays are disabled
+                if let maskLayer = self.maskLayer {
+                    maskLayer.isHidden = true
+                    maskLayer.contents = nil
+                }
+                // Clear pose drawings
+                self.removeAllSubLayers(parentLayer: self.poseLayer)
+            } else {
+                // SEGMENT: draw combined mask if available, otherwise clear any stale contents
+                if let maskLayer = self.maskLayer {
+                    if let maskImage = result.masks?.combinedMask {
+                        maskLayer.isHidden = false
+                        maskLayer.frame = self.overlayLayer.bounds
+                        maskLayer.contents = maskImage
+                    } else {
+                        // No mask in this frame – ensure previous mask is cleared
+                        maskLayer.isHidden = true
+                        maskLayer.contents = nil
+                    }
+                }
 
-            // POSE: draw keypoints/skeleton if available
-            self.removeAllSubLayers(parentLayer: self.poseLayer)
-            if !result.keypointsList.isEmpty {
-                // Ensure pose layer exists in multi-model scenarios where task != .pose
-                self.setupPoseLayerIfNeeded()
+                // POSE: draw keypoints/skeleton if available
+                self.removeAllSubLayers(parentLayer: self.poseLayer)
+                if !result.keypointsList.isEmpty {
+                    // Ensure pose layer exists in multi-model scenarios where task != .pose
+                    self.setupPoseLayerIfNeeded()
+                }
             }
-            if !result.keypointsList.isEmpty, let poseLayer = self.poseLayer {
+            if self._showOverlays, !result.keypointsList.isEmpty, let poseLayer = self.poseLayer {
                 var keypointList = [[(x: Float, y: Float)]]()
                 var confsList = [[Float]]()
                 var poseBoxes: [Box] = []
