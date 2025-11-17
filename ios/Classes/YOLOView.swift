@@ -544,8 +544,74 @@ public class YOLOView: UIView, VideoCaptureDelegate {
                 totalSpeed += res.speed
                 if fps == nil, let f = res.fps { fps = f }
             }
-            let masks: Masks? =
-                mergedMasks.isEmpty ? nil : Masks(masks: mergedMasks, combinedMask: nil)
+            // Build a combined mask image when running multi-model inference
+            // so segmentation overlays render even when merging results.
+            var combinedMaskImage: CGImage? = nil
+            if !mergedMasks.isEmpty {
+                // Expect masks as [instance][height][width]
+                let maskHeight = mergedMasks[0].count
+                let maskWidth = mergedMasks[0][0].count
+
+                // RGBA buffer
+                var pixels = [UInt8](repeating: 0, count: maskWidth * maskHeight * 4)
+
+                // Draw lower-confidence first so higher-confidence overwrites
+                let indices = Array(0..<min(mergedMasks.count, mergedBoxes.count))
+                let sortedByConf = indices.sorted { i, j in
+                    mergedBoxes[i].conf < mergedBoxes[j].conf
+                }
+
+                for idx in sortedByConf {
+                    let mask2d = mergedMasks[idx]
+                    // Defensive shape check
+                    guard mask2d.count == maskHeight, mask2d.first?.count == maskWidth else { continue }
+
+                    let clsIndex = mergedBoxes[idx].index
+                    let color = ultralyticsColors[clsIndex % ultralyticsColors.count]
+                    var r: CGFloat = 1.0, g: CGFloat = 1.0, b: CGFloat = 1.0, a: CGFloat = 1.0
+                    color.getRed(&r, green: &g, blue: &b, alpha: &a)
+                    let R = UInt8(max(0, min(255, Int(r * 255.0))))
+                    let G = UInt8(max(0, min(255, Int(g * 255.0))))
+                    let B = UInt8(max(0, min(255, Int(b * 255.0))))
+
+                    // Threshold similar to segment pipeline
+                    let threshold: Float = 0.5
+                    for y in 0..<maskHeight {
+                        let row = mask2d[y]
+                        for x in 0..<maskWidth {
+                            if row[x] > threshold {
+                                let p = (y * maskWidth + x) * 4
+                                pixels[p + 0] = R
+                                pixels[p + 1] = G
+                                pixels[p + 2] = B
+                                pixels[p + 3] = 255
+                            }
+                        }
+                    }
+                }
+
+                // Create CGImage from RGBA buffer
+                let colorSpace = CGColorSpaceCreateDeviceRGB()
+                let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+                let totalBytes = pixels.count
+                if let provider = CGDataProvider(data: NSData(bytes: &pixels, length: totalBytes)) {
+                    combinedMaskImage = CGImage(
+                        width: maskWidth,
+                        height: maskHeight,
+                        bitsPerComponent: 8,
+                        bitsPerPixel: 32,
+                        bytesPerRow: maskWidth * 4,
+                        space: colorSpace,
+                        bitmapInfo: bitmapInfo,
+                        provider: provider,
+                        decode: nil,
+                        shouldInterpolate: false,
+                        intent: .defaultIntent
+                    )
+                }
+            }
+
+            let masks: Masks? = mergedMasks.isEmpty ? nil : Masks(masks: mergedMasks, combinedMask: combinedMaskImage)
             let result = YOLOResult(
                 orig_shape: CGSize(
                     width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb)),
