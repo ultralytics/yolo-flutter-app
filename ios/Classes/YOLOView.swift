@@ -68,17 +68,42 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
             // POSE: draw keypoints/skeleton if available
             self.removeAllSubLayers(parentLayer: self.poseLayer)
+            if !result.keypointsList.isEmpty {
+                // Ensure pose layer exists in multi-model scenarios where task != .pose
+                self.setupPoseLayerIfNeeded()
+            }
             if !result.keypointsList.isEmpty, let poseLayer = self.poseLayer {
                 var keypointList = [[(x: Float, y: Float)]]()
                 var confsList = [[Float]]()
-                for keypoint in result.keypointsList {
-                    keypointList.append(keypoint.xyn)
-                    confsList.append(keypoint.conf)
+                var poseBoxes: [Box] = []
+                for kp in result.keypointsList {
+                    keypointList.append(kp.xyn)
+                    confsList.append(kp.conf)
+
+                    // Build a bounding box around the normalized keypoints to use for containment checks
+                    var minX: Float = 1.0, minY: Float = 1.0, maxX: Float = 0.0, maxY: Float = 0.0
+                    for p in kp.xyn {
+                        minX = min(minX, p.x)
+                        minY = min(minY, p.y)
+                        maxX = max(maxX, p.x)
+                        maxY = max(maxY, p.y)
+                    }
+                    // Clamp to [0,1]
+                    minX = max(0.0, min(1.0, minX))
+                    minY = max(0.0, min(1.0, minY))
+                    maxX = max(0.0, min(1.0, maxX))
+                    maxY = max(0.0, min(1.0, maxY))
+
+                    let normRect = CGRect(x: CGFloat(minX), y: CGFloat(minY), width: CGFloat(max(0.0, maxX - minX)), height: CGFloat(max(0.0, maxY - minY)))
+                    let pixelRect = VNImageRectForNormalizedRect(normRect, Int(result.orig_shape.width), Int(result.orig_shape.height))
+                    let box = Box(index: 0, cls: "person", conf: 1.0, xywh: pixelRect, xywhn: normRect)
+                    poseBoxes.append(box)
                 }
+
                 drawKeypoints(
                     keypointsList: keypointList,
                     confsList: confsList,
-                    boundingBoxes: result.boxes,
+                    boundingBoxes: poseBoxes,
                     on: poseLayer,
                     imageViewSize: self.overlayLayer.frame.size,
                     originalImageSize: result.orig_shape
@@ -102,8 +127,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
                 self.overlayYOLOClassificationsCALayer(on: self, result: result)
             }
 
-            // Mark predictor as updated
-            self.videoCapture.predictor.isUpdating = false
+            // Mark predictor as updated (guard against transient nil during model switches)
+            self.videoCapture.predictor?.isUpdating = false
         }
     }
 
@@ -713,9 +738,15 @@ public class YOLOView: UIView, VideoCaptureDelegate {
                 x: 0, y: -margin, width: self.bounds.width, height: offSet)
         }
 
-        // Update mask layer frame to match overlay layer bounds
+        // Update sublayer frames to match overlay layer bounds
         if let maskLayer = self.maskLayer {
             maskLayer.frame = self.overlayLayer.bounds
+        }
+        if let poseLayer = self.poseLayer {
+            poseLayer.frame = self.overlayLayer.bounds
+        }
+        if let obbLayer = self.obbLayer {
+            obbLayer.frame = self.overlayLayer.bounds
         }
     }
 
