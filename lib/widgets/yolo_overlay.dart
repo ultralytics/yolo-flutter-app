@@ -8,6 +8,10 @@ import 'package:ultralytics_yolo/models/yolo_result.dart';
 /// When used with custom images (e.g., from HTTP/RTSP sources), provide [imageRect]
 /// and [imageSize] to properly position and scale the detection overlays.
 ///
+/// The widget uses normalized bounding box coordinates (0.0-1.0) from [YOLOResult.normalizedBox]
+/// when transforming coordinates for custom images, ensuring accurate overlay positioning
+/// regardless of the original image dimensions.
+///
 /// Example usage with custom image:
 /// ```dart
 /// Stack(
@@ -81,7 +85,7 @@ class YOLOOverlay extends StatelessWidget {
     Rect detectionRect = detection.boundingBox;
 
     if (imageRect != null && imageSize != null) {
-      detectionRect = _transformRect(detection.boundingBox);
+      detectionRect = _transformRect(detection.normalizedBox);
     }
 
     return point.dx >= detectionRect.left &&
@@ -90,23 +94,21 @@ class YOLOOverlay extends StatelessWidget {
         point.dy <= detectionRect.bottom;
   }
 
-  Rect _transformRect(Rect originalRect) {
+  Rect _transformRect(Rect normalizedRect) {
     if (imageRect == null || imageSize == null) {
-      return originalRect;
+      return normalizedRect;
     }
 
     if (imageSize!.width <= 0 || imageSize!.height <= 0) {
-      return originalRect;
+      return normalizedRect;
     }
 
-    final scaleX = imageRect!.width / imageSize!.width;
-    final scaleY = imageRect!.height / imageSize!.height;
-
+    // Transform normalized coordinates (0.0-1.0) to display coordinates
     return Rect.fromLTRB(
-      imageRect!.left + originalRect.left * scaleX,
-      imageRect!.top + originalRect.top * scaleY,
-      imageRect!.left + originalRect.right * scaleX,
-      imageRect!.top + originalRect.bottom * scaleY,
+      imageRect!.left + normalizedRect.left * imageRect!.width,
+      imageRect!.top + normalizedRect.top * imageRect!.height,
+      imageRect!.left + normalizedRect.right * imageRect!.width,
+      imageRect!.top + normalizedRect.bottom * imageRect!.height,
     );
   }
 }
@@ -145,37 +147,30 @@ class YOLODetectionPainter extends CustomPainter {
       ..strokeWidth = theme.boundingBoxWidth
       ..style = PaintingStyle.stroke;
 
-    Rect rect = Rect.fromLTRB(
-      detection.boundingBox.left,
-      detection.boundingBox.top,
-      detection.boundingBox.right,
-      detection.boundingBox.bottom,
-    );
+    Rect rect = detection.boundingBox;
 
     if (imageRect != null && imageSize != null) {
-      rect = _transformRect(rect);
+      rect = _transformRect(detection.normalizedBox);
     }
 
     canvas.drawRect(rect, paint);
   }
 
-  Rect _transformRect(Rect originalRect) {
+  Rect _transformRect(Rect normalizedRect) {
     if (imageRect == null || imageSize == null) {
-      return originalRect;
+      return normalizedRect;
     }
 
     if (imageSize!.width <= 0 || imageSize!.height <= 0) {
-      return originalRect;
+      return normalizedRect;
     }
 
-    final scaleX = imageRect!.width / imageSize!.width;
-    final scaleY = imageRect!.height / imageSize!.height;
-
+    // Transform normalized coordinates (0.0-1.0) to display coordinates
     return Rect.fromLTRB(
-      imageRect!.left + originalRect.left * scaleX,
-      imageRect!.top + originalRect.top * scaleY,
-      imageRect!.left + originalRect.right * scaleX,
-      imageRect!.top + originalRect.bottom * scaleY,
+      imageRect!.left + normalizedRect.left * imageRect!.width,
+      imageRect!.top + normalizedRect.top * imageRect!.height,
+      imageRect!.left + normalizedRect.right * imageRect!.width,
+      imageRect!.top + normalizedRect.bottom * imageRect!.height,
     );
   }
 
@@ -196,7 +191,7 @@ class YOLODetectionPainter extends CustomPainter {
 
     Rect detectionRect = detection.boundingBox;
     if (imageRect != null && imageSize != null) {
-      detectionRect = _transformRect(detection.boundingBox);
+      detectionRect = _transformRect(detection.normalizedBox);
     }
 
     final labelRect = Rect.fromLTRB(
