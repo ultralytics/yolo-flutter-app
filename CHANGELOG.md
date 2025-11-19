@@ -1,3 +1,16 @@
+## 0.1.42
+
+- **Feature**: Add `lensFacing` parameter to `YOLOView` for default camera selection
+  - Added `LensFacing` enum with `back` (default) and `front` values
+  - Added `lensFacing` parameter to `YOLOView` widget (defaults to `LensFacing.back`)
+  - **Android**: Added `setLensFacing()` method to `YOLOView` class
+  - **Android**: Reads `lensFacing` from creation params and sets camera facing before initialization
+  - **iOS**: Modified `YOLOView` init to accept `cameraPosition` parameter
+  - **iOS**: Reads `lensFacing` from creation params and passes correct camera position to init
+  - **Usage**: `YOLOView(lensFacing: LensFacing.front)` now starts with front camera by default
+  - **Backward Compatible**: Defaults to back camera if not specified, maintaining existing behavior
+  - **Example**: Updated example app controller to support `lensFacing` parameter
+
 ## 0.1.41
 
 - **Bug Fix**: Fix `MissingPluginException` for default YOLO instances
