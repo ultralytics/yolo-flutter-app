@@ -16,7 +16,7 @@ class CameraInferenceContent extends StatelessWidget {
   Widget build(BuildContext context) {
     if (controller.modelPath != null && !controller.isModelLoading) {
       return YOLOView(
-        key: const ValueKey('yolo_view_static'),
+        key: ValueKey('yolo_view_${controller.lensFacing.name}'),
         controller: controller.yoloController,
         modelPath: controller.modelPath!,
         task: controller.selectedModel.task,
@@ -25,6 +25,7 @@ class CameraInferenceContent extends StatelessWidget {
         onPerformanceMetrics: (metrics) =>
             controller.onPerformanceMetrics(metrics.fps),
         onZoomChanged: controller.onZoomChanged,
+        lensFacing: controller.lensFacing,
       );
     } else if (controller.isModelLoading) {
       return ModelLoadingOverlay(
