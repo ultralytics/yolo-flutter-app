@@ -353,5 +353,128 @@ void main() {
 
       expect(find.byType(YOLOView), findsOneWidget);
     });
+
+    group('lensFacing parameter', () {
+      test('YOLOView defaults to LensFacing.back', () {
+        const widget = YOLOView(
+          modelPath: 'test_model.tflite',
+          task: YOLOTask.detect,
+        );
+        expect(widget.lensFacing, LensFacing.back);
+      });
+
+      test('YOLOView accepts LensFacing.back explicitly', () {
+        const widget = YOLOView(
+          modelPath: 'test_model.tflite',
+          task: YOLOTask.detect,
+          lensFacing: LensFacing.back,
+        );
+        expect(widget.lensFacing, LensFacing.back);
+      });
+
+      test('YOLOView accepts LensFacing.front', () {
+        const widget = YOLOView(
+          modelPath: 'test_model.tflite',
+          task: YOLOTask.detect,
+          lensFacing: LensFacing.front,
+        );
+        expect(widget.lensFacing, LensFacing.front);
+      });
+
+      testWidgets('creates widget with front camera', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: YOLOView(
+              modelPath: 'test_model.tflite',
+              task: YOLOTask.detect,
+              lensFacing: LensFacing.front,
+            ),
+          ),
+        );
+
+        expect(find.byType(YOLOView), findsOneWidget);
+        final yoloView = tester.widget<YOLOView>(find.byType(YOLOView));
+        expect(yoloView.lensFacing, LensFacing.front);
+      });
+
+      testWidgets('creates widget with back camera', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: YOLOView(
+              modelPath: 'test_model.tflite',
+              task: YOLOTask.detect,
+              lensFacing: LensFacing.back,
+            ),
+          ),
+        );
+
+        expect(find.byType(YOLOView), findsOneWidget);
+        final yoloView = tester.widget<YOLOView>(find.byType(YOLOView));
+        expect(yoloView.lensFacing, LensFacing.back);
+      });
+
+      testWidgets('widget key includes lensFacing for proper recreation', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: YOLOView(
+              key: ValueKey('yolo_view_back'),
+              modelPath: 'test_model.tflite',
+              task: YOLOTask.detect,
+              lensFacing: LensFacing.back,
+            ),
+          ),
+        );
+
+        expect(find.byType(YOLOView), findsOneWidget);
+        expect(find.byKey(const ValueKey('yolo_view_back')), findsOneWidget);
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: YOLOView(
+              key: ValueKey('yolo_view_front'),
+              modelPath: 'test_model.tflite',
+              task: YOLOTask.detect,
+              lensFacing: LensFacing.front,
+            ),
+          ),
+        );
+
+        expect(find.byType(YOLOView), findsOneWidget);
+        expect(find.byKey(const ValueKey('yolo_view_front')), findsOneWidget);
+        expect(find.byKey(const ValueKey('yolo_view_back')), findsNothing);
+      });
+
+      testWidgets('handles lensFacing with other parameters', (
+        WidgetTester tester,
+      ) async {
+        final controller = YOLOViewController();
+        await tester.pumpWidget(
+          MaterialApp(
+            home: YOLOView(
+              modelPath: 'test_model.tflite',
+              task: YOLOTask.segment,
+              controller: controller,
+              lensFacing: LensFacing.front,
+              confidenceThreshold: 0.7,
+              iouThreshold: 0.5,
+              showOverlays: false,
+            ),
+          ),
+        );
+
+        expect(find.byType(YOLOView), findsOneWidget);
+        final yoloView = tester.widget<YOLOView>(find.byType(YOLOView));
+        expect(yoloView.lensFacing, LensFacing.front);
+        expect(yoloView.confidenceThreshold, 0.7);
+        expect(yoloView.iouThreshold, 0.5);
+        expect(yoloView.showOverlays, false);
+      });
+    });
   });
 }
