@@ -32,7 +32,7 @@ class CameraInferenceController extends ChangeNotifier {
   // Camera state
   double _currentZoomLevel = 1.0;
   bool _isFrontCamera = false;
-  LensFacing _lensFacing = LensFacing.back;
+  LensFacing _lensFacing = LensFacing.front;
 
   // Controllers
   final _yoloController = YOLOViewController();
