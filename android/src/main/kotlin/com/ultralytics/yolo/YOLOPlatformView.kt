@@ -61,6 +61,13 @@ class YOLOPlatformView(
         val confidenceParam = creationParams?.get("confidenceThreshold") as? Double ?: 0.5
         val iouParam = creationParams?.get("iouThreshold") as? Double ?: 0.45
         val showOverlaysParam = creationParams?.get("showOverlays") as? Boolean ?: true
+        
+        // Parse lensFacing parameter
+        val lensFacingParam = creationParams?.get("lensFacing") as? String ?: "back"
+        val lensFacing = when (lensFacingParam.lowercase()) {
+            "front" -> androidx.camera.core.CameraSelector.LENS_FACING_FRONT
+            else -> androidx.camera.core.CameraSelector.LENS_FACING_BACK
+        }
 
         // Set up the method channel handler
         methodChannel?.setMethodCallHandler(this)
@@ -70,6 +77,10 @@ class YOLOPlatformView(
         yoloView.setConfidenceThreshold(confidenceParam)
         yoloView.setIouThreshold(iouParam)
         yoloView.setShowOverlays(showOverlaysParam)
+        
+        // Set lens facing before initializing camera
+        Log.d(TAG, "Setting lens facing: $lensFacingParam")
+        yoloView.setLensFacing(lensFacing)
         
         // Configure YOLOView streaming functionality
         setupYOLOViewStreaming(creationParams)

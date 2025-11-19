@@ -199,7 +199,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   public init(
     frame: CGRect,
     modelPathOrName: String,
-    task: YOLOTask
+    task: YOLOTask,
+    cameraPosition: AVCaptureDevice.Position = .back
   ) {
     self.videoCapture = VideoCapture()
     super.init(frame: frame)
@@ -210,7 +211,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     self.videoCapture.delegate = self
     // Hide UI controls by default
     self.showUIControls = false
-    start(position: .back)
+    start(position: cameraPosition)
     setupOverlayLayer()
   }
 
@@ -398,6 +399,19 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         }
       }
     }
+  }
+
+  public func setCameraPosition(_ position: AVCaptureDevice.Position) {
+
+    let savedDelegate = videoCapture.delegate
+    let savedPredictor = videoCapture.predictor
+
+    videoCapture.stop()
+
+    videoCapture.delegate = savedDelegate
+    videoCapture.predictor = savedPredictor
+
+    start(position: position)
   }
 
   public func stop() {

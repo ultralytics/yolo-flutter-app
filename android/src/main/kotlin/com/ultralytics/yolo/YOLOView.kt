@@ -584,6 +584,14 @@ class YOLOView @JvmOverloads constructor(
         }
     }
 
+    fun setLensFacing(facing: Int) {
+        lensFacing = facing
+        // Restart camera if already started
+        if (::cameraProviderFuture.isInitialized) {
+            startCamera()
+        }
+    }
+
     fun switchCamera() {
         lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
             CameraSelector.LENS_FACING_FRONT

@@ -1,5 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import AVFoundation
 import Flutter
 import UIKit
 
@@ -80,6 +81,11 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       let numItemsThreshold = dict["numItemsThreshold"] as? Int ?? 30
       let showOverlays = dict["showOverlays"] as? Bool ?? true
 
+      // Get lensFacing parameter
+      let lensFacingParam = dict["lensFacing"] as? String ?? "back"
+      let cameraPosition: AVCaptureDevice.Position =
+        (lensFacingParam.lowercased() == "front") ? .front : .back
+
       // Store initial thresholds
       self.currentConfidenceThreshold = confidenceThreshold
       self.currentIouThreshold = iouThreshold
@@ -95,7 +101,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       yoloView = YOLOView(
         frame: frame,
         modelPathOrName: modelName,
-        task: task
+        task: task,
+        cameraPosition: cameraPosition
       )
 
       // Hide native UI controls by default
