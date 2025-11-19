@@ -2,6 +2,7 @@
 
 import Flutter
 import UIKit
+import AVFoundation
 
 // Helper extension for Float to Double conversion
 extension Float {
@@ -79,6 +80,10 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       let iouThreshold = dict["iouThreshold"] as? Double ?? 0.45
       let numItemsThreshold = dict["numItemsThreshold"] as? Int ?? 30
       let showOverlays = dict["showOverlays"] as? Bool ?? true
+      
+      // Get lensFacing parameter
+      let lensFacingParam = dict["lensFacing"] as? String ?? "back"
+      let cameraPosition: AVCaptureDevice.Position = (lensFacingParam.lowercased() == "front") ? .front : .back
 
       // Store initial thresholds
       self.currentConfidenceThreshold = confidenceThreshold
@@ -95,7 +100,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       yoloView = YOLOView(
         frame: frame,
         modelPathOrName: modelName,
-        task: task
+        task: task,
+        cameraPosition: cameraPosition
       )
 
       // Hide native UI controls by default
