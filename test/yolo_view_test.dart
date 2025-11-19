@@ -417,13 +417,12 @@ void main() {
         expect(yoloView.lensFacing, LensFacing.back);
       });
 
-      testWidgets('widget key includes lensFacing for proper recreation', (
+      testWidgets('lensFacing parameter does not force widget recreation', (
         WidgetTester tester,
       ) async {
         await tester.pumpWidget(
           const MaterialApp(
             home: YOLOView(
-              key: ValueKey('yolo_view_back'),
               modelPath: 'test_model.tflite',
               task: YOLOTask.detect,
               lensFacing: LensFacing.back,
@@ -431,13 +430,12 @@ void main() {
           ),
         );
 
-        expect(find.byType(YOLOView), findsOneWidget);
-        expect(find.byKey(const ValueKey('yolo_view_back')), findsOneWidget);
+        final widget1 = tester.widget<YOLOView>(find.byType(YOLOView));
+        expect(widget1.lensFacing, LensFacing.back);
 
         await tester.pumpWidget(
           const MaterialApp(
             home: YOLOView(
-              key: ValueKey('yolo_view_front'),
               modelPath: 'test_model.tflite',
               task: YOLOTask.detect,
               lensFacing: LensFacing.front,
@@ -445,9 +443,8 @@ void main() {
           ),
         );
 
-        expect(find.byType(YOLOView), findsOneWidget);
-        expect(find.byKey(const ValueKey('yolo_view_front')), findsOneWidget);
-        expect(find.byKey(const ValueKey('yolo_view_back')), findsNothing);
+        final widget2 = tester.widget<YOLOView>(find.byType(YOLOView));
+        expect(widget2.lensFacing, LensFacing.front);
       });
 
       testWidgets('handles lensFacing with other parameters', (

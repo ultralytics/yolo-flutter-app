@@ -16,7 +16,9 @@ class CameraInferenceContent extends StatelessWidget {
   Widget build(BuildContext context) {
     if (controller.modelPath != null && !controller.isModelLoading) {
       return YOLOView(
-        key: ValueKey('yolo_view_${controller.lensFacing.name}'),
+        key: ValueKey(
+          'yolo_view_${controller.modelPath}_${controller.selectedModel.task.name}',
+        ),
         controller: controller.yoloController,
         modelPath: controller.modelPath!,
         task: controller.selectedModel.task,

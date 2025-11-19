@@ -31,8 +31,8 @@ class CameraInferenceController extends ChangeNotifier {
 
   // Camera state
   double _currentZoomLevel = 1.0;
-  bool _isFrontCamera = false;
   LensFacing _lensFacing = LensFacing.front;
+  bool _isFrontCamera = false;
 
   // Controllers
   final _yoloController = YOLOViewController();
@@ -60,6 +60,8 @@ class CameraInferenceController extends ChangeNotifier {
   YOLOViewController get yoloController => _yoloController;
 
   CameraInferenceController() {
+    _isFrontCamera = _lensFacing == LensFacing.front;
+
     _modelManager = ModelManager(
       onDownloadProgress: (progress) {
         _downloadProgress = progress;
@@ -189,9 +191,18 @@ class CameraInferenceController extends ChangeNotifier {
   void setLensFacing(LensFacing facing) {
     if (_isDisposed) return;
 
-    _lensFacing = facing;
-    _isFrontCamera = facing == LensFacing.front;
-    notifyListeners();
+    if (_lensFacing != facing) {
+      _lensFacing = facing;
+      _isFrontCamera = facing == LensFacing.front;
+
+      _yoloController.switchCamera();
+
+      if (_isFrontCamera) {
+        _currentZoomLevel = 1.0;
+      }
+
+      notifyListeners();
+    }
   }
 
   void changeModel(ModelType model) {
