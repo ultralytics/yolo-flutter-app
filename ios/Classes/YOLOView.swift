@@ -402,15 +402,15 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   public func setCameraPosition(_ position: AVCaptureDevice.Position) {
-   
+
     let savedDelegate = videoCapture.delegate
     let savedPredictor = videoCapture.predictor
-    
+
     videoCapture.stop()
-    
+
     videoCapture.delegate = savedDelegate
     videoCapture.predictor = savedPredictor
-    
+
     start(position: position)
   }
 

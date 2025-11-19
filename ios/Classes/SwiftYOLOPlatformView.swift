@@ -1,8 +1,8 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import AVFoundation
 import Flutter
 import UIKit
-import AVFoundation
 
 // Helper extension for Float to Double conversion
 extension Float {
@@ -80,10 +80,11 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       let iouThreshold = dict["iouThreshold"] as? Double ?? 0.45
       let numItemsThreshold = dict["numItemsThreshold"] as? Int ?? 30
       let showOverlays = dict["showOverlays"] as? Bool ?? true
-      
+
       // Get lensFacing parameter
       let lensFacingParam = dict["lensFacing"] as? String ?? "back"
-      let cameraPosition: AVCaptureDevice.Position = (lensFacingParam.lowercased() == "front") ? .front : .back
+      let cameraPosition: AVCaptureDevice.Position =
+        (lensFacingParam.lowercased() == "front") ? .front : .back
 
       // Store initial thresholds
       self.currentConfidenceThreshold = confidenceThreshold
