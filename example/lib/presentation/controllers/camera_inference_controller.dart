@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/models/yolo_result.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/utils/error_handler.dart';
+import 'package:ultralytics_yolo/yolo_view.dart';
 import '../../models/models.dart';
 import '../../services/model_manager.dart';
 
@@ -30,6 +31,7 @@ class CameraInferenceController extends ChangeNotifier {
 
   // Camera state
   double _currentZoomLevel = 1.0;
+  LensFacing _lensFacing = LensFacing.front;
   bool _isFrontCamera = false;
 
   // Controllers
@@ -54,9 +56,12 @@ class CameraInferenceController extends ChangeNotifier {
   double get downloadProgress => _downloadProgress;
   double get currentZoomLevel => _currentZoomLevel;
   bool get isFrontCamera => _isFrontCamera;
+  LensFacing get lensFacing => _lensFacing;
   YOLOViewController get yoloController => _yoloController;
 
   CameraInferenceController() {
+    _isFrontCamera = _lensFacing == LensFacing.front;
+
     _modelManager = ModelManager(
       onDownloadProgress: (progress) {
         _downloadProgress = progress;
@@ -177,9 +182,27 @@ class CameraInferenceController extends ChangeNotifier {
     if (_isDisposed) return;
 
     _isFrontCamera = !_isFrontCamera;
+    _lensFacing = _isFrontCamera ? LensFacing.front : LensFacing.back;
     if (_isFrontCamera) _currentZoomLevel = 1.0;
     _yoloController.switchCamera();
     notifyListeners();
+  }
+
+  void setLensFacing(LensFacing facing) {
+    if (_isDisposed) return;
+
+    if (_lensFacing != facing) {
+      _lensFacing = facing;
+      _isFrontCamera = facing == LensFacing.front;
+
+      _yoloController.switchCamera();
+
+      if (_isFrontCamera) {
+        _currentZoomLevel = 1.0;
+      }
+
+      notifyListeners();
+    }
   }
 
   void changeModel(ModelType model) {
