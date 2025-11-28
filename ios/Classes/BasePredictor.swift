@@ -138,7 +138,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
           config.computeUnits = .cpuOnly
         }
 
-        if #available(iOS 16.0, *) {
+        if #available(iOS 17.0, *) {
           config.setValue(1, forKey: "experimentalMLE5EngineUsage")
         }
 
