@@ -110,17 +110,19 @@ class YOLOResult {
     final className = MapConverter.safeGetString(map, 'className');
     final confidence = MapConverter.safeGetDouble(map, 'confidence');
 
-    // Prefer viewBoundingBox when available, otherwise fallback to boundingBox
-    final viewBoxMap = MapConverter.convertToTypedMapSafe(
-      map['viewBoundingBox'] as Map<dynamic, dynamic>?,
-    );
+    // Use image-space bounding boxes so keypoint mapping can apply the same
+    // scale/offset as the raw pose coordinates. Fall back to a view-space box
+    // only if an image-space box is missing.
     final imgBoxMap = MapConverter.convertToTypedMapSafe(
       map['boundingBox'] as Map<dynamic, dynamic>?,
     );
-    final boundingBox = viewBoxMap != null
-        ? MapConverter.convertBoundingBox(viewBoxMap)
-        : (imgBoxMap != null
-              ? MapConverter.convertBoundingBox(imgBoxMap)
+    final viewBoxMap = MapConverter.convertToTypedMapSafe(
+      map['viewBoundingBox'] as Map<dynamic, dynamic>?,
+    );
+    final boundingBox = imgBoxMap != null
+        ? MapConverter.convertBoundingBox(imgBoxMap)
+        : (viewBoxMap != null
+              ? MapConverter.convertBoundingBox(viewBoxMap)
               : Rect.zero);
 
     final normalizedBoxMap = MapConverter.convertToTypedMapSafe(
