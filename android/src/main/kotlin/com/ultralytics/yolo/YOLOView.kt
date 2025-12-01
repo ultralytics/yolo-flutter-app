@@ -1964,8 +1964,8 @@ class YOLOView @JvmOverloads constructor(
         // Precompute view transform (image-space -> view-space) for center-crop
         val iw = result.origShape.width.toFloat()
         val ih = result.origShape.height.toFloat()
-        val vwInt = if (this.width > 0) this.width else overlayView.width
-        val vhInt = if (this.height > 0) this.height else overlayView.height
+        val vwInt = overlayView.width
+        val vhInt = overlayView.height
         val hasViewSize = vwInt > 0 && vhInt > 0
         val vw = vwInt.toFloat()
         val vh = vhInt.toFloat()

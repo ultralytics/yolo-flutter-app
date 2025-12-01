@@ -7,7 +7,7 @@ import 'model_loading_overlay.dart';
 /// Main content widget that handles the camera view and loading states.
 /// Uses the controller-provided models list and does not directly handle model paths.
 class CameraInferenceContent extends StatelessWidget {
-  const CameraInferenceContent({super.key, required this.controller});
+const CameraInferenceContent({super.key, required this.controller});
 
   final CameraInferenceController controller;
 

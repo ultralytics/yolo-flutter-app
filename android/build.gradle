@@ -2,14 +2,17 @@ group 'com.ultralytics.yolo'
 version '1.0'
 
 buildscript {
-    ext.kotlin_version = "1.8.22"
+    // Align with example app (plugins { org.jetbrains.kotlin.android 2.1.0 })
+    ext.kotlin_version = "2.1.0"
     repositories {
         google()
         mavenCentral()
+        // For Flutter engine Maven artifacts
+        maven { url 'https://storage.googleapis.com/download.flutter.io' }
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:8.5.2")
+        classpath("com.android.tools.build:gradle:8.6.0")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
     }
 }
@@ -18,6 +21,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // For Flutter engine Maven artifacts
+        maven { url 'https://storage.googleapis.com/download.flutter.io' }
     }
 }
 
@@ -37,6 +42,15 @@ def flutterRoot = localProperties.getProperty('flutter.sdk')
 if (flutterRoot == null) {
     // Try to get Flutter root from environment variable
     flutterRoot = System.getenv('FLUTTER_ROOT')
+}
+
+// Resolve Flutter engine version (used for embedding artifacts)
+def flutterEngineVersion = null
+if (flutterRoot != null) {
+    def engineVersionFile = file("${flutterRoot}/bin/internal/engine.version")
+    if (engineVersionFile.exists()) {
+        flutterEngineVersion = engineVersionFile.text.trim()
+    }
 }
 
 android {
@@ -91,17 +105,19 @@ android {
     }
 
     dependencies {
-        // Flutter embedding - continue build even if not found in CI environment
-        if (flutterRoot) {
-            compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-arm/flutter.jar")
-            compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-arm64/flutter.jar") 
-            compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-x86/flutter.jar")
-            compileOnly files("$flutterRoot/bin/cache/artifacts/engine/android-x64/flutter.jar")
+        // Use Flutter embedding from Maven coordinates (versioned by engine SHA)
+        if (flutterEngineVersion != null) {
+            compileOnly "io.flutter:flutter_embedding_debug:1.0.0-${flutterEngineVersion}"
+            compileOnly "io.flutter:flutter_embedding_profile:1.0.0-${flutterEngineVersion}"
+            compileOnly "io.flutter:flutter_embedding_release:1.0.0-${flutterEngineVersion}"
         } else {
-            // If Flutter SDK not found, use embedding-release as fallback
-            compileOnly 'io.flutter:flutter_embedding_release:1.0.0-ee76268252c22f5c11e82a7b87423ca3982e51a7'
+            // Fallback for environments where the engine version can't be read.
+            // The Flutter plugin loader (when invoked via `flutter build`) will supply versions.
+            compileOnly 'io.flutter:flutter_embedding_debug'
+            compileOnly 'io.flutter:flutter_embedding_profile'
+            compileOnly 'io.flutter:flutter_embedding_release'
         }
-        
+
         implementation("com.google.ai.edge.litert:litert:1.4.0")
         implementation("com.google.ai.edge.litert:litert-gpu:1.4.0")
         implementation('com.google.ai.edge.litert:litert-support-api:1.4.0')
