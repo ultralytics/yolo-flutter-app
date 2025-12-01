@@ -59,6 +59,16 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         }
 
         DispatchQueue.main.async {
+            // If overlays are disabled, keep layers cleared/hidden and skip drawing.
+            if !self._showOverlays {
+                self.maskLayer?.isHidden = true
+                self.maskLayer?.contents = nil
+                self.removeAllSubLayers(parentLayer: self.poseLayer)
+                self.removeAllSubLayers(parentLayer: self.obbLayer)
+                self.removeClassificationLayers()
+                return
+            }
+
             // SEGMENT: draw combined mask if available
             if let maskImage = result.masks?.combinedMask, let maskLayer = self.maskLayer {
                 maskLayer.isHidden = false
@@ -81,7 +91,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
                     confsList.append(kp.conf)
 
                     // Build a bounding box around the normalized keypoints to use for containment checks
-                    var minX: Float = 1.0, minY: Float = 1.0, maxX: Float = 0.0, maxY: Float = 0.0
+                    var minX: Float = 1.0
+                    var minY: Float = 1.0
+                    var maxX: Float = 0.0
+                    var maxY: Float = 0.0
                     for p in kp.xyn {
                         minX = min(minX, p.x)
                         minY = min(minY, p.y)
@@ -94,9 +107,13 @@ public class YOLOView: UIView, VideoCaptureDelegate {
                     maxX = max(0.0, min(1.0, maxX))
                     maxY = max(0.0, min(1.0, maxY))
 
-                    let normRect = CGRect(x: CGFloat(minX), y: CGFloat(minY), width: CGFloat(max(0.0, maxX - minX)), height: CGFloat(max(0.0, maxY - minY)))
-                    let pixelRect = VNImageRectForNormalizedRect(normRect, Int(result.orig_shape.width), Int(result.orig_shape.height))
-                    let box = Box(index: 0, cls: "person", conf: 1.0, xywh: pixelRect, xywhn: normRect)
+                    let normRect = CGRect(
+                        x: CGFloat(minX), y: CGFloat(minY), width: CGFloat(max(0.0, maxX - minX)),
+                        height: CGFloat(max(0.0, maxY - minY)))
+                    let pixelRect = VNImageRectForNormalizedRect(
+                        normRect, Int(result.orig_shape.width), Int(result.orig_shape.height))
+                    let box = Box(
+                        index: 0, cls: "person", conf: 1.0, xywh: pixelRect, xywhn: normRect)
                     poseBoxes.append(box)
                 }
 
@@ -589,11 +606,16 @@ public class YOLOView: UIView, VideoCaptureDelegate {
                 for idx in sortedByConf {
                     let mask2d = mergedMasks[idx]
                     // Defensive shape check
-                    guard mask2d.count == maskHeight, mask2d.first?.count == maskWidth else { continue }
+                    guard mask2d.count == maskHeight, mask2d.first?.count == maskWidth else {
+                        continue
+                    }
 
                     let clsIndex = mergedBoxes[idx].index
                     let color = ultralyticsColors[clsIndex % ultralyticsColors.count]
-                    var r: CGFloat = 1.0, g: CGFloat = 1.0, b: CGFloat = 1.0, a: CGFloat = 1.0
+                    var r: CGFloat = 1.0
+                    var g: CGFloat = 1.0
+                    var b: CGFloat = 1.0
+                    var a: CGFloat = 1.0
                     color.getRed(&r, green: &g, blue: &b, alpha: &a)
                     let R = UInt8(max(0, min(255, Int(r * 255.0))))
                     let G = UInt8(max(0, min(255, Int(g * 255.0))))
@@ -636,7 +658,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
                 }
             }
 
-            let masks: Masks? = mergedMasks.isEmpty ? nil : Masks(masks: mergedMasks, combinedMask: combinedMaskImage)
+            let masks: Masks? =
+                mergedMasks.isEmpty
+                ? nil : Masks(masks: mergedMasks, combinedMask: combinedMaskImage)
             let result = YOLOResult(
                 orig_shape: CGSize(
                     width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb)),
