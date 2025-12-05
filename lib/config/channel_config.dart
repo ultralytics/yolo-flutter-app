@@ -21,7 +21,8 @@ class ChannelConfig {
   /// [instanceId] Optional instance ID for multi-instance support
   /// Returns a properly configured MethodChannel
   static MethodChannel createChannel(String channelName, {String? instanceId}) {
-    final fullChannelName = instanceId != null
+    // Default instance uses the base channel name expected by native code.
+    final fullChannelName = instanceId != null && instanceId != 'default'
         ? '${channelName}_$instanceId'
         : channelName;
     return MethodChannel(fullChannelName);
