@@ -67,7 +67,7 @@ android {
     // NDK version: Use project property if set by host app, otherwise use a compatible default
     // Host apps can override by setting: ext.ndkVersion = flutter.ndkVersion in their build.gradle
     // NDK 27.2+ is required for 16KB page size support
-    ndkVersion = project.hasProperty('ndkVersion') ? project.ndkVersion : "27.2.12479018"
+    ndkVersion = project.hasProperty('ndkVersion') ? project.ndkVersion : "28.2.13676358"
 
     defaultConfig {
         minSdk = 21
