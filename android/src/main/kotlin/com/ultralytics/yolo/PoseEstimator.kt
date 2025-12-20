@@ -33,6 +33,7 @@ class PoseEstimator(
     private val useGpu: Boolean = true,
     private var confidenceThreshold: Float = 0.25f,   // Can be changed as needed
     private var iouThreshold: Float = 0.45f,          // Can be changed as needed
+    private var numItemsThreshold: Int = 30,
     private val customOptions: Interpreter.Options? = null
 ) : BasePredictor() {
 
@@ -46,7 +47,7 @@ class PoseEstimator(
         private const val INPUT_SIZE = 640
     }
     
-    private var numItemsThreshold = 30
+//    private var numItemsThreshold = 30
     
     private val boxPool = ObjectPool<Box>(MAX_POOL_SIZE) { Box(0, "", 0f, RectF(), RectF()) }
     private val keypointsPool = ObjectPool<Keypoints>(MAX_POOL_SIZE) {

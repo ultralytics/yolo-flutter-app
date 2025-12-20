@@ -65,6 +65,8 @@ class YOLO {
   /// for stability on devices where GPU inference causes crashes.
   final bool useGpu;
 
+  late int numItemsThreshold;
+
   /// Classifier options for customizing preprocessing
   final Map<String, dynamic>? classifierOptions;
 
@@ -85,6 +87,7 @@ class YOLO {
     this.useGpu = true,
     bool useMultiInstance = false,
     this.classifierOptions,
+    int? numItemsThreshold,
   }) {
     if (useMultiInstance) {
       _instanceId = 'yolo_${DateTime.now().millisecondsSinceEpoch}_$hashCode';
@@ -93,6 +96,8 @@ class YOLO {
     } else {
       _instanceId = 'default';
     }
+
+    this.numItemsThreshold = numItemsThreshold?? 30;
 
     _initializeComponents();
   }
@@ -110,6 +115,7 @@ class YOLO {
       useGpu: useGpu,
       classifierOptions: classifierOptions,
       viewId: _viewId,
+      numItemsThreshold: numItemsThreshold,
     );
 
     _inference = YOLOInference(
@@ -159,6 +165,18 @@ class YOLO {
       _isInitialized = true;
     }
     return success;
+  }
+
+  Future<void> predictorInstance() async {
+    if (!_isInitialized) {
+      final success = await loadModel();
+      if (!success) {
+        throw ModelNotLoadedException(
+          'Model failed to load. Cannot perform inference.',
+        );
+      }
+    }
+    await _modelManager.predictorInstance();
   }
 
   /// Runs inference on a single image.
