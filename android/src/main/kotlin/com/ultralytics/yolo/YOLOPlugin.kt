@@ -290,26 +290,28 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
               // Include classification results if available
               yoloResult.probs?.let { probs ->
                 Log.d(TAG, "Found probs: top1=${probs.top1}, top1Conf=${probs.top1Conf}, top1Index=${probs.top1Index}")
-                
-                // Use the original labels from the model (no hardcoded mapping)
-                val topClass = probs.top1
-                val top5Classes = probs.top5
-                
+
+                // Follow Results.summary() format: {name, class, confidence}
                 response["classification"] = mapOf(
-                  "topClass" to topClass,
-                  "topConfidence" to probs.top1Conf.toDouble(),
-                  "top5Classes" to top5Classes,
-                  "top5Confidences" to probs.top5Confs.map { it.toDouble() },
-                  "top1Index" to probs.top1Index
+                  "name" to probs.top1,                    // Class name
+                  "class" to probs.top1Index,              // Class index (integer)
+                  "confidence" to probs.top1Conf.toDouble(),
+                  "top5" to probs.top5.mapIndexed { idx, className ->
+                    mapOf(
+                      "name" to className,
+                      "class" to idx,  // Use enumeration index for top5
+                      "confidence" to probs.top5Confs[idx].toDouble()
+                    )
+                  }
                 )
-                
-                // Also add classification data to the boxes array for compatibility
+
+                // Also add classification data to the boxes array for backward compatibility
                 response["boxes"] = listOf(
                   mapOf(
-                    "class" to topClass,
-                    "className" to topClass,
+                    "name" to probs.top1,                    // Class name
+                    "class" to probs.top1Index,              // Class index (integer)
                     "confidence" to probs.top1Conf.toDouble(),
-                    "classIndex" to probs.top1Index,
+                    // Full-image bounding box for compatibility
                     "x1" to 0.0,
                     "y1" to 0.0,
                     "x2" to imageWidth.toDouble(),
