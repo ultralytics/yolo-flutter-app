@@ -288,7 +288,8 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             YOLOTask.CLASSIFY -> {
               yoloResult.probs?.let { probs ->
                 // Build top5 list safely using zip to handle mismatched list lengths
-                val top5List = probs.top5.zip(probs.top5Confs).map { (name, conf) ->
+                // Convert top5Confs to List to ensure Iterable compatibility (may be FloatArray)
+                val top5List = probs.top5.zip(probs.top5Confs.toList()).map { (name, conf) ->
                   mapOf(
                     "name" to name,
                     "confidence" to conf.toDouble()
@@ -321,6 +322,8 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                     "y2_norm" to 1.0
                   )
                 )
+              } ?: run {
+                Log.w(TAG, "YOLOResult.probs is null for CLASSIFY task")
               }
             }
             YOLOTask.POSE -> {
