@@ -317,9 +317,9 @@ class YOLOInstanceManager {
     // Classification - probs
     if let probs = result.probs {
       resultDict["classification"] = [
-        "topClass": probs.top1,
+        "topClass": probs.top1Label,
         "topConfidence": probs.top1Conf,
-        "top5Classes": probs.top5,
+        "top5Classes": probs.top5Labels,
         "top5Confidences": probs.top5Confs,
       ]
     }
