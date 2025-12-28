@@ -289,7 +289,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
               yoloResult.probs?.let { probs ->
                 // Build top5 list safely using zip to handle mismatched list lengths
                 // Convert top5Confs to List to ensure Iterable compatibility (may be FloatArray)
-                val top5List = probs.top5.zip(probs.top5Confs.toList()).map { (name, conf) ->
+                val top5List = probs.top5Labels.zip(probs.top5Confs.toList()).map { (name, conf) ->
                   mapOf(
                     "name" to name,
                     "confidence" to conf.toDouble()
@@ -299,7 +299,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                 // Classification response following Results.summary() format
                 // Reference: https://docs.ultralytics.com/reference/engine/results/
                 response["classification"] = mapOf(
-                  "name" to probs.top1,
+                  "name" to probs.top1Label,
                   "class" to probs.top1Index,
                   "confidence" to probs.top1Conf.toDouble(),
                   "top5" to top5List
@@ -309,7 +309,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                 response["boxes"] = listOf(
                   mapOf(
                     "class" to probs.top1Index,
-                    "className" to probs.top1,
+                    "className" to probs.top1Label,
                     "classIndex" to probs.top1Index,
                     "confidence" to probs.top1Conf.toDouble(),
                     "x1" to 0.0,

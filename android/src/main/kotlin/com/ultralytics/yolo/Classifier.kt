@@ -242,8 +242,8 @@ class Classifier(
         val top5Scores = top5.map { it.second }
 
         val probs = Probs(
-            top1 = top1Label,
-            top5 = top5Labels,
+            top1Label = top1Label,
+            top5Labels = top5Labels,
             top1Conf = top1Score,
             top5Confs = top5Scores,
             top1Index = top1Index
@@ -251,7 +251,7 @@ class Classifier(
 
         val fpsVal = if (t4 > 0) 1.0 / t4 else 0.0
 
-        Log.d(TAG, "Classification result: top1=${probs.top1}, top1Conf=${probs.top1Conf}, top1Index=${probs.top1Index}")
+        Log.d(TAG, "Classification result: top1Label=${probs.top1Label}, top1Conf=${probs.top1Conf}, top1Index=${probs.top1Index}")
         Log.d(TAG, "Labels: ${labels}")
         Log.d(TAG, "Prediction completed successfully")
 
