@@ -110,10 +110,10 @@ public struct Masks: @unchecked Sendable {
 /// - Note: This structure is marked as `@unchecked Sendable` to support concurrent operations.
 public struct Probs: @unchecked Sendable {
   /// The class label with the highest confidence score.
-  public var top1: String
+  public var top1Label: String
 
   /// The top 5 class labels by confidence score.
-  public var top5: [String]
+  public var top5Labels: [String]
 
   /// The confidence score (0.0 to 1.0) for the top prediction.
   public var top1Conf: Float

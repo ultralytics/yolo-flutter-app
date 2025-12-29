@@ -1007,7 +1007,7 @@ class YOLOView @JvmOverloads constructor(
                             Color.blue(baseColor)
                         )
 
-                        val labelText = "${probs.top1} ${"%.1f".format(probs.top1Conf * 100)}%"
+                        val labelText = "${probs.top1Label} ${"%.1f".format(probs.top1Conf * 100)}%"
                         paint.textSize = 60f
                         val textWidth = paint.measureText(labelText)
                         val fm = paint.fontMetrics

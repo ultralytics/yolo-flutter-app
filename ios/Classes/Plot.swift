@@ -403,7 +403,7 @@ public func drawYOLOClassifications(on ciImage: CIImage, result: YOLOResult) -> 
   drawContext.scaleBy(x: 1, y: -1)
   drawContext.draw(cgImage, in: CGRect(origin: .zero, size: imageSize))
   drawContext.restoreGState()
-  guard let top5 = result.probs?.top5 else {
+  guard let top5 = result.probs?.top5Labels else {
     return UIImage(ciImage: ciImage)
   }
   for (i, candidate) in top5.enumerated() {
