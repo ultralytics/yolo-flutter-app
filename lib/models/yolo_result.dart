@@ -134,10 +134,12 @@ class YOLOResult {
       keypointConfidences = keypointResult.confidences;
     }
 
-    final polygon = map['polygon'] as List<Object?>?;
-    List<Map<String, num>>? obbPoints = polygon?.map((item) {
-      return Map<String, num>.from(item as Map<dynamic, dynamic>);
-    }).toList();
+    final polygonRaw = map['polygon'];
+    final polygon = polygonRaw is List ? polygonRaw : null;
+    final List<Map<String, num>>? obbPoints = polygon
+        ?.whereType<Map>()
+        .map((item) => item.map((k, v) => MapEntry(k.toString(), v as num)))
+        .toList();
 
     return YOLOResult(
       classIndex: classIndex,
