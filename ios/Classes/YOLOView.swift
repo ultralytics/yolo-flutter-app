@@ -761,7 +761,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     overlayLayer.frame = view.bounds
     overlayLayer.name = "YOLOOverlayLayer"
 
-    guard let top1 = result.probs?.top1,
+    guard let top1 = result.probs?.top1Label,
       let top1Conf = result.probs?.top1Conf
     else {
       return

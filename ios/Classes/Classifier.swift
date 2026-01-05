@@ -36,7 +36,7 @@ class Classifier: BasePredictor {
     let imageWidth = inputSize.width
     let imageHeight = inputSize.height
     self.inputSize = CGSize(width: imageWidth, height: imageHeight)
-    var probs = Probs(top1: "", top5: [], top1Conf: 0, top5Confs: [])
+    var probs = Probs(top1Label: "", top5Labels: [], top1Conf: 0, top5Confs: [])
 
     if let observation = request.results as? [VNCoreMLFeatureValueObservation] {
 
@@ -60,7 +60,7 @@ class Classifier: BasePredictor {
         if let (topIndex, topScore) = sortedMap.first {
           let top1Label = labels[topIndex]
           let top1Conf = Float(topScore)
-          probs.top1 = top1Label
+          probs.top1Label = top1Label
           probs.top1Conf = top1Conf
         }
 
@@ -74,7 +74,7 @@ class Classifier: BasePredictor {
           top5Confs.append(Float(value))
         }
 
-        probs.top5 = top5Labels
+        probs.top5Labels = top5Labels
         probs.top5Confs = top5Confs
       }
     } else if let observations = request.results as? [VNClassificationObservation] {
@@ -95,7 +95,7 @@ class Classifier: BasePredictor {
         top5Confs.append(confidence)
         top5.append(label)
       }
-      probs = Probs(top1: top1, top5: top5, top1Conf: top1Conf, top5Confs: top5Confs)
+      probs = Probs(top1Label: top1, top5Labels: top5, top1Conf: top1Conf, top5Confs: top5Confs)
     }
 
     // Measure FPS
@@ -130,7 +130,7 @@ class Classifier: BasePredictor {
     let imageWidth = image.extent.width
     let imageHeight = image.extent.height
     self.inputSize = CGSize(width: imageWidth, height: imageHeight)
-    var probs = Probs(top1: "", top5: [], top1Conf: 0, top5Confs: [])
+    var probs = Probs(top1Label: "", top5Labels: [], top1Conf: 0, top5Confs: [])
     do {
       try requestHandler.perform([request])
       if let observation = request.results as? [VNCoreMLFeatureValueObservation] {
@@ -156,7 +156,7 @@ class Classifier: BasePredictor {
           if let (topIndex, topScore) = sortedMap.first {
             let top1Label = labels[topIndex]
             let top1Conf = Float(topScore)
-            probs.top1 = top1Label
+            probs.top1Label = top1Label
             probs.top1Conf = top1Conf
           }
 
@@ -170,7 +170,7 @@ class Classifier: BasePredictor {
             top5Confs.append(Float(value))
           }
 
-          probs.top5 = top5Labels
+          probs.top5Labels = top5Labels
           probs.top5Confs = top5Confs
         }
       } else if let observations = request.results as? [VNClassificationObservation] {
@@ -194,7 +194,7 @@ class Classifier: BasePredictor {
           top5Confs.append(confidence)
           top5.append(label)
         }
-        probs = Probs(top1: top1, top5: top5, top1Conf: top1Conf, top5Confs: top5Confs)
+        probs = Probs(top1Label: top1, top5Labels: top5, top1Conf: top1Conf, top5Confs: top5Confs)
       }
 
     } catch {
