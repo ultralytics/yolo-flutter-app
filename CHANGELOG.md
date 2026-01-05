@@ -1,3 +1,11 @@
+## 0.1.43
+
+- **Enhancement**: Unify classification output format across all platforms to use official Results.summary() format
+  - **Android**: Changed classification output to follow official Ultralytics Results.summary() format with `name`, `class`, `confidence` fields
+  - **iOS**: Unified classification output to use `name`, `class`, `confidence` instead of `topClass`, `topConfidence`
+  - **Format**: Classification results now follow the official format: `{name: String, class: Int, confidence: Double, top5: List}`
+- **Bug Fix**: Fix Android CLASSIFY FloatArray compatibility issue by adding `.toList()` conversion for `top5Confs` to ensure Iterable compatibility when handling FloatArray and fix array bounds issues in Android classification top5 list iteration
+
 ## 0.1.42
 
 - **Feature**: Add `lensFacing` parameter to `YOLOView` for default camera selection
@@ -45,6 +53,7 @@
 ## 0.1.38
 
 - **Bug Fix**: iOS performance metrics not updating in `YOLOView`
+
   - Moved EventChannel subscription from `initState` to `_onPlatformViewCreated` to ensure native channel readiness on iOS
   - Aligned streaming config key with iOS by renaming `throttleInterval` to `throttleIntervalMs` when sending params
   - iOS now sources performance metrics from the latest inference result: `processingTimeMs = result.speed * 1000`, `fps = result.fps`
