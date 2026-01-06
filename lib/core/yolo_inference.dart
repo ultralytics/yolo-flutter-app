@@ -186,7 +186,10 @@ class YOLOInference {
       final detection = <String, dynamic>{
         'classIndex': classificationMap['class'] ?? 0,
         'className': classification['name'] ?? '',
-        'confidence': MapConverter.safeGetDouble(classificationMap, 'confidence'),
+        'confidence': MapConverter.safeGetDouble(
+          classificationMap,
+          'confidence',
+        ),
         'boundingBox': {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0},
         'normalizedBox': {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0},
       };

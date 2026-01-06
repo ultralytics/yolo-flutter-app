@@ -325,9 +325,9 @@ class YOLOInstanceManager {
         "top5": probs.top5Labels.enumerated().map { (index, label) in
           [
             "name": label,
-            "confidence": index < probs.top5Confs.count ? probs.top5Confs[index] : 0.0
+            "confidence": index < probs.top5Confs.count ? probs.top5Confs[index] : 0.0,
           ]
-        }
+        },
       ]
     }
 
