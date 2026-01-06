@@ -49,18 +49,6 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('YOLO Camera Inference'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bug_report),
-            tooltip: 'Crash Test Screen',
-            onPressed: () {
-              Navigator.of(context).pushNamed('/crash-test');
-            },
-          ),
-        ],
-      ),
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {
