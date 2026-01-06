@@ -1229,7 +1229,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   @objc func switchCameraTapped() {
-   
+
     let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
     if authStatus != .authorized {
       print("Camera permission not authorized. Cannot switch camera.")
@@ -1237,14 +1237,15 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
 
     self.videoCapture.captureSession.beginConfiguration()
-    guard let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput else {
+    guard let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput
+    else {
       print("No current camera input to remove")
       self.videoCapture.captureSession.commitConfiguration()
       return
     }
-    
+
     let currentPosition = currentInput.device.position
-    
+
     self.videoCapture.captureSession.removeInput(currentInput)
 
     let nextCameraPosition: AVCaptureDevice.Position = currentPosition == .back ? .front : .back

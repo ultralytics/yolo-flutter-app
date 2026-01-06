@@ -82,19 +82,18 @@ class VideoCapture: NSObject, @unchecked Sendable {
     sessionPreset: AVCaptureSession.Preset, position: AVCaptureDevice.Position,
     orientation: UIDeviceOrientation
   ) -> Bool {
-  
+
     let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
     if authStatus == .denied || authStatus == .restricted {
       print("Camera permission denied or restricted. Cannot initialize camera.")
       return false
     }
-    
- 
+
     if authStatus == .notDetermined {
       print("Camera permission not determined. Please request permission first.")
       return false
     }
-    
+
     captureSession.beginConfiguration()
     captureSession.sessionPreset = sessionPreset
 
@@ -103,10 +102,9 @@ class VideoCapture: NSObject, @unchecked Sendable {
       captureSession.commitConfiguration()
       return false
     }
-    
+
     captureDevice = device
-    
-  
+
     let input: AVCaptureDeviceInput
     do {
       input = try AVCaptureDeviceInput(device: device)
@@ -115,7 +113,7 @@ class VideoCapture: NSObject, @unchecked Sendable {
       captureSession.commitConfiguration()
       return false
     }
-    
+
     videoInput = input
 
     if captureSession.canAddInput(input) {
@@ -172,10 +170,10 @@ class VideoCapture: NSObject, @unchecked Sendable {
       captureSession.commitConfiguration()
       return false
     }
-    
+
     do {
       try device.lockForConfiguration()
-     
+
       if device.isFocusModeSupported(AVCaptureDevice.FocusMode.continuousAutoFocus),
         device.isFocusPointOfInterestSupported
       {
