@@ -1,3 +1,9 @@
+## 0.1.44
+
+- **Critical Bug Fix**: Fix SIGSEGV crash when YOLOView is disposed while TensorFlow Lite inference is running
+  - **Root Cause**: Race condition where `onFrame` callback continued executing after `stop()` cleared resources and closed the TensorFlow Lite interpreter
+  - **Fix**: Added `@Volatile` `isStopped` flag that is checked at multiple points in `onFrame` to prevent accessing closed resources
+
 ## 0.1.43
 
 - **Enhancement**: Unify classification output format across all platforms to use official Results.summary() format

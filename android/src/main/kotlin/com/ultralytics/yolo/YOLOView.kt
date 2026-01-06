@@ -207,7 +207,11 @@ class YOLOView @JvmOverloads constructor(
 
     // New fields for proper teardown:
     private var cameraExecutor: ExecutorService? = null
-    private var imageAnalysisUseCase: ImageAnalysis? = null    
+    private var imageAnalysisUseCase: ImageAnalysis? = null
+    
+    // Flag to track if the view is stopped/disposed to prevent race conditions
+    @Volatile
+    private var isStopped = false    
 
     // Zoom related
     private var currentZoomRatio = 1.0f
@@ -511,6 +515,9 @@ class YOLOView @JvmOverloads constructor(
 
     fun startCamera() {
         Log.d(TAG, "Starting camera...")
+        
+        // Reset stopped flag when restarting camera
+        isStopped = false
 
         try {
             cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -619,6 +626,13 @@ class YOLOView @JvmOverloads constructor(
     // region onFrame (per frame inference)
 
     private fun onFrame(imageProxy: ImageProxy) {
+        // Early return if view is stopped to prevent accessing closed resources
+        if (isStopped) {
+            Log.d(TAG, "onFrame: View is stopped, skipping frame processing")
+            imageProxy.close()
+            return
+        }
+        
         val w = imageProxy.width
         val h = imageProxy.height
         val orientation = context.resources.configuration.orientation
@@ -630,7 +644,21 @@ class YOLOView @JvmOverloads constructor(
             return
         }
 
+        // Check again after bitmap conversion (in case stop() was called during conversion)
+        if (isStopped) {
+            Log.d(TAG, "onFrame: View stopped during bitmap conversion, skipping inference")
+            imageProxy.close()
+            return
+        }
+
         predictor?.let { p ->
+            // Double-check stopped flag before inference (predictor might be closed)
+            if (isStopped) {
+                Log.d(TAG, "onFrame: View stopped before inference, skipping")
+                imageProxy.close()
+                return
+            }
+            
             // Check if we should run inference on this frame
             if (!shouldRunInference()) {
                 Log.d(TAG, "Skipping inference due to frequency control")
@@ -1773,6 +1801,9 @@ class YOLOView @JvmOverloads constructor(
      */
     fun stop() {
         Log.d(TAG, "YOLOView.stop() called - tearing down camera")
+        
+        // Set stopped flag first to prevent new frames from being processed
+        isStopped = true
 
         try {
             imageAnalysisUseCase?.clearAnalyzer()
@@ -1811,7 +1842,13 @@ class YOLOView @JvmOverloads constructor(
             cameraExecutor = null
 
             camera = null
-            (predictor as? BasePredictor)?.close()
+            
+            // Close predictor safely - ensure no inference is running
+            try {
+                (predictor as? BasePredictor)?.close()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error closing predictor", e)
+            }
             predictor = null
             inferenceCallback = null
             streamCallback = null

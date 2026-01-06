@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo_example/presentation/screens/camera_inference_screen.dart';
+import 'package:ultralytics_yolo_example/presentation/screens/crash_test_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,9 +13,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       title: 'YOLO useGpu Example',
-      home: CameraInferenceScreen(),
+      home: const CameraInferenceScreen(),
+      routes: {'/crash-test': (context) => const CrashTestScreen()},
     );
   }
 }
