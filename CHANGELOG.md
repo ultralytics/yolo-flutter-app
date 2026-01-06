@@ -1,3 +1,10 @@
+## 0.1.45
+
+- **Critical Bug Fix**: Fix fatal crash when camera permission is denied or not granted on iOS
+  - **iOS Fix**: 
+    - Added camera authorization status check (`AVCaptureDevice.authorizationStatus`) before attempting to access camera
+    - Replaced `try!` with proper `do-catch` error handling for `AVCaptureDeviceInput` initialization
+
 ## 0.1.44
 
 - **Critical Bug Fix**: Fix SIGSEGV crash when YOLOView is disposed while TensorFlow Lite inference is running
