@@ -24,7 +24,7 @@ protocol VideoCaptureDelegate: AnyObject {
   func onInferenceTime(speed: Double, fps: Double)
 }
 
-func bestCaptureDevice(position: AVCaptureDevice.Position) -> AVCaptureDevice {
+func bestCaptureDevice(position: AVCaptureDevice.Position) -> AVCaptureDevice? {
   // print("USE TELEPHOTO: ")
   // print(UserDefaults.standard.bool(forKey: "use_telephoto"))
 
@@ -41,7 +41,7 @@ func bestCaptureDevice(position: AVCaptureDevice.Position) -> AVCaptureDevice {
   {
     return device
   } else {
-    fatalError("Missing expected back camera device.")
+    return nil
   }
 }
 
@@ -82,14 +82,48 @@ class VideoCapture: NSObject, @unchecked Sendable {
     sessionPreset: AVCaptureSession.Preset, position: AVCaptureDevice.Position,
     orientation: UIDeviceOrientation
   ) -> Bool {
+  
+    let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
+    if authStatus == .denied || authStatus == .restricted {
+      print("Camera permission denied or restricted. Cannot initialize camera.")
+      return false
+    }
+    
+ 
+    if authStatus == .notDetermined {
+      print("Camera permission not determined. Please request permission first.")
+      return false
+    }
+    
     captureSession.beginConfiguration()
     captureSession.sessionPreset = sessionPreset
 
-    captureDevice = bestCaptureDevice(position: position)
-    videoInput = try! AVCaptureDeviceInput(device: captureDevice!)
+    guard let device = bestCaptureDevice(position: position) else {
+      print("No camera device available for position: \(position)")
+      captureSession.commitConfiguration()
+      return false
+    }
+    
+    captureDevice = device
+    
+  
+    let input: AVCaptureDeviceInput
+    do {
+      input = try AVCaptureDeviceInput(device: device)
+    } catch {
+      print("Failed to create AVCaptureDeviceInput: \(error.localizedDescription)")
+      captureSession.commitConfiguration()
+      return false
+    }
+    
+    videoInput = input
 
-    if captureSession.canAddInput(videoInput!) {
-      captureSession.addInput(videoInput!)
+    if captureSession.canAddInput(input) {
+      captureSession.addInput(input)
+    } else {
+      print("Cannot add video input to capture session")
+      captureSession.commitConfiguration()
+      return false
     }
     var videoOrientaion = AVCaptureVideoOrientation.portrait
     switch orientation {
@@ -133,20 +167,28 @@ class VideoCapture: NSObject, @unchecked Sendable {
     }
 
     // Configure captureDevice
+    guard let device = captureDevice else {
+      print("captureDevice is nil, cannot configure")
+      captureSession.commitConfiguration()
+      return false
+    }
+    
     do {
-      try captureDevice!.lockForConfiguration()
+      try device.lockForConfiguration()
+     
+      if device.isFocusModeSupported(AVCaptureDevice.FocusMode.continuousAutoFocus),
+        device.isFocusPointOfInterestSupported
+      {
+        device.focusMode = AVCaptureDevice.FocusMode.continuousAutoFocus
+        device.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
+      }
+      device.exposureMode = AVCaptureDevice.ExposureMode.continuousAutoExposure
+      device.unlockForConfiguration()
     } catch {
-      print("device configuration not working")
+      print("device configuration not working: \(error.localizedDescription)")
+      captureSession.commitConfiguration()
+      return false
     }
-    // captureDevice.setFocusModeLocked(lensPosition: 1.0, completionHandler: { (time) -> Void in })
-    if captureDevice!.isFocusModeSupported(AVCaptureDevice.FocusMode.continuousAutoFocus),
-      captureDevice!.isFocusPointOfInterestSupported
-    {
-      captureDevice!.focusMode = AVCaptureDevice.FocusMode.continuousAutoFocus
-      captureDevice!.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
-    }
-    captureDevice!.exposureMode = AVCaptureDevice.ExposureMode.continuousAutoExposure
-    captureDevice!.unlockForConfiguration()
 
     captureSession.commitConfiguration()
     return true
@@ -169,13 +211,19 @@ class VideoCapture: NSObject, @unchecked Sendable {
   }
 
   func setZoomRatio(ratio: CGFloat) {
+    guard let device = captureDevice else {
+      print("Cannot set zoom: captureDevice is nil")
+      return
+    }
     do {
-      try captureDevice!.lockForConfiguration()
+      try device.lockForConfiguration()
       defer {
-        captureDevice!.unlockForConfiguration()
+        device.unlockForConfiguration()
       }
-      captureDevice!.videoZoomFactor = ratio
-    } catch {}
+      device.videoZoomFactor = ratio
+    } catch {
+      print("Failed to set zoom ratio: \(error.localizedDescription)")
+    }
   }
 
   private func predictOnFrame(sampleBuffer: CMSampleBuffer) {
