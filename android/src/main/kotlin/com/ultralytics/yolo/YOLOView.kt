@@ -423,7 +423,10 @@ class YOLOView @JvmOverloads constructor(
                     this.modelName = modelPath.substringAfterLast("/")
                     modelLoadCallback?.invoke(true)
                     callback?.invoke(true)
-                    Log.d(TAG, "Model loaded successfully: $modelPath")
+                    // Ensure camera starts after model loads if it's not already running
+                    if (allPermissionsGranted() && lifecycleOwner != null && (camera == null || isStopped)) {
+                        startCamera()
+                    }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to load model: $modelPath. Camera will run without inference.", e)
@@ -470,21 +473,20 @@ class YOLOView @JvmOverloads constructor(
      */
     fun onLifecycleOwnerAvailable(owner: LifecycleOwner) {
         this.lifecycleOwner = owner
-        // Register as a lifecycle observer to handle lifecycle events
         owner.lifecycle.addObserver(this)
         
-        // If camera was requested but couldn't start due to missing lifecycle owner, try again
-        if (allPermissionsGranted()) {
+        if (allPermissionsGranted() && (camera == null || isStopped)) {
             startCamera()
         }
-        Log.d(TAG, "LifecycleOwner set: ${owner.javaClass.simpleName}")
     }
     
     // region camera init
 
     fun initCamera() {
         if (allPermissionsGranted()) {
-            startCamera()
+            if (lifecycleOwner != null && (camera == null || isStopped)) {
+                startCamera()
+            }
         } else {
             val activity = context as? Activity ?: return
             ActivityCompat.requestPermissions(
@@ -514,9 +516,6 @@ class YOLOView @JvmOverloads constructor(
     }
 
     fun startCamera() {
-        Log.d(TAG, "Starting camera...")
-        
-        // Reset stopped flag when restarting camera
         isStopped = false
 
         try {
@@ -612,9 +611,27 @@ class YOLOView @JvmOverloads constructor(
     
     // Lifecycle methods from DefaultLifecycleObserver
     override fun onStart(owner: LifecycleOwner) {
-        Log.d(TAG, "Lifecycle onStart")
+        Log.d(TAG, "Lifecycle onStart - restarting camera if stopped")
         if (allPermissionsGranted()) {
-            startCamera()
+            // Always restart camera on start if it's stopped or null
+            // This ensures camera resumes when navigating back
+            if (isStopped || camera == null) {
+                Log.d(TAG, "Camera is stopped or null, restarting on onStart")
+                startCamera()
+            } else {
+                Log.d(TAG, "Camera is already running, no restart needed")
+            }
+        }
+    }
+    
+    override fun onResume(owner: LifecycleOwner) {
+        Log.d(TAG, "Lifecycle onResume - ensuring camera is running")
+        if (allPermissionsGranted()) {
+            // Double-check camera is running on resume
+            if (isStopped || camera == null) {
+                Log.d(TAG, "Camera not running on resume, restarting...")
+                startCamera()
+            }
         }
     }
 
