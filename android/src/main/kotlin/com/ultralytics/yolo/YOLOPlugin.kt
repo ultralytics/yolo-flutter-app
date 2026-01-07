@@ -346,6 +346,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                   mapOf(
                     "points" to poly.map { mapOf("x" to it.x, "y" to it.y) },
                     "class" to obb.cls,
+                    "classIndex" to obb.index,
                     "confidence" to obb.confidence
                   )
                 }

@@ -1,3 +1,8 @@
+## 0.1.44
+
+- **Bug Fix**: Fix OBB (Oriented Bounding Box) coordinate retrieval in detection results
+  - **Flutter**: Fixed missing `polygon` field in OBB detection results, enabling `YOLOResult.obbPoints` to be properly extracted
+
 ## 0.1.43
 
 - **Enhancement**: Unify classification output format across all platforms to use official Results.summary() format
