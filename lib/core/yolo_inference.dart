@@ -179,14 +179,14 @@ class YOLOInference {
     if (resultMap.containsKey('classification')) {
       final classification =
           resultMap['classification'] as Map<dynamic, dynamic>;
+      final classificationMap = MapConverter.convertToTypedMap(classification);
 
+      // Use Results.summary() format: {name, class, confidence}
+      // Reference: https://docs.ultralytics.com/reference/engine/results/
       final detection = <String, dynamic>{
-        'classIndex': 0,
-        'className': classification['topClass'] ?? '',
-        'confidence': MapConverter.safeGetDouble(
-          MapConverter.convertToTypedMap(classification),
-          'topConfidence',
-        ),
+        'classIndex': classificationMap['class'] ?? 0,
+        'className': classification['name'] ?? '',
+        'confidence': MapConverter.safeGetDouble(classificationMap, 'confidence'),
         'boundingBox': {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0},
         'normalizedBox': {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0},
       };

@@ -34,8 +34,8 @@ data class Masks(
 )
 
 data class Probs(
-    var top1: String,
-    var top5: List<String>,
+    var top1Label: String,
+    var top5Labels: List<String>,
     var top1Conf: Float,
     var top5Confs: List<Float>,
     var top1Index: Int
