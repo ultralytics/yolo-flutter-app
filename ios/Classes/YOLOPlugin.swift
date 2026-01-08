@@ -177,6 +177,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         let task = YOLOTask.fromString(taskString)
         let instanceId = args["instanceId"] as? String ?? "default"
         let useGpu = args["useGpu"] as? Bool ?? true
+        let numItemsThreshold = args["numItemsThreshold"] as? Int ?? 30
 
         do {
           try await withCheckedThrowingContinuation {
@@ -185,7 +186,8 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
               instanceId: instanceId,
               modelName: modelPath,
               task: task,
-              useGpu: useGpu
+              useGpu: useGpu,
+              numItemsThreshold: numItemsThreshold,
             ) { modelResult in
               switch modelResult {
               case .success:
@@ -257,6 +259,20 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
 
         print("YOLOPlugin: Instance \(instanceId) disposed successfully")
         result(nil)
+
+      case "predictorInstance":
+        guard let args = call.arguments as? [String: Any],
+          let instanceId = args["instanceId"] as? String
+        else {
+          result(
+            FlutterError(
+              code: "bad_args", message: "Invalid arguments for disposeInstance", details: nil)
+          )
+          return
+        }
+        // donothing with ios
+        result(nil)
+
 
       case "checkModelExists":
         guard let args = call.arguments as? [String: Any],
