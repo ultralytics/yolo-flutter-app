@@ -74,6 +74,9 @@ class YOLOResult {
   /// and ranges from 0.0 to 1.0.
   final List<double>? keypointConfidences;
 
+  /// The oriented bounding box points for rotated object detection.
+  final List<Map<String, num>>? obbPoints;
+
   YOLOResult({
     required this.classIndex,
     required this.className,
@@ -83,6 +86,7 @@ class YOLOResult {
     this.mask,
     this.keypoints,
     this.keypointConfidences,
+    this.obbPoints,
   });
 
   /// Creates a [YOLOResult] from a map representation.
@@ -130,6 +134,13 @@ class YOLOResult {
       keypointConfidences = keypointResult.confidences;
     }
 
+    final polygonRaw = map['polygon'];
+    final polygon = polygonRaw is List ? polygonRaw : null;
+    final List<Map<String, num>>? obbPoints = polygon
+        ?.whereType<Map>()
+        .map((item) => item.map((k, v) => MapEntry(k.toString(), v as num)))
+        .toList();
+
     return YOLOResult(
       classIndex: classIndex,
       className: className,
@@ -139,6 +150,7 @@ class YOLOResult {
       mask: mask,
       keypoints: keypoints,
       keypointConfidences: keypointConfidences,
+      obbPoints: obbPoints,
     );
   }
 
@@ -159,6 +171,7 @@ class YOLOResult {
         'right': normalizedBox.right,
         'bottom': normalizedBox.bottom,
       },
+      'obbPoints': obbPoints,
     };
 
     if (mask != null) {
