@@ -25,6 +25,7 @@ class CameraInferenceScreen extends StatefulWidget {
 
 class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   late final CameraInferenceController _controller;
+  int _rebuildKey = 0;
 
   @override
   void initState() {
@@ -35,6 +36,24 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         _showError('Model Loading Error', error.toString());
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Check if route is current (we've navigated back to this screen)
+    final route = ModalRoute.of(context);
+    if (route?.isCurrent == true) {
+      // Force rebuild when navigating back to ensure camera restarts
+      // The rebuild will create a new YOLOView which will automatically start the camera
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _rebuildKey++;
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -49,12 +68,17 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
+      appBar: AppBar(title: const Text('YOLO Camera Inference')),
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {
           return Stack(
             children: [
-              CameraInferenceContent(controller: _controller),
+              CameraInferenceContent(
+                key: ValueKey('camera_content_$_rebuildKey'),
+                controller: _controller,
+                rebuildKey: _rebuildKey,
+              ),
               CameraInferenceOverlay(
                 controller: _controller,
                 isLandscape: isLandscape,

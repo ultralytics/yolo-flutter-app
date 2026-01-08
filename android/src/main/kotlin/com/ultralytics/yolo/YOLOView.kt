@@ -207,7 +207,11 @@ class YOLOView @JvmOverloads constructor(
 
     // New fields for proper teardown:
     private var cameraExecutor: ExecutorService? = null
-    private var imageAnalysisUseCase: ImageAnalysis? = null    
+    private var imageAnalysisUseCase: ImageAnalysis? = null
+    
+    // Flag to track if the view is stopped/disposed to prevent race conditions
+    @Volatile
+    private var isStopped = false    
 
     // Zoom related
     private var currentZoomRatio = 1.0f
@@ -419,7 +423,10 @@ class YOLOView @JvmOverloads constructor(
                     this.modelName = modelPath.substringAfterLast("/")
                     modelLoadCallback?.invoke(true)
                     callback?.invoke(true)
-                    Log.d(TAG, "Model loaded successfully: $modelPath")
+                    // Ensure camera starts after model loads if it's not already running
+                    if (allPermissionsGranted() && lifecycleOwner != null && (camera == null || isStopped)) {
+                        startCamera()
+                    }
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to load model: $modelPath. Camera will run without inference.", e)
@@ -466,21 +473,20 @@ class YOLOView @JvmOverloads constructor(
      */
     fun onLifecycleOwnerAvailable(owner: LifecycleOwner) {
         this.lifecycleOwner = owner
-        // Register as a lifecycle observer to handle lifecycle events
         owner.lifecycle.addObserver(this)
         
-        // If camera was requested but couldn't start due to missing lifecycle owner, try again
-        if (allPermissionsGranted()) {
+        if (allPermissionsGranted() && (camera == null || isStopped)) {
             startCamera()
         }
-        Log.d(TAG, "LifecycleOwner set: ${owner.javaClass.simpleName}")
     }
     
     // region camera init
 
     fun initCamera() {
         if (allPermissionsGranted()) {
-            startCamera()
+            if (lifecycleOwner != null && (camera == null || isStopped)) {
+                startCamera()
+            }
         } else {
             val activity = context as? Activity ?: return
             ActivityCompat.requestPermissions(
@@ -510,7 +516,7 @@ class YOLOView @JvmOverloads constructor(
     }
 
     fun startCamera() {
-        Log.d(TAG, "Starting camera...")
+        isStopped = false
 
         try {
             cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -605,9 +611,27 @@ class YOLOView @JvmOverloads constructor(
     
     // Lifecycle methods from DefaultLifecycleObserver
     override fun onStart(owner: LifecycleOwner) {
-        Log.d(TAG, "Lifecycle onStart")
+        Log.d(TAG, "Lifecycle onStart - restarting camera if stopped")
         if (allPermissionsGranted()) {
-            startCamera()
+            // Always restart camera on start if it's stopped or null
+            // This ensures camera resumes when navigating back
+            if (isStopped || camera == null) {
+                Log.d(TAG, "Camera is stopped or null, restarting on onStart")
+                startCamera()
+            } else {
+                Log.d(TAG, "Camera is already running, no restart needed")
+            }
+        }
+    }
+    
+    override fun onResume(owner: LifecycleOwner) {
+        Log.d(TAG, "Lifecycle onResume - ensuring camera is running")
+        if (allPermissionsGranted()) {
+            // Double-check camera is running on resume
+            if (isStopped || camera == null) {
+                Log.d(TAG, "Camera not running on resume, restarting...")
+                startCamera()
+            }
         }
     }
 
@@ -619,6 +643,13 @@ class YOLOView @JvmOverloads constructor(
     // region onFrame (per frame inference)
 
     private fun onFrame(imageProxy: ImageProxy) {
+        // Early return if view is stopped to prevent accessing closed resources
+        if (isStopped) {
+            Log.d(TAG, "onFrame: View is stopped, skipping frame processing")
+            imageProxy.close()
+            return
+        }
+        
         val w = imageProxy.width
         val h = imageProxy.height
         val orientation = context.resources.configuration.orientation
@@ -630,7 +661,21 @@ class YOLOView @JvmOverloads constructor(
             return
         }
 
+        // Check again after bitmap conversion (in case stop() was called during conversion)
+        if (isStopped) {
+            Log.d(TAG, "onFrame: View stopped during bitmap conversion, skipping inference")
+            imageProxy.close()
+            return
+        }
+
         predictor?.let { p ->
+            // Double-check stopped flag before inference (predictor might be closed)
+            if (isStopped) {
+                Log.d(TAG, "onFrame: View stopped before inference, skipping")
+                imageProxy.close()
+                return
+            }
+            
             // Check if we should run inference on this frame
             if (!shouldRunInference()) {
                 Log.d(TAG, "Skipping inference due to frequency control")
@@ -1773,6 +1818,9 @@ class YOLOView @JvmOverloads constructor(
      */
     fun stop() {
         Log.d(TAG, "YOLOView.stop() called - tearing down camera")
+        
+        // Set stopped flag first to prevent new frames from being processed
+        isStopped = true
 
         try {
             imageAnalysisUseCase?.clearAnalyzer()
@@ -1811,7 +1859,13 @@ class YOLOView @JvmOverloads constructor(
             cameraExecutor = null
 
             camera = null
-            (predictor as? BasePredictor)?.close()
+            
+            // Close predictor safely - ensure no inference is running
+            try {
+                (predictor as? BasePredictor)?.close()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error closing predictor", e)
+            }
             predictor = null
             inferenceCallback = null
             streamCallback = null

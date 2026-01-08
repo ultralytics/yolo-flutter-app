@@ -1,3 +1,16 @@
+## 0.1.45
+
+- **Critical Bug Fix**: Fix fatal crash when camera permission is denied or not granted on iOS
+  - **iOS Fix**:
+    - Added camera authorization status check (`AVCaptureDevice.authorizationStatus`) before attempting to access camera
+    - Replaced `try!` with proper `do-catch` error handling for `AVCaptureDeviceInput` initialization
+
+## 0.1.44
+
+- **Critical Bug Fix**: Fix SIGSEGV crash when YOLOView is disposed while TensorFlow Lite inference is running
+  - **Root Cause**: Race condition where `onFrame` callback continued executing after `stop()` cleared resources and closed the TensorFlow Lite interpreter
+  - **Fix**: Added `@Volatile` `isStopped` flag that is checked at multiple points in `onFrame` to prevent accessing closed resources
+
 ## 0.1.43
 
 - **Enhancement**: Unify classification output format across all platforms to use official Results.summary() format
@@ -53,7 +66,6 @@
 ## 0.1.38
 
 - **Bug Fix**: iOS performance metrics not updating in `YOLOView`
-
   - Moved EventChannel subscription from `initState` to `_onPlatformViewCreated` to ensure native channel readiness on iOS
   - Aligned streaming config key with iOS by renaming `throttleInterval` to `throttleIntervalMs` when sending params
   - iOS now sources performance metrics from the latest inference result: `processingTimeMs = result.speed * 1000`, `fps = result.fps`

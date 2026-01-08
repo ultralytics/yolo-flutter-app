@@ -8,16 +8,21 @@ import 'model_loading_overlay.dart';
 
 /// Main content widget that handles the camera view and loading states
 class CameraInferenceContent extends StatelessWidget {
-  const CameraInferenceContent({super.key, required this.controller});
+  const CameraInferenceContent({
+    super.key,
+    required this.controller,
+    this.rebuildKey = 0,
+  });
 
   final CameraInferenceController controller;
+  final int rebuildKey;
 
   @override
   Widget build(BuildContext context) {
     if (controller.modelPath != null && !controller.isModelLoading) {
       return YOLOView(
         key: ValueKey(
-          'yolo_view_${controller.modelPath}_${controller.selectedModel.task.name}',
+          'yolo_view_${controller.modelPath}_${controller.selectedModel.task.name}_$rebuildKey',
         ),
         controller: controller.yoloController,
         modelPath: controller.modelPath!,

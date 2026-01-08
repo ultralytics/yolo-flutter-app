@@ -5,6 +5,7 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.util.Log
 import android.view.View
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -49,6 +50,7 @@ class YOLOPlatformView(
     private var retryRunnable: Runnable? = null
     
     init {
+        Log.d(TAG, "YOLOPlatformView[$viewId] INIT BLOCK STARTING")
         val dartViewIdParam = creationParams?.get("viewId")
         viewUniqueId = dartViewIdParam as? String ?: viewId.toString().also {
             Log.w(TAG, "YOLOPlatformView[$viewId init]: Using platform int viewId '$it' as fallback")
@@ -85,14 +87,19 @@ class YOLOPlatformView(
         // Configure YOLOView streaming functionality
         setupYOLOViewStreaming(creationParams)
 
-        // Initialize camera
-        Log.d(TAG, "Attempting early camera initialization")
-        yoloView.initCamera()
-
-        // Notify lifecycle if available
+        // Notify lifecycle FIRST before initializing camera
+        // This ensures lifecycle owner is set before camera tries to start
         if (context is LifecycleOwner) {
             Log.d(TAG, "Initial context is a LifecycleOwner, notifying YOLOView")
             yoloView.onLifecycleOwnerAvailable(context)
+            // initCamera will be called by onLifecycleOwnerAvailable if permissions are granted
+            // But we also call it here as a fallback
+            Log.d(TAG, "Attempting camera initialization after lifecycle owner setup")
+            yoloView.initCamera()
+        } else {
+            Log.w(TAG, "Context is not a LifecycleOwner, camera may not start")
+            // Still try to initialize camera - it will request permissions if needed
+            yoloView.initCamera()
         }
         
         try {
@@ -105,12 +112,17 @@ class YOLOPlatformView(
             // Set up model loading callback
             yoloView.setOnModelLoadCallback { success ->
                 if (success) {
-                    Log.d(TAG, "Model loaded successfully")
                     initialized = true
-                    // Start streaming if not already started
                     startStreaming()
+                    val context = yoloView.context
+                    val hasPermissions = android.Manifest.permission.CAMERA.let { permission ->
+                        android.content.pm.PackageManager.PERMISSION_GRANTED == 
+                        ContextCompat.checkSelfPermission(context, permission)
+                    }
+                    if (hasPermissions) {
+                        yoloView.startCamera()
+                    }
                 } else {
-                    Log.w(TAG, "Failed to load model")
                     initialized = true
                 }
             }
@@ -416,6 +428,11 @@ class YOLOPlatformView(
                 "stop" -> {
                     yoloView.stop()
                     Log.d(TAG, "Camera and inference stopped")
+                    result.success(null)
+                }
+                "restartCamera" -> {
+                    Log.d(TAG, "Restarting camera (requested from Flutter)")
+                    yoloView.startCamera()
                     result.success(null)
                 }
                 "captureFrame" -> {
