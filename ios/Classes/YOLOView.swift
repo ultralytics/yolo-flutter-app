@@ -394,9 +394,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
           self.videoCapture.previewLayer?.addSublayer(self.overlayLayer)
           // Once everything is set up, we can start capturing live video.
           self.videoCapture.start()
-
-          self.busy = false
+        } else {
+          print("Failed to set up camera - permission may be denied or camera unavailable")
         }
+        self.busy = false
       }
     }
   }
@@ -1229,16 +1230,35 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   @objc func switchCameraTapped() {
 
+    let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
+    if authStatus != .authorized {
+      print("Camera permission not authorized. Cannot switch camera.")
+      return
+    }
+
     self.videoCapture.captureSession.beginConfiguration()
-    let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput
-    self.videoCapture.captureSession.removeInput(currentInput!)
-    guard let currentPosition = currentInput?.device.position else { return }
+    guard let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput
+    else {
+      print("No current camera input to remove")
+      self.videoCapture.captureSession.commitConfiguration()
+      return
+    }
+
+    let currentPosition = currentInput.device.position
+
+    self.videoCapture.captureSession.removeInput(currentInput)
 
     let nextCameraPosition: AVCaptureDevice.Position = currentPosition == .back ? .front : .back
 
-    let newCameraDevice = bestCaptureDevice(position: nextCameraPosition)
+    guard let newCameraDevice = bestCaptureDevice(position: nextCameraPosition) else {
+      print("No camera device available for position: \(nextCameraPosition)")
+      self.videoCapture.captureSession.commitConfiguration()
+      return
+    }
 
     guard let videoInput1 = try? AVCaptureDeviceInput(device: newCameraDevice) else {
+      print("Failed to create AVCaptureDeviceInput for camera switch")
+      self.videoCapture.captureSession.commitConfiguration()
       return
     }
 
