@@ -89,3 +89,6 @@ simple_example/macos/Flutter/ephemeral/
 
 streaming_test_example/
 threshold_test_sample/
+
+# FVM Version Cache
+.fvm/

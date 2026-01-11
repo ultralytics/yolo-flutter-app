@@ -13,6 +13,7 @@ class YOLOModelManager {
   final String _modelPath;
   final YOLOTask _task;
   final bool _useGpu;
+  final int _numItemsThreshold;
   final Map<String, dynamic>? _classifierOptions;
   int? _viewId;
 
@@ -26,13 +27,15 @@ class YOLOModelManager {
     required bool useGpu,
     Map<String, dynamic>? classifierOptions,
     int? viewId,
+    int? numItemsThreshold,
   }) : _channel = channel,
        _instanceId = instanceId,
        _modelPath = modelPath,
        _task = task,
        _useGpu = useGpu,
        _classifierOptions = classifierOptions,
-       _viewId = viewId;
+       _viewId = viewId,
+       _numItemsThreshold = numItemsThreshold ?? 30;
 
   Future<void> initializeInstance() async {
     try {
@@ -48,6 +51,25 @@ class YOLOModelManager {
     }
   }
 
+  Future<void> predictorInstance() async {
+    if(!_isInitialized){
+      await initializeInstance();
+    }
+    final Map<String, dynamic> arguments = {};
+    if (_instanceId != 'default') {
+      arguments['instanceId'] = _instanceId;
+    }
+    try{
+      await _channel.invokeMethod('predictorInstance', arguments);
+    }catch(e){
+      throw YOLOErrorHandler.handleError(
+        e,
+        'Failed to predictorInstance for instance $_instanceId',
+      );
+    }
+
+  }
+
   Future<bool> loadModel() async {
     if (!_isInitialized) {
       await initializeInstance();
@@ -58,6 +80,7 @@ class YOLOModelManager {
         'modelPath': _modelPath,
         'task': _task.name,
         'useGpu': _useGpu,
+        'numItemsThreshold':_numItemsThreshold,
       };
 
       if (_classifierOptions != null) {

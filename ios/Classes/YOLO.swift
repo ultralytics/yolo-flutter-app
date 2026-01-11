@@ -42,6 +42,7 @@ public class YOLO {
 
   public init(
     _ modelPathOrName: String, task: YOLOTask, useGpu: Bool = true,
+    numItemsThreshold: Int = 30,
     completion: ((Result<YOLO, Error>) -> Void)? = nil
   ) {
     print("YOLO.init: Received modelPath: \(modelPathOrName)")
@@ -269,7 +270,7 @@ public class YOLO {
       }
 
     case .segment:
-      Segmenter.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu) { result in
+      Segmenter.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu, numItemsThreshold: numItemsThreshold) { result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -279,7 +280,7 @@ public class YOLO {
       }
 
     case .pose:
-      PoseEstimater.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu) { result in
+      PoseEstimater.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu, numItemsThreshold: numItemsThreshold) { result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -289,7 +290,7 @@ public class YOLO {
       }
 
     case .obb:
-      ObbDetector.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu) { result in
+      ObbDetector.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu, numItemsThreshold: numItemsThreshold) { result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -299,7 +300,7 @@ public class YOLO {
       }
 
     default:
-      ObjectDetector.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu) { result in
+      ObjectDetector.create(unwrappedModelURL: unwrappedModelURL, useGpu: useGpu, numItemsThreshold: numItemsThreshold) { result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
