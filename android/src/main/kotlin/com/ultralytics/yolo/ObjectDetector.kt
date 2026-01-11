@@ -41,6 +41,7 @@ class ObjectDetector(
     modelPath: String,
     override var labels: List<String>,
     private val useGpu: Boolean = true,
+    private var numItemsThreshold: Int = 30,
     private val customOptions: Interpreter.Options? = null
 ) : BasePredictor() {
     // Inference output dimensions
@@ -395,7 +396,7 @@ class ObjectDetector(
     // Thresholds (like setConfidenceThreshold, setIouThreshold in TFLiteDetector)
     private var confidenceThreshold = 0.25f
     private var iouThreshold = 0.4f
-    private var numItemsThreshold = 30
+//    private var numItemsThreshold = 30
 
     override fun setConfidenceThreshold(conf: Double) {
         confidenceThreshold = conf.toFloat()
@@ -417,6 +418,7 @@ class ObjectDetector(
 
     override fun setNumItemsThreshold(n: Int) {
         numItemsThreshold = n
+        super.setNumItemsThreshold(n)
     }
 
     // Post-processing via JNI

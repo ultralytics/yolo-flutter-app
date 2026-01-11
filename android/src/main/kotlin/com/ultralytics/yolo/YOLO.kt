@@ -24,6 +24,7 @@ class YOLO(
     val task: YOLOTask,
     private val labels: List<String> = emptyList(),
     private val useGpu: Boolean = true,
+    private var numItemsThreshold: Int = 30,
     private val classifierOptions: Map<String, Any>? = null
 ) {
     private val TAG = "YOLO"
@@ -57,12 +58,19 @@ class YOLO(
     private val predictor: Predictor by lazy {
         val options = createCustomOptions()
         when (task) {
-            YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, options)
-            YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, options)
+            YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
+            YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
             YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu, options, classifierOptions)
-            YOLOTask.POSE -> PoseEstimator(context, modelPath, labels, useGpu, customOptions = options)
-            YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, options)
+            YOLOTask.POSE -> PoseEstimator(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
+            YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
         }
+    }
+
+    /**
+     * This method is used to directly instantiate the predictor to avoid lazy invocation.
+     */
+    fun predictorInstance(): Predictor {
+        return predictor
     }
 
     /**

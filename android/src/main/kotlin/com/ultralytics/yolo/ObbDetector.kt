@@ -30,10 +30,11 @@ class ObbDetector(
     modelPath: String,
     override var labels: List<String>,
     private val useGpu: Boolean = true,
+    private var numItemsThreshold: Int = 30,
     private val customOptions: Interpreter.Options? = null
 ) : BasePredictor() {
     
-    private var numItemsThreshold = 30
+//    private var numItemsThreshold = 30
 
     private val interpreterOptions: Interpreter.Options = (customOptions ?: Interpreter.Options()).apply {
         // If no custom options provided, use default threads
@@ -159,7 +160,7 @@ class ObbDetector(
     }
     
     override fun setNumItemsThreshold(n: Int) {
-        numItemsThreshold = n
+        this.numItemsThreshold = n
         super.setNumItemsThreshold(n)
     }
 
