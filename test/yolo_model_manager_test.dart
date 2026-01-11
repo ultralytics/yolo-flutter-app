@@ -107,6 +107,7 @@ void main() {
           'modelPath': 'test_model.tflite',
           'task': 'detect',
           'useGpu': true,
+          'numItemsThreshold': 30,
           'instanceId': 'test_instance',
         },
       );
@@ -134,6 +135,7 @@ void main() {
           'modelPath': 'classifier_model.tflite',
           'task': 'classify',
           'useGpu': false,
+          'numItemsThreshold': 30,
           'classifierOptions': {
             'enable1ChannelSupport': true,
             'expectedChannels': 1,
@@ -301,6 +303,7 @@ void main() {
           'modelPath': 'test_model.tflite',
           'task': 'detect',
           'useGpu': true,
+          'numItemsThreshold': 30,
         },
       );
     });
