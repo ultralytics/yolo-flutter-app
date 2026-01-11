@@ -472,22 +472,25 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
       }
 
       "predictorInstance" -> {
-        try{
-          val args = call.arguments as? Map<*, *>
-          val instanceId = args?.get("instanceId") as? String ?: "default"
+        val args = call.arguments as? Map<*, *>
+        val instanceId = args?.get("instanceId") as? String ?: "default"
 
-          // 使用GlobalScope.launch(Dispatchers.IO) 将耗时操作移至IO后台线程
-          GlobalScope.launch(Dispatchers.IO){
+        // 使用GlobalScope.launch(Dispatchers.IO) 将耗时操作移至IO后台线程
+        GlobalScope.launch(Dispatchers.IO){
+
+          try {
+
             YOLOInstanceManager.shared.predictorInstance(instanceId);
             // 耗时操作完成后，切回主线程返回结果（必须在主线程回调result）
             withContext(Dispatchers.Main) {
               result.success(null)
             }
+
+          } catch (e:Exception){
+            Log.e(TAG, "Error predictorInstance instance", e)
+            result.error("predictor_instance_error", "Failed to instantiate the predictor: ${e.message}", null)
           }
 
-        }catch (e: Exception){
-          Log.e(TAG, "Error disposing instance", e)
-          result.error("predictor_instance_error", "Failed to instantiate the predictor: ${e.message}", null)
         }
       }
       

@@ -261,16 +261,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         result(nil)
 
       case "predictorInstance":
-        guard let args = call.arguments as? [String: Any],
-          let instanceId = args["instanceId"] as? String
-        else {
-          result(
-            FlutterError(
-              code: "bad_args", message: "Invalid arguments for disposeInstance", details: nil)
-          )
-          return
-        }
-        // donothing with ios
+        // do nothing with ios
         result(nil)
 
 

@@ -58,11 +58,11 @@ class YOLO(
     private val predictor: Predictor by lazy {
         val options = createCustomOptions()
         when (task) {
-            YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, options)
-            YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, options)
+            YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
+            YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
             YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu, options, classifierOptions)
             YOLOTask.POSE -> PoseEstimator(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
-            YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, options)
+            YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
         }
     }
 
