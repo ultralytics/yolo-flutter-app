@@ -238,8 +238,11 @@ class YOLOInference {
             }
           }
 
-          // Handle edge case: empty points list
-          if (points.isEmpty) {
+          // Handle edge cases: no valid point data produced usable extrema
+          final hasValidExtrema =
+              minX.isFinite && minY.isFinite && maxX.isFinite && maxY.isFinite;
+
+          if (!hasValidExtrema) {
             minX = 0.0;
             minY = 0.0;
             maxX = 0.0;
