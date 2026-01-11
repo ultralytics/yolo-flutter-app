@@ -191,6 +191,16 @@ class YOLOViewController {
     }
   }
 
+  Future<void> restartCamera() async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('restartCamera');
+      } catch (e) {
+        logInfo('Error restarting camera: $e');
+      }
+    }
+  }
+
   Future<void> setShowUIControls(bool show) async {
     if (_methodChannel != null) {
       try {

@@ -316,12 +316,19 @@ class YOLOInstanceManager {
     }
 
     // Classification - probs
+    // Use Results.summary() format: {name, class, confidence}
+    // Reference: https://docs.ultralytics.com/reference/engine/results/
     if let probs = result.probs {
       resultDict["classification"] = [
-        "topClass": probs.top1,
-        "topConfidence": probs.top1Conf,
-        "top5Classes": probs.top5,
-        "top5Confidences": probs.top5Confs,
+        "name": probs.top1Label,
+        "class": result.names.firstIndex(of: probs.top1Label) ?? 0,
+        "confidence": probs.top1Conf,
+        "top5": probs.top5Labels.enumerated().map { (index, label) in
+          [
+            "name": label,
+            "confidence": index < probs.top5Confs.count ? probs.top5Confs[index] : 0.0,
+          ]
+        },
       ]
     }
 

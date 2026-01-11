@@ -426,7 +426,7 @@ class YOLO(
                     paint.color = Color.BLACK
                     paint.textSize = 60f
                     canvas.drawText(
-                        "${probs.top1} ${"%.2f".format(probs.top1Conf * 100)}%",
+                        "${probs.top1Label} ${"%.2f".format(probs.top1Conf * 100)}%",
                         20f,
                         80f,
                         paint
@@ -434,7 +434,7 @@ class YOLO(
 
                     // Draw top-5 classes
                     paint.textSize = 30f
-                    for ((i, cls) in probs.top5.withIndex()) {
+                    for ((i, cls) in probs.top5Labels.withIndex()) {
                         if (i == 0) continue // Skip top-1 which is already shown
                         canvas.drawText(
                             "$cls ${"%.2f".format(probs.top5Confs[i] * 100)}%",

@@ -296,30 +296,32 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
               }
             }
             YOLOTask.CLASSIFY -> {
-              Log.d(TAG, "Processing CLASSIFY task result")
-              // Include classification results if available
               yoloResult.probs?.let { probs ->
-                Log.d(TAG, "Found probs: top1=${probs.top1}, top1Conf=${probs.top1Conf}, top1Index=${probs.top1Index}")
-                
-                // Use the original labels from the model (no hardcoded mapping)
-                val topClass = probs.top1
-                val top5Classes = probs.top5
-                
+                // Build top5 list safely using zip to handle mismatched list lengths
+                // Convert top5Confs to List to ensure Iterable compatibility (may be FloatArray)
+                val top5List = probs.top5Labels.zip(probs.top5Confs.toList()).map { (name, conf) ->
+                  mapOf(
+                    "name" to name,
+                    "confidence" to conf.toDouble()
+                  )
+                }
+
+                // Classification response following Results.summary() format
+                // Reference: https://docs.ultralytics.com/reference/engine/results/
                 response["classification"] = mapOf(
-                  "topClass" to topClass,
-                  "topConfidence" to probs.top1Conf.toDouble(),
-                  "top5Classes" to top5Classes,
-                  "top5Confidences" to probs.top5Confs.map { it.toDouble() },
-                  "top1Index" to probs.top1Index
+                  "name" to probs.top1Label,
+                  "class" to probs.top1Index,
+                  "confidence" to probs.top1Conf.toDouble(),
+                  "top5" to top5List
                 )
-                
-                // Also add classification data to the boxes array for compatibility
+
+                // Populate boxes array for UI compatibility (full-image bounding box)
                 response["boxes"] = listOf(
                   mapOf(
-                    "class" to topClass,
-                    "className" to topClass,
-                    "confidence" to probs.top1Conf.toDouble(),
+                    "class" to probs.top1Index,
+                    "className" to probs.top1Label,
                     "classIndex" to probs.top1Index,
+                    "confidence" to probs.top1Conf.toDouble(),
                     "x1" to 0.0,
                     "y1" to 0.0,
                     "x2" to imageWidth.toDouble(),
@@ -330,7 +332,6 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                     "y2_norm" to 1.0
                   )
                 )
-                Log.d(TAG, "Added classification data to response")
               } ?: run {
                 Log.w(TAG, "YOLOResult.probs is null for CLASSIFY task")
               }
