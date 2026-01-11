@@ -1,15 +1,15 @@
+## 0.1.46
+
+- **Critical Bug Fix**: Fix SIGSEGV crash when YOLOView is disposed while TensorFlow Lite inference is running
+  - **Root Cause**: Race condition where `onFrame` callback continued executing after `stop()` cleared resources and closed the TensorFlow Lite interpreter
+  - **Fix**: Added `@Volatile` `isStopped` flag that is checked at multiple points in `onFrame` to prevent accessing closed resources
+
 ## 0.1.45
 
 - **Critical Bug Fix**: Fix fatal crash when camera permission is denied or not granted on iOS
   - **iOS Fix**:
     - Added camera authorization status check (`AVCaptureDevice.authorizationStatus`) before attempting to access camera
     - Replaced `try!` with proper `do-catch` error handling for `AVCaptureDeviceInput` initialization
-
-## 0.1.44
-
-- **Critical Bug Fix**: Fix SIGSEGV crash when YOLOView is disposed while TensorFlow Lite inference is running
-  - **Root Cause**: Race condition where `onFrame` callback continued executing after `stop()` cleared resources and closed the TensorFlow Lite interpreter
-  - **Fix**: Added `@Volatile` `isStopped` flag that is checked at multiple points in `onFrame` to prevent accessing closed resources
 
 ## 0.1.43
 
