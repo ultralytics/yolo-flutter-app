@@ -16,6 +16,11 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry // Added for RequestPermissionsResultListener
 import java.io.ByteArrayOutputStream
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
 class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler, PluginRegistry.RequestPermissionsResultListener {
 
   private lateinit var methodChannel: MethodChannel
@@ -154,6 +159,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           val instanceId = args?.get("instanceId") as? String ?: "default"
           val useGpu = args?.get("useGpu") as? Boolean ?: true
           val classifierOptionsMap = args?.get("classifierOptions") as? Map<String, Any>
+          var numItemsThreshold = args?.get("numItemsThreshold") as? Int ?: 30
           
           // Resolve the model path (handling absolute paths, internal:// scheme, or asset paths)
           modelPath = resolveModelPath(modelPath)
@@ -179,8 +185,12 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             modelPath = modelPath,
             task = task,
             useGpu = useGpu,
+            numItemsThreshold = numItemsThreshold,
             classifierOptions = classifierOptions
           ) { loadResult ->
+            if(task == YOLOTask.CLASSIFY){
+              Log.d(TAG,"task CLASSIFY not support numItemsThreshold ignore it.")
+            }
             if (loadResult.isSuccess) {
               Log.d(TAG, "Model loaded successfully: $modelPath for task: $task, instance: $instanceId, useGpu: $useGpu ${if (classifierOptions != null) "with classifier options" else ""}")
               result.success(true)
@@ -460,6 +470,30 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
         } catch (e: Exception) {
           Log.e(TAG, "Error disposing instance", e)
           result.error("dispose_error", "Failed to dispose instance: ${e.message}", null)
+        }
+      }
+
+      "predictorInstance" -> {
+        val args = call.arguments as? Map<*, *>
+        val instanceId = args?.get("instanceId") as? String ?: "default"
+
+        // 使用GlobalScope.launch(Dispatchers.IO) 将耗时操作移至IO后台线程
+        GlobalScope.launch(Dispatchers.IO){
+
+          try {
+            YOLOInstanceManager.shared.predictorInstance(instanceId);
+            // 耗时操作完成后，切回主线程返回结果（必须在主线程回调result）
+            withContext(Dispatchers.Main) {
+              result.success(null)
+            }
+
+          } catch (e:Exception){
+            Log.e(TAG, "Error predictorInstance instance", e)
+            withContext(Dispatchers.Main) {
+              result.error("predictor_instance_error", "Failed to instantiate the predictor: ${e.message}", null)
+            }
+          }
+
         }
       }
       

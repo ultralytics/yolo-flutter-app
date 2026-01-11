@@ -34,6 +34,7 @@ class YOLOInstanceManager {
     modelName: String,
     task: YOLOTask,
     useGpu: Bool = true,
+    numItemsThreshold: Int = 30,
     completion: @escaping (Result<Void, Error>) -> Void
   ) {
     // Check if model is already loaded
@@ -60,7 +61,7 @@ class YOLOInstanceManager {
 
     let resolvedModelPath = resolveModelPath(modelName)
 
-    YOLO(resolvedModelPath, task: task, useGpu: useGpu) { [weak self] result in
+    YOLO(resolvedModelPath, task: task, useGpu: useGpu, numItemsThreshold: numItemsThreshold) { [weak self] result in
       guard let self = self else { return }
 
       self.loadingStates[instanceId] = false
