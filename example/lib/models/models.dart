@@ -4,6 +4,7 @@ import 'package:ultralytics_yolo/models/yolo_task.dart';
 
 enum ModelType {
   detect('yolo11n', YOLOTask.detect),
+  detect26('yolo26n', YOLOTask.detect),
   segment('yolo11n-seg', YOLOTask.segment),
   classify('yolo11n-cls', YOLOTask.classify),
   pose('yolo11n-pose', YOLOTask.pose),
