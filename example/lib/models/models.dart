@@ -9,6 +9,7 @@ enum ModelType {
   classify('yolo11n-cls', YOLOTask.classify),
   classify26('yolo26n-cls', YOLOTask.classify),
   pose('yolo11n-pose', YOLOTask.pose),
+  pose26('yolo26n-pose', YOLOTask.pose),
   obb('yolo11n-obb', YOLOTask.obb);
 
   final String modelName;
