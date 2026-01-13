@@ -1,3 +1,12 @@
+## 0.2.0
+
+- **Feature**: Android/iOS now support YOLO26 models alongside existing YOLO11 models.
+  - Model path resolution updated to load bundled assets for YOLO26 on Android, matching YOLO11 behavior.
+  - Label loading continues to prefer embedded metadata with COCO fallback.
+- **Compatibility**: YOLO11 models remain fully supported.
+- **iOS/Android NMS**: No graph-level NMS is required for YOLO26
+- **iOS updates**: ObjectDetector, Segmenter, PoseEstimater, and Classifier refreshed for YOLO26 raw heads (shape handling/postprocess/error handling) while keeping YOLO11 behavior intact.
+
 ## 0.1.46
 
 - **Critical Bug Fix**: Fix SIGSEGV crash when YOLOView is disposed while TensorFlow Lite inference is running
