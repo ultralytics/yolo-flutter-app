@@ -58,6 +58,24 @@ public class BasePredictor: Predictor, @unchecked Sendable {
 
   var modelURL: URL?
 
+  /// Common model helpers
+  var isYOLO26Model: Bool {
+    guard let url = modelURL else { return false }
+    let modelName = url.lastPathComponent.lowercased()
+    let fullPath = url.path.lowercased()
+    let baseName = modelName
+      .replacingOccurrences(of: ".mlmodelc", with: "")
+      .replacingOccurrences(of: ".mlpackage", with: "")
+      .replacingOccurrences(of: ".mlmodel", with: "")
+    return fullPath.contains("yolo26") || baseName.contains("yolo26")
+  }
+
+  func normalizeYOLOScore(_ value: Float) -> Float {
+    if value > 1.0 && value <= 100.0 { return value / 100.0 }
+    if value > 100.0 { return 1 / (1 + exp(-value)) }
+    return value
+  }
+
   /// Timestamp for the start of inference (used for performance measurement).
   var t0 = 0.0  // inference start
 

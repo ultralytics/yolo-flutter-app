@@ -20,10 +20,6 @@ import Vision
 
 class PoseEstimater: BasePredictor, @unchecked Sendable {
   var colorsForMask: [(red: UInt8, green: UInt8, blue: UInt8)] = []
-  private var isYOLO26Model: Bool {
-    guard let path = modelURL?.lastPathComponent.lowercased() else { return false }
-    return path.contains("yolo26")
-  }
 
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
@@ -271,10 +267,7 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
       let y1 = CGFloat(ptr[off + 1])
       let x2 = CGFloat(ptr[off + 2])
       let y2 = CGFloat(ptr[off + 3])
-      var conf = ptr[off + 4]
-
-      if conf > 1.0 && conf <= 100.0 { conf = conf / 100.0 }
-      else if conf > 100.0 { conf = 1 / (1 + exp(-conf)) }
+      let conf = normalizeYOLOScore(ptr[off + 4])
 
       guard conf > confidenceThreshold else { continue }
 

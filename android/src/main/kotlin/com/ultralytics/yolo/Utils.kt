@@ -5,6 +5,7 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.Color
 import android.util.Log
+import io.flutter.embedding.engine.loader.FlutterInjector
 import org.tensorflow.lite.support.common.FileUtil
 
 val ultralyticsColors: List<Int> = listOf(
@@ -35,6 +36,13 @@ val ultralyticsColors: List<Int> = listOf(
  */
 object YOLOUtils {
     private const val TAG = "YOLOUtils"
+
+    /**
+     * Resolves a Flutter asset path to the correct lookup key used in the APK.
+     */
+    private fun resolveAssetPath(assetPath: String): String {
+        return FlutterInjector.instance().flutterLoader().getLookupKeyForAsset(assetPath)
+    }
     
     /**
      * Checks if the provided path is an absolute file path
@@ -71,8 +79,10 @@ object YOLOUtils {
                 return loadModelFromFilesystem(finalModelPath)
             } else {
                 // Try loading from assets
-                Log.d(TAG, "Loading model from assets: $finalModelPath")
-                return FileUtil.loadMappedFile(context, finalModelPath)
+                val assetKey = runCatching { resolveAssetPath(finalModelPath) }
+                    .getOrDefault(finalModelPath)
+                Log.d(TAG, "Loading model from assets: $assetKey")
+                return FileUtil.loadMappedFile(context, assetKey)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load model with path: $finalModelPath, error: ${e.message}")
@@ -83,8 +93,10 @@ object YOLOUtils {
                     Log.d(TAG, "Loading model from absolute path (fallback): $modelPath")
                     return loadModelFromFilesystem(modelPath)
                 } else {
-                    Log.d(TAG, "Loading model from assets (fallback): $modelPath")
-                    return FileUtil.loadMappedFile(context, modelPath)
+                    val fallbackAssetKey = runCatching { resolveAssetPath(modelPath) }
+                        .getOrDefault(modelPath)
+                    Log.d(TAG, "Loading model from assets (fallback): $fallbackAssetKey")
+                    return FileUtil.loadMappedFile(context, fallbackAssetKey)
                 }
             } catch (e2: Exception) {
                 Log.e(TAG, "Failed to load model with both paths. Original error: ${e.message}, Fallback error: ${e2.message}")
@@ -139,13 +151,17 @@ object YOLOUtils {
         // Then check assets
         try {
             // This will throw an exception if the asset doesn't exist
-            context.assets.openFd(withExtension).close()
-            return mapOf("exists" to true, "path" to withExtension, "location" to "assets")
+            val assetKeyWithExt = runCatching { resolveAssetPath(withExtension) }
+                .getOrDefault(withExtension)
+            context.assets.openFd(assetKeyWithExt).close()
+            return mapOf("exists" to true, "path" to assetKeyWithExt, "location" to "assets")
         } catch (e: Exception) {
             // Asset with extension doesn't exist, try without extension
             try {
-                context.assets.openFd(modelPath).close()
-                return mapOf("exists" to true, "path" to modelPath, "location" to "assets")
+                val assetKey = runCatching { resolveAssetPath(modelPath) }
+                    .getOrDefault(modelPath)
+                context.assets.openFd(assetKey).close()
+                return mapOf("exists" to true, "path" to assetKey, "location" to "assets")
             } catch (e2: Exception) {
                 // Neither exists
                 return mapOf("exists" to false, "path" to modelPath, "location" to "unknown")

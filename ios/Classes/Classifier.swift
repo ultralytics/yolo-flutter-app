@@ -20,11 +20,6 @@ import Vision
 /// Specialized predictor for YOLO classification models that identify the subject of an image.
 class Classifier: BasePredictor {
 
-  private var isYOLO26Model: Bool {
-    guard let path = modelURL?.lastPathComponent.lowercased() else { return false }
-    return path.contains("yolo26")
-  }
-
   private func parseProbs(from multiArray: MLMultiArray) -> Probs {
     var values = [Double](repeating: 0, count: multiArray.count)
     for i in 0..<multiArray.count {

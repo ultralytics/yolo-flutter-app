@@ -19,7 +19,7 @@ import '../models/models.dart';
 class ModelManager {
   /// Base URL for downloading model files from GitHub releases
   static const String _modelDownloadBaseUrl =
-      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0';
+      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0';
 
   static final MethodChannel _channel =
       ChannelConfig.createSingleImageChannel();

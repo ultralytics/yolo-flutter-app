@@ -21,17 +21,6 @@ import Vision
 /// Specialized predictor for YOLO models that detect objects using oriented (rotated) bounding boxes.
 class ObbDetector: BasePredictor, @unchecked Sendable {
 
-  private var isYOLO26Model: Bool {
-    guard let url = modelURL else { return false }
-    let modelName = url.lastPathComponent.lowercased()
-    let fullPath = url.path.lowercased()
-    let baseName = modelName
-      .replacingOccurrences(of: ".mlmodelc", with: "")
-      .replacingOccurrences(of: ".mlpackage", with: "")
-      .replacingOccurrences(of: ".mlmodel", with: "")
-    return fullPath.contains("yolo26") || baseName.contains("yolo26")
-  }
-
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
   }
@@ -247,17 +236,6 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
     var detections: [(OBB, Float, Int)] = []
     detections.reserveCapacity(min(numDetections, 200))
 
-    func normalizeScore(_ s: Float) -> Float {
-      if s > 1.0 && s <= 100.0 { return s / 100.0 }
-      if s > 100.0 { return 1 / (1 + exp(-s)) }
-      return s
-    }
-
-    func isLikelyClass(_ v: Float) -> Bool {
-      let r = round(v)
-      return r >= -0.5 && r < Float(labels.count) + 0.5
-    }
-
     func addDetection(cx: CGFloat, cy: CGFloat, w: CGFloat, h: CGFloat, angle: Float, score: Float, clsIdx: Int) {
       guard score > confidenceThreshold else { return }
       guard clsIdx >= 0 && clsIdx < labels.count else { return }
@@ -302,7 +280,7 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
         let cy = y1 + h / 2
         let clsIdx = Int(round(v6))
         let angleVal = v5
-        let conf = normalizeScore(v4)
+        let conf = normalizeYOLOScore(v4)
         addDetection(cx: cx, cy: cy, w: w, h: h, angle: angleVal, score: conf, clsIdx: clsIdx)
       }
 
@@ -314,7 +292,7 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
         let w = isNorm ? CGFloat(v2) : CGFloat(v2) / modelW
         let h = isNorm ? CGFloat(v3) : CGFloat(v3) / modelH
         let angleVal = v4
-        let conf = normalizeScore(v5)
+        let conf = normalizeYOLOScore(v5)
         let clsIdx = Int(round(v6))
         addDetection(cx: cx, cy: cy, w: w, h: h, angle: angleVal, score: conf, clsIdx: clsIdx)
       }
@@ -326,7 +304,7 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
         let cy = isNorm ? CGFloat(v1) : CGFloat(v1) / modelH
         let w = isNorm ? CGFloat(v2) : CGFloat(v2) / modelW
         let h = isNorm ? CGFloat(v3) : CGFloat(v3) / modelH
-        let conf = normalizeScore(v4)
+        let conf = normalizeYOLOScore(v4)
         let angleVal = v5
         let clsIdx = Int(round(v6))
         addDetection(cx: cx, cy: cy, w: w, h: h, angle: angleVal, score: conf, clsIdx: clsIdx)

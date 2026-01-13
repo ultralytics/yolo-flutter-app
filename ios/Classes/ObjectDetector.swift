@@ -29,22 +29,6 @@ import Vision
 /// - SeeAlso: `Segmenter` for models that produce pixel-level masks for objects.
 class ObjectDetector: BasePredictor {
 
-  private var isYOLO26Model: Bool {
-    guard let url = modelURL else {
-      return false
-    }
-
-    let fullPath = url.path.lowercased()
-    let modelName = url.lastPathComponent.lowercased()
-
-    let baseName = modelName
-      .replacingOccurrences(of: ".mlmodelc", with: "")
-      .replacingOccurrences(of: ".mlpackage", with: "")
-      .replacingOccurrences(of: ".mlmodel", with: "")
-
-    return fullPath.contains("yolo26") || baseName.contains("yolo26")
-  }
-
   /// Sets the confidence threshold and updates the model's feature provider.
   ///
   /// This overridden method ensures that when the confidence threshold is changed,
@@ -261,11 +245,7 @@ class ObjectDetector: BasePredictor {
         var score = featurePointer[offset + boxFeatureLength + c]
 
         if isYOLO26Model {
-          if abs(score) > 10.0 {
-            score = sigmoid(score)
-          } else if score > 1.0 && score <= 100.0 {
-            score = score / 100.0
-          }
+          score = normalizeYOLOScore(score)
         }
 
         if score > bestScore {
@@ -274,10 +254,8 @@ class ObjectDetector: BasePredictor {
         }
       }
 
-      var normalizedScore = bestScore
-      if bestScore > 1.0 && bestScore <= 100.0 {
-        normalizedScore = bestScore / 100.0
-      } else if abs(bestScore) > 10.0 || needsNormalization {
+      var normalizedScore = normalizeYOLOScore(bestScore)
+      if !isYOLO26Model && needsNormalization {
         normalizedScore = sigmoid(bestScore)
       }
 
@@ -360,11 +338,7 @@ class ObjectDetector: BasePredictor {
       var confidence = featurePointer[offset + 4]
       let classIndex = Int(round(featurePointer[offset + 5]))
 
-      if confidence > 1.0 && confidence <= 100.0 {
-        confidence = confidence / 100.0
-      } else if confidence > 100.0 {
-        confidence = 1.0 / (1.0 + exp(-confidence))
-      }
+      confidence = normalizeYOLOScore(confidence)
 
       var boxX: CGFloat = 0
       var boxY: CGFloat = 0
