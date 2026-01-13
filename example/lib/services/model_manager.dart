@@ -99,15 +99,16 @@ class ModelManager {
   Future<String?> _getAndroidModelPath(ModelType modelType) async {
     _updateStatus('Checking for ${modelType.modelName} model...');
     final bundledName = '${modelType.modelName}.tflite';
+    final assetPath = 'assets/models/$bundledName';
 
-    // Check Android native assets first
+    // Check Android bundled asset first (matches pubspec assets path)
     try {
       final result = await _channel.invokeMethod('checkModelExists', {
-        'modelPath': bundledName,
+        'modelPath': assetPath,
       });
       if (result != null && result['exists'] == true) {
         return result['location'] == 'assets'
-            ? bundledName
+            ? assetPath
             : result['path'] as String;
       }
     } catch (_) {}
