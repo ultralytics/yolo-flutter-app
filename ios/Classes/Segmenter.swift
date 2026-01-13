@@ -21,6 +21,16 @@ import Vision
 /// Specialized predictor for YOLO segmentation models that identify objects and their pixel-level masks.
 class Segmenter: BasePredictor, @unchecked Sendable {
   var colorsForMask: [(red: UInt8, green: UInt8, blue: UInt8)] = []
+  private var isYOLO26Model: Bool {
+    guard let url = modelURL else { return false }
+    let modelName = url.lastPathComponent.lowercased()
+    let fullPath = url.path.lowercased()
+    let baseName = modelName
+      .replacingOccurrences(of: ".mlmodelc", with: "")
+      .replacingOccurrences(of: ".mlpackage", with: "")
+      .replacingOccurrences(of: ".mlmodel", with: "")
+    return fullPath.contains("yolo26") || baseName.contains("yolo26")
+  }
 
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
@@ -53,7 +63,9 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         pred = out0
       }
       let detectedObjects = postProcessSegment(
-        feature: pred, confidenceThreshold: Float(confidenceThreshold),
+        feature: pred,
+        masks: masks,
+        confidenceThreshold: Float(confidenceThreshold),
         iouThreshold: Float(iouThreshold))
       var boxes: [Box] = []
       var alphas = [CGFloat]()
@@ -63,8 +75,13 @@ class Segmenter: BasePredictor, @unchecked Sendable {
 
       for p in limitedDetections {
         let box = p.0
+        let inputW = max(1.0, CGFloat(self.modelInputSize.width))
+        let inputH = max(1.0, CGFloat(self.modelInputSize.height))
         let rect = CGRect(
-          x: box.minX / 640, y: box.minY / 640, width: box.width / 640, height: box.height / 640)
+          x: box.minX / inputW,
+          y: box.minY / inputH,
+          width: box.width / inputW,
+          height: box.height / inputH)
         let confidence = p.2
         let bestClass = p.1
         let label = self.labels[bestClass]
@@ -155,15 +172,24 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         let a = Date()
 
         let detectedObjects = postProcessSegment(
-          feature: pred, confidenceThreshold: 0.25, iouThreshold: 0.4)
+          feature: pred,
+          masks: masks,
+          confidenceThreshold: Float(self.confidenceThreshold),
+          iouThreshold: Float(self.iouThreshold))
         var boxes: [Box] = []
         var colorMasks: [CGImage?] = []
         var alhaMasks: [CGImage?] = []
         var alphas = [CGFloat]()
-        for p in detectedObjects {
+        let limitedDetections = Array(detectedObjects.prefix(self.numItemsThreshold))
+        for p in limitedDetections {
           let box = p.0
+          let inputW = max(1.0, CGFloat(self.modelInputSize.width))
+          let inputH = max(1.0, CGFloat(self.modelInputSize.height))
           let rect = CGRect(
-            x: box.minX / 640, y: box.minY / 640, width: box.width / 640, height: box.height / 640)
+            x: box.minX / inputW,
+            y: box.minY / inputH,
+            width: box.width / inputW,
+            height: box.height / inputH)
           let confidence = p.2
           let bestClass = p.1
           let label = labels[bestClass]
@@ -178,7 +204,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
 
         guard
           let procceessedMasks = generateCombinedMaskImage(
-            detectedObjects: detectedObjects,
+            detectedObjects: limitedDetections,
             protos: masks,
             inputWidth: self.modelInputSize.width,
             inputHeight: self.modelInputSize.height,
@@ -216,15 +242,36 @@ class Segmenter: BasePredictor, @unchecked Sendable {
 
   nonisolated func postProcessSegment(
     feature: MLMultiArray,
+    masks: MLMultiArray?,
     confidenceThreshold: Float,
     iouThreshold: Float
   ) -> [(CGRect, Int, Float, MLMultiArray)] {
+    let maskChannels = maskChannelCount(from: masks)
+    if isYOLO26Model {
+      return postProcessYOLO26Segment(
+        prediction: feature,
+        maskChannels: maskChannels,
+        confidenceThreshold: confidenceThreshold,
+        iouThreshold: iouThreshold)
+    } else {
+      return postProcessLegacySegment(
+        feature: feature,
+        maskChannels: maskChannels,
+        confidenceThreshold: confidenceThreshold,
+        iouThreshold: iouThreshold)
+    }
+  }
 
+  private func postProcessLegacySegment(
+    feature: MLMultiArray,
+    maskChannels: Int,
+    confidenceThreshold: Float,
+    iouThreshold: Float
+  ) -> [(CGRect, Int, Float, MLMultiArray)] {
     let numAnchors = feature.shape[2].intValue
     let numFeatures = feature.shape[1].intValue
     let boxFeatureLength = 4
-    let maskConfidenceLength = 32
-    let numClasses = numFeatures - boxFeatureLength - maskConfidenceLength
+    let numClasses = max(0, numFeatures - boxFeatureLength - maskChannels)
 
     var results = [(CGRect, Int, Float, MLMultiArray)]()
 
@@ -234,7 +281,6 @@ class Segmenter: BasePredictor, @unchecked Sendable {
     let resultsQueue = DispatchQueue(label: "resultsQueue", attributes: .concurrent)
 
     DispatchQueue.concurrentPerform(iterations: numAnchors) { j in
-      // Use pointerWrapper here
       let x = pointerWrapper.pointer[j]
       let y = pointerWrapper.pointer[numAnchors + j]
       let width = pointerWrapper.pointer[2 * numAnchors + j]
@@ -247,7 +293,6 @@ class Segmenter: BasePredictor, @unchecked Sendable {
 
       let boundingBox = CGRect(x: boxX, y: boxY, width: boxWidth, height: boxHeight)
 
-      // Class probabilities
       var classProbs = [Float](repeating: 0, count: numClasses)
       classProbs.withUnsafeMutableBufferPointer { classProbsPointer in
         vDSP_mtrans(
@@ -266,10 +311,10 @@ class Segmenter: BasePredictor, @unchecked Sendable {
       if maxClassValue > confidenceThreshold {
         let maskProbsPointer = pointerWrapper.pointer + (4 + numClasses) * numAnchors + j
         let maskProbs = try! MLMultiArray(
-          shape: [NSNumber(value: maskConfidenceLength)],
+          shape: [NSNumber(value: maskChannels)],
           dataType: .float32
         )
-        for i in 0..<maskConfidenceLength {
+        for i in 0..<maskChannels {
           maskProbs[i] = NSNumber(value: maskProbsPointer[i * numAnchors])
         }
 
@@ -311,6 +356,86 @@ class Segmenter: BasePredictor, @unchecked Sendable {
     return selectedBoxesAndFeatures
   }
 
+  private func postProcessYOLO26Segment(
+    prediction: MLMultiArray,
+    maskChannels: Int,
+    confidenceThreshold: Float,
+    iouThreshold: Float
+  ) -> [(CGRect, Int, Float, MLMultiArray)] {
+    let shape = prediction.shape.map { $0.intValue }
+    guard shape.count >= 2 else { return [] }
+
+    let numDetections: Int
+    let stride: Int
+    if shape.count == 3 {
+      numDetections = shape[1]
+      stride = shape[2]
+    } else {
+      numDetections = shape[0]
+      stride = shape[1]
+    }
+
+    guard stride >= 6 else {
+      print("YOLO26 Segment: invalid stride \(stride) for shape \(shape)")
+      return []
+    }
+
+    let ptr = prediction.dataPointer.assumingMemoryBound(to: Float.self)
+    let modelW = CGFloat(max(1, modelInputSize.width))
+    let modelH = CGFloat(max(1, modelInputSize.height))
+
+    var rawDetections: [(CGRect, Int, Float, MLMultiArray)] = []
+    rawDetections.reserveCapacity(min(numDetections, 200))
+
+    for i in 0..<numDetections {
+      let off = i * stride
+      let x1 = CGFloat(ptr[off + 0])
+      let y1 = CGFloat(ptr[off + 1])
+      let x2 = CGFloat(ptr[off + 2])
+      let y2 = CGFloat(ptr[off + 3])
+      var conf = ptr[off + 4]
+
+      if conf > 1.0 && conf <= 100.0 { conf = conf / 100.0 }
+      else if conf > 100.0 { conf = 1 / (1 + exp(-conf)) }
+
+      guard conf > confidenceThreshold else { continue }
+
+      let clsIndex = Int(round(ptr[off + 5]))
+
+      let boxX = x1
+      let boxY = y1
+      let boxW = x2 - x1
+      let boxH = y2 - y1
+
+      guard boxW > 0, boxH > 0 else { continue }
+
+      let normX = max(0.0, min(1.0, boxX / modelW))
+      let normY = max(0.0, min(1.0, boxY / modelH))
+      let normW = max(0.0, min(1.0 - normX, boxW / modelW))
+      let normH = max(0.0, min(1.0 - normY, boxH / modelH))
+
+      guard normW > 0.0, normH > 0.0 else { continue }
+
+      let boundingBox = CGRect(x: boxX, y: boxY, width: boxW, height: boxH)
+
+      let coeffCount = max(0, min(maskChannels, stride - 6))
+      let maskCoeffs = try! MLMultiArray(shape: [NSNumber(value: coeffCount)], dataType: .float32)
+      for k in 0..<coeffCount {
+        maskCoeffs[k] = NSNumber(value: ptr[off + 6 + k])
+      }
+
+      rawDetections.append((boundingBox, clsIndex, conf, maskCoeffs))
+    }
+
+    if rawDetections.isEmpty { return [] }
+
+    let boxesOnly = rawDetections.map { $0.0 }
+    let scoresOnly = rawDetections.map { $0.2 }
+    let selectedIdx = nonMaxSuppression(boxes: boxesOnly, scores: scoresOnly, threshold: iouThreshold)
+
+    return selectedIdx.map { rawDetections[$0] }
+  }
+
   func adjustBox(_ box: CGRect, toFitIn containerSize: CGSize) -> CGRect {
     let xScale = containerSize.width / 640.0
     let yScale = containerSize.height / 640.0
@@ -324,6 +449,18 @@ class Segmenter: BasePredictor, @unchecked Sendable {
     let dimensionCount = shapeAsInts.count
 
     return dimensionCount
+  }
+
+  private func maskChannelCount(from masks: MLMultiArray?) -> Int {
+    guard let masks = masks else { return 32 }
+    if masks.shape.count >= 2 {
+      if masks.shape.count >= 3 {
+        return masks.shape[1].intValue
+      } else {
+        return masks.shape[0].intValue
+      }
+    }
+    return 32
   }
 
 }
