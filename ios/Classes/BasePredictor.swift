@@ -122,7 +122,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     completion: @escaping (Result<BasePredictor, Error>) -> Void
   ) {
     let predictor = Self.init()
-    predictor.numItemsThreshold = numItemsThreshold;
+    predictor.numItemsThreshold = numItemsThreshold
 
     // Kick off the expensive loading on a background thread
     DispatchQueue.global(qos: .userInitiated).async {

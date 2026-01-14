@@ -52,22 +52,21 @@ class YOLOModelManager {
   }
 
   Future<void> predictorInstance() async {
-    if(!_isInitialized){
+    if (!_isInitialized) {
       await initializeInstance();
     }
     final Map<String, dynamic> arguments = {};
     if (_instanceId != 'default') {
       arguments['instanceId'] = _instanceId;
     }
-    try{
+    try {
       await _channel.invokeMethod('predictorInstance', arguments);
-    }catch(e){
+    } catch (e) {
       throw YOLOErrorHandler.handleError(
         e,
         'Failed to predictorInstance for instance $_instanceId',
       );
     }
-
   }
 
   Future<bool> loadModel() async {
@@ -80,7 +79,7 @@ class YOLOModelManager {
         'modelPath': _modelPath,
         'task': _task.name,
         'useGpu': _useGpu,
-        'numItemsThreshold':_numItemsThreshold,
+        'numItemsThreshold': _numItemsThreshold,
       };
 
       if (_classifierOptions != null) {
