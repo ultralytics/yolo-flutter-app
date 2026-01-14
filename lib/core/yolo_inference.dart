@@ -210,8 +210,19 @@ class YOLOInference {
 
       for (final obb in obbList) {
         if (obb is Map) {
+          final obbMap = MapConverter.convertToTypedMap(obb);
           final points = obb['points'] as List<dynamic>? ?? [];
 
+          // Extract polygon points for obbPoints field
+          final polygonPoints = points.whereType<Map>().map((point) {
+            final pointMap = MapConverter.convertToTypedMap(point);
+            return {
+              'x': MapConverter.safeGetDouble(pointMap, 'x'),
+              'y': MapConverter.safeGetDouble(pointMap, 'y'),
+            };
+          }).toList();
+
+          // Calculate bounding box from polygon points
           double minX = double.infinity, minY = double.infinity;
           double maxX = double.negativeInfinity, maxY = double.negativeInfinity;
 
@@ -227,13 +238,21 @@ class YOLOInference {
             }
           }
 
+          // Handle edge cases: no valid point data produced usable extrema
+          final hasValidExtrema =
+              minX.isFinite && minY.isFinite && maxX.isFinite && maxY.isFinite;
+
+          if (!hasValidExtrema) {
+            minX = 0.0;
+            minY = 0.0;
+            maxX = 0.0;
+            maxY = 0.0;
+          }
+
           final detection = <String, dynamic>{
-            'classIndex': 0,
+            'classIndex': MapConverter.safeGetInt(obbMap, 'classIndex'),
             'className': obb['class'] ?? '',
-            'confidence': MapConverter.safeGetDouble(
-              MapConverter.convertToTypedMap(obb),
-              'confidence',
-            ),
+            'confidence': MapConverter.safeGetDouble(obbMap, 'confidence'),
             'boundingBox': {
               'left': minX,
               'top': minY,
@@ -246,6 +265,8 @@ class YOLOInference {
               'right': maxX,
               'bottom': maxY,
             },
+            // Add polygon field so YOLOResult.fromMap can extract obbPoints
+            'polygon': polygonPoints,
           };
 
           detections.add(detection);

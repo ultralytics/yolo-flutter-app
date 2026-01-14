@@ -1,3 +1,8 @@
+## 0.1.47
+
+- **Bug Fix**: Fix OBB (Oriented Bounding Box) coordinate retrieval in detection results
+  - **Flutter**: Fixed missing `polygon` field in OBB detection results, enabling `YOLOResult.obbPoints` to be properly extracted
+
 ## 0.1.46
 
 - **Critical Bug Fix**: Fix SIGSEGV crash when YOLOView is disposed while TensorFlow Lite inference is running
