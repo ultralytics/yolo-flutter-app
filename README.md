@@ -90,7 +90,7 @@ You can get the model in one of the following ways:
 
 3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
 
-For YOLOv26, use the same steps and grab the `yolo26*` artifacts from the `v0.2.0` release (e.g., `yolo26n.tflite` / `yolo26n.mlpackage`).
+For YOLO26, use the same steps and grab the `yolo26*` artifacts from the `v0.2.0` release (e.g., `yolo26n.tflite` / `yolo26n.mlpackage`).
 
 ### Export Models for iOS
 

@@ -29,7 +29,7 @@ curl -L -o yolo11n.tflite \
 curl -L -o yolo11n.mlpackage \
   https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/yolo11n.mlpackage
 
-# YOLOv26 nano examples
+# YOLO26 nano examples
 curl -L -o yolo26n.tflite \
   https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/yolo26n.tflite
 
