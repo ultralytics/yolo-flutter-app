@@ -42,6 +42,8 @@ build/
 **/*.tflite
 **/*.mlmodel
 **/*.mlpackage
+!example/assets/models/
+!example/assets/models/.gitkeep
 !example/assets/models/.gitkeep
 
 # Coverage
