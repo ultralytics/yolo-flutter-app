@@ -258,6 +258,12 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
     let stride = numFeatures
     let modelW = CGFloat(modelInputSize.width)
     let modelH = CGFloat(modelInputSize.height)
+    let safeModelW = modelW > 0 ? modelW : max(inputSize.width, 1)
+    let safeModelH = modelH > 0 ? modelH : max(inputSize.height, 1)
+    guard safeModelW > 0, safeModelH > 0 else {
+      print("YOLO26Pose: invalid model input size \(modelInputSize)")
+      return []
+    }
 
     var detections: [(CGRect, Float, [Float])] = []
     detections.reserveCapacity(numDetections)
@@ -273,10 +279,10 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
 
       guard conf > confidenceThreshold else { continue }
 
-      let nx = x1 / modelW
-      let ny = y1 / modelH
-      let nw = (x2 - x1) / modelW
-      let nh = (y2 - y1) / modelH
+      let nx = x1 / safeModelW
+      let ny = y1 / safeModelH
+      let nw = (x2 - x1) / safeModelW
+      let nh = (y2 - y1) / safeModelH
 
       let cx = max(0.0, min(1.0, nx))
       let cy = max(0.0, min(1.0, ny))
@@ -319,8 +325,8 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
         let kx = kpFeat[3 * k + 0]
         let ky = kpFeat[3 * k + 1]
         let kconf = kpFeat[3 * k + 2]
-        let nx = kx / Float(modelW)
-        let ny = ky / Float(modelH)
+        let nx = kx / Float(safeModelW)
+        let ny = ky / Float(safeModelH)
         xyn.append((x: nx, y: ny))
         xy.append((x: nx * Float(inputSize.width), y: ny * Float(inputSize.height)))
         kc.append(kconf)
