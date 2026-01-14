@@ -2,7 +2,7 @@
 
 - Documentation update for model downloads:
   - All model download links point to GitHub release `v0.2.0` (no bundled models).
-  - Added YOLOv26 references alongside YOLOv11 for both CoreML (`.mlpackage`) and TFLite (`.tflite`) artifacts.
+  - Added YOLO26 references alongside YOLOv11 for both CoreML (`.mlpackage`) and TFLite (`.tflite`) artifacts.
   - Clarified that models are pulled from release assets rather than packaged in the app.
 
 ## 0.1.46
