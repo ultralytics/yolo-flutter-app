@@ -28,9 +28,11 @@ class CameraInferenceOverlay extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           ModelSelector(
-            selectedModel: controller.selectedModel,
+            selectedFamily: controller.selectedFamily,
+            selectedTask: controller.selectedTask,
             isModelLoading: controller.isModelLoading,
-            onModelChanged: controller.changeModel,
+            onFamilyChanged: controller.changeFamily,
+            onTaskChanged: controller.changeTask,
           ),
           SizedBox(height: isLandscape ? 8 : 12),
           DetectionStatsDisplay(
