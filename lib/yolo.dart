@@ -97,7 +97,7 @@ class YOLO {
       _instanceId = 'default';
     }
 
-    this.numItemsThreshold = numItemsThreshold?? 30;
+    this.numItemsThreshold = numItemsThreshold ?? 30;
 
     _initializeComponents();
   }

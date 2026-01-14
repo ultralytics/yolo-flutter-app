@@ -19,15 +19,22 @@ Complete guide for integrating YOLO models into your Flutter app with support fo
 
 ### Option 1: Download Pre-converted Models
 
-**Download ready-to-use models from our [releases](https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/):**
+**Download ready-to-use models from our [releases](https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/):**
 
 ```bash
 # Download from GitHub releases
 curl -L -o yolo11n.tflite \
-  https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/yolo11n.tflite
+  https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/yolo11n.tflite
 
 curl -L -o yolo11n.mlpackage \
-  https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0/yolo11n.mlpackage
+  https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/yolo11n.mlpackage
+
+# YOLO26 nano examples
+curl -L -o yolo26n.tflite \
+  https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/yolo26n.tflite
+
+curl -L -o yolo26n.mlpackage \
+  https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/yolo26n.mlpackage
 ```
 
 ### Option 2: Ultralytics Hub

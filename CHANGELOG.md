@@ -1,4 +1,4 @@
-## 0.2.0
+## 0.2.1
 
 - **Feature**: Android/iOS now support YOLO26 models alongside existing YOLO11 models.
   - Model path resolution updated to load bundled assets for YOLO26 on Android, matching YOLO11 behavior.
@@ -6,6 +6,13 @@
 - **Compatibility**: YOLO11 models remain fully supported.
 - **iOS/Android NMS**: No graph-level NMS is required for YOLO26
 - **iOS updates**: ObjectDetector, Segmenter, PoseEstimater, and Classifier refreshed for YOLO26 raw heads (shape handling/postprocess/error handling) while keeping YOLO11 behavior intact.
+
+## 0.2.0
+
+- Documentation update for model downloads:
+  - All model download links point to GitHub release `v0.2.0` (no bundled models).
+  - Added YOLO26 references alongside YOLOv11 for both CoreML (`.mlpackage`) and TFLite (`.tflite`) artifacts.
+  - Clarified that models are pulled from release assets rather than packaged in the app.
 
 ## 0.1.46
 

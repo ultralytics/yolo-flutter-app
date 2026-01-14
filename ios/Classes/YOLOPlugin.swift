@@ -264,7 +264,6 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         // do nothing with ios
         result(nil)
 
-
       case "checkModelExists":
         guard let args = call.arguments as? [String: Any],
           let modelPath = args["modelPath"] as? String

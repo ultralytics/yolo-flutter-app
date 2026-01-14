@@ -61,7 +61,8 @@ class YOLOInstanceManager {
 
     let resolvedModelPath = resolveModelPath(modelName)
 
-    YOLO(resolvedModelPath, task: task, useGpu: useGpu, numItemsThreshold: numItemsThreshold) { [weak self] result in
+    YOLO(resolvedModelPath, task: task, useGpu: useGpu, numItemsThreshold: numItemsThreshold) {
+      [weak self] result in
       guard let self = self else { return }
 
       self.loadingStates[instanceId] = false
