@@ -236,7 +236,9 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
     var detections: [(OBB, Float, Int)] = []
     detections.reserveCapacity(min(numDetections, 200))
 
-    func addDetection(cx: CGFloat, cy: CGFloat, w: CGFloat, h: CGFloat, angle: Float, score: Float, clsIdx: Int) {
+    func addDetection(
+      cx: CGFloat, cy: CGFloat, w: CGFloat, h: CGFloat, angle: Float, score: Float, clsIdx: Int
+    ) {
       guard score > confidenceThreshold else { return }
       guard clsIdx >= 0 && clsIdx < labels.count else { return }
       guard w > 0, h > 0 else { return }

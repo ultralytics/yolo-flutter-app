@@ -418,7 +418,8 @@ class Segmenter: BasePredictor, @unchecked Sendable {
 
     let boxesOnly = rawDetections.map { $0.0 }
     let scoresOnly = rawDetections.map { $0.2 }
-    let selectedIdx = nonMaxSuppression(boxes: boxesOnly, scores: scoresOnly, threshold: iouThreshold)
+    let selectedIdx = nonMaxSuppression(
+      boxes: boxesOnly, scores: scoresOnly, threshold: iouThreshold)
 
     return selectedIdx.map { rawDetections[$0] }
   }

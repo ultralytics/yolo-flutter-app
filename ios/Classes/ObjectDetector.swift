@@ -171,7 +171,6 @@ class ObjectDetector: BasePredictor {
     }
   }
 
-
   private func postProcessDetection(
     feature: MLMultiArray,
     confidenceThreshold: Float,
@@ -297,7 +296,6 @@ class ObjectDetector: BasePredictor {
     return selectedDetections
   }
 
- 
   private func postProcessYOLO26Format(
     feature: MLMultiArray,
     shape: [Int],
@@ -420,7 +418,8 @@ class ObjectDetector: BasePredictor {
           boxes.append(box)
         }
       } else if let featureResults = request.results as? [VNCoreMLFeatureValueObservation],
-                let prediction = featureResults.first?.featureValue.multiArrayValue {
+        let prediction = featureResults.first?.featureValue.multiArrayValue
+      {
         let detections = postProcessDetection(
           feature: prediction,
           confidenceThreshold: Float(self.confidenceThreshold),

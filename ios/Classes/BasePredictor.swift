@@ -63,7 +63,8 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     guard let url = modelURL else { return false }
     let modelName = url.lastPathComponent.lowercased()
     let fullPath = url.path.lowercased()
-    let baseName = modelName
+    let baseName =
+      modelName
       .replacingOccurrences(of: ".mlmodelc", with: "")
       .replacingOccurrences(of: ".mlpackage", with: "")
       .replacingOccurrences(of: ".mlmodel", with: "")

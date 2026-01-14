@@ -38,8 +38,10 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
 
       if let prediction = results.first?.featureValue.multiArrayValue {
 
-        let preds = isYOLO26Model
-          ? postProcessYOLO26Pose(prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold))
+        let preds =
+          isYOLO26Model
+          ? postProcessYOLO26Pose(
+            prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold))
           : PostProcessPose(
             prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold),
             iouThreshold: Float(self.iouThreshold))
@@ -99,8 +101,10 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
 
         if let prediction = results.first?.featureValue.multiArrayValue {
 
-          let preds = isYOLO26Model
-            ? postProcessYOLO26Pose(prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold))
+          let preds =
+            isYOLO26Model
+            ? postProcessYOLO26Pose(
+              prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold))
             : PostProcessPose(
               prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold),
               iouThreshold: Float(self.iouThreshold))
@@ -242,10 +246,9 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
     let dims = prediction.shape.map { $0.intValue }
     guard dims.count == 3 else { return [] }
 
-    
     let numDetections = dims[1]
     let numFeatures = dims[2]
-    let numKeypoints = (numFeatures - 6) / 3 
+    let numKeypoints = (numFeatures - 6) / 3
     guard numDetections > 0, numFeatures > 6, numKeypoints > 0 else {
       print("YOLO26Pose: invalid shape \(dims)")
       return []
@@ -262,7 +265,6 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
     for i in 0..<numDetections {
       let off = i * stride
 
-     
       let x1 = CGFloat(ptr[off + 0])
       let y1 = CGFloat(ptr[off + 1])
       let x2 = CGFloat(ptr[off + 2])
@@ -285,9 +287,9 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
       var kp: [Float] = []
       kp.reserveCapacity(numKeypoints * 3)
       for k in 0..<numKeypoints {
-        kp.append(ptr[off + 6 + k * 3 + 0]) 
-        kp.append(ptr[off + 6 + k * 3 + 1]) 
-        kp.append(ptr[off + 6 + k * 3 + 2]) 
+        kp.append(ptr[off + 6 + k * 3 + 0])
+        kp.append(ptr[off + 6 + k * 3 + 1])
+        kp.append(ptr[off + 6 + k * 3 + 2])
       }
 
       detections.append((CGRect(x: cx, y: cy, width: cw, height: ch), conf, kp))
@@ -295,7 +297,8 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
 
     let boxesOnly = detections.map { $0.0 }
     let scoresOnly = detections.map { $0.1 }
-    let selectedIdx = nonMaxSuppression(boxes: boxesOnly, scores: scoresOnly, threshold: Float(iouThreshold))
+    let selectedIdx = nonMaxSuppression(
+      boxes: boxesOnly, scores: scoresOnly, threshold: Float(iouThreshold))
 
     var results: [(Box, Keypoints)] = []
     for idx in selectedIdx.prefix(numItemsThreshold) {
