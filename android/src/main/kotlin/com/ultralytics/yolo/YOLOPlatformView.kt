@@ -455,6 +455,27 @@ class YOLOPlatformView(
                     yoloView.setShowUIControls(show)
                     result.success(null)
                 }
+                "toggleTorch" -> {
+                    yoloView.toggleTorch()
+                    result.success(null)
+                }
+                "setTorchMode" -> {
+                    val enabled = call.argument<Boolean>("enabled")
+                    if (enabled != null) {
+                        yoloView.setTorchMode(enabled)
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "enabled is required", null)
+                    }
+                }
+                "isTorchAvailable" -> {
+                    val isAvailable = yoloView.isTorchAvailable()
+                    result.success(isAvailable)
+                }
+                "isTorchEnabled" -> {
+                    val isEnabled = yoloView.isTorchEnabled()
+                    result.success(isEnabled)
+                }
                 else -> {
                     result.notImplemented()
                 }

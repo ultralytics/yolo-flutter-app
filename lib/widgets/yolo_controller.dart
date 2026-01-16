@@ -149,6 +149,65 @@ class YOLOViewController {
     }
   }
 
+  /// Toggles the torch (flashlight) on/off.
+  /// Only works when the back camera is active and the device has a torch.
+  Future<void> toggleTorch() async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('toggleTorch');
+      } catch (e) {
+        logInfo('Error toggling torch: $e');
+      }
+    }
+  }
+
+  /// Sets the torch mode to the specified state.
+  /// [enabled] - true to turn on the torch, false to turn it off.
+  /// Only works when the back camera is active and the device has a torch.
+  Future<void> setTorchMode(bool enabled) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setTorchMode', {
+          'enabled': enabled,
+        });
+      } catch (e) {
+        logInfo('Error setting torch mode: $e');
+      }
+    }
+  }
+
+  /// Checks if the torch (flashlight) is available on the current camera.
+  /// Returns true if torch is available, false otherwise.
+  /// Returns null if the check fails or the view is not initialized.
+  Future<bool?> isTorchAvailable() async {
+    if (_methodChannel != null) {
+      try {
+        final result = await _methodChannel!.invokeMethod('isTorchAvailable');
+        return result as bool?;
+      } catch (e) {
+        logInfo('Error checking torch availability: $e');
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /// Gets the current torch state.
+  /// Returns true if torch is currently on, false if off.
+  /// Returns null if the check fails or the view is not initialized.
+  Future<bool?> isTorchEnabled() async {
+    if (_methodChannel != null) {
+      try {
+        final result = await _methodChannel!.invokeMethod('isTorchEnabled');
+        return result as bool?;
+      } catch (e) {
+        logInfo('Error getting torch state: $e');
+        return null;
+      }
+    }
+    return null;
+  }
+
   Future<void> switchModel(String modelPath, YOLOTask task) async {
     if (_methodChannel != null && _viewId != null) {
       await _methodChannel!.invokeMethod('setModel', {

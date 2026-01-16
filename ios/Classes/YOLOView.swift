@@ -1214,6 +1214,68 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
+  // MARK: - Torch/Flashlight Control
+
+  /// Toggles the torch (flashlight) on/off.
+  /// Only works when using the back camera and the device has a torch.
+  public func toggleTorch() {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot toggle torch: capture device is nil")
+      return
+    }
+
+    guard device.hasTorch else {
+      print("Torch is not available on this device")
+      return
+    }
+
+    let newState = device.torchMode != .on
+    setTorchMode(newState)
+  }
+
+  /// Sets the torch mode to the specified state.
+  /// - Parameter enabled: true to turn on the torch, false to turn it off.
+  public func setTorchMode(_ enabled: Bool) {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot set torch mode: capture device is nil")
+      return
+    }
+
+    guard device.hasTorch else {
+      print("Torch is not available on this device")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer {
+        device.unlockForConfiguration()
+      }
+
+      if enabled {
+        try device.setTorchModeOn(level: AVCaptureDevice.maxAvailableTorchLevel)
+        print("Torch turned on")
+      } else {
+        device.torchMode = .off
+        print("Torch turned off")
+      }
+    } catch {
+      print("Failed to set torch mode: \(error.localizedDescription)")
+    }
+  }
+
+  /// Checks if the torch (flashlight) is available on the current camera.
+  /// - Returns: true if torch is available, false otherwise.
+  public func isTorchAvailable() -> Bool {
+    return videoCapture.captureDevice?.hasTorch ?? false
+  }
+
+  /// Gets the current torch state.
+  /// - Returns: true if torch is currently on, false if off.
+  public func isTorchEnabled() -> Bool {
+    return videoCapture.captureDevice?.torchMode == .on
+  }
+
   @objc func playTapped() {
     selection.selectionChanged()
     self.videoCapture.start()

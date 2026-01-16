@@ -426,7 +426,29 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           }
         }
 
-      // Additional methods can be added here in the future
+      case "toggleTorch":
+        self.yoloView?.toggleTorch()
+        result(nil)
+
+      case "setTorchMode":
+        if let args = call.arguments as? [String: Any],
+          let enabled = args["enabled"] as? Bool
+        {
+          self.yoloView?.setTorchMode(enabled)
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for setTorchMode", details: nil))
+        }
+
+      case "isTorchAvailable":
+        let isAvailable = self.yoloView?.isTorchAvailable() ?? false
+        result(isAvailable)
+
+      case "isTorchEnabled":
+        let isEnabled = self.yoloView?.isTorchEnabled() ?? false
+        result(isEnabled)
 
       default:
         result(FlutterMethodNotImplemented)

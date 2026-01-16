@@ -15,6 +15,7 @@ import android.widget.Toast
 import android.view.ScaleGestureDetector
 import androidx.camera.core.*
 import androidx.camera.core.Camera
+import androidx.camera.core.TorchState
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
@@ -386,14 +387,66 @@ class YOLOView @JvmOverloads constructor(
         camera?.let { cam: Camera ->
             // Clamp zoom level between min and max
             val clampedZoomRatio = zoomLevel.coerceIn(minZoomRatio, cam.cameraInfo.zoomState.value?.maxZoomRatio ?: maxZoomRatio)
-            
+
             cam.cameraControl.setZoomRatio(clampedZoomRatio)
             currentZoomRatio = clampedZoomRatio
-            
+
             // Notify zoom change
             onZoomChanged?.invoke(currentZoomRatio)
         }
     }
+
+    // region Torch/Flashlight control
+
+    /**
+     * Toggles the torch (flashlight) on/off.
+     * Only works when using the back camera and the device has a torch.
+     */
+    fun toggleTorch() {
+        camera?.let { cam: Camera ->
+            val currentTorchState = cam.cameraInfo.torchState.value
+            val newState = currentTorchState != TorchState.ON
+            setTorchMode(newState)
+        }
+    }
+
+    /**
+     * Sets the torch mode to the specified state.
+     * @param enabled true to turn on the torch, false to turn it off.
+     */
+    fun setTorchMode(enabled: Boolean) {
+        camera?.let { cam: Camera ->
+            try {
+                // Check if torch is available before trying to enable it
+                if (cam.cameraInfo.hasFlashUnit()) {
+                    cam.cameraControl.enableTorch(enabled)
+                    Log.d(TAG, "Torch mode set to: $enabled")
+                } else {
+                    Log.w(TAG, "Torch not available on this camera")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting torch mode", e)
+            }
+        } ?: Log.w(TAG, "Cannot set torch mode: camera is null")
+    }
+
+    /**
+     * Checks if the torch (flashlight) is available on the current camera.
+     * @return true if torch is available, false otherwise.
+     */
+    fun isTorchAvailable(): Boolean {
+        return camera?.cameraInfo?.hasFlashUnit() ?: false
+    }
+
+    /**
+     * Gets the current torch state.
+     * @return true if torch is currently on, false if off.
+     */
+    fun isTorchEnabled(): Boolean {
+        return camera?.cameraInfo?.torchState?.value == TorchState.ON
+    }
+
+    // endregion
 
     // endregion
 
