@@ -450,6 +450,106 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         let isEnabled = self.yoloView?.isTorchEnabled() ?? false
         result(isEnabled)
 
+      // Focus control
+      case "setFocusPoint":
+        if let args = call.arguments as? [String: Any],
+          let x = args["x"] as? Double,
+          let y = args["y"] as? Double
+        {
+          self.yoloView?.setFocusPoint(CGFloat(x), CGFloat(y))
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "x and y are required", details: nil))
+        }
+
+      case "lockFocus":
+        self.yoloView?.lockFocus()
+        result(nil)
+
+      case "unlockFocus":
+        self.yoloView?.unlockFocus()
+        result(nil)
+
+      case "setAutoFocusMode":
+        if let args = call.arguments as? [String: Any],
+          let mode = args["mode"] as? String
+        {
+          self.yoloView?.setAutoFocusMode(mode)
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "mode is required", details: nil))
+        }
+
+      // Exposure control
+      case "setExposurePoint":
+        if let args = call.arguments as? [String: Any],
+          let x = args["x"] as? Double,
+          let y = args["y"] as? Double
+        {
+          self.yoloView?.setExposurePoint(CGFloat(x), CGFloat(y))
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "x and y are required", details: nil))
+        }
+
+      case "lockExposure":
+        self.yoloView?.lockExposure()
+        result(nil)
+
+      case "unlockExposure":
+        self.yoloView?.unlockExposure()
+        result(nil)
+
+      case "setExposureCompensation":
+        if let args = call.arguments as? [String: Any],
+          let stops = args["stops"] as? Double
+        {
+          self.yoloView?.setExposureCompensation(Float(stops))
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "stops is required", details: nil))
+        }
+
+      case "getExposureCompensationRange":
+        let range = self.yoloView?.getExposureCompensationRange()
+        result(range)
+
+      // White balance control
+      case "lockWhiteBalance":
+        self.yoloView?.lockWhiteBalance()
+        result(nil)
+
+      case "unlockWhiteBalance":
+        self.yoloView?.unlockWhiteBalance()
+        result(nil)
+
+      // Combined focus and exposure
+      case "setFocusAndExposurePoint":
+        if let args = call.arguments as? [String: Any],
+          let x = args["x"] as? Double,
+          let y = args["y"] as? Double
+        {
+          let autoReset = args["autoReset"] as? Bool ?? true
+          self.yoloView?.setFocusAndExposurePoint(CGFloat(x), CGFloat(y), autoReset: autoReset)
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "x and y are required", details: nil))
+        }
+
+      case "resetCameraControls":
+        self.yoloView?.resetCameraControls()
+        result(nil)
+
       default:
         result(FlutterMethodNotImplemented)
       }

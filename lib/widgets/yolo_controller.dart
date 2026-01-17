@@ -5,6 +5,15 @@ import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
 
+/// Auto-focus mode for the camera.
+enum AutoFocusMode {
+  /// Camera continuously adjusts focus as the scene changes.
+  continuous,
+
+  /// Camera focuses once when triggered and then locks.
+  single,
+}
+
 /// Controller for managing YOLO detection settings and camera controls.
 class YOLOViewController {
   MethodChannel? _methodChannel;
@@ -206,6 +215,204 @@ class YOLOViewController {
       }
     }
     return null;
+  }
+
+  // ============================================================================
+  // Focus Control
+  // ============================================================================
+
+  /// Sets the focus point to the specified normalized coordinates.
+  /// [x] and [y] should be between 0.0 and 1.0, where (0,0) is top-left
+  /// and (1,1) is bottom-right of the preview.
+  /// This triggers a one-time focus at the specified point.
+  Future<void> setFocusPoint(double x, double y) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setFocusPoint', {
+          'x': x.clamp(0.0, 1.0),
+          'y': y.clamp(0.0, 1.0),
+        });
+      } catch (e) {
+        logInfo('Error setting focus point: $e');
+      }
+    }
+  }
+
+  /// Locks the focus at the current position.
+  /// Useful for batch scanning cards at a fixed distance.
+  Future<void> lockFocus() async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('lockFocus');
+      } catch (e) {
+        logInfo('Error locking focus: $e');
+      }
+    }
+  }
+
+  /// Unlocks the focus and returns to auto-focus mode.
+  Future<void> unlockFocus() async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('unlockFocus');
+      } catch (e) {
+        logInfo('Error unlocking focus: $e');
+      }
+    }
+  }
+
+  /// Sets the auto-focus mode.
+  /// [mode] - Either continuous (constantly refocusing) or single (focus once).
+  Future<void> setAutoFocusMode(AutoFocusMode mode) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setAutoFocusMode', {
+          'mode': mode.name,
+        });
+      } catch (e) {
+        logInfo('Error setting auto-focus mode: $e');
+      }
+    }
+  }
+
+  // ============================================================================
+  // Exposure Control
+  // ============================================================================
+
+  /// Sets the exposure metering point to the specified normalized coordinates.
+  /// [x] and [y] should be between 0.0 and 1.0, where (0,0) is top-left
+  /// and (1,1) is bottom-right of the preview.
+  Future<void> setExposurePoint(double x, double y) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setExposurePoint', {
+          'x': x.clamp(0.0, 1.0),
+          'y': y.clamp(0.0, 1.0),
+        });
+      } catch (e) {
+        logInfo('Error setting exposure point: $e');
+      }
+    }
+  }
+
+  /// Locks the exposure at the current level.
+  /// Useful for consistent exposure when scanning multiple cards.
+  Future<void> lockExposure() async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('lockExposure');
+      } catch (e) {
+        logInfo('Error locking exposure: $e');
+      }
+    }
+  }
+
+  /// Unlocks the exposure and returns to auto-exposure mode.
+  Future<void> unlockExposure() async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('unlockExposure');
+      } catch (e) {
+        logInfo('Error unlocking exposure: $e');
+      }
+    }
+  }
+
+  /// Sets the exposure compensation value in stops.
+  /// [stops] - Typically ranges from -2.0 to +2.0.
+  /// Positive values brighten the image, negative values darken it.
+  /// Useful for adjusting exposure when scanning glossy cards.
+  Future<void> setExposureCompensation(double stops) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setExposureCompensation', {
+          'stops': stops,
+        });
+      } catch (e) {
+        logInfo('Error setting exposure compensation: $e');
+      }
+    }
+  }
+
+  /// Gets the supported exposure compensation range.
+  /// Returns a map with 'min' and 'max' values, or null if unavailable.
+  Future<Map<String, double>?> getExposureCompensationRange() async {
+    if (_methodChannel != null) {
+      try {
+        final result =
+            await _methodChannel!.invokeMethod('getExposureCompensationRange');
+        if (result is Map) {
+          return {
+            'min': (result['min'] as num?)?.toDouble() ?? -2.0,
+            'max': (result['max'] as num?)?.toDouble() ?? 2.0,
+          };
+        }
+      } catch (e) {
+        logInfo('Error getting exposure compensation range: $e');
+      }
+    }
+    return null;
+  }
+
+  // ============================================================================
+  // White Balance Control
+  // ============================================================================
+
+  /// Locks the white balance at the current setting.
+  /// Useful for consistent color reproduction when scanning cards.
+  Future<void> lockWhiteBalance() async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('lockWhiteBalance');
+      } catch (e) {
+        logInfo('Error locking white balance: $e');
+      }
+    }
+  }
+
+  /// Unlocks the white balance and returns to auto white balance mode.
+  Future<void> unlockWhiteBalance() async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('unlockWhiteBalance');
+      } catch (e) {
+        logInfo('Error unlocking white balance: $e');
+      }
+    }
+  }
+
+  // ============================================================================
+  // Combined Focus and Exposure (Tap-to-Focus with Exposure)
+  // ============================================================================
+
+  /// Sets both focus and exposure point to the same location.
+  /// This is the typical behavior for a "tap-to-focus" interaction.
+  /// [x] and [y] should be between 0.0 and 1.0.
+  /// [autoReset] - If true, automatically returns to continuous AF after focusing.
+  Future<void> setFocusAndExposurePoint(double x, double y,
+      {bool autoReset = true}) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setFocusAndExposurePoint', {
+          'x': x.clamp(0.0, 1.0),
+          'y': y.clamp(0.0, 1.0),
+          'autoReset': autoReset,
+        });
+      } catch (e) {
+        logInfo('Error setting focus and exposure point: $e');
+      }
+    }
+  }
+
+  /// Resets all camera controls (focus, exposure, white balance) to automatic mode.
+  Future<void> resetCameraControls() async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('resetCameraControls');
+      } catch (e) {
+        logInfo('Error resetting camera controls: $e');
+      }
+    }
   }
 
   Future<void> switchModel(String modelPath, YOLOTask task) async {

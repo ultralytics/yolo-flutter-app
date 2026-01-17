@@ -476,6 +476,91 @@ class YOLOPlatformView(
                     val isEnabled = yoloView.isTorchEnabled()
                     result.success(isEnabled)
                 }
+                // Focus control
+                "setFocusPoint" -> {
+                    val x = call.argument<Double>("x")
+                    val y = call.argument<Double>("y")
+                    if (x != null && y != null) {
+                        yoloView.setFocusPoint(x.toFloat(), y.toFloat())
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "x and y are required", null)
+                    }
+                }
+                "lockFocus" -> {
+                    yoloView.lockFocus()
+                    result.success(null)
+                }
+                "unlockFocus" -> {
+                    yoloView.unlockFocus()
+                    result.success(null)
+                }
+                "setAutoFocusMode" -> {
+                    val mode = call.argument<String>("mode")
+                    if (mode != null) {
+                        yoloView.setAutoFocusMode(mode)
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "mode is required", null)
+                    }
+                }
+                // Exposure control
+                "setExposurePoint" -> {
+                    val x = call.argument<Double>("x")
+                    val y = call.argument<Double>("y")
+                    if (x != null && y != null) {
+                        yoloView.setExposurePoint(x.toFloat(), y.toFloat())
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "x and y are required", null)
+                    }
+                }
+                "lockExposure" -> {
+                    yoloView.lockExposure()
+                    result.success(null)
+                }
+                "unlockExposure" -> {
+                    yoloView.unlockExposure()
+                    result.success(null)
+                }
+                "setExposureCompensation" -> {
+                    val stops = call.argument<Double>("stops")
+                    if (stops != null) {
+                        yoloView.setExposureCompensation(stops.toFloat())
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "stops is required", null)
+                    }
+                }
+                "getExposureCompensationRange" -> {
+                    val range = yoloView.getExposureCompensationRange()
+                    result.success(range)
+                }
+                // White balance control
+                "lockWhiteBalance" -> {
+                    yoloView.lockWhiteBalance()
+                    result.success(null)
+                }
+                "unlockWhiteBalance" -> {
+                    yoloView.unlockWhiteBalance()
+                    result.success(null)
+                }
+                // Combined focus and exposure
+                "setFocusAndExposurePoint" -> {
+                    val x = call.argument<Double>("x")
+                    val y = call.argument<Double>("y")
+                    val autoReset = call.argument<Boolean>("autoReset") ?: true
+                    if (x != null && y != null) {
+                        yoloView.setFocusAndExposurePoint(x.toFloat(), y.toFloat(), autoReset)
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "x and y are required", null)
+                    }
+                }
+                "resetCameraControls" -> {
+                    yoloView.resetCameraControls()
+                    result.success(null)
+                }
                 else -> {
                     result.notImplemented()
                 }

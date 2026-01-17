@@ -15,6 +15,7 @@ import android.widget.Toast
 import android.view.ScaleGestureDetector
 import androidx.camera.core.*
 import androidx.camera.core.Camera
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.TorchState
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -444,6 +445,324 @@ class YOLOView @JvmOverloads constructor(
      */
     fun isTorchEnabled(): Boolean {
         return camera?.cameraInfo?.torchState?.value == TorchState.ON
+    }
+
+    // endregion
+
+    // region Focus Control
+
+    // Track if focus/exposure is locked
+    private var isFocusLocked = false
+    private var isExposureLocked = false
+    private var isWhiteBalanceLocked = false
+
+    /**
+     * Sets the focus point to the specified normalized coordinates.
+     * @param x Normalized x coordinate (0.0 to 1.0)
+     * @param y Normalized y coordinate (0.0 to 1.0)
+     */
+    fun setFocusPoint(x: Float, y: Float) {
+        camera?.let { cam ->
+            try {
+                val factory = previewView.meteringPointFactory
+                val point = factory.createPoint(x * previewView.width, y * previewView.height)
+                val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
+                    .setAutoCancelDuration(3, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+                cam.cameraControl.startFocusAndMetering(action)
+                Log.d(TAG, "Focus point set to: ($x, $y)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting focus point", e)
+            }
+        } ?: Log.w(TAG, "Cannot set focus point: camera is null")
+    }
+
+    /**
+     * Locks the focus at the current position.
+     */
+    fun lockFocus() {
+        camera?.let { cam ->
+            try {
+                // Cancel any ongoing focus/metering to lock current state
+                cam.cameraControl.cancelFocusAndMetering()
+                isFocusLocked = true
+                Log.d(TAG, "Focus locked")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error locking focus", e)
+            }
+        } ?: Log.w(TAG, "Cannot lock focus: camera is null")
+    }
+
+    /**
+     * Unlocks the focus and returns to continuous auto-focus.
+     */
+    fun unlockFocus() {
+        camera?.let { cam ->
+            try {
+                // Start a center-weighted continuous focus
+                val factory = previewView.meteringPointFactory
+                val centerPoint = factory.createPoint(previewView.width / 2f, previewView.height / 2f)
+                val action = FocusMeteringAction.Builder(centerPoint, FocusMeteringAction.FLAG_AF)
+                    .build()
+                cam.cameraControl.startFocusAndMetering(action)
+                isFocusLocked = false
+                Log.d(TAG, "Focus unlocked, returned to auto-focus")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error unlocking focus", e)
+            }
+        } ?: Log.w(TAG, "Cannot unlock focus: camera is null")
+    }
+
+    /**
+     * Sets the auto-focus mode.
+     * @param mode Either "continuous" or "single"
+     */
+    fun setAutoFocusMode(mode: String) {
+        camera?.let { cam ->
+            try {
+                when (mode.lowercase()) {
+                    "continuous" -> {
+                        // Enable continuous auto-focus by starting focus metering without auto-cancel
+                        val factory = previewView.meteringPointFactory
+                        val centerPoint = factory.createPoint(previewView.width / 2f, previewView.height / 2f)
+                        val action = FocusMeteringAction.Builder(centerPoint, FocusMeteringAction.FLAG_AF)
+                            .build()
+                        cam.cameraControl.startFocusAndMetering(action)
+                        isFocusLocked = false
+                        Log.d(TAG, "Auto-focus mode set to: continuous")
+                    }
+                    "single" -> {
+                        // Single focus mode - focus once then hold
+                        val factory = previewView.meteringPointFactory
+                        val centerPoint = factory.createPoint(previewView.width / 2f, previewView.height / 2f)
+                        val action = FocusMeteringAction.Builder(centerPoint, FocusMeteringAction.FLAG_AF)
+                            .disableAutoCancel()
+                            .build()
+                        cam.cameraControl.startFocusAndMetering(action).addListener({
+                            // After focus completes, cancel to lock
+                            cam.cameraControl.cancelFocusAndMetering()
+                            isFocusLocked = true
+                        }, ContextCompat.getMainExecutor(context))
+                        Log.d(TAG, "Auto-focus mode set to: single")
+                    }
+                    else -> Log.w(TAG, "Unknown auto-focus mode: $mode")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting auto-focus mode", e)
+            }
+        } ?: Log.w(TAG, "Cannot set auto-focus mode: camera is null")
+    }
+
+    // endregion
+
+    // region Exposure Control
+
+    /**
+     * Sets the exposure metering point to the specified normalized coordinates.
+     * @param x Normalized x coordinate (0.0 to 1.0)
+     * @param y Normalized y coordinate (0.0 to 1.0)
+     */
+    fun setExposurePoint(x: Float, y: Float) {
+        camera?.let { cam ->
+            try {
+                val factory = previewView.meteringPointFactory
+                val point = factory.createPoint(x * previewView.width, y * previewView.height)
+                val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AE)
+                    .setAutoCancelDuration(3, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+                cam.cameraControl.startFocusAndMetering(action)
+                Log.d(TAG, "Exposure point set to: ($x, $y)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting exposure point", e)
+            }
+        } ?: Log.w(TAG, "Cannot set exposure point: camera is null")
+    }
+
+    /**
+     * Locks the exposure at the current level.
+     */
+    fun lockExposure() {
+        camera?.let { cam ->
+            try {
+                // CameraX doesn't have direct exposure lock, but we can use metering
+                cam.cameraControl.cancelFocusAndMetering()
+                isExposureLocked = true
+                Log.d(TAG, "Exposure locked")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error locking exposure", e)
+            }
+        } ?: Log.w(TAG, "Cannot lock exposure: camera is null")
+    }
+
+    /**
+     * Unlocks the exposure and returns to auto-exposure.
+     */
+    fun unlockExposure() {
+        camera?.let { cam ->
+            try {
+                val factory = previewView.meteringPointFactory
+                val centerPoint = factory.createPoint(previewView.width / 2f, previewView.height / 2f)
+                val action = FocusMeteringAction.Builder(centerPoint, FocusMeteringAction.FLAG_AE)
+                    .build()
+                cam.cameraControl.startFocusAndMetering(action)
+                isExposureLocked = false
+                Log.d(TAG, "Exposure unlocked")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error unlocking exposure", e)
+            }
+        } ?: Log.w(TAG, "Cannot unlock exposure: camera is null")
+    }
+
+    /**
+     * Sets the exposure compensation value.
+     * @param stops Exposure compensation in stops (typically -2.0 to +2.0)
+     */
+    fun setExposureCompensation(stops: Float) {
+        camera?.let { cam ->
+            try {
+                val exposureState = cam.cameraInfo.exposureState
+                if (!exposureState.isExposureCompensationSupported) {
+                    Log.w(TAG, "Exposure compensation not supported on this device")
+                    return
+                }
+
+                val range = exposureState.exposureCompensationRange
+                val step = exposureState.exposureCompensationStep.toFloat()
+
+                // Convert stops to index
+                val index = (stops / step).toInt().coerceIn(range.lower, range.upper)
+
+                cam.cameraControl.setExposureCompensationIndex(index)
+                Log.d(TAG, "Exposure compensation set to: $stops stops (index: $index)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting exposure compensation", e)
+            }
+        } ?: Log.w(TAG, "Cannot set exposure compensation: camera is null")
+    }
+
+    /**
+     * Gets the supported exposure compensation range in stops.
+     * @return Map with "min" and "max" values
+     */
+    fun getExposureCompensationRange(): Map<String, Float>? {
+        return camera?.let { cam ->
+            try {
+                val exposureState = cam.cameraInfo.exposureState
+                if (!exposureState.isExposureCompensationSupported) {
+                    return null
+                }
+
+                val range = exposureState.exposureCompensationRange
+                val step = exposureState.exposureCompensationStep.toFloat()
+
+                mapOf(
+                    "min" to range.lower * step,
+                    "max" to range.upper * step
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error getting exposure compensation range", e)
+                null
+            }
+        }
+    }
+
+    // endregion
+
+    // region White Balance Control
+
+    /**
+     * Locks the white balance at the current setting.
+     * Note: CameraX doesn't directly support white balance lock without Camera2 interop.
+     * This is a best-effort implementation.
+     */
+    fun lockWhiteBalance() {
+        camera?.let { _ ->
+            try {
+                // CameraX doesn't have direct white balance control without Camera2 interop
+                // Mark as locked for tracking purposes
+                isWhiteBalanceLocked = true
+                Log.d(TAG, "White balance lock requested (limited support in CameraX)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error locking white balance", e)
+            }
+        } ?: Log.w(TAG, "Cannot lock white balance: camera is null")
+    }
+
+    /**
+     * Unlocks the white balance and returns to auto white balance.
+     */
+    fun unlockWhiteBalance() {
+        camera?.let { _ ->
+            try {
+                isWhiteBalanceLocked = false
+                Log.d(TAG, "White balance unlock requested (limited support in CameraX)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error unlocking white balance", e)
+            }
+        } ?: Log.w(TAG, "Cannot unlock white balance: camera is null")
+    }
+
+    // endregion
+
+    // region Combined Focus and Exposure
+
+    /**
+     * Sets both focus and exposure point to the same location (tap-to-focus behavior).
+     * @param x Normalized x coordinate (0.0 to 1.0)
+     * @param y Normalized y coordinate (0.0 to 1.0)
+     * @param autoReset If true, automatically returns to continuous AF after focusing
+     */
+    fun setFocusAndExposurePoint(x: Float, y: Float, autoReset: Boolean = true) {
+        camera?.let { cam ->
+            try {
+                val factory = previewView.meteringPointFactory
+                val point = factory.createPoint(x * previewView.width, y * previewView.height)
+
+                val actionBuilder = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+
+                if (autoReset) {
+                    actionBuilder.setAutoCancelDuration(3, java.util.concurrent.TimeUnit.SECONDS)
+                } else {
+                    actionBuilder.disableAutoCancel()
+                }
+
+                cam.cameraControl.startFocusAndMetering(actionBuilder.build())
+                Log.d(TAG, "Focus and exposure point set to: ($x, $y), autoReset: $autoReset")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting focus and exposure point", e)
+            }
+        } ?: Log.w(TAG, "Cannot set focus and exposure point: camera is null")
+    }
+
+    /**
+     * Resets all camera controls to automatic mode.
+     */
+    fun resetCameraControls() {
+        camera?.let { cam ->
+            try {
+                // Reset exposure compensation to 0
+                val exposureState = cam.cameraInfo.exposureState
+                if (exposureState.isExposureCompensationSupported) {
+                    cam.cameraControl.setExposureCompensationIndex(0)
+                }
+
+                // Reset focus/exposure to center-weighted auto
+                val factory = previewView.meteringPointFactory
+                val centerPoint = factory.createPoint(previewView.width / 2f, previewView.height / 2f)
+                val action = FocusMeteringAction.Builder(centerPoint, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+                    .build()
+                cam.cameraControl.startFocusAndMetering(action)
+
+                // Reset tracking flags
+                isFocusLocked = false
+                isExposureLocked = false
+                isWhiteBalanceLocked = false
+
+                Log.d(TAG, "Camera controls reset to automatic")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error resetting camera controls", e)
+            }
+        } ?: Log.w(TAG, "Cannot reset camera controls: camera is null")
     }
 
     // endregion
