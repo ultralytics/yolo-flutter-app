@@ -1,7 +1,14 @@
-## 0.1.47
+## 0.2.1
 
 - **Bug Fix**: Fix OBB (Oriented Bounding Box) coordinate retrieval in detection results
   - **Flutter**: Fixed missing `polygon` field in OBB detection results, enabling `YOLOResult.obbPoints` to be properly extracted
+
+## 0.2.0
+
+- Documentation update for model downloads:
+  - All model download links point to GitHub release `v0.2.0` (no bundled models).
+  - Added YOLO26 references alongside YOLOv11 for both CoreML (`.mlpackage`) and TFLite (`.tflite`) artifacts.
+  - Clarified that models are pulled from release assets rather than packaged in the app.
 
 ## 0.1.46
 

@@ -47,7 +47,7 @@ flutter pub get
 
 You can get the model in one of the following ways:
 
-1. Download from the [release assets](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.0.0) of this repository
+1. Download from the [release assets](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0) of this repository (both `yolo11*` and `yolo26*` artifacts are available)
 
 2. Get it from [Ultralytics Hub](https://www.ultralytics.com/hub)
 
