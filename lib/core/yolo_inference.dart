@@ -213,7 +213,6 @@ class YOLOInference {
           final obbMap = MapConverter.convertToTypedMap(obb);
           final points = obb['points'] as List<dynamic>? ?? [];
 
-          // Extract polygon points for obbPoints field
           final polygonPoints = points.whereType<Map>().map((point) {
             final pointMap = MapConverter.convertToTypedMap(point);
             return {
@@ -222,23 +221,17 @@ class YOLOInference {
             };
           }).toList();
 
-          // Calculate bounding box from polygon points
           double minX = double.infinity, minY = double.infinity;
           double maxX = double.negativeInfinity, maxY = double.negativeInfinity;
-
-          for (final point in points) {
-            if (point is Map) {
-              final pointMap = MapConverter.convertToTypedMap(point);
-              final x = MapConverter.safeGetDouble(pointMap, 'x');
-              final y = MapConverter.safeGetDouble(pointMap, 'y');
-              minX = minX > x ? x : minX;
-              minY = minY > y ? y : minY;
-              maxX = maxX < x ? x : maxX;
-              maxY = maxY < y ? y : maxY;
-            }
+          for (final p in polygonPoints) {
+            final x = (p['x'] as num?)?.toDouble() ?? 0.0;
+            final y = (p['y'] as num?)?.toDouble() ?? 0.0;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
           }
 
-          // Handle edge cases: no valid point data produced usable extrema
           final hasValidExtrema =
               minX.isFinite && minY.isFinite && maxX.isFinite && maxY.isFinite;
 
@@ -265,7 +258,6 @@ class YOLOInference {
               'right': maxX,
               'bottom': maxY,
             },
-            // Add polygon field so YOLOResult.fromMap can extract obbPoints
             'polygon': polygonPoints,
           };
 

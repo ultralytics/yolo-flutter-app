@@ -204,14 +204,16 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   ) {
     self.videoCapture = VideoCapture()
     super.init(frame: frame)
-    setModel(modelPathOrName: modelPathOrName, task: task)
     setUpOrientationChangeNotification()
     self.setUpBoundingBoxViews()
     self.setupUI()
     self.videoCapture.delegate = self
-    // Hide UI controls by default
     self.showUIControls = false
-    start(position: cameraPosition)
+    setModel(modelPathOrName: modelPathOrName, task: task) { [weak self] result in
+      if case .success = result {
+        self?.start(position: cameraPosition)
+      }
+    }
     setupOverlayLayer()
   }
 
@@ -1765,6 +1767,45 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
 
         detections.append(detection)
       }
+
+      if config.includeOBB && !result.obb.isEmpty {
+        for obbResult in result.obb {
+          let obbBox = obbResult.box
+          let polygon = obbBox.toPolygon()
+          let points = polygon.map { point in
+            ["x": Double(point.x), "y": Double(point.y)] as [String: Any]
+          }
+          var minX = polygon.map(\.x).min() ?? 0
+          var maxX = polygon.map(\.x).max() ?? 0
+          var minY = polygon.map(\.y).min() ?? 0
+          var maxY = polygon.map(\.y).max() ?? 0
+          let w = result.orig_shape.width
+          let h = result.orig_shape.height
+          if w > 0, h > 0 {
+            let boundingBox: [String: Any] = [
+              "left": Double(minX),
+              "top": Double(minY),
+              "right": Double(maxX),
+              "bottom": Double(maxY),
+            ]
+            let normalizedBox: [String: Any] = [
+              "left": Double(minX / CGFloat(w)),
+              "top": Double(minY / CGFloat(h)),
+              "right": Double(maxX / CGFloat(w)),
+              "bottom": Double(maxY / CGFloat(h)),
+            ]
+            var detection: [String: Any] = [:]
+            detection["classIndex"] = obbResult.index
+            detection["className"] = obbResult.cls
+            detection["confidence"] = Double(obbResult.confidence)
+            detection["boundingBox"] = boundingBox
+            detection["normalizedBox"] = normalizedBox
+            detection["polygon"] = points
+            detections.append(detection)
+          }
+        }
+      }
+
       map["detections"] = detections
     }
 

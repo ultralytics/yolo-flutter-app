@@ -1,7 +1,5 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-// lib/yolo_result.dart
-
 import 'dart:typed_data';
 import 'dart:ui';
 import '../utils/map_converter.dart';
@@ -134,28 +132,17 @@ class YOLOResult {
       keypointConfidences = keypointResult.confidences;
     }
 
-    // Support both 'polygon' and 'obbPoints' keys for backward compatibility
-    // 'polygon' is the primary key used by the inference pipeline
     final polygonRaw = map['polygon'] ?? map['obbPoints'];
     final polygon = polygonRaw is List ? polygonRaw : null;
-    final List<Map<String, num>>? obbPoints = polygon
-        ?.whereType<Map>()
-        .map((item) {
-          final pointMap = <String, num>{};
-          item.forEach((k, v) {
-            if (v is num) {
-              pointMap[k.toString()] = v;
-            } else if (v != null) {
-              final numValue = num.tryParse(v.toString());
-              if (numValue != null) {
-                pointMap[k.toString()] = numValue;
-              }
-            }
-          });
-          return pointMap;
-        })
-        .where((point) => point.isNotEmpty)
-        .toList();
+    final List<Map<String, num>>? obbPoints = polygon?.whereType<Map>().map((
+      item,
+    ) {
+      final m = MapConverter.convertToTypedMap(item);
+      return <String, num>{
+        'x': MapConverter.safeGetDouble(m, 'x'),
+        'y': MapConverter.safeGetDouble(m, 'y'),
+      };
+    }).toList();
 
     return YOLOResult(
       classIndex: classIndex,
