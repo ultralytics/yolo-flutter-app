@@ -1,12 +1,12 @@
 buildscript {
-    ext.kotlin_version = "1.8.22"
+    ext.kotlin_version = "1.9.22"
     repositories {
         google()
         mavenCentral()
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:8.5.2")
+        classpath("com.android.tools.build:gradle:8.8.0")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
     }
 }
@@ -28,7 +28,7 @@ android {
 
     defaultConfig {
         applicationId "com.ultralytics.yolo.plugin"
-        minSdk = 24 // Increased minSdk for better compatibility
+        minSdk = 24
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -39,18 +39,18 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "21"
     }
 
-    // Configure Java Toolchain to use JDK 17
+    // Configure Java Toolchain to use JDK 21
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(17)
+            languageVersion = JavaLanguageVersion.of(21)
         }
     }
 
@@ -58,10 +58,8 @@ android {
         main.java.srcDirs += "src/main/kotlin"
     }
 
-    // NDK version
-    ndkVersion = "25.2.9519653" // Standard NDK version, adjust if needed
+    ndkVersion = "25.2.9519653"
 
-    // CMake build configuration
     externalNativeBuild {
         cmake {
             path "src/main/cpp/CMakeLists.txt"
@@ -72,12 +70,13 @@ android {
 dependencies {
     implementation 'com.github.hyb1996:Auto.js-Plugin-SDK:0.2'
     
+    // LiterT (formerly TFLite) 
     implementation("com.google.ai.edge.litert:litert:1.4.0")
     implementation("com.google.ai.edge.litert:litert-gpu:1.4.0")
     implementation('com.google.ai.edge.litert:litert-support-api:1.4.0')
     implementation('com.google.ai.edge.litert:litert-metadata:1.4.0')
     
     implementation("org.yaml:snakeyaml:1.29")
-    implementation("androidx.core:core-ktx:1.10.1")
+    implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
 }
