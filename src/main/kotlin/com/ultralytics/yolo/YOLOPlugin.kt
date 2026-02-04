@@ -6,42 +6,50 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 import org.autojs.plugin.sdk.Plugin
 
-class YOLOPlugin(context: Context, selfContext: Context, runtime: Any, topLevelScope: Any) : Plugin(context, selfContext, runtime, topLevelScope) {
+/**
+ * Auto.js YOLO 插件入口类
+ * 负责桥接 JavaScript 调用与 Native 逻辑
+ */
+class YOLOPlugin(
+    context: Context, 
+    selfContext: Context, 
+    runtime: Any, 
+    topLevelScope: Any
+) : Plugin(context, selfContext, runtime, topLevelScope) {
 
+    private var yolo: YOLO? = null
+
+    /**
+     * 返回插件 Assets 下的脚本目录名称
+     */
     override fun getAssetsScriptDir(): String {
         return "plugin-yolo"
     }
 
-    private var yolo: YOLO? = null
-
+    /**
+     * 加载模型 (仅支持绝对路径)
+     * @param modelPath 模型的本地绝对路径
+     * @param useGpu 是否使用 GPU
+     * @throws RuntimeException 如果路径无效
+     */
     fun loadModel(modelPath: String, useGpu: Boolean = true) {
-        // Resolve model path via YOLOUtils (supports assets/fs)
-        // Since YOLOUtils.loadModelFile handles checking, we pass path directly to YOLO
-        // However, YOLO constructor expects path. YOLO internally calls YOLOUtils.
-        
-        // We use "DETECT" task hardcoded as requested
-        yolo = YOLO(
-            context = getSelfContext(), // Use plugin context for assets
-            modelPath = modelPath,
-            task = YOLOTask.DETECT,
-            useGpu = useGpu
-        )
-        // Since we removed 'lazy', we might want to trigger init or check if it works.
-        // YOLO uses lazy 'predictor', so it won't fail until predict is called.
-        // But we can call predictorInstance() to force init and catch errors.
-        try {
-            yolo?.predictorInstance()
-        } catch (e: Exception) {
-            yolo = null
-            throw RuntimeException("Failed to load model: ${e.message}", e)
-        }
+        // 不再传递 getSelfContext()，因为现在只支持绝对路径加载
+        yolo = YOLO(modelPath, YOLOTask.DETECT, useGpu)
     }
 
+    /**
+     * 执行检测
+     * @param bitmap Auto.js 传入的 Bitmap 对象
+     * @return 检测结果
+     */
     fun detect(bitmap: Bitmap): YOLOResult? {
         return yolo?.predict(bitmap)
     }
 
-    // Helper to decode Base64 to Bitmap (useful if calling from JS with base64)
+    /**
+     * Base64 图像检测
+     * @param base64 string
+     */
     fun detectBase64(base64: String): YOLOResult? {
         val decodedBytes = Base64.decode(base64, Base64.DEFAULT)
         val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
