@@ -33,6 +33,7 @@
 构建产物: `build/outputs/apk/debug/yolo-debug.apk`
 
 ### 模型准备
+
 插件不内置模型文件以保持轻量。请准备好 `.tflite` 模型（建议 INT8 量化）并放置在设备存储中。
 例如放置在：`/sdcard/Documents/yolo_model.tflite`
 
@@ -41,9 +42,11 @@
 ## 💻 使用指南 (Auto.js)
 
 ### 1. 安装插件
+
 将构建好的 APK 安装到手机上，Auto.js 会自动识别并加载插件。
 
 ### 2. 编写脚本
+
 ```javascript
 // 1. 加载插件
 var yolo = plugins.load("com.ultralytics.yolo.plugin");
@@ -58,21 +61,21 @@ yolo.setConfidence(0.35); // 过滤置信度低于 0.35 的结果
 
 // 4. 截图并检测
 if (requestScreenCapture()) {
-    var img = captureScreen();
-    
-    // 返回结果对象包含: boxes (列表), speed (耗时), fps, origShape 等
-    var result = yolo.detect(img);
-    
-    if (result && result.boxes.length > 0) {
-        log("检测到 " + result.boxes.length + " 个目标");
-        result.boxes.forEach(box => {
-            // box 结构: { cls: "person", conf: 0.85, xywh: RectF(...) }
-            log(`类别: ${box.cls}, 置信度: ${box.conf}, 位置: ${box.xywh}`);
-            
-            // 可视化绘制 (示例)
-            // canvas.drawRect(...)
-        });
-    }
+  var img = captureScreen();
+
+  // 返回结果对象包含: boxes (列表), speed (耗时), fps, origShape 等
+  var result = yolo.detect(img);
+
+  if (result && result.boxes.length > 0) {
+    log("检测到 " + result.boxes.length + " 个目标");
+    result.boxes.forEach((box) => {
+      // box 结构: { cls: "person", conf: 0.85, xywh: RectF(...) }
+      log(`类别: ${box.cls}, 置信度: ${box.conf}, 位置: ${box.xywh}`);
+
+      // 可视化绘制 (示例)
+      // canvas.drawRect(...)
+    });
+  }
 }
 ```
 
@@ -96,6 +99,7 @@ if (requestScreenCapture()) {
 ```
 
 ## 📝 模型导出要求
+
 为了获得最佳性能，请使用 **YOLOv26** 导出 **TFLite INT8** 量化模型：
 
 ```bash
@@ -107,4 +111,5 @@ yolo export model=yolo26n.pt format=tflite int8
 - **单架构支持**：默认仅生成 `arm64-v8a` 代码。
 
 ## 📄 开源协议
+
 [AGPL-3.0 License](LICENSE)
