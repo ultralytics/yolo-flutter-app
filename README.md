@@ -1,6 +1,9 @@
 # 🚀 Auto.js YOLO 插件 (Ultralytics 定制版)
 
 本项目是基于 Ultralytics YOLO 和 TensorFlow Lite 的 **Auto.js Pro 原生插件**。
+它专为 Auto.js 自动化脚本设计，提供极速、轻量级的本地物体检测能力。
+
+> **⚠️ 注意**: 本插件已从原 Flutter 项目重构为纯 Android (Kotlin) 项目，不再依赖 Flutter。
 
 ---
 
@@ -27,7 +30,10 @@
 
 ## 💻 使用指南 (Auto.js)
 
-### 代码示例
+### 1. 安装插件
+将构建好的 APK 安装到手机上，Auto.js 会自动识别并加载插件。
+
+### 2. 编写脚本
 ```javascript
 // 1. 加载插件
 var yolo = $plugins.load("com.ultralytics.yolo.plugin");
@@ -43,19 +49,48 @@ yolo.setConfidence(0.35); // 过滤置信度低于 0.35 的结果
 // 4. 截图并检测
 if (requestScreenCapture()) {
     var img = captureScreen();
+    
+    // 返回结果对象包含: boxes (列表), speed (耗时), fps, origShape 等
     var result = yolo.detect(img);
     
     if (result && result.boxes.length > 0) {
         log("检测到 " + result.boxes.length + " 个目标");
         result.boxes.forEach(box => {
-            log("标签: " + box.cls + " 置信度: " + box.conf.toFixed(2));
-            log("位置: " + box.xywh.toString());
+            // box 结构: { cls: "person", conf: 0.85, xywh: RectF(...) }
+            log(`类别: ${box.cls}, 置信度: ${box.conf}, 位置: ${box.xywh}`);
+            
+            // 可视化绘制 (示例)
+            // canvas.drawRect(...)
         });
     }
 }
 ```
 
-## � 重要变更 (与 Flutter 版不同)
+## 📂 项目结构
+
+```text
+├── src/main/
+│   ├── assets/
+│   │   └── plugin-yolo/
+│   │       └── index.js            # JS 接口定义 (Rhino 模块)
+│   ├── kotlin/com/ultralytics/yolo/
+│   │   ├── YOLOPlugin.kt           # 插件入口，JS 桥接
+│   │   ├── YOLOPluginRegistry.kt   # 插件注册
+│   │   ├── YOLO.kt                 # 统一 API 入口
+│   │   ├── ObjectDetector.kt       # 核心引擎，TFLite 推理与后处理
+│   │   ├── YOLOResult.kt           # 结果数据结构 (Box, Size)
+│   │   └── Utils.kt                # 文件加载通用工具
+│   └── AndroidManifest.xml         # 插件声明
+└── build.gradle                    # 构建配置
+```
+
+## 📝 模型导出要求
+为了获得最佳性能，请使用 **YOLOv26** 导出 **TFLite INT8** 量化模型：
+
+```bash
+yolo export model=yolo26n.pt format=tflite int8
+```
+
 - **不再支持 Assets 加载模型**：出于灵活性考虑，模型加载必须显式传入包含 `/sdcard/` 等前缀的绝对路径。
 - **简化后处理**：内置高效 Kotlin NMS。
 - **单架构支持**：默认仅生成 `arm64-v8a` 代码。
