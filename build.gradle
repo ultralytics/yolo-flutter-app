@@ -47,17 +47,6 @@ android {
         jvmTarget = "21"
     }
 
-    // Configure Java Toolchain to use JDK 21
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
-        }
-    }
-
-    sourceSets {
-        main.java.srcDirs += "src/main/kotlin"
-    }
-
     ndkVersion = "25.2.9519653"
 
     externalNativeBuild {
@@ -68,15 +57,14 @@ android {
 }
 
 dependencies {
+    // Auto.js Plugin SDK
     implementation 'com.github.hyb1996:Auto.js-Plugin-SDK:0.2'
     
-    // LiterT (formerly TFLite) 
+    // TensorFlow Lite (核心依赖)
     implementation("com.google.ai.edge.litert:litert:1.4.0")
     implementation("com.google.ai.edge.litert:litert-gpu:1.4.0")
-    implementation('com.google.ai.edge.litert:litert-support-api:1.4.0')
-    implementation('com.google.ai.edge.litert:litert-metadata:1.4.0')
     
-    implementation("org.yaml:snakeyaml:1.29")
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
+    // Android 核心
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
 }

@@ -1,26 +1,36 @@
 # 🚀 Auto.js YOLO 插件 (Ultralytics 定制版)
 
-本项目是基于 Ultralytics YOLO 和 TensorFlow Lite 的 **Auto.js Pro 原生插件**。
-它专为 Auto.js 自动化脚本设计，提供极速、轻量级的本地物体检测能力。
-
-> **⚠️ 注意**: 本插件已从原 Flutter 项目重构为纯 Android (Kotlin) 项目，不再依赖 Flutter。
-
----
+本项目是基于 Ultralytics YOLO 和 TensorFlow Lite 的 **Auto.js 原生插件**。
+专为 Auto.js 自动化脚本设计，提供极速、轻量级的本地物体检测能力。
 
 ## ✨ 核心特性
 
-- **纯原生体验**: 模块轻量化，专为 Auto.js 自动化设计。
-- **模型热加载**: **仅支持加载外部绝对路径模型**，无需重新打包插件即可更换模型。
-- **高性能**: 针对 `arm64-v8a` 优化，支持 **GPU 加速**。
-- **专一性**: 专注于目标检测 (Object Detection)，支持 YOLOv8/v11/v26。
+- **纯原生体验**: 模块轻量化，专为 Auto.js 自动化设计
+- **模型热加载**: 支持外部绝对路径模型，无需重新打包
+- **高性能**: 针对 arm64-v8a 优化，支持 GPU 加速
+- **专一性**: 专注于目标检测，支持 YOLOv8/v11/v26
 
-## 🛠️ 构建与部署
+## 🛠️ 构建要求
 
-### 构建 APK
+- **JDK**: 21+
+- **Gradle**: 8.11.1+
+- **Kotlin**: 2.1.0
+- **Android Gradle Plugin**: 8.8.0
+- **Compile SDK**: 35
+- **Target SDK**: 35
+- **Min SDK**: 24 (Android 7.0+)
+
+## 📦 快速构建
+
 ```bash
-./gradlew assembleDebug
+# 清理并构建 Debug 版本
+./gradlew clean assembleDebug
+
+# 构建 Release 版本
+./gradlew assembleRelease
 ```
-构建产物: `build/outputs/apk/debug/*.apk`
+
+构建产物: `build/outputs/apk/debug/yolo-debug.apk`
 
 ### 模型准备
 插件不内置模型文件以保持轻量。请准备好 `.tflite` 模型（建议 INT8 量化）并放置在设备存储中。
@@ -36,11 +46,11 @@
 ### 2. 编写脚本
 ```javascript
 // 1. 加载插件
-var yolo = $plugins.load("com.ultralytics.yolo.plugin");
+var yolo = plugins.load("com.ultralytics.yolo.plugin");
 
 // 2. 加载模型 (必须使用绝对路径)
 // 找不到文件会直接报错
-var modelPath = "/sdcard/Documents/yolo26n_int8.tflite";
+var modelPath = "./modules/yolo26n_int8.tflite";
 yolo.loadModel(modelPath, true); // true 为开启 GPU
 
 // 3. 配置参数
