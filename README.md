@@ -89,6 +89,7 @@ if (requestScreenCapture()) {
 │   │   ├── YOLO.kt                 # 统一 API 入口
 │   │   ├── ObjectDetector.kt       # 核心引擎，TFLite 推理与后处理
 │   │   ├── YOLOResult.kt           # 结果数据结构 (Box, Size)
+│   │   ├── YOLOConstants.kt        # 常量定义
 │   │   └── Utils.kt                # 文件加载通用工具
 │   └── AndroidManifest.xml         # 插件声明
 └── build.gradle                    # 构建配置

@@ -16,8 +16,8 @@ class YOLO(
     val task: YOLOTask = YOLOTask.DETECT,
     private val useGpu: Boolean = true
 ) {
-    private val TAG = "YOLO"
-    
+    private val TAG = YOLOConstants.TAG_YOLO
+
     // 实际的检测器实例 (Lazy 加载)
     private val detector: ObjectDetector by lazy {
         Log.d(TAG, "初始化 YOLO 检测器, 路径: $modelPath, GPU: $useGpu")

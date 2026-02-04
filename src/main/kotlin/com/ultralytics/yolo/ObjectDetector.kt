@@ -26,9 +26,9 @@ import java.nio.ByteBuffer
 class ObjectDetector(
     modelPath: String,
     private val useGpu: Boolean = true,
-    private var numItemsThreshold: Int = 30
+    private var numItemsThreshold: Int = YOLOConstants.DEFAULT_NUM_ITEMS_THRESHOLD
 ) {
-    private val TAG = "ObjectDetector"
+    private val TAG = YOLOConstants.TAG_DETECTOR
 
     // TFLite 解释器
     private lateinit var interpreter: Interpreter
@@ -45,19 +45,21 @@ class ObjectDetector(
 
     // 输入缓冲
     private lateinit var tensorImage: TensorImage
-    
+
     // 输出缓冲
     // YOLO v8/11/26 输出通常是 [1, 84, 8400] -> [batch, channels, anchors]
     private lateinit var outputBuffer: Array<Array<FloatArray>>
 
     // 阈值配置
-    private var confidenceThreshold = 0.25f
-    private var iouThreshold = 0.45f
+    @Volatile
+    private var confidenceThreshold = YOLOConstants.DEFAULT_CONFIDENCE_THRESHOLD
+    @Volatile
+    private var iouThreshold = YOLOConstants.DEFAULT_IOU_THRESHOLD
 
     init {
         // 1. 加载模型 (仅支持绝对路径)
         val modelBuffer = YOLOUtils.loadModelFile(modelPath)
-        
+
         // 2. 初始化解释器选项
         val options = Interpreter.Options().apply {
             setNumThreads(Runtime.getRuntime().availableProcessors())
@@ -65,13 +67,13 @@ class ObjectDetector(
             if (useGpu) {
                 try {
                     addDelegate(GpuDelegate())
-                    Log.d(TAG, "已启用 GPU 代理")
+                    Log.d(TAG, YOLOConstants.SUCCESS_GPU_ENABLED)
                 } catch (e: Exception) {
-                    Log.e(TAG, "启用 GPU 失败，回退到 CPU: ${e.message}")
+                    Log.e(TAG, YOLOConstants.ERROR_GPU_INIT_FAILED, e)
                 }
             }
         }
-        
+
         interpreter = Interpreter(modelBuffer, options)
         interpreter.allocateTensors()
 
@@ -79,13 +81,13 @@ class ObjectDetector(
         val inputShape = interpreter.getInputTensor(0).shape() // [1, 640, 640, 3]
         inputHeight = inputShape[1]
         inputWidth = inputShape[2]
-        
+
         val outputShape = interpreter.getOutputTensor(0).shape() // [1, 84, 8400]
         outputBuffer = Array(outputShape[0]) { Array(outputShape[1]) { FloatArray(outputShape[2]) } }
         outputChannel = outputShape[1]
         outputAnchors = outputShape[2]
 
-        Log.d(TAG, "模型加载成功. 输入: $inputWidth x $inputHeight, 输出: $outputChannel channels x $outputAnchors anchors")
+        Log.d(TAG, "$YOLOConstants.SUCCESS_MODEL_LOADED. 输入: $inputWidth x $inputHeight, 输出: $outputChannel channels x $outputAnchors anchors")
 
         // 4. 初始化预处理
         imageProcessor = ImageProcessor.Builder()
@@ -93,7 +95,7 @@ class ObjectDetector(
             .add(NormalizeOp(0f, 255f)) // [0, 255] -> [0, 1]
             .add(CastOp(DataType.FLOAT32))
             .build()
-            
+
         tensorImage = TensorImage(DataType.FLOAT32)
 
         // 5. 尝试加载标签
@@ -110,13 +112,13 @@ class ObjectDetector(
                 extractor.getAssociatedFile(fileName)?.use {
                     val content = String(it.readBytes())
                     if (content.contains("names:")) {
-                         val yaml = Yaml()
-                         val map = yaml.load<Map<String, Any>>(content)
-                         val names = map["names"] as? Map<Int, String>
-                         if (names != null) {
-                             labels = names.values.toList()
-                             Log.d(TAG, "加载标签成功: ${labels.size} 个")
-                         }
+                        val yaml = Yaml()
+                        val map = yaml.load<Map<String, Any>>(content)
+                        val names = map["names"] as? Map<Int, String>
+                        if (names != null) {
+                            labels = names.values.toList()
+                            Log.d(TAG, "$YOLOConstants.SUCCESS_LABELS_LOADED: ${labels.size} 个")
+                        }
                     }
                 }
             }
@@ -148,7 +150,7 @@ class ObjectDetector(
         )
 
         val duration = (System.nanoTime() - startTime) / 1_000_000.0
-        
+
         return YOLOResult(
             origShape = Size(bitmap.width, bitmap.height),
             boxes = boxes,
@@ -165,7 +167,7 @@ class ObjectDetector(
      */
     private fun postprocess(output: Array<FloatArray>, imgW: Int, imgH: Int): List<Box> {
         val detectedBoxes = ArrayList<Box>()
-        
+
         val rows = outputAnchors // 8400
         val cols = outputChannel // 84
 
@@ -173,13 +175,13 @@ class ObjectDetector(
             // 获取置信度最高的类别
             var maxConf = 0f
             var maxClassIndex = -1
-            
+
             // 前4个是坐标，从第5个开始是类别置信度
-            for (c in 4 until cols) {
+            for (c in YOLOConstants.COORDINATE_COUNT until cols) {
                 val conf = output[c][i]
                 if (conf > maxConf) {
                     maxConf = conf
-                    maxClassIndex = c - 4
+                    maxClassIndex = c - YOLOConstants.COORDINATE_COUNT
                 }
             }
 
@@ -193,7 +195,7 @@ class ObjectDetector(
                 // 转换为左上角坐标
                 val x1 = cx - w / 2
                 val y1 = cy - h / 2
-                
+
                 // 转换为绝对坐标
                 val rect = RectF(
                     x1 * imgW,
@@ -201,19 +203,21 @@ class ObjectDetector(
                     (x1 + w) * imgW,
                     (y1 + h) * imgH
                 )
-                
+
                 // 归一化坐标记录
                 val rectN = RectF(x1, y1, x1 + w, y1 + h)
-                
+
                 val labelName = if (maxClassIndex in labels.indices) labels[maxClassIndex] else "class_$maxClassIndex"
-                
-                detectedBoxes.add(Box(
-                    index = maxClassIndex,
-                    cls = labelName,
-                    conf = maxConf,
-                    xywh = rect,
-                    xywhn = rectN
-                ))
+
+                detectedBoxes.add(
+                    Box(
+                        index = maxClassIndex,
+                        cls = labelName,
+                        conf = maxConf,
+                        xywh = rect,
+                        xywhn = rectN
+                    )
+                )
             }
         }
 
@@ -227,20 +231,20 @@ class ObjectDetector(
     private fun nms(boxes: List<Box>): List<Box> {
         val sorted = boxes.sortedByDescending { it.conf }
         val selected = ArrayList<Box>()
-        
+
         // 简单限制数量，防止 O(N^2) 过慢
-        val candidateCount = kotlin.math.min(sorted.size, numItemsThreshold * 5)
-        
+        val candidateCount = kotlin.math.min(sorted.size, numItemsThreshold * YOLOConstants.NMS_CANDIDATE_MULTIPLIER)
+
         val active = BooleanArray(candidateCount) { true }
-        
+
         for (i in 0 until candidateCount) {
             if (!active[i]) continue
-            
+
             val boxA = sorted[i]
             selected.add(boxA)
-            
+
             if (selected.size >= numItemsThreshold) break
-            
+
             for (j in i + 1 until candidateCount) {
                 if (active[j]) {
                     val boxB = sorted[j]
@@ -250,7 +254,7 @@ class ObjectDetector(
                 }
             }
         }
-        
+
         return selected
     }
 
@@ -265,14 +269,18 @@ class ObjectDetector(
 
         val w = kotlin.math.max(0f, right - left)
         val h = kotlin.math.max(0f, bottom - top)
-        
+
         val inter = w * h
         val union = (a.width() * a.height()) + (b.width() * b.height()) - inter
-        
+
         return if (union > 0) inter / union else 0f
     }
 
-    // 设置阈值
-    fun setConfidence(conf: Float) { this.confidenceThreshold = conf }
-    fun setIou(iou: Float) { this.iouThreshold = iou }
+    fun setConfidence(conf: Float) {
+        this.confidenceThreshold = conf
+    }
+
+    fun setIou(iou: Float) {
+        this.iouThreshold = iou
+    }
 }

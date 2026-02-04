@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = "1.9.22"
+    ext.kotlin_version = "1.9.25"
     repositories {
         google()
         mavenCentral()
@@ -32,7 +32,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-        
+
         ndk {
             abiFilters "arm64-v8a"
         }
@@ -59,11 +59,11 @@ android {
 dependencies {
     // Auto.js Plugin SDK
     implementation 'com.github.hyb1996:Auto.js-Plugin-SDK:0.2'
-    
+
     // TensorFlow Lite (核心依赖)
     implementation("com.google.ai.edge.litert:litert:1.4.0")
     implementation("com.google.ai.edge.litert:litert-gpu:1.4.0")
-    
+
     // Android 核心
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")

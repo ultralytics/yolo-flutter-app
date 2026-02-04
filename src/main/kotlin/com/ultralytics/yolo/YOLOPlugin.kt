@@ -53,13 +53,18 @@ class YOLOPlugin(
     fun detectBase64(base64: String): YOLOResult? {
         val decodedBytes = Base64.decode(base64, Base64.DEFAULT)
         val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-        return detect(bitmap)
+        return try {
+            detect(bitmap)
+        } finally {
+            // 确保 Bitmap 被回收，避免内存泄漏
+            bitmap?.recycle()
+        }
     }
-    
+
     fun setConfidenceThreshold(conf: Float) {
         yolo?.setConfidenceThreshold(conf)
     }
-    
+
     fun setIouThreshold(iou: Float) {
         yolo?.setIouThreshold(iou)
     }

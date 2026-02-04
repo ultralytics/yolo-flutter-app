@@ -9,7 +9,6 @@ import kotlin.math.abs
 import kotlin.math.max
 
 object ImageUtils {
-
     /**
      * Returns a transformation matrix from one reference frame into another. Handles cropping (if
      * maintaining aspect ratio is desired) and rotation.
@@ -96,29 +95,29 @@ object ImageUtils {
     ): ByteBuffer {
         // Scale bitmap to target size
         val scaledBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
-        
+
         // Allocate ByteBuffer for 1-channel float32 data
-        val byteBuffer = ByteBuffer.allocateDirect(targetWidth * targetHeight * 4) // 4 bytes per float
+        val byteBuffer = ByteBuffer.allocateDirect(targetWidth * targetHeight * YOLOConstants.BYTES_PER_FLOAT)
         byteBuffer.order(ByteOrder.nativeOrder())
-        
+
         // Process each pixel
         val pixels = IntArray(targetWidth * targetHeight)
         scaledBitmap.getPixels(pixels, 0, targetWidth, 0, 0, targetWidth, targetHeight)
-        
+
         for (pixel in pixels) {
             // Extract RGB components
             val r = (pixel shr 16) and 0xFF
-            val g = (pixel shr 8) and 0xFF  
+            val g = (pixel shr 8) and 0xFF
             val b = pixel and 0xFF
-            
+
             // Convert to grayscale using luminance formula
             var gray = (0.299f * r + 0.587f * g + 0.114f * b) / 255.0f
-            
+
             // Apply color inversion if enabled (for white-on-black handwriting)
             if (enableColorInversion) {
                 gray = 1.0f - gray
             }
-            
+
             // Apply normalization based on options
             val normalizedValue = if (enableMaxNormalization) {
                 // Simple 0-1 normalization (already done above)
@@ -127,15 +126,15 @@ object ImageUtils {
                 // Standard normalization using mean/std
                 (gray - inputMean) / inputStd
             }
-            
+
             byteBuffer.putFloat(normalizedValue)
         }
-        
+
         // Clean up scaled bitmap if it's different from input
         if (scaledBitmap != bitmap) {
             scaledBitmap.recycle()
         }
-        
+
         byteBuffer.rewind()
         return byteBuffer
     }
