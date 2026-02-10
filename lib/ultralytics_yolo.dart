@@ -13,3 +13,4 @@ export 'utils/map_converter.dart';
 export 'config/channel_config.dart';
 export 'platform/yolo_platform_interface.dart';
 export 'platform/yolo_platform_impl.dart';
+export 'tracking/iou_tracker.dart';

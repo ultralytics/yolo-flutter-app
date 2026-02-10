@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
+import 'package:ultralytics_yolo/tracking/iou_tracker.dart';
 
 /// Auto-focus mode for the camera.
 enum AutoFocusMode {
@@ -18,6 +19,7 @@ enum AutoFocusMode {
 class YOLOViewController {
   MethodChannel? _methodChannel;
   int? _viewId;
+  IoUTracker? _tracker;
   double _confidenceThreshold = 0.5;
   double _iouThreshold = 0.45;
   int _numItemsThreshold = 30;
@@ -465,6 +467,17 @@ class YOLOViewController {
         logInfo('Error restarting camera: $e');
       }
     }
+  }
+
+  /// Called by [_YOLOViewState] to set/clear the tracker reference.
+  void setTracker(IoUTracker? tracker) {
+    _tracker = tracker;
+  }
+
+  /// Resets the IoU tracker, clearing all tracks and resetting IDs.
+  /// Has no effect when tracking is disabled.
+  void resetTracking() {
+    _tracker?.reset();
   }
 
   Future<void> setShowUIControls(bool show) async {
