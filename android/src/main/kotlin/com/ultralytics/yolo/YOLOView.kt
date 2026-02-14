@@ -1712,6 +1712,41 @@ class YOLOView @JvmOverloads constructor(
             map["detections"] = detections
             Log.d(TAG, "✅ Total detections in stream: ${detections.size} (boxes: ${result.boxes.size}, obb: ${result.obb.size})")
         }
+
+        // Add classification results (if available and enabled for CLASSIFY task)
+        if (config.includeClassifications && result.probs != null) {
+            val probs = result.probs!!
+            Log.d(TAG, "🎯 Processing CLASSIFY result: top1Label=${probs.top1Label}, conf=${probs.top1Conf}, index=${probs.top1Index}")
+
+            // Add classification result to detections array (for compatibility with YOLOResult.fromMap)
+            val detections = map["detections"] as? ArrayList<Map<String, Any>> ?: ArrayList()
+
+            val classificationDetection = HashMap<String, Any>()
+            classificationDetection["classIndex"] = probs.top1Index
+            classificationDetection["className"] = probs.top1Label
+            classificationDetection["confidence"] = probs.top1Conf.toDouble()
+
+            // Full image bounding box for classification
+            val boundingBox = HashMap<String, Any>()
+            boundingBox["left"] = 0.0
+            boundingBox["top"] = 0.0
+            boundingBox["right"] = result.origShape.width.toDouble()
+            boundingBox["bottom"] = result.origShape.height.toDouble()
+            classificationDetection["boundingBox"] = boundingBox
+
+            // Normalized bounding box (full image)
+            val normalizedBox = HashMap<String, Any>()
+            normalizedBox["left"] = 0.0
+            normalizedBox["top"] = 0.0
+            normalizedBox["right"] = 1.0
+            normalizedBox["bottom"] = 1.0
+            classificationDetection["normalizedBox"] = normalizedBox
+
+            detections.add(classificationDetection)
+            map["detections"] = detections
+
+            Log.d(TAG, "✅ Added classification result: ${probs.top1Label} (conf=${probs.top1Conf}, index=${probs.top1Index})")
+        }
         
         // Add performance metrics (if enabled)
         if (config.includeProcessingTimeMs) {
