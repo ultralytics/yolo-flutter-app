@@ -1719,7 +1719,7 @@ class YOLOView @JvmOverloads constructor(
             Log.d(TAG, "🎯 Processing CLASSIFY result: top1Label=${probs.top1Label}, conf=${probs.top1Conf}, index=${probs.top1Index}")
 
             // Add classification result to detections array (for compatibility with YOLOResult.fromMap)
-            val detections = map["detections"] as? ArrayList<Map<String, Any>> ?: ArrayList()
+            val detections = (map["detections"] as? List<Map<String, Any>>)?.toMutableList() ?: ArrayList()
 
             val classificationDetection = HashMap<String, Any>()
             classificationDetection["classIndex"] = probs.top1Index
