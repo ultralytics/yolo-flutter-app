@@ -1768,6 +1768,55 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
       map["detections"] = detections
     }
 
+    // Add classification results (if available and enabled for CLASSIFY task)
+    if config.includeClassifications, let probs = result.probs, result.boxes.isEmpty {
+      print("🎯 YOLOView: Processing CLASSIFY result - returning top 5 predictions")
+
+      // Get or create detections array (for compatibility with YOLOResult deserialization)
+      var detections = map["detections"] as? [[String: Any]] ?? []
+
+      // For classification models, create detections from top5 predictions
+      let top5Labels = probs.top5Labels
+      let top5Confs = probs.top5Confs
+
+      for i in 0..<min(top5Labels.count, top5Confs.count) {
+        var detection: [String: Any] = [:]
+
+        // Find class index from names array
+        var classIndex = i
+        if let index = result.names.firstIndex(of: top5Labels[i]) {
+          classIndex = index
+        }
+
+        detection["classIndex"] = classIndex
+        detection["className"] = top5Labels[i]
+        detection["confidence"] = Double(top5Confs[i])
+
+        // Classification doesn't have bounding boxes, use full image bounds
+        let boundingBox: [String: Any] = [
+          "left": 0.0,
+          "top": 0.0,
+          "right": Double(result.orig_shape.width),
+          "bottom": Double(result.orig_shape.height)
+        ]
+        detection["boundingBox"] = boundingBox
+
+        // Normalized bounding box (full image)
+        let normalizedBox: [String: Any] = [
+          "left": 0.0,
+          "top": 0.0,
+          "right": 1.0,
+          "bottom": 1.0
+        ]
+        detection["normalizedBox"] = normalizedBox
+
+        detections.append(detection)
+      }
+
+      map["detections"] = detections
+      print("✅ YOLOView: Added \(detections.count) classification results (top5)")
+    }
+
     // Add performance metrics (if enabled)
     if config.includeProcessingTimeMs {
       map["processingTimeMs"] = result.speed * 1000
