@@ -193,20 +193,22 @@ Encountering issues or have feature requests related to Ultralytics YOLO? Please
 </div>
 ```
 
-
 ## 安装
 
 ### 使用pip安装
+
 ```bash
 pip install package-name
 ```
 
 ### 使用conda安装
+
 ```bash
 conda install -c conda-forge package-name
 ```
 
 ### 从源码安装
+
 ```bash
 git clone https://github.com/username/repo-name.git
 cd repo-name
@@ -216,6 +218,7 @@ pip install -e .
 ## 使用示例
 
 ### 基本用法
+
 ```python
 import package_name
 
@@ -228,12 +231,10 @@ print(f"结果: {result}")
 ```
 
 ### 高级用法
+
 ```python
 # 配置参数
-config = {
-    'setting': 'value',
-    'timeout': 30
-}
+config = {"setting": "value", "timeout": 30}
 
 client = package_name.Client(**config)
 ```
@@ -243,6 +244,7 @@ client = package_name.Client(**config)
 欢迎贡献！请查看[CONTRIBUTING.md](CONTRIBUTING.md)了解详细指南。
 
 ### 开发流程
+
 1. Fork本仓库
 2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
 3. 提交更改 (`git commit -m 'Add amazing feature'`)
@@ -250,6 +252,7 @@ client = package_name.Client(**config)
 5. 创建Pull Request
 
 ### 代码规范
+
 - 遵循PEP 8 (Python)或相应语言规范
 - 添加适当的注释
 - 编写测试用例
