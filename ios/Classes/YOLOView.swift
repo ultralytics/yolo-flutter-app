@@ -1214,6 +1214,417 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
+  // MARK: - Torch/Flashlight Control
+
+  /// Toggles the torch (flashlight) on/off.
+  /// Only works when using the back camera and the device has a torch.
+  public func toggleTorch() {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot toggle torch: capture device is nil")
+      return
+    }
+
+    guard device.hasTorch else {
+      print("Torch is not available on this device")
+      return
+    }
+
+    let newState = device.torchMode != .on
+    setTorchMode(newState)
+  }
+
+  /// Sets the torch mode to the specified state.
+  /// - Parameter enabled: true to turn on the torch, false to turn it off.
+  public func setTorchMode(_ enabled: Bool) {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot set torch mode: capture device is nil")
+      return
+    }
+
+    guard device.hasTorch else {
+      print("Torch is not available on this device")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer {
+        device.unlockForConfiguration()
+      }
+
+      if enabled {
+        try device.setTorchModeOn(level: AVCaptureDevice.maxAvailableTorchLevel)
+        print("Torch turned on")
+      } else {
+        device.torchMode = .off
+        print("Torch turned off")
+      }
+    } catch {
+      print("Failed to set torch mode: \(error.localizedDescription)")
+    }
+  }
+
+  /// Checks if the torch (flashlight) is available on the current camera.
+  /// - Returns: true if torch is available, false otherwise.
+  public func isTorchAvailable() -> Bool {
+    return videoCapture.captureDevice?.hasTorch ?? false
+  }
+
+  /// Gets the current torch state.
+  /// - Returns: true if torch is currently on, false if off.
+  public func isTorchEnabled() -> Bool {
+    return videoCapture.captureDevice?.torchMode == .on
+  }
+
+  // MARK: - Focus Control
+
+  /// Sets the focus point to the specified normalized coordinates.
+  /// - Parameters:
+  ///   - x: Normalized x coordinate (0.0 to 1.0)
+  ///   - y: Normalized y coordinate (0.0 to 1.0)
+  public func setFocusPoint(_ x: CGFloat, _ y: CGFloat) {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot set focus point: capture device is nil")
+      return
+    }
+
+    guard device.isFocusPointOfInterestSupported else {
+      print("Focus point of interest not supported on this device")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      device.focusPointOfInterest = CGPoint(x: x, y: y)
+      device.focusMode = .autoFocus
+      print("Focus point set to: (\(x), \(y))")
+    } catch {
+      print("Failed to set focus point: \(error.localizedDescription)")
+    }
+  }
+
+  /// Locks the focus at the current position.
+  public func lockFocus() {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot lock focus: capture device is nil")
+      return
+    }
+
+    guard device.isFocusModeSupported(.locked) else {
+      print("Focus lock not supported on this device")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      device.focusMode = .locked
+      print("Focus locked")
+    } catch {
+      print("Failed to lock focus: \(error.localizedDescription)")
+    }
+  }
+
+  /// Unlocks the focus and returns to continuous auto-focus.
+  public func unlockFocus() {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot unlock focus: capture device is nil")
+      return
+    }
+
+    guard device.isFocusModeSupported(.continuousAutoFocus) else {
+      print("Continuous auto-focus not supported on this device")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      device.focusMode = .continuousAutoFocus
+      print("Focus unlocked, returned to continuous auto-focus")
+    } catch {
+      print("Failed to unlock focus: \(error.localizedDescription)")
+    }
+  }
+
+  /// Sets the auto-focus mode.
+  /// - Parameter mode: Either "continuous" or "single"
+  public func setAutoFocusMode(_ mode: String) {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot set auto-focus mode: capture device is nil")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      switch mode.lowercased() {
+      case "continuous":
+        if device.isFocusModeSupported(.continuousAutoFocus) {
+          device.focusMode = .continuousAutoFocus
+          print("Auto-focus mode set to: continuous")
+        } else {
+          print("Continuous auto-focus not supported")
+        }
+      case "single":
+        if device.isFocusModeSupported(.autoFocus) {
+          device.focusMode = .autoFocus
+          print("Auto-focus mode set to: single")
+        } else {
+          print("Single auto-focus not supported")
+        }
+      default:
+        print("Unknown auto-focus mode: \(mode)")
+      }
+    } catch {
+      print("Failed to set auto-focus mode: \(error.localizedDescription)")
+    }
+  }
+
+  // MARK: - Exposure Control
+
+  /// Sets the exposure metering point to the specified normalized coordinates.
+  /// - Parameters:
+  ///   - x: Normalized x coordinate (0.0 to 1.0)
+  ///   - y: Normalized y coordinate (0.0 to 1.0)
+  public func setExposurePoint(_ x: CGFloat, _ y: CGFloat) {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot set exposure point: capture device is nil")
+      return
+    }
+
+    guard device.isExposurePointOfInterestSupported else {
+      print("Exposure point of interest not supported on this device")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      device.exposurePointOfInterest = CGPoint(x: x, y: y)
+      device.exposureMode = .autoExpose
+      print("Exposure point set to: (\(x), \(y))")
+    } catch {
+      print("Failed to set exposure point: \(error.localizedDescription)")
+    }
+  }
+
+  /// Locks the exposure at the current level.
+  public func lockExposure() {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot lock exposure: capture device is nil")
+      return
+    }
+
+    guard device.isExposureModeSupported(.locked) else {
+      print("Exposure lock not supported on this device")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      device.exposureMode = .locked
+      print("Exposure locked")
+    } catch {
+      print("Failed to lock exposure: \(error.localizedDescription)")
+    }
+  }
+
+  /// Unlocks the exposure and returns to continuous auto-exposure.
+  public func unlockExposure() {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot unlock exposure: capture device is nil")
+      return
+    }
+
+    guard device.isExposureModeSupported(.continuousAutoExposure) else {
+      print("Continuous auto-exposure not supported on this device")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      device.exposureMode = .continuousAutoExposure
+      print("Exposure unlocked, returned to continuous auto-exposure")
+    } catch {
+      print("Failed to unlock exposure: \(error.localizedDescription)")
+    }
+  }
+
+  /// Sets the exposure compensation value.
+  /// - Parameter stops: Exposure compensation in stops (typically -2.0 to +2.0)
+  public func setExposureCompensation(_ stops: Float) {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot set exposure compensation: capture device is nil")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      let minBias = device.minExposureTargetBias
+      let maxBias = device.maxExposureTargetBias
+      let clampedStops = max(minBias, min(maxBias, stops))
+
+      device.setExposureTargetBias(clampedStops) { _ in }
+      print("Exposure compensation set to: \(clampedStops) stops")
+    } catch {
+      print("Failed to set exposure compensation: \(error.localizedDescription)")
+    }
+  }
+
+  /// Gets the supported exposure compensation range in stops.
+  /// - Returns: Dictionary with "min" and "max" values
+  public func getExposureCompensationRange() -> [String: Float]? {
+    guard let device = videoCapture.captureDevice else {
+      return nil
+    }
+
+    return [
+      "min": device.minExposureTargetBias,
+      "max": device.maxExposureTargetBias,
+    ]
+  }
+
+  // MARK: - White Balance Control
+
+  /// Locks the white balance at the current setting.
+  public func lockWhiteBalance() {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot lock white balance: capture device is nil")
+      return
+    }
+
+    guard device.isWhiteBalanceModeSupported(.locked) else {
+      print("White balance lock not supported on this device")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      device.whiteBalanceMode = .locked
+      print("White balance locked")
+    } catch {
+      print("Failed to lock white balance: \(error.localizedDescription)")
+    }
+  }
+
+  /// Unlocks the white balance and returns to continuous auto white balance.
+  public func unlockWhiteBalance() {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot unlock white balance: capture device is nil")
+      return
+    }
+
+    guard device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) else {
+      print("Continuous auto white balance not supported on this device")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      device.whiteBalanceMode = .continuousAutoWhiteBalance
+      print("White balance unlocked, returned to continuous auto white balance")
+    } catch {
+      print("Failed to unlock white balance: \(error.localizedDescription)")
+    }
+  }
+
+  // MARK: - Combined Focus and Exposure
+
+  /// Sets both focus and exposure point to the same location (tap-to-focus behavior).
+  /// - Parameters:
+  ///   - x: Normalized x coordinate (0.0 to 1.0)
+  ///   - y: Normalized y coordinate (0.0 to 1.0)
+  ///   - autoReset: If true, automatically returns to continuous AF after focusing
+  public func setFocusAndExposurePoint(_ x: CGFloat, _ y: CGFloat, autoReset: Bool = true) {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot set focus and exposure point: capture device is nil")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      let point = CGPoint(x: x, y: y)
+
+      // Set focus point
+      if device.isFocusPointOfInterestSupported {
+        device.focusPointOfInterest = point
+        if autoReset && device.isFocusModeSupported(.continuousAutoFocus) {
+          device.focusMode = .continuousAutoFocus
+        } else if device.isFocusModeSupported(.autoFocus) {
+          device.focusMode = .autoFocus
+        }
+      }
+
+      // Set exposure point
+      if device.isExposurePointOfInterestSupported {
+        device.exposurePointOfInterest = point
+        if autoReset && device.isExposureModeSupported(.continuousAutoExposure) {
+          device.exposureMode = .continuousAutoExposure
+        } else if device.isExposureModeSupported(.autoExpose) {
+          device.exposureMode = .autoExpose
+        }
+      }
+
+      print("Focus and exposure point set to: (\(x), \(y)), autoReset: \(autoReset)")
+    } catch {
+      print("Failed to set focus and exposure point: \(error.localizedDescription)")
+    }
+  }
+
+  /// Resets all camera controls to automatic mode.
+  public func resetCameraControls() {
+    guard let device = videoCapture.captureDevice else {
+      print("Cannot reset camera controls: capture device is nil")
+      return
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      // Reset focus to continuous
+      if device.isFocusModeSupported(.continuousAutoFocus) {
+        device.focusMode = .continuousAutoFocus
+      }
+
+      // Reset exposure to continuous
+      if device.isExposureModeSupported(.continuousAutoExposure) {
+        device.exposureMode = .continuousAutoExposure
+      }
+
+      // Reset exposure bias to 0
+      device.setExposureTargetBias(0) { _ in }
+
+      // Reset white balance to continuous
+      if device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+        device.whiteBalanceMode = .continuousAutoWhiteBalance
+      }
+
+      print("Camera controls reset to automatic")
+    } catch {
+      print("Failed to reset camera controls: \(error.localizedDescription)")
+    }
+  }
+
   @objc func playTapped() {
     selection.selectionChanged()
     self.videoCapture.start()

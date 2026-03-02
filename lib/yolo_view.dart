@@ -13,6 +13,7 @@ import 'package:ultralytics_yolo/utils/map_converter.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/widgets/yolo_overlay.dart';
+import 'package:ultralytics_yolo/tracking/iou_tracker.dart';
 
 /// Enum for camera lens facing direction
 enum LensFacing { back, front }
@@ -36,6 +37,18 @@ class YOLOView extends StatefulWidget {
   final YOLOOverlayTheme overlayTheme;
   final LensFacing lensFacing;
 
+  /// Enable IoU-based object tracking to assign persistent track IDs.
+  final bool enableTracking;
+
+  /// Minimum IoU overlap to match a detection to an existing track.
+  final double trackingIoUThreshold;
+
+  /// Frames an unmatched track survives before removal.
+  final int trackingMaxAge;
+
+  /// Only match detections to tracks with the same class.
+  final bool trackingMatchByClass;
+
   const YOLOView({
     super.key,
     required this.modelPath,
@@ -54,6 +67,10 @@ class YOLOView extends StatefulWidget {
     this.showOverlays = true,
     this.overlayTheme = const YOLOOverlayTheme(),
     this.lensFacing = LensFacing.back,
+    this.enableTracking = false,
+    this.trackingIoUThreshold = 0.3,
+    this.trackingMaxAge = 15,
+    this.trackingMatchByClass = true,
   });
 
   @override
@@ -69,16 +86,32 @@ class _YOLOViewState extends State<YOLOView> {
   final String _viewId = UniqueKey().toString();
   int? _platformViewId;
   List<YOLOResult> _currentDetections = [];
+  IoUTracker? _tracker;
 
   @override
   void initState() {
     super.initState();
     _setupController();
     _setupChannels();
+    _setupTracker();
   }
 
   void _setupController() {
     _effectiveController = widget.controller ?? YOLOViewController();
+  }
+
+  void _setupTracker() {
+    if (widget.enableTracking) {
+      _tracker = IoUTracker(
+        iouThreshold: widget.trackingIoUThreshold,
+        maxAge: widget.trackingMaxAge,
+        matchByClass: widget.trackingMatchByClass,
+      );
+      _effectiveController.setTracker(_tracker);
+    } else {
+      _tracker = null;
+      _effectiveController.setTracker(null);
+    }
   }
 
   void _setupChannels() {
@@ -134,7 +167,10 @@ class _YOLOViewState extends State<YOLOView> {
     if (widget.onResult == null || !event.containsKey('detections')) return;
 
     try {
-      final results = _parseDetectionResults(event);
+      var results = _parseDetectionResults(event);
+      if (_tracker != null) {
+        results = _tracker!.update(results);
+      }
 
       if (widget.showOverlays && widget.onResult != null) {
         if (_currentDetections.isNotEmpty) {
@@ -241,16 +277,27 @@ class _YOLOViewState extends State<YOLOView> {
       });
     }
 
+    // Handle tracking config changes
+    if (oldWidget.enableTracking != widget.enableTracking ||
+        oldWidget.trackingIoUThreshold != widget.trackingIoUThreshold ||
+        oldWidget.trackingMaxAge != widget.trackingMaxAge ||
+        oldWidget.trackingMatchByClass != widget.trackingMatchByClass) {
+      _setupTracker();
+    }
+
     // Handle model or task changes
     if (_platformViewId != null &&
         (oldWidget.modelPath != widget.modelPath ||
             oldWidget.task != widget.task)) {
       _effectiveController.switchModel(widget.modelPath, widget.task);
+      _tracker?.reset();
     }
   }
 
   @override
   void dispose() {
+    _effectiveController.setTracker(null);
+    _tracker = null;
     _effectiveController.stop();
     _resultSubscription?.cancel();
     _methodChannel.setMethodCallHandler(null);
