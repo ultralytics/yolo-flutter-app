@@ -18,7 +18,6 @@ import Foundation
 import UIKit
 import Vision
 
-/// Specialized predictor for YOLO pose estimation models that identify human body keypoints.
 class PoseEstimater: BasePredictor, @unchecked Sendable {
   var colorsForMask: [(red: UInt8, green: UInt8, blue: UInt8)] = []
 
@@ -39,9 +38,13 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
 
       if let prediction = results.first?.featureValue.multiArrayValue {
 
-        let preds = PostProcessPose(
-          prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold),
-          iouThreshold: Float(self.iouThreshold))
+        let preds =
+          isYOLO26Model
+          ? postProcessYOLO26Pose(
+            prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold))
+          : PostProcessPose(
+            prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold),
+            iouThreshold: Float(self.iouThreshold))
         var keypointsList = [Keypoints]()
         var boxes = [Box]()
 
@@ -98,9 +101,13 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
 
         if let prediction = results.first?.featureValue.multiArrayValue {
 
-          let preds = PostProcessPose(
-            prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold),
-            iouThreshold: Float(self.iouThreshold))
+          let preds =
+            isYOLO26Model
+            ? postProcessYOLO26Pose(
+              prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold))
+            : PostProcessPose(
+              prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold),
+              iouThreshold: Float(self.iouThreshold))
           var keypointsList = [Keypoints]()
           var boxes = [Box]()
           var keypointsForImage = [[(x: Float, y: Float)]]()
@@ -227,6 +234,107 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
 
       let keypoints = Keypoints(xyn: xynArray, xy: xyArray, conf: confArray)
       return (boxResult, keypoints)
+    }
+
+    return results
+  }
+
+  private func postProcessYOLO26Pose(
+    prediction: MLMultiArray,
+    confidenceThreshold: Float
+  ) -> [(box: Box, keypoints: Keypoints)] {
+    let dims = prediction.shape.map { $0.intValue }
+    guard dims.count == 3 else { return [] }
+
+    let numDetections = dims[1]
+    let numFeatures = dims[2]
+    let numKeypoints = (numFeatures - 6) / 3
+    guard numDetections > 0, numFeatures > 6, numKeypoints > 0 else {
+      print("YOLO26Pose: invalid shape \(dims)")
+      return []
+    }
+
+    let ptr = prediction.dataPointer.assumingMemoryBound(to: Float.self)
+    let stride = numFeatures
+    let modelW = CGFloat(modelInputSize.width)
+    let modelH = CGFloat(modelInputSize.height)
+    let safeModelW = modelW > 0 ? modelW : max(inputSize.width, 1)
+    let safeModelH = modelH > 0 ? modelH : max(inputSize.height, 1)
+    guard safeModelW > 0, safeModelH > 0 else {
+      print("YOLO26Pose: invalid model input size \(modelInputSize)")
+      return []
+    }
+
+    var detections: [(CGRect, Float, [Float])] = []
+    detections.reserveCapacity(numDetections)
+
+    for i in 0..<numDetections {
+      let off = i * stride
+
+      let x1 = CGFloat(ptr[off + 0])
+      let y1 = CGFloat(ptr[off + 1])
+      let x2 = CGFloat(ptr[off + 2])
+      let y2 = CGFloat(ptr[off + 3])
+      let conf = normalizeYOLOScore(ptr[off + 4])
+
+      guard conf > confidenceThreshold else { continue }
+
+      let nx = x1 / safeModelW
+      let ny = y1 / safeModelH
+      let nw = (x2 - x1) / safeModelW
+      let nh = (y2 - y1) / safeModelH
+
+      let cx = max(0.0, min(1.0, nx))
+      let cy = max(0.0, min(1.0, ny))
+      let cw = max(0.0, min(1.0 - cx, nw))
+      let ch = max(0.0, min(1.0 - cy, nh))
+      guard cw > 0.01, ch > 0.01 else { continue }
+
+      var kp: [Float] = []
+      kp.reserveCapacity(numKeypoints * 3)
+      for k in 0..<numKeypoints {
+        kp.append(ptr[off + 6 + k * 3 + 0])
+        kp.append(ptr[off + 6 + k * 3 + 1])
+        kp.append(ptr[off + 6 + k * 3 + 2])
+      }
+
+      detections.append((CGRect(x: cx, y: cy, width: cw, height: ch), conf, kp))
+    }
+
+    let boxesOnly = detections.map { $0.0 }
+    let scoresOnly = detections.map { $0.1 }
+    let selectedIdx = nonMaxSuppression(
+      boxes: boxesOnly, scores: scoresOnly, threshold: Float(iouThreshold))
+
+    var results: [(Box, Keypoints)] = []
+    for idx in selectedIdx.prefix(numItemsThreshold) {
+      let boxN = detections[idx].0
+      let score = detections[idx].1
+      let kpFeat = detections[idx].2
+
+      let boxAbs = CGRect(
+        x: boxN.origin.x * inputSize.width,
+        y: boxN.origin.y * inputSize.height,
+        width: boxN.width * inputSize.width,
+        height: boxN.height * inputSize.height)
+
+      var xyn: [(x: Float, y: Float)] = []
+      var xy: [(x: Float, y: Float)] = []
+      var kc: [Float] = []
+      for k in 0..<numKeypoints {
+        let kx = kpFeat[3 * k + 0]
+        let ky = kpFeat[3 * k + 1]
+        let kconf = kpFeat[3 * k + 2]
+        let nx = kx / Float(safeModelW)
+        let ny = ky / Float(safeModelH)
+        xyn.append((x: nx, y: ny))
+        xy.append((x: nx * Float(inputSize.width), y: ny * Float(inputSize.height)))
+        kc.append(kconf)
+      }
+
+      let keypoints = Keypoints(xyn: xyn, xy: xy, conf: kc)
+      let boxResult = Box(index: 0, cls: "person", conf: score, xywh: boxAbs, xywhn: boxN)
+      results.append((boxResult, keypoints))
     }
 
     return results
