@@ -126,6 +126,75 @@ void main() {
       expect(result.keypointConfidences, isNull);
     });
 
+    test('fromMap safely handles polygon with mixed types and nulls', () {
+      final map = {
+        'classIndex': 1,
+        'className': 'airplane',
+        'confidence': 0.92,
+        'boundingBox': {
+          'left': 100.0,
+          'top': 150.0,
+          'right': 300.0,
+          'bottom': 250.0,
+        },
+        'normalizedBox': {
+          'left': 0.1,
+          'top': 0.15,
+          'right': 0.3,
+          'bottom': 0.25,
+        },
+
+        'polygon': [
+          {'x': 100.0, 'y': 150.0},
+          {'x': 300, 'y': 150},
+          {'x': '300.0', 'y': '250.0'},
+          {'x': null, 'y': 250.0},
+          {'x': 100.0, 'y': 'invalid'},
+        ],
+      };
+
+      final result = YOLOResult.fromMap(map);
+
+      expect(result.obbPoints, isNotNull);
+      expect(result.obbPoints!.length, greaterThanOrEqualTo(2));
+      expect(result.obbPoints![0]['x'], 100.0);
+      expect(result.obbPoints![0]['y'], 150.0);
+      expect(result.obbPoints![1]['x'], 300);
+      expect(result.obbPoints![1]['y'], 150);
+    });
+
+    test('toMap and fromMap round-trip correctly with polygon key', () {
+      final original = YOLOResult(
+        classIndex: 2,
+        className: 'airplane',
+        confidence: 0.92,
+        boundingBox: const Rect.fromLTRB(100, 150, 300, 250),
+        normalizedBox: const Rect.fromLTRB(0.1, 0.15, 0.3, 0.25),
+        obbPoints: [
+          {'x': 100.0, 'y': 150.0},
+          {'x': 300.0, 'y': 150.0},
+          {'x': 300.0, 'y': 250.0},
+          {'x': 100.0, 'y': 250.0},
+        ],
+      );
+
+      final map = original.toMap();
+      final roundTripped = YOLOResult.fromMap(map);
+
+      expect(roundTripped.classIndex, original.classIndex);
+      expect(roundTripped.className, original.className);
+      expect(roundTripped.confidence, original.confidence);
+      expect(roundTripped.obbPoints, isNotNull);
+      expect(roundTripped.obbPoints!.length, original.obbPoints!.length);
+      expect(map.containsKey('polygon'), isTrue);
+      expect(map['polygon'], isA<List>());
+
+      for (var i = 0; i < original.obbPoints!.length; i++) {
+        expect(roundTripped.obbPoints![i]['x'], original.obbPoints![i]['x']);
+        expect(roundTripped.obbPoints![i]['y'], original.obbPoints![i]['y']);
+      }
+    });
+
     test('constructor creates instance with all parameters', () {
       final keypoints = [Point(0.5, 0.3), Point(0.6, 0.4)];
       final keypointConfidences = [0.8, 0.9];

@@ -26,6 +26,7 @@ class CameraInferenceScreen extends StatefulWidget {
 class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   late final CameraInferenceController _controller;
   int _rebuildKey = 0;
+  bool _wasRouteCurrent = true;
 
   @override
   void initState() {
@@ -41,11 +42,10 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Check if route is current (we've navigated back to this screen)
-    final route = ModalRoute.of(context);
-    if (route?.isCurrent == true) {
-      // Force rebuild when navigating back to ensure camera restarts
-      // The rebuild will create a new YOLOView which will automatically start the camera
+    final isCurrent = ModalRoute.of(context)?.isCurrent == true;
+    final shouldRebuild = isCurrent && !_wasRouteCurrent;
+    _wasRouteCurrent = isCurrent;
+    if (shouldRebuild) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {

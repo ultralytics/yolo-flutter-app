@@ -1,3 +1,9 @@
+## 0.2.1
+
+- **Bug Fix**: Fix OBB (Oriented Bounding Box) coordinate retrieval in detection results
+  - **Flutter**: Fixed missing `polygon` field in OBB detection results, enabling `YOLOResult.obbPoints` to be properly extracted
+  - To print OBB values in the example app, log `result.obbPoints` in the camera screen's `onDetectionResults` callback (e.g. `for (final r in results) { if (r.obbPoints != null) print(r.obbPoints); }`)
+
 ## 0.2.0
 
 - Documentation update for model downloads:
