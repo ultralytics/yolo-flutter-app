@@ -1790,13 +1790,8 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
       // Create single detection object with top1 and top5 info
       var detection: [String: Any] = [:]
 
-      // Find top1 class index
-      var top1ClassIndex = -1
-      if let index = result.names.firstIndex(of: probs.top1Label) {
-        top1ClassIndex = index
-      }
-
-      detection["class"] = top1ClassIndex
+      // Note: iOS native API doesn't provide real class index, so we omit it
+      // to avoid sending potentially incorrect values (e.g., -1 or wrong index)
       detection["name"] = probs.top1Label
       detection["confidence"] = Double(probs.top1Conf)
       detection["top5"] = top5List

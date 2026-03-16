@@ -1731,7 +1731,8 @@ class YOLOView @JvmOverloads constructor(
             val detections = (map["detections"] as? List<Map<String, Any>>)?.toMutableList() ?: ArrayList()
 
             val classificationDetection = HashMap<String, Any>()
-            classificationDetection["class"] = probs.top1Index
+            // Omit class field from streaming to maintain consistency with iOS
+            // (iOS native API doesn't provide class index)
             classificationDetection["name"] = probs.top1Label
             classificationDetection["confidence"] = probs.top1Conf.toDouble()
             classificationDetection["top5"] = top5List
