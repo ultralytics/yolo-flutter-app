@@ -1770,51 +1770,62 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
 
     // Add classification results (if available and enabled for CLASSIFY task)
     if config.includeClassifications, let probs = result.probs, result.boxes.isEmpty {
-      print("🎯 YOLOView: Processing CLASSIFY result - returning top 5 predictions")
-
       // Get or create detections array (for compatibility with YOLOResult deserialization)
       var detections = map["detections"] as? [[String: Any]] ?? []
 
-      // For classification models, create detections from top5 predictions
+      // Build top5 list with correct class indices
+      var top5List: [[String: Any]] = []
       let top5Labels = probs.top5Labels
       let top5Confs = probs.top5Confs
 
       for i in 0..<min(top5Labels.count, top5Confs.count) {
-        var detection: [String: Any] = [:]
-
         // Find class index from names array
-        var classIndex = i
+        var classIndex = -1
         if let index = result.names.firstIndex(of: top5Labels[i]) {
           classIndex = index
         }
 
-        detection["class"] = classIndex
-        detection["name"] = top5Labels[i]
-        detection["confidence"] = Double(top5Confs[i])
-
-        // Classification doesn't have bounding boxes, use full image bounds
-        let boundingBox: [String: Any] = [
-          "left": 0.0,
-          "top": 0.0,
-          "right": Double(result.orig_shape.width),
-          "bottom": Double(result.orig_shape.height)
-        ]
-        detection["boundingBox"] = boundingBox
-
-        // Normalized bounding box (full image)
-        let normalizedBox: [String: Any] = [
-          "left": 0.0,
-          "top": 0.0,
-          "right": 1.0,
-          "bottom": 1.0
-        ]
-        detection["normalizedBox"] = normalizedBox
-
-        detections.append(detection)
+        top5List.append([
+          "class": classIndex,
+          "name": top5Labels[i],
+          "confidence": Double(top5Confs[i])
+        ])
       }
 
+      // Create single detection object with top1 and top5 info
+      var detection: [String: Any] = [:]
+
+      // Find top1 class index
+      var top1ClassIndex = -1
+      if let index = result.names.firstIndex(of: probs.top1Label) {
+        top1ClassIndex = index
+      }
+
+      detection["class"] = top1ClassIndex
+      detection["name"] = probs.top1Label
+      detection["confidence"] = Double(probs.top1Conf)
+      detection["top5"] = top5List
+
+      // Classification doesn't have bounding boxes, use full image bounds
+      let boundingBox: [String: Any] = [
+        "left": 0.0,
+        "top": 0.0,
+        "right": Double(result.orig_shape.width),
+        "bottom": Double(result.orig_shape.height)
+      ]
+      detection["boundingBox"] = boundingBox
+
+      // Normalized bounding box (full image)
+      let normalizedBox: [String: Any] = [
+        "left": 0.0,
+        "top": 0.0,
+        "right": 1.0,
+        "bottom": 1.0
+      ]
+      detection["normalizedBox"] = normalizedBox
+
+      detections.append(detection)
       map["detections"] = detections
-      print("✅ YOLOView: Added \(detections.count) classification results (top5)")
     }
 
     // Add performance metrics (if enabled)
