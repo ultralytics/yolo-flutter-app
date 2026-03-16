@@ -1717,22 +1717,36 @@ class YOLOView @JvmOverloads constructor(
         if (config.includeClassifications && result.probs != null && result.boxes.isEmpty()) {
             val probs = result.probs!!
 
-            val top5List = probs.top5Labels
-              .zip(probs.top5Confs.toList())
-              .take(5)
-              .map { (name, conf) ->
-                mapOf(
-                  "name" to name,
-                  "confidence" to conf.toDouble()
-                )
-              }
+            val top5List = if (probs.top5Indices != null) {
+              probs.top5Indices!!
+                .zip(probs.top5Labels)
+                .zip(probs.top5Confs.toList())
+                .take(5)
+                .map { ((classIdx, name), conf) ->
+                  mapOf(
+                    "class" to classIdx,
+                    "name" to name,
+                    "confidence" to conf.toDouble()
+                  )
+                }
+            } else {
+              // Fallback: omit class when indices unavailable
+              probs.top5Labels
+                .zip(probs.top5Confs.toList())
+                .take(5)
+                .map { (name, conf) ->
+                  mapOf(
+                    "name" to name,
+                    "confidence" to conf.toDouble()
+                  )
+                }
+            }
 
             // Add classification result to detections array (for compatibility with YOLOResult.fromMap)
             val detections = (map["detections"] as? List<Map<String, Any>>)?.toMutableList() ?: ArrayList()
 
             val classificationDetection = HashMap<String, Any>()
-            // Omit class field from streaming to maintain consistency with iOS
-            // (iOS native API doesn't provide class index)
+            classificationDetection["class"] = probs.top1Index
             classificationDetection["name"] = probs.top1Label
             classificationDetection["confidence"] = probs.top1Conf.toDouble()
             classificationDetection["top5"] = top5List
