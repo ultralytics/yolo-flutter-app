@@ -297,20 +297,31 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             }
             YOLOTask.CLASSIFY -> {
               yoloResult.probs?.let { probs ->
-                // Build top5 list safely using zip to handle mismatched list lengths
-                // Convert top5Confs to List to ensure Iterable compatibility (may be FloatArray)
-                val top5Indices = probs.top5Indices ?: (0..4).toList()
-                val top5List = top5Indices
-                  .zip(probs.top5Labels)
-                  .zip(probs.top5Confs.toList())
-                  .take(5)
-                  .map { ((classIdx, name), conf) ->
-                    mapOf(
-                      "class" to classIdx,
-                      "name" to name,
-                      "confidence" to conf.toDouble()
-                    )
-                  }
+                // Build top5 list only with available indices to avoid synthetic values
+                val top5List = if (probs.top5Indices != null) {
+                  probs.top5Indices!!
+                    .zip(probs.top5Labels)
+                    .zip(probs.top5Confs.toList())
+                    .take(5)
+                    .map { ((classIdx, name), conf) ->
+                      mapOf(
+                        "class" to classIdx,
+                        "name" to name,
+                        "confidence" to conf.toDouble()
+                      )
+                    }
+                } else {
+                  // Omit class field when indices are not available
+                  probs.top5Labels
+                    .zip(probs.top5Confs.toList())
+                    .take(5)
+                    .map { (name, conf) ->
+                      mapOf(
+                        "name" to name,
+                        "confidence" to conf.toDouble()
+                      )
+                    }
+                }
 
                 // Classification response following Results.summary() format
                 // Reference: https://docs.ultralytics.com/reference/engine/results/

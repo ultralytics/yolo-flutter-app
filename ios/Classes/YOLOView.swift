@@ -1774,13 +1774,13 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
       var detections = map["detections"] as? [[String: Any]] ?? []
 
       // Build top5 list with labels and confidence
+      // Note: iOS native API doesn't provide top5 indices, so we omit class field
+      // to maintain consistency with Android when indices are unavailable
       var top5List: [[String: Any]] = []
       let top5Labels = probs.top5Labels
       let top5Confs = probs.top5Confs
 
       for i in 0..<min(top5Labels.count, top5Confs.count) {
-        // Only include name and confidence for top5
-        // Omit class index to avoid synthetic -1 values when labels don't match exactly
         top5List.append([
           "name": top5Labels[i],
           "confidence": Double(top5Confs[i])

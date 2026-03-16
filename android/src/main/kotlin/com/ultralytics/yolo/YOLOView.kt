@@ -1717,18 +1717,30 @@ class YOLOView @JvmOverloads constructor(
         if (config.includeClassifications && result.probs != null) {
             val probs = result.probs!!
 
-            val top5Indices = probs.top5Indices ?: (0..4).toList()
-            val top5List = top5Indices
-              .zip(probs.top5Labels)
-              .zip(probs.top5Confs.toList())
-              .take(5)
-              .map { ((classIdx, name), conf) ->
-                mapOf(
-                  "class" to classIdx,
-                  "name" to name,
-                  "confidence" to conf.toDouble()
-                )
-              }
+            val top5List = if (probs.top5Indices != null) {
+              probs.top5Indices!!
+                .zip(probs.top5Labels)
+                .zip(probs.top5Confs.toList())
+                .take(5)
+                .map { ((classIdx, name), conf) ->
+                  mapOf(
+                    "class" to classIdx,
+                    "name" to name,
+                    "confidence" to conf.toDouble()
+                  )
+                }
+            } else {
+              // Omit class field when indices are not available
+              probs.top5Labels
+                .zip(probs.top5Confs.toList())
+                .take(5)
+                .map { (name, conf) ->
+                  mapOf(
+                    "name" to name,
+                    "confidence" to conf.toDouble()
+                  )
+                }
+            }
 
             // Add classification result to detections array (for compatibility with YOLOResult.fromMap)
             val detections = (map["detections"] as? List<Map<String, Any>>)?.toMutableList() ?: ArrayList()
