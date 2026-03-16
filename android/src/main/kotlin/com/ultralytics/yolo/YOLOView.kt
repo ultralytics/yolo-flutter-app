@@ -1714,7 +1714,7 @@ class YOLOView @JvmOverloads constructor(
         }
 
         // Add classification results (if available and enabled for CLASSIFY task)
-        if (config.includeClassifications && result.probs != null) {
+        if (config.includeClassifications && result.probs != null && result.boxes.isEmpty()) {
             val probs = result.probs!!
 
             val top5List = probs.top5Labels
