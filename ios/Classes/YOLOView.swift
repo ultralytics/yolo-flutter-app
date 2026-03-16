@@ -1773,20 +1773,15 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
       // Get or create detections array (for compatibility with YOLOResult deserialization)
       var detections = map["detections"] as? [[String: Any]] ?? []
 
-      // Build top5 list with correct class indices
+      // Build top5 list with labels and confidence
       var top5List: [[String: Any]] = []
       let top5Labels = probs.top5Labels
       let top5Confs = probs.top5Confs
 
       for i in 0..<min(top5Labels.count, top5Confs.count) {
-        // Find class index from names array
-        var classIndex = -1
-        if let index = result.names.firstIndex(of: top5Labels[i]) {
-          classIndex = index
-        }
-
+        // Only include name and confidence for top5
+        // Omit class index to avoid synthetic -1 values when labels don't match exactly
         top5List.append([
-          "class": classIndex,
           "name": top5Labels[i],
           "confidence": Double(top5Confs[i])
         ])

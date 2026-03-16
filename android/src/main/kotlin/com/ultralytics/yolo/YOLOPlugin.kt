@@ -326,6 +326,8 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                   mapOf(
                     "class" to probs.top1Index,
                     "name" to probs.top1Label,
+                    "classIndex" to probs.top1Index,
+                    "className" to probs.top1Label,
                     "confidence" to probs.top1Conf.toDouble(),
                     "x1" to 0.0,
                     "y1" to 0.0,
