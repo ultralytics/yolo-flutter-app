@@ -1788,8 +1788,8 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
           classIndex = index
         }
 
-        detection["classIndex"] = classIndex
-        detection["className"] = top5Labels[i]
+        detection["class"] = classIndex
+        detection["name"] = top5Labels[i]
         detection["confidence"] = Double(top5Confs[i])
 
         // Classification doesn't have bounding boxes, use full image bounds
