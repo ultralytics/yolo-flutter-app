@@ -1716,15 +1716,28 @@ class YOLOView @JvmOverloads constructor(
         // Add classification results (if available and enabled for CLASSIFY task)
         if (config.includeClassifications && result.probs != null) {
             val probs = result.probs!!
-            Log.d(TAG, "🎯 Processing CLASSIFY result: top1Label=${probs.top1Label}, conf=${probs.top1Conf}, index=${probs.top1Index}")
+
+            val top5Indices = probs.top5Indices ?: (0..4).toList()
+            val top5List = top5Indices
+              .zip(probs.top5Labels)
+              .zip(probs.top5Confs.toList())
+              .take(5)
+              .map { ((classIdx, name), conf) ->
+                mapOf(
+                  "class" to classIdx,
+                  "name" to name,
+                  "confidence" to conf.toDouble()
+                )
+              }
 
             // Add classification result to detections array (for compatibility with YOLOResult.fromMap)
             val detections = (map["detections"] as? List<Map<String, Any>>)?.toMutableList() ?: ArrayList()
 
             val classificationDetection = HashMap<String, Any>()
-            classificationDetection["classIndex"] = probs.top1Index
-            classificationDetection["className"] = probs.top1Label
+            classificationDetection["class"] = probs.top1Index
+            classificationDetection["name"] = probs.top1Label
             classificationDetection["confidence"] = probs.top1Conf.toDouble()
+            classificationDetection["top5"] = top5List
 
             // Full image bounding box for classification
             val boundingBox = HashMap<String, Any>()
@@ -1744,8 +1757,6 @@ class YOLOView @JvmOverloads constructor(
 
             detections.add(classificationDetection)
             map["detections"] = detections
-
-            Log.d(TAG, "✅ Added classification result: ${probs.top1Label} (conf=${probs.top1Conf}, index=${probs.top1Index})")
         }
         
         // Add performance metrics (if enabled)
