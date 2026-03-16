@@ -297,31 +297,18 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             }
             YOLOTask.CLASSIFY -> {
               yoloResult.probs?.let { probs ->
-                // Build top5 list only with available indices to avoid synthetic values
-                val top5List = if (probs.top5Indices != null) {
-                  probs.top5Indices!!
-                    .zip(probs.top5Labels)
-                    .zip(probs.top5Confs.toList())
-                    .take(5)
-                    .map { ((classIdx, name), conf) ->
-                      mapOf(
-                        "class" to classIdx,
-                        "name" to name,
-                        "confidence" to conf.toDouble()
-                      )
-                    }
-                } else {
-                  // Omit class field when indices are not available
-                  probs.top5Labels
-                    .zip(probs.top5Confs.toList())
-                    .take(5)
-                    .map { (name, conf) ->
-                      mapOf(
-                        "name" to name,
-                        "confidence" to conf.toDouble()
-                      )
-                    }
-                }
+                // Build top5 list with labels and confidence only
+                // Omit class field to maintain consistency across platforms
+                // (iOS native API doesn't provide top5 indices)
+                val top5List = probs.top5Labels
+                  .zip(probs.top5Confs.toList())
+                  .take(5)
+                  .map { (name, conf) ->
+                    mapOf(
+                      "name" to name,
+                      "confidence" to conf.toDouble()
+                    )
+                  }
 
                 // Classification response following Results.summary() format
                 // Reference: https://docs.ultralytics.com/reference/engine/results/
