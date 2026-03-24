@@ -212,7 +212,7 @@ class OBBExample {
     for (final box in boxes) {
       print('Object: ${box['class']}');
       print('Confidence: ${box['confidence']}');
-      print('Rotation: ${box['angle']} degrees');
+      print('Rotation: ${box['angle']} radians');
 
       // Access rotated box coordinates
       final points = box['points'] as List<dynamic>? ?? [];

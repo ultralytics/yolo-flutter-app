@@ -1,5 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'dart:math' as math;
+
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
@@ -210,6 +212,7 @@ class YOLOInference {
 
       for (final obb in obbList) {
         if (obb is Map) {
+          final obbMap = MapConverter.convertToTypedMap(obb);
           final points = obb['points'] as List<dynamic>? ?? [];
 
           double minX = double.infinity, minY = double.infinity;
@@ -230,10 +233,12 @@ class YOLOInference {
           final detection = <String, dynamic>{
             'classIndex': 0,
             'className': obb['class'] ?? '',
-            'confidence': MapConverter.safeGetDouble(
-              MapConverter.convertToTypedMap(obb),
-              'confidence',
-            ),
+            'confidence': MapConverter.safeGetDouble(obbMap, 'confidence'),
+            'angle': obbMap.containsKey('angle')
+                ? MapConverter.safeGetDouble(obbMap, 'angle')
+                : MapConverter.safeGetDouble(obbMap, 'angleDegrees') *
+                      math.pi /
+                      180.0,
             'boundingBox': {
               'left': minX,
               'top': minY,

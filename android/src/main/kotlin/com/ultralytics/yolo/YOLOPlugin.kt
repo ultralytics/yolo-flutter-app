@@ -355,6 +355,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                   val poly = obb.box.toPolygon()
                   mapOf(
                     "points" to poly.map { mapOf("x" to it.x, "y" to it.y) },
+                    "angle" to obb.box.angle,
                     "class" to obb.cls,
                     "confidence" to obb.confidence
                   )
