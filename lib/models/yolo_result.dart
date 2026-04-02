@@ -74,6 +74,13 @@ class YOLOResult {
   /// and ranges from 0.0 to 1.0.
   final List<double>? keypointConfidences;
 
+  /// The persistent track ID assigned by the IoU tracker.
+  ///
+  /// Only available when tracking is enabled via [YOLOView.enableTracking].
+  /// The same physical object keeps its trackId across frames as long as
+  /// it remains visible. Null when tracking is disabled.
+  final int? trackId;
+
   YOLOResult({
     required this.classIndex,
     required this.className,
@@ -83,6 +90,7 @@ class YOLOResult {
     this.mask,
     this.keypoints,
     this.keypointConfidences,
+    this.trackId,
   });
 
   /// Creates a [YOLOResult] from a map representation.
@@ -175,12 +183,31 @@ class YOLOResult {
       map['keypoints'] = keypointsData;
     }
 
+    if (trackId != null) {
+      map['trackId'] = trackId;
+    }
+
     return map;
+  }
+
+  /// Returns a copy of this result with the given fields replaced.
+  YOLOResult copyWith({int? trackId}) {
+    return YOLOResult(
+      classIndex: classIndex,
+      className: className,
+      confidence: confidence,
+      boundingBox: boundingBox,
+      normalizedBox: normalizedBox,
+      mask: mask,
+      keypoints: keypoints,
+      keypointConfidences: keypointConfidences,
+      trackId: trackId ?? this.trackId,
+    );
   }
 
   @override
   String toString() {
-    return 'YOLOResult{classIndex: $classIndex, className: $className, confidence: $confidence, boundingBox: $boundingBox}';
+    return 'YOLOResult{classIndex: $classIndex, className: $className, confidence: $confidence, boundingBox: $boundingBox${trackId != null ? ', trackId: $trackId' : ''}}';
   }
 }
 
