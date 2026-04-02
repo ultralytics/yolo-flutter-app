@@ -20,15 +20,49 @@ import Vision
 /// Specialized predictor for YOLO classification models that identify the subject of an image.
 class Classifier: BasePredictor {
 
+  private func parseProbs(from multiArray: MLMultiArray) -> Probs {
+    var values = [Double](repeating: 0, count: multiArray.count)
+    for i in 0..<multiArray.count {
+      values[i] = multiArray[i].doubleValue
+    }
+
+    let maxLogit = values.max() ?? 0
+    let expValues = values.map { exp($0 - maxLogit) }
+    let sumExp = expValues.reduce(0, +)
+    let probsArray = sumExp > 0 ? expValues.map { $0 / sumExp } : values
+
+    var indexedMap = [Int: Double]()
+    for (index, value) in probsArray.enumerated() {
+      indexedMap[index] = value
+    }
+
+    let sortedMap = indexedMap.sorted { $0.value > $1.value }
+
+    var result = Probs(top1Label: "", top5Labels: [], top1Conf: 0, top5Confs: [])
+
+    if let (topIndex, topScore) = sortedMap.first, labels.indices.contains(topIndex) {
+      result.top1Label = labels[topIndex]
+      result.top1Conf = Float(topScore)
+    }
+
+    let topObservations = sortedMap.prefix(5)
+    for (index, value) in topObservations where labels.indices.contains(index) {
+      result.top5Labels.append(labels[index])
+      result.top5Confs.append(Float(value))
+    }
+
+    return result
+  }
+
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
-    detector.featureProvider = ThresholdProvider(
+    detector?.featureProvider = ThresholdProvider(
       iouThreshold: iouThreshold, confidenceThreshold: confidenceThreshold)
   }
 
   override func setIouThreshold(iou: Double) {
     iouThreshold = iou
-    detector.featureProvider = ThresholdProvider(
+    detector?.featureProvider = ThresholdProvider(
       iouThreshold: iouThreshold, confidenceThreshold: confidenceThreshold)
   }
 
@@ -38,45 +72,10 @@ class Classifier: BasePredictor {
     self.inputSize = CGSize(width: imageWidth, height: imageHeight)
     var probs = Probs(top1Label: "", top5Labels: [], top1Conf: 0, top5Confs: [])
 
-    if let observation = request.results as? [VNCoreMLFeatureValueObservation] {
-
+    if let observation = request.results as? [VNCoreMLFeatureValueObservation],
       let multiArray = observation.first?.featureValue.multiArrayValue
-
-      if let multiArray = multiArray {
-        var valuesArray = [Double]()
-        for i in 0..<multiArray.count {
-          let value = multiArray[i].doubleValue
-          valuesArray.append(value)
-        }
-
-        var indexedMap = [Int: Double]()
-        for (index, value) in valuesArray.enumerated() {
-          indexedMap[index] = value
-        }
-
-        let sortedMap = indexedMap.sorted { $0.value > $1.value }
-
-        // top1
-        if let (topIndex, topScore) = sortedMap.first {
-          let top1Label = labels[topIndex]
-          let top1Conf = Float(topScore)
-          probs.top1Label = top1Label
-          probs.top1Conf = top1Conf
-        }
-
-        // top5
-        let topObservations = sortedMap.prefix(5)
-        var top5Labels: [String] = []
-        var top5Confs: [Float] = []
-
-        for (index, value) in topObservations {
-          top5Labels.append(labels[index])
-          top5Confs.append(Float(value))
-        }
-
-        probs.top5Labels = top5Labels
-        probs.top5Confs = top5Confs
-      }
+    {
+      probs = parseProbs(from: multiArray)
     } else if let observations = request.results as? [VNClassificationObservation] {
       var top1 = ""
       var top1Conf: Float = 0
@@ -98,15 +97,13 @@ class Classifier: BasePredictor {
       probs = Probs(top1Label: top1, top5Labels: top5, top1Conf: top1Conf, top5Confs: top5Confs)
     }
 
-    // Measure FPS
-    if self.t1 < 10.0 {  // valid dt
-      self.t2 = self.t1 * 0.05 + self.t2 * 0.95  // smoothed inference time
+    if self.t1 < 10.0 {
+      self.t2 = self.t1 * 0.05 + self.t2 * 0.95
     }
-    self.t4 = (CACurrentMediaTime() - self.t3) * 0.05 + self.t4 * 0.95  // smoothed delivered FPS
+    self.t4 = (CACurrentMediaTime() - self.t3) * 0.05 + self.t4 * 0.95
     self.t3 = CACurrentMediaTime()
 
-    self.currentOnInferenceTimeListener?.on(inferenceTime: self.t2 * 1000, fpsRate: 1 / self.t4)  // t2 seconds to ms
-    //                self.currentOnFpsRateListener?.on(fpsRate: 1 / self.t4)
+    self.currentOnInferenceTimeListener?.on(inferenceTime: self.t2 * 1000, fpsRate: 1 / self.t4)
     var result = YOLOResult(
       orig_shape: inputSize, boxes: [], probs: probs, speed: self.t2, fps: 1 / self.t4,
       names: labels)
@@ -133,46 +130,10 @@ class Classifier: BasePredictor {
     var probs = Probs(top1Label: "", top5Labels: [], top1Conf: 0, top5Confs: [])
     do {
       try requestHandler.perform([request])
-      if let observation = request.results as? [VNCoreMLFeatureValueObservation] {
-        var recognitions: [[String: Any]] = []
-
+      if let observation = request.results as? [VNCoreMLFeatureValueObservation],
         let multiArray = observation.first?.featureValue.multiArrayValue
-
-        if let multiArray = multiArray {
-          var valuesArray = [Double]()
-          for i in 0..<multiArray.count {
-            let value = multiArray[i].doubleValue
-            valuesArray.append(value)
-          }
-
-          var indexedMap = [Int: Double]()
-          for (index, value) in valuesArray.enumerated() {
-            indexedMap[index] = value
-          }
-
-          let sortedMap = indexedMap.sorted { $0.value > $1.value }
-
-          // top1
-          if let (topIndex, topScore) = sortedMap.first {
-            let top1Label = labels[topIndex]
-            let top1Conf = Float(topScore)
-            probs.top1Label = top1Label
-            probs.top1Conf = top1Conf
-          }
-
-          // top5
-          let topObservations = sortedMap.prefix(5)
-          var top5Labels: [String] = []
-          var top5Confs: [Float] = []
-
-          for (index, value) in topObservations {
-            top5Labels.append(labels[index])
-            top5Confs.append(Float(value))
-          }
-
-          probs.top5Labels = top5Labels
-          probs.top5Confs = top5Confs
-        }
+      {
+        probs = parseProbs(from: multiArray)
       } else if let observations = request.results as? [VNClassificationObservation] {
         var top1 = ""
         var top1Conf: Float = 0

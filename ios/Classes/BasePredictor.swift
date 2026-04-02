@@ -33,7 +33,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   private(set) var isModelLoaded: Bool = false
 
   /// The Vision CoreML model used for inference operations.
-  var detector: VNCoreMLModel!
+  var detector: VNCoreMLModel?
 
   /// The Vision request that processes images using the CoreML model.
   var visionRequest: VNCoreMLRequest?
@@ -55,6 +55,27 @@ public class BasePredictor: Predictor, @unchecked Sendable {
 
   /// The required input dimensions for the model (width and height in pixels).
   var modelInputSize: (width: Int, height: Int) = (0, 0)
+
+  var modelURL: URL?
+
+  /// Common model helpers
+  var isYOLO26Model: Bool {
+    guard let url = modelURL else { return false }
+    let modelName = url.lastPathComponent.lowercased()
+    let fullPath = url.path.lowercased()
+    let baseName =
+      modelName
+      .replacingOccurrences(of: ".mlmodelc", with: "")
+      .replacingOccurrences(of: ".mlpackage", with: "")
+      .replacingOccurrences(of: ".mlmodel", with: "")
+    return fullPath.contains("yolo26") || baseName.contains("yolo26")
+  }
+
+  func normalizeYOLOScore(_ value: Float) -> Float {
+    if value > 1.0 && value <= 100.0 { return value / 100.0 }
+    if value > 100.0 { return 1 / (1 + exp(-value)) }
+    return value
+  }
 
   /// Timestamp for the start of inference (used for performance measurement).
   var t0 = 0.0  // inference start
@@ -123,6 +144,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   ) {
     let predictor = Self.init()
     predictor.numItemsThreshold = numItemsThreshold
+    predictor.modelURL = unwrappedModelURL
 
     // Kick off the expensive loading on a background thread
     DispatchQueue.global(qos: .userInitiated).async {
@@ -190,11 +212,13 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         predictor.modelInputSize = predictor.getModelInputSize(for: mlModel)
 
         // (4) Create VNCoreMLModel, VNCoreMLRequest, etc.
-        predictor.detector = try VNCoreMLModel(for: mlModel)
-        predictor.detector.featureProvider = ThresholdProvider()
+        let coreMLModel = try VNCoreMLModel(for: mlModel)
+        coreMLModel.featureProvider = ThresholdProvider(
+          iouThreshold: predictor.iouThreshold, confidenceThreshold: predictor.confidenceThreshold)
+        predictor.detector = coreMLModel
         predictor.visionRequest = {
           let request = VNCoreMLRequest(
-            model: predictor.detector,
+            model: coreMLModel,
             completionHandler: {
               [weak predictor] request, error in
               guard let predictor = predictor else {

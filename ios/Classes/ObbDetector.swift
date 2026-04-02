@@ -134,6 +134,14 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
     iouThreshold: Float
   ) -> [(box: OBB, score: Float, cls: Int)] {
 
+    let shape = feature.shape.map { $0.intValue }
+    if isYOLO26Model, shape.count >= 2, shape.last == 7 {
+      return postProcessYOLO26OBB(
+        feature: feature,
+        confidenceThreshold: confidenceThreshold,
+        iouThreshold: iouThreshold)
+    }
+
     let shape1 = feature.shape[1].intValue
     let numAnchors = feature.shape[2].intValue
     let numClasses = shape1 - 5  // (4 + numClasses + 1) = shape1
@@ -196,6 +204,126 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
     for idx in keep {
       let d = detections[idx]
       results.append((d.obb, d.score, d.cls))
+    }
+    return results
+  }
+
+  private func postProcessYOLO26OBB(
+    feature: MLMultiArray,
+    confidenceThreshold: Float,
+    iouThreshold: Float
+  ) -> [(box: OBB, score: Float, cls: Int)] {
+    let dims = feature.shape.map { $0.intValue }
+    let numDetections: Int
+    let stride: Int
+    if dims.count == 3 {
+      numDetections = dims[1]
+      stride = dims[2]
+    } else {
+      numDetections = dims[0]
+      stride = dims[1]
+    }
+
+    guard stride >= 7 else {
+      print("YOLO26 OBB: invalid stride \(stride) for shape \(dims)")
+      return []
+    }
+
+    let ptr = feature.dataPointer.assumingMemoryBound(to: Float.self)
+    let modelW = CGFloat(max(1, modelInputSize.width))
+    let modelH = CGFloat(max(1, modelInputSize.height))
+
+    var detections: [(OBB, Float, Int)] = []
+    detections.reserveCapacity(min(numDetections, 200))
+
+    func addDetection(
+      cx: CGFloat, cy: CGFloat, w: CGFloat, h: CGFloat, angle: Float, score: Float, clsIdx: Int
+    ) {
+      guard score > confidenceThreshold else { return }
+      guard clsIdx >= 0 && clsIdx < labels.count else { return }
+      guard w > 0, h > 0 else { return }
+
+      let nx = max(0.0, min(1.0, cx))
+      let ny = max(0.0, min(1.0, cy))
+      let nw = max(0.0, min(1.0, w))
+      let nh = max(0.0, min(1.0, h))
+      guard nw > 0.0, nh > 0.0 else { return }
+
+      let obb = OBB(cx: Float(nx), cy: Float(ny), w: Float(nw), h: Float(nh), angle: angle)
+      detections.append((obb, score, clsIdx))
+    }
+
+    for i in 0..<numDetections {
+      let off = i * stride
+      let v0 = ptr[off + 0]
+      let v1 = ptr[off + 1]
+      let v2 = ptr[off + 2]
+      let v3 = ptr[off + 3]
+      let v4 = ptr[off + 4]
+      let v5 = ptr[off + 5]
+      let v6 = ptr[off + 6]
+
+      func coordsAreNormalized(_ vals: [Float]) -> Bool {
+        let maxAbs = vals.map { abs($0) }.max() ?? 0
+        return maxAbs <= 2.0
+      }
+
+      let isNormA = coordsAreNormalized([v0, v1, v2, v3])
+
+      // Variant A: [x1,y1,x2,y2, score, angle, cls]
+      do {
+        let x1 = isNormA ? CGFloat(v0) : CGFloat(v0) / modelW
+        let y1 = isNormA ? CGFloat(v1) : CGFloat(v1) / modelH
+        let x2 = isNormA ? CGFloat(v2) : CGFloat(v2) / modelW
+        let y2 = isNormA ? CGFloat(v3) : CGFloat(v3) / modelH
+        let w = x2 - x1
+        let h = y2 - y1
+        let cx = x1 + w / 2
+        let cy = y1 + h / 2
+        let clsIdx = Int(round(v6))
+        let angleVal = v5
+        let conf = normalizeYOLOScore(v4)
+        addDetection(cx: cx, cy: cy, w: w, h: h, angle: angleVal, score: conf, clsIdx: clsIdx)
+      }
+
+      // Variant B: [cx,cy,w,h, angle, score, cls]
+      do {
+        let isNorm = coordsAreNormalized([v0, v1, v2, v3])
+        let cx = isNorm ? CGFloat(v0) : CGFloat(v0) / modelW
+        let cy = isNorm ? CGFloat(v1) : CGFloat(v1) / modelH
+        let w = isNorm ? CGFloat(v2) : CGFloat(v2) / modelW
+        let h = isNorm ? CGFloat(v3) : CGFloat(v3) / modelH
+        let angleVal = v4
+        let conf = normalizeYOLOScore(v5)
+        let clsIdx = Int(round(v6))
+        addDetection(cx: cx, cy: cy, w: w, h: h, angle: angleVal, score: conf, clsIdx: clsIdx)
+      }
+
+      // Variant C: [cx,cy,w,h, score, angle, cls]
+      do {
+        let isNorm = coordsAreNormalized([v0, v1, v2, v3])
+        let cx = isNorm ? CGFloat(v0) : CGFloat(v0) / modelW
+        let cy = isNorm ? CGFloat(v1) : CGFloat(v1) / modelH
+        let w = isNorm ? CGFloat(v2) : CGFloat(v2) / modelW
+        let h = isNorm ? CGFloat(v3) : CGFloat(v3) / modelH
+        let conf = normalizeYOLOScore(v4)
+        let angleVal = v5
+        let clsIdx = Int(round(v6))
+        addDetection(cx: cx, cy: cy, w: w, h: h, angle: angleVal, score: conf, clsIdx: clsIdx)
+      }
+    }
+
+    if detections.isEmpty { return [] }
+
+    let boxes = detections.map { $0.0 }
+    let scores = detections.map { $0.1 }
+    let keep = nonMaxSuppressionOBB(boxes: boxes, scores: scores, iouThreshold: iouThreshold)
+
+    var results: [(OBB, Float, Int)] = []
+    results.reserveCapacity(keep.count)
+    for idx in keep {
+      let det = detections[idx]
+      results.append((det.0, det.1, det.2))
     }
     return results
   }
