@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/material.dart';
+import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import '../controllers/camera_inference_controller.dart';
@@ -27,7 +28,9 @@ class CameraInferenceContent extends StatelessWidget {
         controller: controller.yoloController,
         modelPath: controller.modelPath!,
         task: controller.selectedModel.task,
-        streamingConfig: const YOLOStreamingConfig.minimal(),
+        streamingConfig: controller.selectedModel.task == YOLOTask.obb
+            ? const YOLOStreamingConfig.custom(includeOBB: true)
+            : const YOLOStreamingConfig.minimal(),
         onResult: controller.onDetectionResults,
         onPerformanceMetrics: (metrics) =>
             controller.onPerformanceMetrics(metrics.fps),

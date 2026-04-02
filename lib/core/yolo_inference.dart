@@ -210,30 +210,42 @@ class YOLOInference {
 
       for (final obb in obbList) {
         if (obb is Map) {
+          final obbMap = MapConverter.convertToTypedMap(obb);
           final points = obb['points'] as List<dynamic>? ?? [];
+
+          final polygonPoints = points.whereType<Map>().map((point) {
+            final pointMap = MapConverter.convertToTypedMap(point);
+            return {
+              'x': MapConverter.safeGetDouble(pointMap, 'x'),
+              'y': MapConverter.safeGetDouble(pointMap, 'y'),
+            };
+          }).toList();
 
           double minX = double.infinity, minY = double.infinity;
           double maxX = double.negativeInfinity, maxY = double.negativeInfinity;
+          for (final p in polygonPoints) {
+            final x = (p['x'] as num?)?.toDouble() ?? 0.0;
+            final y = (p['y'] as num?)?.toDouble() ?? 0.0;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
 
-          for (final point in points) {
-            if (point is Map) {
-              final pointMap = MapConverter.convertToTypedMap(point);
-              final x = MapConverter.safeGetDouble(pointMap, 'x');
-              final y = MapConverter.safeGetDouble(pointMap, 'y');
-              minX = minX > x ? x : minX;
-              minY = minY > y ? y : minY;
-              maxX = maxX < x ? x : maxX;
-              maxY = maxY < y ? y : maxY;
-            }
+          final hasValidExtrema =
+              minX.isFinite && minY.isFinite && maxX.isFinite && maxY.isFinite;
+
+          if (!hasValidExtrema) {
+            minX = 0.0;
+            minY = 0.0;
+            maxX = 0.0;
+            maxY = 0.0;
           }
 
           final detection = <String, dynamic>{
-            'classIndex': 0,
+            'classIndex': MapConverter.safeGetInt(obbMap, 'classIndex'),
             'className': obb['class'] ?? '',
-            'confidence': MapConverter.safeGetDouble(
-              MapConverter.convertToTypedMap(obb),
-              'confidence',
-            ),
+            'confidence': MapConverter.safeGetDouble(obbMap, 'confidence'),
             'boundingBox': {
               'left': minX,
               'top': minY,
@@ -246,6 +258,7 @@ class YOLOInference {
               'right': maxX,
               'bottom': maxY,
             },
+            'polygon': polygonPoints,
           };
 
           detections.add(detection);

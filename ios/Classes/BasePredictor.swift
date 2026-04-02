@@ -362,27 +362,25 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   /// - Parameter model: The CoreML model to analyze.
   /// - Returns: A tuple containing the width and height in pixels required by the model.
   func getModelInputSize(for model: MLModel) -> (width: Int, height: Int) {
-    guard let inputDescription = model.modelDescription.inputDescriptionsByName.first?.value else {
-      print("can not find input description")
-      return (0, 0)
-    }
-
-    if let multiArrayConstraint = inputDescription.multiArrayConstraint {
-      let shape = multiArrayConstraint.shape
-      if shape.count >= 2 {
-        let height = shape[0].intValue
-        let width = shape[1].intValue
-        return (width: width, height: height)
+    for (_, inputDescription) in model.modelDescription.inputDescriptionsByName {
+      if let multiArrayConstraint = inputDescription.multiArrayConstraint {
+        let shape = multiArrayConstraint.shape
+        if shape.count >= 4 {
+          let height = shape[2].intValue
+          let width = shape[3].intValue
+          if width > 0, height > 0 { return (width: width, height: height) }
+        } else if shape.count >= 2 {
+          let height = shape[0].intValue
+          let width = shape[1].intValue
+          if width > 0, height > 0 { return (width: width, height: height) }
+        }
+      }
+      if let imageConstraint = inputDescription.imageConstraint {
+        let width = Int(imageConstraint.pixelsWide)
+        let height = Int(imageConstraint.pixelsHigh)
+        if width > 0, height > 0 { return (width: width, height: height) }
       }
     }
-
-    if let imageConstraint = inputDescription.imageConstraint {
-      let width = Int(imageConstraint.pixelsWide)
-      let height = Int(imageConstraint.pixelsHigh)
-      return (width: width, height: height)
-    }
-
-    print("an not find input size")
     return (0, 0)
   }
 
