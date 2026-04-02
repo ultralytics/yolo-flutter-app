@@ -203,5 +203,114 @@ void main() {
         arguments: {'image': imageBytes},
       );
     });
+
+    test('predict OBB includes angle in detections when present', () async {
+      final obbChannel = YOLOTestHelpers.setupMockChannel(
+        customResponses: {
+          'predictSingleImage': (_) => {
+            'obb': [
+              {
+                'points': [
+                  {'x': 0.1, 'y': 0.1},
+                  {'x': 0.2, 'y': 0.1},
+                  {'x': 0.2, 'y': 0.2},
+                  {'x': 0.1, 'y': 0.2},
+                ],
+                'class': 'ship',
+                'confidence': 0.88,
+                'angle': 0.5235987756,
+              },
+            ],
+          },
+        },
+      );
+
+      final inference = YOLOInference(
+        channel: obbChannel,
+        instanceId: 'test_instance',
+        task: YOLOTask.obb,
+      );
+
+      final result = await inference.predict(Uint8List.fromList([1, 2, 3]));
+      final detections = result['detections'] as List<dynamic>;
+      final first = detections.first as Map<String, dynamic>;
+
+      expect(first['className'], 'ship');
+      expect(first['confidence'], 0.88);
+      expect(first['angle'], closeTo(0.5235987756, 1e-9));
+    });
+
+    test(
+      'predict OBB falls back to angleDegrees and converts to radians',
+      () async {
+        final obbChannel = YOLOTestHelpers.setupMockChannel(
+          customResponses: {
+            'predictSingleImage': (_) => {
+              'obb': [
+                {
+                  'points': [
+                    {'x': 0.1, 'y': 0.1},
+                    {'x': 0.2, 'y': 0.1},
+                    {'x': 0.2, 'y': 0.2},
+                    {'x': 0.1, 'y': 0.2},
+                  ],
+                  'class': 'ship',
+                  'confidence': 0.88,
+                  'angleDegrees': 30.0,
+                },
+              ],
+            },
+          },
+        );
+
+        final inference = YOLOInference(
+          channel: obbChannel,
+          instanceId: 'test_instance',
+          task: YOLOTask.obb,
+        );
+
+        final result = await inference.predict(Uint8List.fromList([1, 2, 3]));
+        final detections = result['detections'] as List<dynamic>;
+        final first = detections.first as Map<String, dynamic>;
+
+        expect(first['angle'], closeTo(0.5235987756, 1e-9));
+      },
+    );
+
+    test(
+      'predict OBB sets angle to default when angle fields are absent',
+      () async {
+        final obbChannel = YOLOTestHelpers.setupMockChannel(
+          customResponses: {
+            'predictSingleImage': (_) => {
+              'obb': [
+                {
+                  'points': [
+                    {'x': 0.1, 'y': 0.1},
+                    {'x': 0.2, 'y': 0.1},
+                    {'x': 0.2, 'y': 0.2},
+                    {'x': 0.1, 'y': 0.2},
+                  ],
+                  'class': 'ship',
+                  'confidence': 0.88,
+                },
+              ],
+            },
+          },
+        );
+
+        final inference = YOLOInference(
+          channel: obbChannel,
+          instanceId: 'test_instance',
+          task: YOLOTask.obb,
+        );
+
+        final result = await inference.predict(Uint8List.fromList([1, 2, 3]));
+        final detections = result['detections'] as List<dynamic>;
+        final first = detections.first as Map<String, dynamic>;
+
+        expect(first['angle'], 0.0);
+      },
+    );
   });
 }

@@ -208,14 +208,16 @@ class OBBExample {
     final results = await yolo.predict(imageBytes);
 
     // Process oriented bounding boxes
-    final boxes = results['boxes'] as List<dynamic>;
+    final boxes = results['obb'] as List<dynamic>? ?? [];
     for (final box in boxes) {
-      print('Object: ${box['class']}');
-      print('Confidence: ${box['confidence']}');
-      print('Rotation: ${box['angle']} degrees');
+      final obb = box as Map<String, dynamic>;
+
+      print('Object: ${obb['class']}');
+      print('Confidence: ${obb['confidence']}');
+      print('Rotation: ${obb['angle']} radians');
 
       // Access rotated box coordinates
-      final points = box['points'] as List<dynamic>? ?? [];
+      final points = obb['points'] as List<dynamic>? ?? [];
       print('Box corners: $points');
     }
   }
