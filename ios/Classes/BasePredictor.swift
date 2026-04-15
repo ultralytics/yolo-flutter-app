@@ -98,7 +98,8 @@ public class BasePredictor: Predictor, @unchecked Sendable {
 
   private static func parseLabels(from userDefined: [String: String]) -> [String] {
     if let labelsData = userDefined["classes"] {
-      return labelsData
+      return
+        labelsData
         .components(separatedBy: ",")
         .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         .filter { !$0.isEmpty }
@@ -200,14 +201,17 @@ public class BasePredictor: Predictor, @unchecked Sendable {
           mlModel = try MLModel(contentsOf: compiledUrl, configuration: config)
         }
 
-        let userDefined = mlModel.modelDescription
+        let userDefined =
+          mlModel.modelDescription
           .metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String]
 
         // Continue even when top-level metadata is missing. Some CoreML pipeline exports
         // only keep labels on nested models, and hard-failing here leaves the predictor nil.
         predictor.labels = userDefined.map(Self.parseLabels(from:)) ?? []
         if predictor.labels.isEmpty {
-          print("BasePredictor: No top-level creatorDefined labels found. Continuing with fallback class labels.")
+          print(
+            "BasePredictor: No top-level creatorDefined labels found. Continuing with fallback class labels."
+          )
         }
 
         // (3) Store model input size
