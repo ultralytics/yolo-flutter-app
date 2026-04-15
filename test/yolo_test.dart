@@ -81,13 +81,6 @@ void main() {
       expect(platform, isNotNull);
     });
 
-    test('setModel calls method channel correctly', () async {
-      final platform = YOLOMethodChannel();
-      expect(platform, isNotNull);
-      // Test passes if no exceptions are thrown
-      expect(true, isTrue);
-    });
-
     test('platform interface works correctly', () {
       final mockPlatform = MockYOLOPlatform();
       expect(mockPlatform, isNotNull);
@@ -207,12 +200,6 @@ void main() {
       expect(segmentYolo.task, YOLOTask.segment);
       expect(classifyYolo.task, YOLOTask.classify);
       expect(poseYolo.task, YOLOTask.pose);
-    });
-  });
-
-  group('Error Handling', () {
-    test('handles platform exceptions gracefully', () async {
-      expect(true, isTrue);
     });
   });
 

@@ -88,6 +88,63 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     // Intentionally left empty
   }
 
+  func labelName(for index: Int) -> String {
+    guard index >= 0 else { return "class_\(index)" }
+    guard index < labels.count else { return "class_\(index)" }
+
+    let label = labels[index].trimmingCharacters(in: .whitespacesAndNewlines)
+    return label.isEmpty ? "class_\(index)" : label
+  }
+
+  private static func parseLabels(from userDefined: [String: String]) -> [String] {
+    if let labelsData = userDefined["classes"] {
+      return
+        labelsData
+        .components(separatedBy: ",")
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+    }
+
+    if let labelsData = userDefined["names"] {
+      let cleanedInput =
+        labelsData
+        .replacingOccurrences(of: "{", with: "")
+        .replacingOccurrences(of: "}", with: "")
+
+      let parsedPairs = cleanedInput.components(separatedBy: ",").compactMap {
+        pair -> (Int?, String)? in
+        let components = pair.split(
+          separator: ":",
+          maxSplits: 1,
+          omittingEmptySubsequences: false
+        )
+        guard components.count >= 2 else { return nil }
+
+        let key = Int(String(components[0]).trimmingCharacters(in: .whitespacesAndNewlines))
+        let value = String(components[1])
+          .trimmingCharacters(in: .whitespacesAndNewlines)
+          .replacingOccurrences(of: "'", with: "")
+        return (key, value)
+      }
+
+      let keyedLabels = parsedPairs.compactMap { key, value -> (Int, String)? in
+        guard let key else { return nil }
+        return (key, value)
+      }
+      if !keyedLabels.isEmpty {
+        let maxKey = keyedLabels.map(\.0).max() ?? -1
+        var labels = Array(repeating: "", count: maxKey + 1)
+        for (key, value) in keyedLabels {
+          labels[key] = value
+        }
+        return labels
+      }
+
+      return parsedPairs.map { $0.1 }
+    }
+
+    return []
+  }
+
   /// Performs cleanup when the predictor is deallocated.
   ///
   /// Cancels any pending vision requests and releases references to avoid memory leaks.
@@ -152,38 +209,17 @@ public class BasePredictor: Predictor, @unchecked Sendable {
           mlModel = try MLModel(contentsOf: compiledUrl, configuration: config)
         }
 
-        guard
-          let userDefined = mlModel.modelDescription
-            .metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String]
-        else {
-          throw PredictorError.modelFileNotFound
-        }
+        let userDefined =
+          mlModel.modelDescription
+          .metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String]
 
-        // (2) Extract class labels
-        if let labelsData = userDefined["classes"] {
-          predictor.labels = labelsData.components(separatedBy: ",")
-        } else if let labelsData = userDefined["names"] {
-          // Parse JSON/dictionary-ish format
-          let cleanedInput =
-            labelsData
-            .replacingOccurrences(of: "{", with: "")
-            .replacingOccurrences(of: "}", with: "")
-            .replacingOccurrences(of: " ", with: "")
-          let keyValuePairs = cleanedInput.components(separatedBy: ",")
-          for pair in keyValuePairs {
-            let components = pair.components(separatedBy: ":")
-            if components.count >= 2 {
-              let extractedString = components[1].trimmingCharacters(in: .whitespaces)
-              let cleanedString = extractedString.replacingOccurrences(of: "'", with: "")
-              predictor.labels.append(cleanedString)
-            }
-          }
-        } else {
-          throw NSError(
-            domain: "BasePredictor", code: -1,
-            userInfo: [
-              NSLocalizedDescriptionKey: "Invalid metadata format"
-            ])
+        // Continue even when top-level metadata is missing. Some CoreML pipeline exports
+        // only keep labels on nested models, and hard-failing here leaves the predictor nil.
+        predictor.labels = userDefined.map(Self.parseLabels(from:)) ?? []
+        if predictor.labels.isEmpty {
+          print(
+            "BasePredictor: No top-level creatorDefined labels found. Continuing with fallback class labels."
+          )
         }
 
         // (3) Store model input size

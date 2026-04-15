@@ -16,7 +16,7 @@ Add the plugin to your Flutter project's `pubspec.yaml`:
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.1.18 # Latest version
+  ultralytics_yolo: ^0.2.0 # Latest version
 ```
 
 Run the installation command:
@@ -67,11 +67,11 @@ Edit `android/app/build.gradle`:
 ```gradle
 // android/app/build.gradle
 android {
-    compileSdkVersion 34
+    compileSdkVersion 36
 
     defaultConfig {
-        minSdkVersion 24  // Minimum API level 24 required
-        targetSdkVersion 34
+        minSdkVersion 21  // Minimum API level 21 required
+        targetSdkVersion 36
     }
 }
 ```
@@ -194,9 +194,9 @@ android {
 | Platform    | Minimum Version | Recommended   |
 | ----------- | --------------- | ------------- |
 | **iOS**     | 13.0+           | 14.0+         |
-| **Android** | API 24+         | API 28+       |
-| **Flutter** | 3.3.0+          | Latest stable |
-| **Dart**    | 3.0.0+          | Latest stable |
+| **Android** | API 21+         | API 28+       |
+| **Flutter** | 3.32.1+         | Latest stable |
+| **Dart**    | 3.8.1+          | Latest stable |
 
 ## 🔍 Troubleshooting Installation
 
@@ -221,7 +221,7 @@ cd ios && pod install --repo-update
 **Issue**: Android build fails with "API level" error
 
 ```bash
-# Solution: Update compileSdkVersion and targetSdkVersion in android/app/build.gradle
+# Solution: Update compileSdkVersion and targetSdkVersion in android/app/build.gradle to 36
 ```
 
 **Issue**: Model file not found

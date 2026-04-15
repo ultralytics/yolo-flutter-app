@@ -185,7 +185,7 @@ class YOLOInference {
       // Reference: https://docs.ultralytics.com/reference/engine/results/
       final detection = <String, dynamic>{
         'classIndex': classificationMap['class'] ?? 0,
-        'className': classification['name'] ?? '',
+        'className': classificationMap['name'] ?? '',
         'confidence': MapConverter.safeGetDouble(
           classificationMap,
           'confidence',
@@ -210,7 +210,8 @@ class YOLOInference {
 
       for (final obb in obbList) {
         if (obb is Map) {
-          final points = obb['points'] as List<dynamic>? ?? [];
+          final obbMap = MapConverter.convertToTypedMap(obb);
+          final points = obbMap['points'] as List<dynamic>? ?? [];
 
           double minX = double.infinity, minY = double.infinity;
           double maxX = double.negativeInfinity, maxY = double.negativeInfinity;
@@ -229,11 +230,8 @@ class YOLOInference {
 
           final detection = <String, dynamic>{
             'classIndex': 0,
-            'className': obb['class'] ?? '',
-            'confidence': MapConverter.safeGetDouble(
-              MapConverter.convertToTypedMap(obb),
-              'confidence',
-            ),
+            'className': obbMap['class'] ?? '',
+            'confidence': MapConverter.safeGetDouble(obbMap, 'confidence'),
             'boundingBox': {
               'left': minX,
               'top': minY,

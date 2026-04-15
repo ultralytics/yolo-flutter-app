@@ -1,5 +1,7 @@
 ## 0.2.0
 
+- **Feature**: YOLO26 model release — `yolo26*` CoreML (`.mlpackage`) and TFLite (`.tflite`) artifacts published alongside YOLOv11 (#431, #432).
+- **Enhancement**: YOLO property and method surface updates (#428).
 - Documentation update for model downloads:
   - All model download links point to GitHub release `v0.2.0` (no bundled models).
   - Added YOLO26 references alongside YOLOv11 for both CoreML (`.mlpackage`) and TFLite (`.tflite`) artifacts.
@@ -86,10 +88,10 @@
 
 - **Critical Update**: Add Android 16KB page size support for Android 15+ compatibility
   - Upgraded to NDK r28 for automatic 16KB page size alignment
-  - Updated Google AI Edge LiteRT (TensorFlow Lite) from 1.2.0 to 1.4.0
+  - Updated Google AI Edge LiteRT (TensorFlow Lite) from 1.2.0 to 1.4.2
   - Ensured compatibility with Google Play's November 2025 requirement
   - Native libraries now support both 4KB (current) and 16KB (future) page sizes
-  - Updated Android Gradle Plugin to 8.5.2 and Gradle to 8.7
+  - Updated Android Gradle Plugin to 8.11.1 and Gradle to 8.14
 
 ## 0.1.36
 

@@ -19,26 +19,34 @@ class YOLO {
   YOLO({
     required String modelPath,
     required YOLOTask task,
+    bool useGpu = true,
     bool useMultiInstance = false,
+    Map<String, dynamic>? classifierOptions,
+    int? numItemsThreshold,
   });
 }
 ```
 
 #### Constructor Parameters
 
-| Parameter          | Type       | Required | Default | Description                           |
-| ------------------ | ---------- | -------- | ------- | ------------------------------------- |
-| `modelPath`        | `String`   | ✅       | -       | Path to the YOLO model file (.tflite) |
-| `task`             | `YOLOTask` | ✅       | -       | Type of YOLO task to perform          |
-| `useMultiInstance` | `bool`     | ❌       | `false` | Enable multi-instance support         |
+| Parameter           | Type                    | Required | Default | Description                                           |
+| ------------------- | ----------------------- | -------- | ------- | ----------------------------------------------------- |
+| `modelPath`         | `String`                | ✅       | -       | Path to the YOLO model file                           |
+| `task`              | `YOLOTask`              | ✅       | -       | Type of YOLO task to perform                          |
+| `useGpu`            | `bool`                  | ❌       | `true`  | Enable GPU acceleration when supported                |
+| `useMultiInstance`  | `bool`                  | ❌       | `false` | Enable multi-instance support                         |
+| `classifierOptions` | `Map<String, dynamic>?` | ❌       | `null`  | Optional classifier preprocessing and label overrides |
+| `numItemsThreshold` | `int?`                  | ❌       | `30`    | Maximum number of returned detections                 |
 
 #### Properties
 
-| Property     | Type       | Description                              |
-| ------------ | ---------- | ---------------------------------------- |
-| `instanceId` | `String`   | Unique identifier for this YOLO instance |
-| `modelPath`  | `String`   | Path to the loaded model file            |
-| `task`       | `YOLOTask` | Current task type                        |
+| Property        | Type       | Description                              |
+| --------------- | ---------- | ---------------------------------------- |
+| `instanceId`    | `String`   | Unique identifier for this YOLO instance |
+| `isInitialized` | `bool`     | Whether the model has been loaded        |
+| `modelPath`     | `String`   | Path to the loaded model file            |
+| `task`          | `YOLOTask` | Current task type                        |
+| `useGpu`        | `bool`     | Whether GPU acceleration is enabled      |
 
 #### Methods
 
@@ -162,6 +170,20 @@ static Future<Map<String, String?>> getStoragePaths()
 
 **Returns**: Map of storage location names to paths
 
+###### `withClassifierOptions()`
+
+Create a YOLO instance configured for classification models that need custom preprocessing.
+
+```dart
+static YOLO withClassifierOptions({
+  required String modelPath,
+  required YOLOTask task,
+  required Map<String, dynamic> classifierOptions,
+  bool useGpu = true,
+  bool useMultiInstance = false,
+})
+```
+
 ---
 
 ### YOLOTask Enum
@@ -198,31 +220,43 @@ class YOLOView extends StatefulWidget {
     required this.modelPath,
     required this.task,
     this.controller,
+    this.cameraResolution = "720p",
     this.onResult,
     this.onPerformanceMetrics,
     this.onStreamingData,
+    this.showNativeUI = false,
     this.onZoomChanged,
-    this.cameraResolution = "720p",
-    this.showNativeUI = true,
     this.streamingConfig,
+    this.confidenceThreshold = 0.5,
+    this.iouThreshold = 0.45,
+    this.useGpu = true,
+    this.showOverlays = true,
+    this.overlayTheme = const YOLOOverlayTheme(),
+    this.lensFacing = LensFacing.back,
   }) : super(key: key);
 }
 ```
 
 #### Constructor Parameters
 
-| Parameter              | Type                                | Required | Default  | Description                                             |
-| ---------------------- | ----------------------------------- | -------- | -------- | ------------------------------------------------------- |
-| `modelPath`            | `String`                            | ✅       | -        | Path to YOLO model file (camera starts even if invalid) |
-| `task`                 | `YOLOTask`                          | ✅       | -        | YOLO task type                                          |
-| `controller`           | `YOLOViewController?`               | ❌       | `null`   | Custom view controller                                  |
-| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`   | Detection results callback                              |
-| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`   | Performance metrics callback                            |
-| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`   | Comprehensive streaming callback                        |
-| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`   | Zoom level change callback                              |
-| `cameraResolution`     | `String`                            | ❌       | `"720p"` | Camera resolution                                       |
-| `showNativeUI`         | `bool`                              | ❌       | `true`   | Show native camera UI                                   |
-| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`   | Streaming configuration                                 |
+| Parameter              | Type                                | Required | Default                    | Description                                             |
+| ---------------------- | ----------------------------------- | -------- | -------------------------- | ------------------------------------------------------- |
+| `modelPath`            | `String`                            | ✅       | -                          | Path to YOLO model file (camera starts even if invalid) |
+| `task`                 | `YOLOTask`                          | ✅       | -                          | YOLO task type                                          |
+| `controller`           | `YOLOViewController?`               | ❌       | `null`                     | Custom view controller                                  |
+| `cameraResolution`     | `String`                            | ❌       | `"720p"`                   | Camera resolution                                       |
+| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`                     | Detection results callback                              |
+| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`                     | Performance metrics callback                            |
+| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`                     | Comprehensive streaming callback                        |
+| `showNativeUI`         | `bool`                              | ❌       | `false`                    | Show native camera controls                             |
+| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`                     | Zoom level change callback                              |
+| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`                     | Streaming configuration                                 |
+| `confidenceThreshold`  | `double`                            | ❌       | `0.5`                      | Initial confidence threshold for YOLOView               |
+| `iouThreshold`         | `double`                            | ❌       | `0.45`                     | Initial IoU threshold for YOLOView                      |
+| `useGpu`               | `bool`                              | ❌       | `true`                     | Enable GPU acceleration for camera inference            |
+| `showOverlays`         | `bool`                              | ❌       | `true`                     | Draw Flutter-side detection overlays                    |
+| `overlayTheme`         | `YOLOOverlayTheme`                  | ❌       | `const YOLOOverlayTheme()` | Customize Flutter overlay styling                       |
+| `lensFacing`           | `LensFacing`                        | ❌       | `LensFacing.back`          | Initial camera lens selection                           |
 
 #### Example
 
@@ -239,7 +273,7 @@ YOLOView(
   },
 )
 
-// Camera-only mode (v0.1.25+): starts even with invalid model path
+// Camera-only mode: starts even with invalid model path
 YOLOView(
   modelPath: 'model_not_yet_downloaded.tflite',  // Model doesn't exist yet
   task: YOLOTask.detect,
@@ -344,7 +378,7 @@ Parameters:
 
 - `PlatformException` - If model file cannot be found or loaded
 
-**Note**: As of v0.1.25, YOLOView can start with an invalid model path (camera-only mode). Use this method to load a valid model later.
+**Note**: YOLOView can start with an invalid model path (camera-only mode). Use this method to load a valid model later.
 
 Example:
 
@@ -364,6 +398,62 @@ try {
 } catch (e) {
   print('Failed to load model: $e');
 }
+```
+
+##### `zoomIn()`
+
+Increase camera zoom by one step.
+
+```dart
+Future<void> zoomIn()
+```
+
+##### `zoomOut()`
+
+Decrease camera zoom by one step.
+
+```dart
+Future<void> zoomOut()
+```
+
+##### `setZoomLevel()`
+
+Set the camera zoom directly.
+
+```dart
+Future<void> setZoomLevel(double zoomLevel)
+```
+
+##### `stop()`
+
+Stop the active camera session.
+
+```dart
+Future<void> stop()
+```
+
+##### `restartCamera()`
+
+Restart the camera session after stopping it.
+
+```dart
+Future<void> restartCamera()
+```
+
+##### `setShowUIControls()`
+
+Show or hide the native camera controls.
+
+```dart
+Future<void> setShowUIControls(bool show)
+```
+
+##### `setShowOverlays()`
+
+Show or hide Flutter-side detection overlays.
+
+```dart
+Future<void> setShowOverlays(bool show)
 ```
 
 ##### `setStreamingConfig()`

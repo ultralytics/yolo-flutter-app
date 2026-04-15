@@ -1672,6 +1672,69 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
         }
       }
 
+      if !result.obb.isEmpty && result.boxes.isEmpty {
+        let imgWidth = result.orig_shape.width
+        let imgHeight = result.orig_shape.height
+
+        for obbResult in result.obb {
+          var detection: [String: Any] = [:]
+          detection["classIndex"] = obbResult.index
+          detection["className"] = obbResult.cls
+          detection["confidence"] = Double(obbResult.confidence)
+
+          let polygon = obbResult.box.toPolygon()
+          let points = polygon.map { point in
+            [
+              "x": Double(point.x),
+              "y": Double(point.y),
+            ]
+          }
+
+          var minX = CGFloat.greatestFiniteMagnitude
+          var minY = CGFloat.greatestFiniteMagnitude
+          var maxX = -CGFloat.greatestFiniteMagnitude
+          var maxY = -CGFloat.greatestFiniteMagnitude
+
+          for point in polygon {
+            minX = min(minX, point.x)
+            minY = min(minY, point.y)
+            maxX = max(maxX, point.x)
+            maxY = max(maxY, point.y)
+          }
+
+          detection["boundingBox"] = [
+            "left": Double(minX * imgWidth),
+            "top": Double(minY * imgHeight),
+            "right": Double(maxX * imgWidth),
+            "bottom": Double(maxY * imgHeight),
+          ]
+          detection["normalizedBox"] = [
+            "left": Double(minX),
+            "top": Double(minY),
+            "right": Double(maxX),
+            "bottom": Double(maxY),
+          ]
+
+          if config.includeOBB {
+            detection["obb"] = [
+              "centerX": Double(obbResult.box.cx),
+              "centerY": Double(obbResult.box.cy),
+              "width": Double(obbResult.box.w),
+              "height": Double(obbResult.box.h),
+              "angle": Double(obbResult.box.angle),
+              "angleDegrees": (Double(obbResult.box.angle) * 180.0 / Double.pi),
+              "area": Double(obbResult.box.area),
+              "points": points,
+              "confidence": Double(obbResult.confidence),
+              "className": obbResult.cls,
+              "classIndex": obbResult.index,
+            ]
+          }
+
+          detections.append(detection)
+        }
+      }
+
       // Convert detection boxes - CRITICAL: use detectionIndex, not class index
       for (detectionIndex, box) in result.boxes.enumerated() {
         var detection: [String: Any] = [:]
@@ -1765,6 +1828,56 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
 
         detections.append(detection)
       }
+      map["detections"] = detections
+    }
+
+    // Add classification results (if available and enabled for CLASSIFY task)
+    if config.includeClassifications, let probs = result.probs, result.boxes.isEmpty {
+      // Get or create detections array (for compatibility with YOLOResult deserialization)
+      var detections = map["detections"] as? [[String: Any]] ?? []
+
+      // Build top5 list with labels and confidence
+      // Note: iOS native API doesn't provide top5 indices, so we omit class field
+      // to maintain consistency with Android when indices are unavailable
+      var top5List: [[String: Any]] = []
+      let top5Labels = probs.top5Labels
+      let top5Confs = probs.top5Confs
+
+      for i in 0..<min(top5Labels.count, top5Confs.count) {
+        top5List.append([
+          "name": top5Labels[i],
+          "confidence": Double(top5Confs[i])
+        ])
+      }
+
+      // Create single detection object with top1 and top5 info
+      var detection: [String: Any] = [:]
+
+      // Note: iOS native API doesn't provide real class index, so we omit it
+      // to avoid sending potentially incorrect values (e.g., -1 or wrong index)
+      detection["name"] = probs.top1Label
+      detection["confidence"] = Double(probs.top1Conf)
+      detection["top5"] = top5List
+
+      // Classification doesn't have bounding boxes, use full image bounds
+      let boundingBox: [String: Any] = [
+        "left": 0.0,
+        "top": 0.0,
+        "right": Double(result.orig_shape.width),
+        "bottom": Double(result.orig_shape.height)
+      ]
+      detection["boundingBox"] = boundingBox
+
+      // Normalized bounding box (full image)
+      let normalizedBox: [String: Any] = [
+        "left": 0.0,
+        "top": 0.0,
+        "right": 1.0,
+        "bottom": 1.0
+      ]
+      detection["normalizedBox"] = normalizedBox
+
+      detections.append(detection)
       map["detections"] = detections
     }
 

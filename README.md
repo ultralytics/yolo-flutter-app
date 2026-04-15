@@ -12,9 +12,6 @@
 
 Welcome to the Ultralytics YOLO Flutter plugin! Integrate cutting-edge [Ultralytics YOLO](https://docs.ultralytics.com/) [computer vision](https://www.ultralytics.com/glossary/computer-vision-cv) models seamlessly into your Flutter mobile applications. This plugin at https://pub.dev/packages/ultralytics_yolo supports both Android and iOS platforms, offering APIs for [object detection](https://docs.ultralytics.com/tasks/detect/), [image classification](https://docs.ultralytics.com/tasks/classify/), [instance segmentation](https://docs.ultralytics.com/tasks/segment/), [pose estimation](https://docs.ultralytics.com/tasks/pose/), and [oriented bounding box detection](https://docs.ultralytics.com/tasks/obb/).
 
-<!-- ![YOLO Flutter Demo](https://via.placeholder.com/600x300/1e1e1e/ffffff?text=YOLO+Flutter+Demo+GIF+Coming+Soon) -->
-<!-- TODO: Add actual demo GIF/video -->
-
 **✨ Why Choose YOLO Flutter?**
 
 | Feature         | Android | iOS |
@@ -71,7 +68,7 @@ YOLOView(
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.1.26
+  ultralytics_yolo: ^0.2.0
 ```
 
 ### 2. Install dependencies
@@ -102,7 +99,7 @@ YOLO("yolo11n.pt").export(format="coreml", nms=True)
 YOLO("yolo11n-seg.pt").export(format="coreml")
 ```
 
-**[📥 Download Models](doc/install.md#models)**
+**[📥 Download Models](doc/models.md)**
 
 Bundle the model with your app using the following method.
 

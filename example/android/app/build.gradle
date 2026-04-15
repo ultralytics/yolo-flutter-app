@@ -16,14 +16,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString() // Use toString() for jvmTarget
-    }
-
-    // Configure Java Toolchain to use JDK 17
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(17)
-        }
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -48,7 +41,7 @@ android {
         }
     }
 
-    lintOptions {
+    lint {
         checkReleaseBuilds false
     }
 }

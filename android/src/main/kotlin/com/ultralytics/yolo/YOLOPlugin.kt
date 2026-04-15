@@ -297,13 +297,30 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             }
             YOLOTask.CLASSIFY -> {
               yoloResult.probs?.let { probs ->
-                // Build top5 list safely using zip to handle mismatched list lengths
-                // Convert top5Confs to List to ensure Iterable compatibility (may be FloatArray)
-                val top5List = probs.top5Labels.zip(probs.top5Confs.toList()).map { (name, conf) ->
-                  mapOf(
-                    "name" to name,
-                    "confidence" to conf.toDouble()
-                  )
+                // Build top5 list with class indices (available from native API)
+                val top5List = if (probs.top5Indices != null) {
+                  probs.top5Indices!!
+                    .zip(probs.top5Labels)
+                    .zip(probs.top5Confs.toList())
+                    .take(5)
+                    .map { ((classIdx, name), conf) ->
+                      mapOf(
+                        "class" to classIdx,
+                        "name" to name,
+                        "confidence" to conf.toDouble()
+                      )
+                    }
+                } else {
+                  // Fallback: omit class when indices unavailable
+                  probs.top5Labels
+                    .zip(probs.top5Confs.toList())
+                    .take(5)
+                    .map { (name, conf) ->
+                      mapOf(
+                        "name" to name,
+                        "confidence" to conf.toDouble()
+                      )
+                    }
                 }
 
                 // Classification response following Results.summary() format
@@ -319,8 +336,9 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                 response["boxes"] = listOf(
                   mapOf(
                     "class" to probs.top1Index,
-                    "className" to probs.top1Label,
+                    "name" to probs.top1Label,
                     "classIndex" to probs.top1Index,
+                    "className" to probs.top1Label,
                     "confidence" to probs.top1Conf.toDouble(),
                     "x1" to 0.0,
                     "y1" to 0.0,
