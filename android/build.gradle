@@ -52,13 +52,6 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString() // Use toString() for jvmTarget
     }
 
-    // Configure Java Toolchain to use JDK 17
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(17)
-        }
-    }
-
     sourceSets {
         main.java.srcDirs += "src/main/kotlin"
         test.java.srcDirs += "src/test/kotlin"
