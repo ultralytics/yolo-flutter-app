@@ -50,7 +50,7 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
         for result in limitedResults {
           let box = result.box
           let score = result.score
-          let clsIdx = labels[result.cls]
+          let clsIdx = labelName(for: result.cls)
           let obbResult = OBBResult(box: box, confidence: score, cls: clsIdx, index: result.cls)
           obbResults.append(obbResult)
         }
@@ -108,7 +108,7 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
           for result in nmsResults {
             let box = result.box
             let score = result.score
-            let clsIdx = labels[result.cls]
+            let clsIdx = labelName(for: result.cls)
             let obbResult = OBBResult(box: box, confidence: score, cls: clsIdx, index: result.cls)
             obbResults.append(obbResult)
           }

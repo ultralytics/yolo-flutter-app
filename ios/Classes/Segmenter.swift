@@ -67,7 +67,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           x: box.minX / 640, y: box.minY / 640, width: box.width / 640, height: box.height / 640)
         let confidence = p.2
         let bestClass = p.1
-        let label = self.labels[bestClass]
+        let label = self.labelName(for: bestClass)
         let xywh = VNImageRectForNormalizedRect(
           rect, Int(self.inputSize.width), Int(self.inputSize.height))
 
@@ -166,7 +166,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
             x: box.minX / 640, y: box.minY / 640, width: box.width / 640, height: box.height / 640)
           let confidence = p.2
           let bestClass = p.1
-          let label = labels[bestClass]
+          let label = labelName(for: bestClass)
           let xywh = VNImageRectForNormalizedRect(rect, Int(inputSize.width), Int(inputSize.height))
 
           let boxResult = Box(

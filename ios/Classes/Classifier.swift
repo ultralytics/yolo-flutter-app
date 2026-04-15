@@ -58,7 +58,7 @@ class Classifier: BasePredictor {
 
         // top1
         if let (topIndex, topScore) = sortedMap.first {
-          let top1Label = labels[topIndex]
+          let top1Label = labelName(for: topIndex)
           let top1Conf = Float(topScore)
           probs.top1Label = top1Label
           probs.top1Conf = top1Conf
@@ -70,7 +70,7 @@ class Classifier: BasePredictor {
         var top5Confs: [Float] = []
 
         for (index, value) in topObservations {
-          top5Labels.append(labels[index])
+          top5Labels.append(labelName(for: index))
           top5Confs.append(Float(value))
         }
 
@@ -154,7 +154,7 @@ class Classifier: BasePredictor {
 
           // top1
           if let (topIndex, topScore) = sortedMap.first {
-            let top1Label = labels[topIndex]
+            let top1Label = labelName(for: topIndex)
             let top1Conf = Float(topScore)
             probs.top1Label = top1Label
             probs.top1Conf = top1Conf
@@ -166,7 +166,7 @@ class Classifier: BasePredictor {
           var top5Confs: [Float] = []
 
           for (index, value) in topObservations {
-            top5Labels.append(labels[index])
+            top5Labels.append(labelName(for: index))
             top5Confs.append(Float(value))
           }
 
