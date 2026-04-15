@@ -19,7 +19,7 @@ Ultralytics YOLO Flutter is the official plugin for running YOLO models in Flutt
 
 The main goal is simple integration: use an official model ID, or drop in your own exported model and let the plugin resolve task metadata for you.
 
-## Why This Plugin
+## ✨ Why This Plugin
 
 | Feature         | Android | iOS |
 | --------------- | ------- | --- |
@@ -36,7 +36,7 @@ The main goal is simple integration: use an official model ID, or drop in your o
 - Real-time camera inference and single-image inference
 - Production-ready controls for thresholds, GPU use, and streaming
 
-## Quick Start
+## ⚡ Quick Start
 
 Install the package:
 
@@ -74,7 +74,7 @@ final results = await yolo.predict(imageBytes);
 
 **[▶️ Example App](./example)** | **[📖 Installation Guide](doc/install.md)** | **[⚡ Quick Start Guide](doc/quickstart.md)**
 
-## Model Loading
+## 📦 Model Loading
 
 The plugin supports three model flows.
 
@@ -102,7 +102,7 @@ If the exported model includes metadata, the plugin infers `task` automatically.
 
 Pass an `http` or `https` URL and the plugin will download it into app storage before loading it.
 
-## Drop Your Own Model Into an App
+## 📥 Drop Your Own Model Into an App
 
 For custom models, keep the app-side setup minimal.
 
@@ -125,7 +125,7 @@ YOLO("yolo11n.pt").export(format="coreml", nms=True)
 
 Other tasks can use the default export settings.
 
-## Choose The Right API
+## 🎯 Choose The Right API
 
 Use `YOLO` when you already have image bytes and want one prediction at a time:
 
@@ -149,7 +149,7 @@ YOLOView(
 await controller.switchModel('yolo11n');
 ```
 
-## Documentation
+## 📚 Documentation
 
 | Guide                                         | Description                                 |
 | --------------------------------------------- | ------------------------------------------- |
