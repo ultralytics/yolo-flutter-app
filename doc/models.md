@@ -61,6 +61,43 @@ final yolo = YOLO(
 );
 ```
 
+## 🍳 Custom Model Cookbook
+
+### 1. Bundled Flutter asset on Android
+
+```dart
+final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
+```
+
+### 2. Bundled Flutter asset on iOS
+
+```dart
+final yolo = YOLO(modelPath: 'assets/models/custom.mlpackage.zip');
+```
+
+### 3. Model added directly to the iOS app bundle
+
+```dart
+final yolo = YOLO(modelPath: 'MyModel.mlpackage');
+```
+
+### 4. Local file already downloaded by your app
+
+```dart
+final yolo = YOLO(modelPath: file.path);
+```
+
+### 5. Remote URL resolved by the plugin
+
+```dart
+final yolo = YOLO(
+  modelPath: 'https://example.com/models/custom.tflite',
+  task: YOLOTask.detect,
+);
+```
+
+Use explicit `task` only when the export does not include it or when you already know the metadata is missing.
+
 ## 🧠 Metadata Resolution
 
 Exported metadata commonly includes:

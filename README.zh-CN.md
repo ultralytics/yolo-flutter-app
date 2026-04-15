@@ -102,6 +102,18 @@ final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
 
 传入 `http` 或 `https` URL，插件会先下载到应用存储，再完成加载。
 
+## 🧭 官方模型还是自定义模型
+
+| 场景 | 推荐方式 |
+| --- | --- |
+| 想最快跑通接入 | 使用官方模型 ID，例如 `yolo26n` |
+| 你训练或导出了自己的模型 | 使用自定义资源或本地文件 |
+| 不同客户或环境需要不同模型 | 使用远程 URL |
+| 希望插件自动推断 `task` | 使用带元数据的导出模型 |
+| 你的导出模型没有元数据 | 自定义模型并显式传入 `task` |
+
+官方模型先看 `YOLO.officialModels()`；自定义模型则直接从你准备实际交付的导出文件开始。
+
 ## 📥 把你自己的模型放进应用
 
 对于自定义模型，应用侧配置应尽量简单：
@@ -148,6 +160,16 @@ YOLOView(
 
 await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 ```
+
+## 🧩 推荐接入模式
+
+| 应用类型 | 推荐模型加载方式 |
+| --- | --- |
+| 实时相机场景 | `YOLOView(modelPath: 'yolo26n')` |
+| 图库或单图推理流程 | `YOLO(modelPath: 'yolo26n')` |
+| 应用内置自定义模型 | `YOLO(modelPath: 'assets/models/custom.tflite')` |
+| 同时支持 CoreML 与 TFLite 的跨平台应用 | 使用各平台对应导出文件，并让元数据决定 `task` |
+| 运行时动态切换模型 | `YOLOViewController.switchModel(...)` |
 
 ## 📚 文档
 

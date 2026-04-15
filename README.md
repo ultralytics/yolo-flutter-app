@@ -102,6 +102,18 @@ If the exported model includes metadata, the plugin infers `task` automatically.
 
 Pass an `http` or `https` URL and the plugin will download it into app storage before loading it.
 
+## 🧭 Official Vs Custom
+
+| Use case | Recommended path |
+| --- | --- |
+| Fastest first integration | Official model ID like `yolo26n` |
+| You trained or exported your own model | Custom asset or local file |
+| You ship different models per customer or environment | Remote URL |
+| You need the plugin to infer `task` automatically | Any export with metadata |
+| You have an older or stripped export without metadata | Custom model plus explicit `task` |
+
+For official models, start with `YOLO.officialModels()`. For custom models, start with the exported file you actually plan to ship.
+
 ## 📥 Drop Your Own Model Into an App
 
 For custom models, keep the app-side setup minimal.
@@ -148,6 +160,16 @@ YOLOView(
 
 await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 ```
+
+## 🧩 Recommended Patterns
+
+| App type | Model loading pattern |
+| --- | --- |
+| Live camera app | `YOLOView(modelPath: 'yolo26n')` |
+| Photo picker or gallery workflow | `YOLO(modelPath: 'yolo26n')` |
+| App with your own bundled model | `YOLO(modelPath: 'assets/models/custom.tflite')` |
+| Cross-platform CoreML + TFLite app | Use platform-appropriate exported assets and let metadata drive `task` |
+| App that changes models at runtime | `YOLOViewController.switchModel(...)` |
 
 ## 📚 Documentation
 

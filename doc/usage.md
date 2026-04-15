@@ -193,6 +193,51 @@ Keep this for real cases such as:
 
 If you only need one active model, keep a single instance.
 
+## 🧱 End-To-End Examples
+
+### 1. Camera-first app with the default official model
+
+```dart
+class LiveDetectionScreen extends StatelessWidget {
+  final controller = YOLOViewController();
+
+  @override
+  Widget build(BuildContext context) {
+    return YOLOView(
+      modelPath: 'yolo26n',
+      controller: controller,
+      onResult: (results) {
+        if (results.isNotEmpty) {
+          print(results.first.className);
+        }
+      },
+    );
+  }
+}
+```
+
+### 2. Photo picker flow with a custom bundled model
+
+```dart
+final yolo = YOLO(
+  modelPath: 'assets/models/custom-seg.tflite',
+  task: YOLOTask.segment,
+);
+
+await yolo.loadModel();
+final results = await yolo.predict(imageBytes);
+final masks = results['boxes'] ?? [];
+```
+
+### 3. Runtime switching between an official model and a custom export
+
+```dart
+final controller = YOLOViewController();
+
+await controller.switchModel('yolo26n');
+await controller.switchModel('assets/models/custom-pose.tflite', YOLOTask.pose);
+```
+
 ## ✅ Practical Guidance
 
 - Start with an official ID when you want the fewest moving parts.
