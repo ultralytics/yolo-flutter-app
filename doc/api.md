@@ -518,22 +518,24 @@ class YOLOResult {
   final double confidence;
   final Rect boundingBox;
   final Rect normalizedBox;
-  final List<Offset>? keypoints;
-  final Uint8List? mask;
+  final List<List<double>>? mask;
+  final List<Point>? keypoints;
+  final double? angle;
 }
 ```
 
 #### Properties
 
-| Property        | Type            | Description                           |
-| --------------- | --------------- | ------------------------------------- |
-| `classIndex`    | `int`           | Class index in the model              |
-| `className`     | `String`        | Human-readable class name             |
-| `confidence`    | `double`        | Detection confidence (0.0-1.0)        |
-| `boundingBox`   | `Rect`          | Bounding box in pixel coordinates     |
-| `normalizedBox` | `Rect`          | Normalized bounding box (0.0-1.0)     |
-| `keypoints`     | `List<Offset>?` | Pose keypoints (pose task only)       |
-| `mask`          | `Uint8List?`    | Segmentation mask (segment task only) |
+| Property        | Type                  | Description                                 |
+| --------------- | --------------------- | ------------------------------------------- |
+| `classIndex`    | `int`                 | Class index in the model                    |
+| `className`     | `String`              | Human-readable class name                   |
+| `confidence`    | `double`              | Detection confidence (0.0-1.0)              |
+| `boundingBox`   | `Rect`                | Bounding box in pixel coordinates           |
+| `normalizedBox` | `Rect`                | Normalized bounding box (0.0-1.0)           |
+| `mask`          | `List<List<double>>?` | Segmentation mask data (segment task only)  |
+| `keypoints`     | `List<Point>?`        | Pose keypoints (pose task only)             |
+| `angle`         | `double?`             | OBB rotation angle in radians (OBB only)    |
 
 ---
 

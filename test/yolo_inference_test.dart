@@ -203,5 +203,39 @@ void main() {
         arguments: {'image': imageBytes},
       );
     });
+
+    test('predict includes OBB angle in detections', () async {
+      final inference = YOLOInference(
+        channel: YOLOTestHelpers.setupMockChannel(
+          customResponses: {
+            'predictSingleImage': (_) => {
+              'obb': [
+                {
+                  'points': [
+                    {'x': 0.1, 'y': 0.1},
+                    {'x': 0.2, 'y': 0.1},
+                    {'x': 0.2, 'y': 0.2},
+                    {'x': 0.1, 'y': 0.2},
+                  ],
+                  'class': 'ship',
+                  'confidence': 0.88,
+                  'angle': 0.5235987756,
+                },
+              ],
+            },
+          },
+        ),
+        instanceId: 'test_instance',
+        task: YOLOTask.obb,
+      );
+
+      final result = await inference.predict(Uint8List.fromList([1, 2, 3]));
+      final first =
+          (result['detections'] as List<dynamic>).first as Map<String, dynamic>;
+
+      expect(first['className'], 'ship');
+      expect(first['confidence'], 0.88);
+      expect(first['angle'], closeTo(0.5235987756, 1e-9));
+    });
   });
 }

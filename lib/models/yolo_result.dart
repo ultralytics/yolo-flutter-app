@@ -74,6 +74,11 @@ class YOLOResult {
   /// and ranges from 0.0 to 1.0.
   final List<double>? keypointConfidences;
 
+  /// The rotation angle for oriented bounding boxes in radians.
+  ///
+  /// Only available when using OBB models (YOLOTask.obb).
+  final double? angle;
+
   YOLOResult({
     required this.classIndex,
     required this.className,
@@ -83,6 +88,7 @@ class YOLOResult {
     this.mask,
     this.keypoints,
     this.keypointConfidences,
+    this.angle,
   });
 
   /// Creates a [YOLOResult] from a map representation.
@@ -130,6 +136,8 @@ class YOLOResult {
       keypointConfidences = keypointResult.confidences;
     }
 
+    final angle = map['angle'] is num ? (map['angle'] as num).toDouble() : null;
+
     return YOLOResult(
       classIndex: classIndex,
       className: className,
@@ -139,6 +147,7 @@ class YOLOResult {
       mask: mask,
       keypoints: keypoints,
       keypointConfidences: keypointConfidences,
+      angle: angle,
     );
   }
 
@@ -173,6 +182,10 @@ class YOLOResult {
         keypointsData.add(keypointConfidences![i]);
       }
       map['keypoints'] = keypointsData;
+    }
+
+    if (angle != null) {
+      map['angle'] = angle;
     }
 
     return map;

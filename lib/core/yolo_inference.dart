@@ -246,6 +246,10 @@ class YOLOInference {
             },
           };
 
+          if (obbMap['angle'] is num) {
+            detection['angle'] = (obbMap['angle'] as num).toDouble();
+          }
+
           detections.add(detection);
         }
       }
