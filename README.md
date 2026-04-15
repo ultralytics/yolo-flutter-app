@@ -151,15 +151,15 @@ await controller.switchModel('yolo11n');
 
 ## Documentation
 
-| Guide                                              | Description                                |
-| -------------------------------------------------- | ------------------------------------------ |
-| **[Installation Guide](doc/install.md)**           | Requirements and platform setup            |
-| **[Quick Start](doc/quickstart.md)**               | Minimal setup for the first working app    |
-| **[Model Guide](doc/models.md)**                   | Official models, custom models, export flow |
-| **[Usage Guide](doc/usage.md)**                    | Common app patterns and examples           |
-| **[API Reference](doc/api.md)**                    | Full API surface                           |
-| **[Performance Guide](doc/performance.md)**        | Tuning and performance controls            |
-| **[Troubleshooting](doc/troubleshooting.md)**      | Common problems and fixes                  |
+| Guide                                         | Description                                 |
+| --------------------------------------------- | ------------------------------------------- |
+| **[Installation Guide](doc/install.md)**      | Requirements and platform setup             |
+| **[Quick Start](doc/quickstart.md)**          | Minimal setup for the first working app     |
+| **[Model Guide](doc/models.md)**              | Official models, custom models, export flow |
+| **[Usage Guide](doc/usage.md)**               | Common app patterns and examples            |
+| **[API Reference](doc/api.md)**               | Full API surface                            |
+| **[Performance Guide](doc/performance.md)**   | Tuning and performance controls             |
+| **[Troubleshooting](doc/troubleshooting.md)** | Common problems and fixes                   |
 
 ## 🤝 Community & Support
 
