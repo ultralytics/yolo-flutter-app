@@ -1,5 +1,7 @@
 ## 0.2.0
 
+- **Feature**: YOLO26 model release — `yolo26*` CoreML (`.mlpackage`) and TFLite (`.tflite`) artifacts published alongside YOLOv11 (#431, #432).
+- **Enhancement**: YOLO property and method surface updates (#428).
 - Documentation update for model downloads:
   - All model download links point to GitHub release `v0.2.0` (no bundled models).
   - Added YOLO26 references alongside YOLOv11 for both CoreML (`.mlpackage`) and TFLite (`.tflite`) artifacts.

@@ -33,8 +33,8 @@ Add to `pubspec.yaml`:
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.1.25
-  image_picker: ^0.8.7 # For image selection
+  ultralytics_yolo: ^0.2.0
+  image_picker: ^1.2.1 # For image selection
 ```
 
 Install dependencies:
@@ -53,7 +53,7 @@ You can get the model in one of the following ways:
 
 3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
 
-**[📥 Download Models](./install.md#models)** |
+**[📥 Download Models](./models.md)** |
 
 Bundle the model with your app using the following method.
 

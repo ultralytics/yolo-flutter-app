@@ -69,16 +69,16 @@ end
 
 #### Minimum SDK Version Error
 
-**Symptoms**: `uses-sdk:minSdkVersion 16 cannot be smaller than version 24`
+**Symptoms**: `uses-sdk:minSdkVersion 16 cannot be smaller than version 21`
 
 **Solution**: Update `android/app/build.gradle`:
 
 ```gradle
 android {
     defaultConfig {
-        minSdkVersion 24  // Change from 16 to 24
-        targetSdkVersion 34
-        compileSdkVersion 34
+        minSdkVersion 21  // Change from 16 to 21
+        targetSdkVersion 35
+        compileSdkVersion 35
     }
 }
 ```
@@ -291,7 +291,7 @@ await controller.switchModel(modelPath, YOLOTask.detect);
 - Model loading failed silently
 - Invalid model format
 
-**Solution**: As of version 0.1.25, the plugin supports camera-only mode. If model loading fails, camera will continue without inference. Check logs for model loading errors:
+**Solution**: The plugin supports camera-only mode. If model loading fails, camera will continue without inference. Check logs for model loading errors:
 
 ```
 iOS: "YOLOView Warning: Model file not found"
@@ -654,7 +654,7 @@ class DebugProfiler {
 Future<Map<String, dynamic>> collectDebugInfo() async {
   return {
     'flutter_version': 'Run: flutter --version',
-    'plugin_version': '0.1.25',
+    'plugin_version': '0.2.0',
     'platform': Platform.isIOS ? 'iOS' : 'Android',
     'model_path': 'yolo11n',
     'model_exists': await YOLO.checkModelExists('yolo11n'),
@@ -667,7 +667,7 @@ Future<Map<String, dynamic>> collectDebugInfo() async {
 ### Community Support
 
 - **Discord**: [Ultralytics Discord](https://discord.com/invite/ultralytics)
-- **GitHub Issues**: [Flutter Plugin Issues](https://github.com/ultralytics/ultralytics/issues)
+- **GitHub Issues**: [Flutter Plugin Issues](https://github.com/ultralytics/yolo-flutter-app/issues)
 - **Documentation**: [Official Docs](https://docs.ultralytics.com)
 
 ## 🎯 Quick Fixes Checklist

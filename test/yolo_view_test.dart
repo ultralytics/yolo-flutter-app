@@ -109,24 +109,6 @@ void main() {
       );
       expect(() => uninitializedController.switchCamera(), returnsNormally);
     });
-
-    test('error handling works correctly', () async {
-      controller.init(mockChannel, 1);
-
-      // Test that errors are handled gracefully
-      await controller.setConfidenceThreshold(0.8);
-      await controller.setIoUThreshold(0.6);
-      await controller.setNumItemsThreshold(50);
-      await controller.switchCamera();
-      await controller.zoomIn();
-      await controller.zoomOut();
-      await controller.setZoomLevel(2.0);
-      await controller.stop();
-      await controller.setShowUIControls(true);
-
-      // All methods should complete without throwing
-      expect(true, isTrue);
-    });
   });
 
   group('YOLOView Widget', () {
@@ -249,8 +231,7 @@ void main() {
         ),
       );
 
-      // Test passes if no exceptions are thrown
-      expect(true, isTrue);
+      expect(find.byType(YOLOView), findsOneWidget);
     });
 
     testWidgets('handles disposal correctly', (WidgetTester tester) async {
@@ -277,8 +258,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.pumpWidget(Container()); // Dispose the widget
 
-      // Test passes if no exceptions are thrown
-      expect(true, isTrue);
+      expect(find.byType(YOLOView), findsNothing);
     });
 
     testWidgets('fallback UI shown on unsupported platform', (

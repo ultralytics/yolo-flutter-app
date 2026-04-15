@@ -282,7 +282,6 @@ void main() {
 
       // Should not throw exception
       await manager.dispose();
-      expect(true, isTrue);
     });
 
     test('loadModel with default instance ID', () async {
