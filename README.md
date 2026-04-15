@@ -1,5 +1,7 @@
 <a href="https://www.ultralytics.com/"><img src="https://raw.githubusercontent.com/ultralytics/assets/main/logo/Ultralytics_Logotype_Original.svg" width="320" alt="Ultralytics logo"></a>
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 # 🚀 YOLO Flutter - Ultralytics Official Plugin
 
 [![Ultralytics Actions](https://github.com/ultralytics/yolo-flutter-app/actions/workflows/format.yml/badge.svg)](https://github.com/ultralytics/yolo-flutter-app/actions/workflows/format.yml)
@@ -55,7 +57,7 @@ YOLOView(
 | Task                | Description                    | Use Cases                     | Performance |
 | ------------------- | ------------------------------ | ----------------------------- | ----------- |
 | **Detection**       | Find objects & their locations | Security, Inventory, Shopping | 25-30 FPS   |
-| **Segmentation**    | Pixel-perfect object masks     | Photo editing,                | 15-25 FPS   |
+| **Segmentation**    | Pixel-perfect object masks     | Photo editing                 | 15-25 FPS   |
 | **Classification**  | Identify image categories      | Content moderation, Tagging   | 30+ FPS     |
 | **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture  | 20-30 FPS   |
 | **OBB Detection**   | Rotated bounding boxes         | Aerial imagery                | 20-25 FPS   |
@@ -85,7 +87,7 @@ You can get the model in one of the following ways:
 
 2. Get it from [Ultralytics HUB](https://www.ultralytics.com/hub)
 
-3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/ja/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
+3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
 
 For YOLO26, use the same steps and grab the `yolo26*` artifacts from the `v0.2.0` release (e.g., `yolo26n.tflite` / `yolo26n.mlpackage`).
 
@@ -188,69 +190,3 @@ Encountering issues or have feature requests related to Ultralytics YOLO? Please
   <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
   <a href="https://discord.com/invite/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-discord.png" width="3%" alt="Ultralytics Discord"></a>
 </div>
-```
-
-## 安装
-
-### 使用pip安装
-
-```bash
-pip install package-name
-```
-
-### 使用conda安装
-
-```bash
-conda install -c conda-forge package-name
-```
-
-### 从源码安装
-
-```bash
-git clone https://github.com/username/repo-name.git
-cd repo-name
-pip install -e .
-```
-
-## 使用示例
-
-### 基本用法
-
-```python
-import package_name
-
-# 初始化
-client = package_name.Client()
-
-# 调用功能
-result = client.process()
-print(f"结果: {result}")
-```
-
-### 高级用法
-
-```python
-# 配置参数
-config = {"setting": "value", "timeout": 30}
-
-client = package_name.Client(**config)
-```
-
-## 贡献指南
-
-欢迎贡献！请查看[CONTRIBUTING.md](CONTRIBUTING.md)了解详细指南。
-
-### 开发流程
-
-1. Fork本仓库
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建Pull Request
-
-### 代码规范
-
-- 遵循PEP 8 (Python)或相应语言规范
-- 添加适当的注释
-- 编写测试用例
-- 更新相关文档
