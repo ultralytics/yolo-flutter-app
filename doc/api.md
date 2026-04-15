@@ -40,13 +40,13 @@ class YOLO {
 
 #### Properties
 
-| Property        | Type        | Description                              |
-| --------------- | ----------- | ---------------------------------------- |
-| `instanceId`    | `String`    | Unique identifier for this YOLO instance |
-| `isInitialized` | `bool`      | Whether the model has been loaded        |
+| Property        | Type        | Description                                        |
+| --------------- | ----------- | -------------------------------------------------- |
+| `instanceId`    | `String`    | Unique identifier for this YOLO instance           |
+| `isInitialized` | `bool`      | Whether the model has been loaded                  |
 | `modelPath`     | `String`    | Original model reference passed to the constructor |
-| `task`          | `YOLOTask?` | Requested task type, if provided         |
-| `useGpu`        | `bool`      | Whether GPU acceleration is enabled      |
+| `task`          | `YOLOTask?` | Requested task type, if provided                   |
+| `useGpu`        | `bool`      | Whether GPU acceleration is enabled                |
 
 #### Methods
 

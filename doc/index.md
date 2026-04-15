@@ -21,13 +21,13 @@ The plugin is built around one model-loading flow:
 
 ## 🚀 What It Supports
 
-| Task                     | Android | iOS |
-| ------------------------ | ------- | --- |
-| Object Detection         | ✅      | ✅  |
-| Instance Segmentation    | ✅      | ✅  |
-| Image Classification     | ✅      | ✅  |
-| Pose Estimation          | ✅      | ✅  |
-| Oriented Bounding Boxes  | ✅      | ✅  |
+| Task                    | Android | iOS |
+| ----------------------- | ------- | --- |
+| Object Detection        | ✅      | ✅  |
+| Instance Segmentation   | ✅      | ✅  |
+| Image Classification    | ✅      | ✅  |
+| Pose Estimation         | ✅      | ✅  |
+| Oriented Bounding Boxes | ✅      | ✅  |
 
 ## 🎯 Default Flow
 
