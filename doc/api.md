@@ -536,16 +536,16 @@ class YOLOResult {
 
 #### Properties
 
-| Property        | Type                  | Description                                 |
-| --------------- | --------------------- | ------------------------------------------- |
-| `classIndex`    | `int`                 | Class index in the model                    |
-| `className`     | `String`              | Human-readable class name                   |
-| `confidence`    | `double`              | Detection confidence (0.0-1.0)              |
-| `boundingBox`   | `Rect`                | Bounding box in pixel coordinates           |
-| `normalizedBox` | `Rect`                | Normalized bounding box (0.0-1.0)           |
-| `mask`          | `List<List<double>>?` | Segmentation mask data (segment task only)  |
-| `keypoints`     | `List<Point>?`        | Pose keypoints (pose task only)             |
-| `angle`         | `double?`             | OBB rotation angle in radians (OBB only)    |
+| Property        | Type                  | Description                                |
+| --------------- | --------------------- | ------------------------------------------ |
+| `classIndex`    | `int`                 | Class index in the model                   |
+| `className`     | `String`              | Human-readable class name                  |
+| `confidence`    | `double`              | Detection confidence (0.0-1.0)             |
+| `boundingBox`   | `Rect`                | Bounding box in pixel coordinates          |
+| `normalizedBox` | `Rect`                | Normalized bounding box (0.0-1.0)          |
+| `mask`          | `List<List<double>>?` | Segmentation mask data (segment task only) |
+| `keypoints`     | `List<Point>?`        | Pose keypoints (pose task only)            |
+| `angle`         | `double?`             | OBB rotation angle in radians (OBB only)   |
 
 ---
 
