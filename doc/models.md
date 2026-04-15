@@ -19,15 +19,14 @@ Complete guide for integrating YOLO models into your Flutter app with support fo
 
 ### Option 1: Use Official Model IDs
 
-The plugin can download the latest official release artifact for these IDs automatically:
+The plugin can download the latest official release artifact for the current platform automatically:
 
 ```dart
 final detector = YOLO(modelPath: 'yolo26n');
-final segmenter = YOLO(modelPath: 'yolo26n-seg');
-final classifier = YOLO(modelPath: 'yolo26n-cls');
+final availableOfficialModels = YOLO.officialModels();
 ```
 
-The resolver downloads and caches the right platform artifact automatically.
+The resolver downloads and caches the right platform artifact automatically. `YOLO.officialModels()` only returns IDs that are actually downloadable on the running platform.
 
 ### Option 2: Ultralytics Hub
 
@@ -126,6 +125,22 @@ ios/
 ```dart
 final yolo = YOLO(
   modelPath: 'yolo26n',
+);
+```
+
+#### 3a. Use Flutter Assets Instead
+
+You can also bundle a zipped CoreML package in Flutter assets and skip the Xcode drag-and-drop step:
+
+```yaml
+flutter:
+  assets:
+    - assets/models/custom-yolo.mlpackage.zip
+```
+
+```dart
+final yolo = YOLO(
+  modelPath: 'assets/models/custom-yolo.mlpackage.zip',
 );
 ```
 

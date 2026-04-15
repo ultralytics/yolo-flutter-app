@@ -37,6 +37,9 @@ class CameraInferenceController extends ChangeNotifier {
   SliderType get activeSlider => _activeSlider;
   YOLOTask get selectedTask => _selectedTask;
   String get selectedModel => _selectedModel;
+  List<YOLOTask> get availableTasks => YOLOTask.values
+      .where((task) => YOLO.officialModels(task: task).isNotEmpty)
+      .toList(growable: false);
   List<String> get availableModels => YOLO.officialModels(task: _selectedTask);
   String get modelPath => _selectedModel;
   double get currentZoomLevel => _currentZoomLevel;
@@ -45,13 +48,12 @@ class CameraInferenceController extends ChangeNotifier {
   YOLOViewController get yoloController => _yoloController;
 
   static String _defaultModelForTask(YOLOTask task) {
-    final yolo26Models = YOLO
-        .officialModels(task: task)
+    final models = YOLO.officialModels(task: task);
+    final yolo26Models = models
         .where((model) => model.startsWith('yolo26n'))
-        .toList();
-    return yolo26Models.isNotEmpty
-        ? yolo26Models.first
-        : YOLO.officialModels(task: task).first;
+        .toList(growable: false);
+    if (yolo26Models.isNotEmpty) return yolo26Models.first;
+    return models.isEmpty ? '' : models.first;
   }
 
   Future<void> initialize() async {
@@ -159,7 +161,11 @@ class CameraInferenceController extends ChangeNotifier {
   }
 
   void changeTask(YOLOTask task) {
-    if (_isDisposed || _selectedTask == task) return;
+    if (_isDisposed ||
+        _selectedTask == task ||
+        !availableTasks.contains(task)) {
+      return;
+    }
     _selectedTask = task;
     _selectedModel = _defaultModelForTask(task);
     _detectionCount = 0;

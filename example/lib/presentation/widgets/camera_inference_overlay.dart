@@ -29,6 +29,7 @@ class CameraInferenceOverlay extends StatelessWidget {
           ModelSelector(
             selectedTask: controller.selectedTask,
             selectedModel: controller.selectedModel,
+            availableTasks: controller.availableTasks,
             availableModels: controller.availableModels,
             onTaskChanged: controller.changeTask,
             onModelChanged: controller.changeModel,

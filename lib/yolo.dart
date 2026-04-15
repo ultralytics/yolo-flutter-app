@@ -107,6 +107,7 @@ class YOLO {
     _channel = ChannelConfig.createSingleImageChannel(instanceId: _instanceId);
   }
 
+  /// Returns official model IDs that are downloadable on the current platform.
   static List<String> officialModels({YOLOTask? task}) =>
       YOLOModelResolver.officialModels(task: task);
 

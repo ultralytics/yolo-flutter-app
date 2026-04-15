@@ -82,8 +82,8 @@ flutter pub get
 
 The plugin now supports three model flows:
 
-1. Use an official model ID such as `yolo26n`, `yolo26n-seg`, or `yolo26s-pose`
-   The plugin downloads and caches the latest release artifact automatically.
+1. Use an official model ID such as `yolo26n`
+   The plugin downloads and caches the latest release artifact automatically. Call `YOLO.officialModels()` to see which IDs are available on the current platform.
 
 2. Pass a custom local model path or bundled asset
    The plugin reads exported metadata and infers the task when possible.
@@ -112,9 +112,9 @@ YOLO("yolo11n-seg.pt").export(format="coreml")
 
 Manual bundling is still supported:
 
-- iOS: drag `.mlpackage` or `.mlmodel` into **ios/Runner.xcworkspace**
+- iOS: either drag `.mlpackage` or `.mlmodel` into **ios/Runner.xcworkspace**, or bundle `.mlpackage.zip` in Flutter assets
 - Android: place `.tflite` files in **android/app/src/main/assets**
-- Flutter assets on Android: place them in `assets/models/` and let the plugin copy them to app storage automatically
+- Flutter assets: place `.tflite` on Android or `.mlpackage.zip` on iOS in `assets/models/`, then point `modelPath` at that asset path
 
 ### 4. Platform-Specific Setup
 

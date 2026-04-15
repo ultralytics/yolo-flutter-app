@@ -9,6 +9,7 @@ class ModelSelector extends StatelessWidget {
     super.key,
     required this.selectedTask,
     required this.selectedModel,
+    required this.availableTasks,
     required this.availableModels,
     required this.onTaskChanged,
     required this.onModelChanged,
@@ -16,6 +17,7 @@ class ModelSelector extends StatelessWidget {
 
   final YOLOTask selectedTask;
   final String selectedModel;
+  final List<YOLOTask> availableTasks;
   final List<String> availableModels;
   final ValueChanged<YOLOTask> onTaskChanged;
   final ValueChanged<String> onModelChanged;
@@ -44,7 +46,7 @@ class ModelSelector extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            selectedModel.toUpperCase(),
+            (selectedModel.isEmpty ? 'NO MODEL' : selectedModel).toUpperCase(),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
@@ -55,6 +57,7 @@ class ModelSelector extends StatelessWidget {
           PopupMenuButton<String>(
             padding: EdgeInsets.zero,
             elevation: 2,
+            enabled: availableModels.isNotEmpty,
             onSelected: onModelChanged,
             itemBuilder: (_) => availableModels
                 .map(
@@ -83,7 +86,7 @@ class ModelSelector extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: YOLOTask.values.map((task) {
+          children: availableTasks.map((task) {
             final isSelected = selectedTask == task;
             return GestureDetector(
               onTap: () {

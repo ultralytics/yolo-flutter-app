@@ -9,6 +9,20 @@ import 'package:ultralytics_yolo/config/channel_config.dart';
 import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 
+class _OfficialModelArtifact {
+  const _OfficialModelArtifact({
+    required this.id,
+    required this.task,
+    this.androidAssetName,
+    this.iosArchiveName,
+  });
+
+  final String id;
+  final YOLOTask task;
+  final String? androidAssetName;
+  final String? iosArchiveName;
+}
+
 class YOLOResolvedModel {
   const YOLOResolvedModel({
     required this.modelPath,
@@ -24,33 +38,113 @@ class YOLOResolvedModel {
 class YOLOModelResolver {
   static const String _latestReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-flutter-app/releases/latest/download';
+  static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
 
-  static final List<String> _officialModelIds = List.unmodifiable([
-    for (final family in ['yolo26', 'yolo11'])
-      for (final size in ['n', 's', 'm', 'l', 'x']) ...[
-        '$family$size',
-        '$family$size-seg',
-        '$family$size-cls',
-        '$family$size-pose',
-        '$family$size-obb',
-      ],
-  ]);
+  static const List<_OfficialModelArtifact> _officialModels = [
+    _OfficialModelArtifact(
+      id: 'yolo26n',
+      task: YOLOTask.detect,
+      androidAssetName: 'yolo26n_int8.tflite',
+      iosArchiveName: 'yolo26n.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26s',
+      task: YOLOTask.detect,
+      iosArchiveName: 'yolo26s.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26m',
+      task: YOLOTask.detect,
+      iosArchiveName: 'yolo26m.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26l',
+      task: YOLOTask.detect,
+      iosArchiveName: 'yolo26l.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26x',
+      task: YOLOTask.detect,
+      iosArchiveName: 'yolo26x.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26n-seg',
+      task: YOLOTask.segment,
+      androidAssetName: 'yolo26n-seg_int8.tflite',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26n-cls',
+      task: YOLOTask.classify,
+      androidAssetName: 'yolo26n-cls_int8.tflite',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26n-pose',
+      task: YOLOTask.pose,
+      androidAssetName: 'yolo26n-pose_int8.tflite',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26n-obb',
+      task: YOLOTask.obb,
+      androidAssetName: 'yolo26n-obb_int8.tflite',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo11n',
+      task: YOLOTask.detect,
+      androidAssetName: 'yolo11n.tflite',
+      iosArchiveName: 'yolo11n.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo11s',
+      task: YOLOTask.detect,
+      iosArchiveName: 'yolo11s.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo11m',
+      task: YOLOTask.detect,
+      iosArchiveName: 'yolo11m.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo11l',
+      task: YOLOTask.detect,
+      iosArchiveName: 'yolo11l.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo11x',
+      task: YOLOTask.detect,
+      iosArchiveName: 'yolo11x.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo11n-seg',
+      task: YOLOTask.segment,
+      androidAssetName: 'yolo11n-seg.tflite',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo11n-cls',
+      task: YOLOTask.classify,
+      androidAssetName: 'yolo11n-cls.tflite',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo11n-pose',
+      task: YOLOTask.pose,
+      androidAssetName: 'yolo11n-pose.tflite',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo11n-obb',
+      task: YOLOTask.obb,
+      androidAssetName: 'yolo11n-obb.tflite',
+    ),
+  ];
 
   static List<String> officialModels({YOLOTask? task}) {
-    if (task == null) return _officialModelIds;
-    return _officialModelIds.where((id) {
-      return switch (task) {
-        YOLOTask.detect => !id.contains('-'),
-        YOLOTask.segment => id.endsWith('-seg'),
-        YOLOTask.classify => id.endsWith('-cls'),
-        YOLOTask.pose => id.endsWith('-pose'),
-        YOLOTask.obb => id.endsWith('-obb'),
-      };
-    }).toList();
+    return _officialModels
+        .where((model) => task == null || model.task == task)
+        .where(_isAvailableOnCurrentPlatform)
+        .map((model) => model.id)
+        .toList(growable: false);
   }
 
   static bool isOfficialModel(String source) =>
-      _officialModelIds.contains(_normalizeOfficialModelId(source));
+      _officialModelForId(_normalizeOfficialModelId(source)) != null;
 
   static Future<YOLOResolvedModel> resolve({
     required String modelPath,
@@ -96,8 +190,8 @@ class YOLOModelResolver {
 
   static Future<String> _resolvePath(String source) async {
     final officialId = _normalizeOfficialModelId(source);
-    if (officialId != null && _officialModelIds.contains(officialId)) {
-      return _resolveOfficialModel(officialId);
+    if (_officialModelForId(officialId) != null) {
+      return _resolveOfficialModel(officialId!);
     }
 
     final uri = Uri.tryParse(source);
@@ -105,8 +199,10 @@ class YOLOModelResolver {
       return _downloadRemoteModel(uri);
     }
 
-    if (Platform.isAndroid && source.startsWith('assets/')) {
-      return _copyFlutterAssetToDocuments(source);
+    if (source.startsWith('assets/')) {
+      return _isIosLikePlatform
+          ? _resolveIosFlutterAsset(source)
+          : _copyFlutterAssetToDocuments(source);
     }
 
     return source;
@@ -123,14 +219,40 @@ class YOLOModelResolver {
     return normalized.isEmpty ? null : normalized;
   }
 
-  static Future<String> _resolveOfficialModel(String modelId) async {
-    return Platform.isIOS
-        ? _resolveIosOfficialModel(modelId)
-        : _resolveAndroidOfficialModel(modelId);
+  static _OfficialModelArtifact? _officialModelForId(String? modelId) {
+    if (modelId == null) return null;
+    for (final model in _officialModels) {
+      if (model.id == modelId) return model;
+    }
+    return null;
   }
 
-  static Future<String> _resolveAndroidOfficialModel(String modelId) async {
-    final filename = '$modelId.tflite';
+  static bool _isAvailableOnCurrentPlatform(_OfficialModelArtifact model) {
+    if (Platform.isAndroid) return model.androidAssetName != null;
+    if (_isIosLikePlatform) return model.iosArchiveName != null;
+    return model.androidAssetName != null || model.iosArchiveName != null;
+  }
+
+  static Future<String> _resolveOfficialModel(String modelId) async {
+    final artifact = _officialModelForId(modelId);
+    if (artifact == null) {
+      throw ModelLoadingException('Unsupported official model: $modelId');
+    }
+
+    return _isIosLikePlatform
+        ? _resolveIosOfficialModel(artifact)
+        : _resolveAndroidOfficialModel(artifact);
+  }
+
+  static Future<String> _resolveAndroidOfficialModel(
+    _OfficialModelArtifact artifact,
+  ) async {
+    final filename = artifact.androidAssetName;
+    if (filename == null) {
+      throw ModelLoadingException(
+        'Official model ${artifact.id} is not available on Android.',
+      );
+    }
     final directory = await getApplicationDocumentsDirectory();
     final modelFile = File('${directory.path}/$filename');
     if (modelFile.existsSync()) return modelFile.path;
@@ -143,50 +265,67 @@ class YOLOModelResolver {
     return modelFile.path;
   }
 
-  static Future<String> _resolveIosOfficialModel(String modelId) async {
+  static Future<String> _resolveIosOfficialModel(
+    _OfficialModelArtifact artifact,
+  ) async {
+    final archiveName = artifact.iosArchiveName;
+    if (archiveName == null) {
+      throw ModelLoadingException(
+        'Official model ${artifact.id} is not available on iOS.',
+      );
+    }
     final directory = await getApplicationDocumentsDirectory();
-    final modelDir = Directory('${directory.path}/$modelId.mlpackage');
+    final modelDir = Directory('${directory.path}/${artifact.id}.mlpackage');
     if (await _hasValidMlPackage(modelDir)) return modelDir.path;
     if (modelDir.existsSync()) {
       modelDir.deleteSync(recursive: true);
     }
 
-    final assetPath = 'assets/models/$modelId.mlpackage.zip';
+    final assetPath = 'assets/models/$archiveName';
     final assetBytes = await _loadAssetBytes(assetPath);
     if (assetBytes != null) {
       final extractedPath = await _extractMlPackageZip(assetBytes, modelDir);
       if (extractedPath != null) return extractedPath;
     }
 
-    final archiveFile = File('${directory.path}/$modelId.mlpackage.zip');
-    await _downloadToFile(
-      '$_latestReleaseBaseUrl/$modelId.mlpackage.zip',
-      archiveFile,
-    );
-    final bytes = archiveFile.readAsBytesSync();
-    final extractedPath = await _extractMlPackageZip(bytes, modelDir);
-    if (extractedPath == null) {
-      throw ModelLoadingException('Failed to extract $modelId.mlpackage.zip.');
+    final archiveFile = File('${directory.path}/$archiveName');
+    await _downloadToFile('$_latestReleaseBaseUrl/$archiveName', archiveFile);
+    try {
+      final bytes = archiveFile.readAsBytesSync();
+      final extractedPath = await _extractMlPackageZip(bytes, modelDir);
+      if (extractedPath == null) {
+        throw ModelLoadingException('Failed to extract $archiveName.');
+      }
+      return extractedPath;
+    } finally {
+      if (archiveFile.existsSync()) {
+        archiveFile.deleteSync();
+      }
     }
-    return extractedPath;
   }
 
   static Future<String> _downloadRemoteModel(Uri uri) async {
     final documents = await getApplicationDocumentsDirectory();
     final fileName = uri.pathSegments.isEmpty ? 'model' : uri.pathSegments.last;
 
-    if (Platform.isIOS && fileName.endsWith('.mlpackage.zip')) {
+    if (_isIosLikePlatform && fileName.endsWith('.mlpackage.zip')) {
       final modelName = fileName.replaceAll('.mlpackage.zip', '');
       final targetDir = Directory('${documents.path}/$modelName.mlpackage');
       if (await _hasValidMlPackage(targetDir)) return targetDir.path;
       final archiveFile = File('${documents.path}/$fileName');
       await _downloadToFile(uri.toString(), archiveFile);
-      final bytes = archiveFile.readAsBytesSync();
-      final extractedPath = await _extractMlPackageZip(bytes, targetDir);
-      if (extractedPath == null) {
-        throw ModelLoadingException('Failed to extract $fileName.');
+      try {
+        final bytes = archiveFile.readAsBytesSync();
+        final extractedPath = await _extractMlPackageZip(bytes, targetDir);
+        if (extractedPath == null) {
+          throw ModelLoadingException('Failed to extract $fileName.');
+        }
+        return extractedPath;
+      } finally {
+        if (archiveFile.existsSync()) {
+          archiveFile.deleteSync();
+        }
       }
-      return extractedPath;
     }
 
     final file = File('${documents.path}/$fileName');
@@ -208,6 +347,29 @@ class YOLOModelResolver {
 
     file.writeAsBytesSync(assetBytes, flush: true);
     return file.path;
+  }
+
+  static Future<String> _resolveIosFlutterAsset(String assetPath) async {
+    if (assetPath.endsWith('.mlpackage.zip')) {
+      final fileName = assetPath.split('/').last;
+      final modelName = fileName.replaceAll('.mlpackage.zip', '');
+      final directory = await getApplicationDocumentsDirectory();
+      final modelDir = Directory('${directory.path}/$modelName.mlpackage');
+      if (await _hasValidMlPackage(modelDir)) return modelDir.path;
+
+      final assetBytes = await _loadAssetBytes(assetPath);
+      if (assetBytes == null) {
+        throw ModelLoadingException('Flutter asset not found: $assetPath');
+      }
+
+      final extractedPath = await _extractMlPackageZip(assetBytes, modelDir);
+      if (extractedPath == null) {
+        throw ModelLoadingException('Failed to extract $assetPath.');
+      }
+      return extractedPath;
+    }
+
+    return assetPath;
   }
 
   static Future<bool> _copyFlutterAssetIfExists(
@@ -233,7 +395,11 @@ class YOLOModelResolver {
   static Future<void> _downloadToFile(String url, File targetFile) async {
     targetFile.parent.createSync(recursive: true);
     final client = HttpClient();
+    final temporaryFile = File('${targetFile.path}.download');
     try {
+      if (temporaryFile.existsSync()) {
+        temporaryFile.deleteSync();
+      }
       final request = await client.getUrl(Uri.parse(url));
       final response = await request.close();
       if (response.statusCode != HttpStatus.ok) {
@@ -241,8 +407,21 @@ class YOLOModelResolver {
           'Failed to download model from $url (HTTP ${response.statusCode}).',
         );
       }
-      final sink = targetFile.openWrite();
-      await response.pipe(sink);
+      final sink = temporaryFile.openWrite();
+      try {
+        await response.pipe(sink);
+      } finally {
+        await sink.close();
+      }
+      if (targetFile.existsSync()) {
+        targetFile.deleteSync();
+      }
+      temporaryFile.renameSync(targetFile.path);
+    } catch (_) {
+      if (temporaryFile.existsSync()) {
+        temporaryFile.deleteSync();
+      }
+      rethrow;
     } finally {
       client.close(force: true);
     }
@@ -281,7 +460,7 @@ class YOLOModelResolver {
       }
 
       for (final file in archive) {
-        var relativePath = file.name;
+        var relativePath = file.name.replaceAll('\\', '/');
         if (prefix != null) {
           if (relativePath.startsWith(prefix)) {
             relativePath = relativePath.substring(prefix.length);
@@ -290,7 +469,19 @@ class YOLOModelResolver {
           }
         }
         if (relativePath.isEmpty || !file.isFile) continue;
-        final outputFile = File('${targetDir.path}/$relativePath');
+        final rootPath = targetDir.absolute.path;
+        final rootPrefix = rootPath.endsWith(Platform.pathSeparator)
+            ? rootPath
+            : '$rootPath${Platform.pathSeparator}';
+        final normalizedOutputPath = targetDir.uri
+            .resolve(relativePath)
+            .toFilePath();
+        if (!normalizedOutputPath.startsWith(rootPrefix)) {
+          throw ModelLoadingException(
+            'Invalid archive entry outside target directory: $relativePath',
+          );
+        }
+        final outputFile = File(normalizedOutputPath);
         outputFile.parent.createSync(recursive: true);
         outputFile.writeAsBytesSync(file.content as List<int>, flush: true);
       }

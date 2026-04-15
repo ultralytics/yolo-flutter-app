@@ -43,7 +43,7 @@ final yolo = YOLO(modelPath: 'yolo26n');
 Get pixel-perfect masks for each detected object.
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo26n-seg');
+final yolo = YOLO(modelPath: 'assets/models/custom-seg.tflite');
 ```
 
 ### 🏷️ Classification
@@ -51,7 +51,7 @@ final yolo = YOLO(modelPath: 'yolo26n-seg');
 Classify entire images into categories.
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo26n-cls');
+final yolo = YOLO(modelPath: 'assets/models/custom-cls.tflite');
 ```
 
 ### 🤸 Pose Estimation
@@ -59,7 +59,7 @@ final yolo = YOLO(modelPath: 'yolo26n-cls');
 Detect human poses and keypoints.
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo26n-pose');
+final yolo = YOLO(modelPath: 'assets/models/custom-pose.tflite');
 ```
 
 ### 📦 Oriented Bounding Box (OBB)
@@ -67,7 +67,7 @@ final yolo = YOLO(modelPath: 'yolo26n-pose');
 Detect objects with rotated bounding boxes.
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo26n-obb');
+final yolo = YOLO(modelPath: 'assets/models/custom-obb.tflite');
 ```
 
 ## 📚 Documentation Navigation

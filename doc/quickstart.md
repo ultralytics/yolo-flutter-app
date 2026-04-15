@@ -45,7 +45,7 @@ flutter pub get
 
 ## 🎯 Step 3: Add a model
 
-The simplest path is to use an official model ID and let the plugin download it automatically.
+The simplest path is to use an official model ID and let the plugin download it automatically. Call `YOLO.officialModels()` to see which IDs are available on the current platform.
 
 ```dart
 final yolo = YOLO(modelPath: 'yolo26n');
@@ -53,9 +53,9 @@ final yolo = YOLO(modelPath: 'yolo26n');
 
 Custom local models are still supported:
 
-- iOS: drag `.mlpackage` or `.mlmodel` into **ios/Runner.xcworkspace**
+- iOS: drag `.mlpackage` or `.mlmodel` into **ios/Runner.xcworkspace**, or bundle `.mlpackage.zip` in Flutter assets
 - Android native assets: place `.tflite` files in **android/app/src/main/assets/**
-- Android Flutter assets: place `.tflite` files in `assets/models/` and the plugin will copy them to app storage automatically
+- Flutter assets: place `.tflite` on Android or `.mlpackage.zip` on iOS in `assets/models/` and use that asset path directly
 
 If your custom model metadata does not include `task`, pass it explicitly.
 

@@ -18,7 +18,7 @@ class SingleImageScreen extends StatefulWidget {
 
 class _SingleImageScreenState extends State<SingleImageScreen> {
   final _picker = ImagePicker();
-  final _yolo = YOLO(modelPath: 'yolo26n-seg');
+  final _yolo = YOLO(modelPath: 'yolo26n');
 
   List<Map<String, dynamic>> _detections = [];
   Uint8List? _imageBytes;
@@ -41,7 +41,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       if (!mounted) return;
       final error = YOLOErrorHandler.handleError(
         e,
-        'Failed to load yolo26n-seg for single-image inference',
+        'Failed to load yolo26n for single-image inference',
       );
       _showSnackBar('Error loading model: ${error.message}');
     }
@@ -108,7 +108,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(width: 10),
-                  Text('Preparing YOLO26 segmentation model...'),
+                  Text('Preparing YOLO26 model...'),
                 ],
               ),
             ),

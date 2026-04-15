@@ -68,7 +68,7 @@ class _YOLOViewState extends State<YOLOView> {
   StreamSubscription<dynamic>? _resultSubscription;
   YOLOResolvedModel? _resolvedModel;
   Object? _resolutionError;
-  Future<void>? _resolveFuture;
+  int _resolutionRequestId = 0;
 
   final String _viewId = UniqueKey().toString();
   int? _platformViewId;
@@ -209,25 +209,33 @@ class _YOLOViewState extends State<YOLOView> {
   }
 
   Future<void> _resolveModel({bool switchExisting = false}) async {
-    _resolveFuture ??= _performModelResolution(switchExisting: switchExisting);
-    try {
-      await _resolveFuture;
-    } finally {
-      _resolveFuture = null;
-    }
+    final requestId = ++_resolutionRequestId;
+    await _performModelResolution(
+      requestId: requestId,
+      switchExisting: switchExisting,
+      modelPath: widget.modelPath,
+      task: widget.task,
+    );
   }
 
-  Future<void> _performModelResolution({required bool switchExisting}) async {
-    setState(() {
-      _resolutionError = null;
-    });
+  Future<void> _performModelResolution({
+    required int requestId,
+    required bool switchExisting,
+    required String modelPath,
+    required YOLOTask? task,
+  }) async {
+    if (mounted) {
+      setState(() {
+        _resolutionError = null;
+      });
+    }
 
     try {
       final resolvedModel = await YOLOModelResolver.resolve(
-        modelPath: widget.modelPath,
-        task: widget.task,
+        modelPath: modelPath,
+        task: task,
       );
-      if (!mounted) return;
+      if (!mounted || requestId != _resolutionRequestId) return;
 
       final previousResolvedModel = _resolvedModel;
       final didChange =
@@ -245,10 +253,12 @@ class _YOLOViewState extends State<YOLOView> {
         );
       }
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || requestId != _resolutionRequestId) return;
       setState(() {
         _resolutionError = error;
-        _resolvedModel = null;
+        if (!switchExisting) {
+          _resolvedModel = null;
+        }
       });
     }
   }
