@@ -38,7 +38,8 @@ data class Probs(
     var top5Labels: List<String>,
     var top1Conf: Float,
     var top5Confs: List<Float>,
-    var top1Index: Int
+    var top1Index: Int,
+    var top5Indices: List<Int>
 )
 
 data class Keypoints(
