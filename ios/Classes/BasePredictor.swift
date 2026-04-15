@@ -102,7 +102,6 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         labelsData
         .components(separatedBy: ",")
         .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        .filter { !$0.isEmpty }
     }
 
     if let labelsData = userDefined["names"] {
@@ -113,14 +112,18 @@ public class BasePredictor: Predictor, @unchecked Sendable {
 
       let parsedPairs = cleanedInput.components(separatedBy: ",").compactMap {
         pair -> (Int?, String)? in
-        let components = pair.components(separatedBy: ":")
+        let components = pair.split(
+          separator: ":",
+          maxSplits: 1,
+          omittingEmptySubsequences: false
+        )
         guard components.count >= 2 else { return nil }
 
-        let key = Int(components[0].trimmingCharacters(in: .whitespacesAndNewlines))
-        let value = components[1]
+        let key = Int(String(components[0]).trimmingCharacters(in: .whitespacesAndNewlines))
+        let value = String(components[1])
           .trimmingCharacters(in: .whitespacesAndNewlines)
           .replacingOccurrences(of: "'", with: "")
-        return value.isEmpty ? nil : (key, value)
+        return (key, value)
       }
 
       let keyedLabels = parsedPairs.compactMap { key, value -> (Int, String)? in
@@ -128,7 +131,12 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         return (key, value)
       }
       if !keyedLabels.isEmpty {
-        return keyedLabels.sorted { $0.0 < $1.0 }.map { $0.1 }
+        let maxKey = keyedLabels.map(\.0).max() ?? -1
+        var labels = Array(repeating: "", count: maxKey + 1)
+        for (key, value) in keyedLabels {
+          labels[key] = value
+        }
+        return labels
       }
 
       return parsedPairs.map { $0.1 }
