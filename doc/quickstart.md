@@ -224,7 +224,7 @@ YOLOView(
 )
 
 // Later, switch to a different model
-await controller.switchModel('yolo26s', YOLOTask.detect);
+await controller.switchModel('yolo11n');
 ```
 
 ## 🎯 Multi-Instance Quick Example

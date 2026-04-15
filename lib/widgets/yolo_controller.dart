@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/services.dart';
+import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
@@ -161,11 +162,15 @@ class YOLOViewController {
     }
   }
 
-  Future<void> switchModel(String modelPath, YOLOTask task) async {
+  Future<void> switchModel(String modelPath, [YOLOTask? task]) async {
     if (_methodChannel != null && _viewId != null) {
+      final resolvedModel = await YOLOModelResolver.resolve(
+        modelPath: modelPath,
+        task: task,
+      );
       await _methodChannel!.invokeMethod('setModel', {
-        'modelPath': modelPath,
-        'task': task.name,
+        'modelPath': resolvedModel.modelPath,
+        'task': resolvedModel.task.name,
       });
     }
   }

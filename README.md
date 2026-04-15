@@ -12,9 +12,14 @@
 [![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
 [![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://www.reddit.com/r/ultralytics/)
 
-Welcome to the Ultralytics YOLO Flutter plugin! Integrate cutting-edge [Ultralytics YOLO](https://docs.ultralytics.com/) [computer vision](https://www.ultralytics.com/glossary/computer-vision-cv) models seamlessly into your Flutter mobile applications. This plugin at https://pub.dev/packages/ultralytics_yolo supports both Android and iOS platforms, offering APIs for [object detection](https://docs.ultralytics.com/tasks/detect/), [image classification](https://docs.ultralytics.com/tasks/classify/), [instance segmentation](https://docs.ultralytics.com/tasks/segment/), [pose estimation](https://docs.ultralytics.com/tasks/pose/), and [oriented bounding box detection](https://docs.ultralytics.com/tasks/obb/).
+Ultralytics YOLO Flutter is the official plugin for running YOLO models in Flutter apps on iOS and Android. It supports [detection](https://docs.ultralytics.com/tasks/detect/), [segmentation](https://docs.ultralytics.com/tasks/segment/), [classification](https://docs.ultralytics.com/tasks/classify/), [pose](https://docs.ultralytics.com/tasks/pose/), and [OBB](https://docs.ultralytics.com/tasks/obb/) with two simple entry points:
 
-**✨ Why Choose YOLO Flutter?**
+- `YOLO` for single-image inference
+- `YOLOView` for real-time camera inference
+
+The main goal is simple integration: use an official model ID, or drop in your own exported model and let the plugin resolve task metadata for you.
+
+## Why This Plugin
 
 | Feature         | Android | iOS |
 | --------------- | ------- | --- |
@@ -24,24 +29,34 @@ Welcome to the Ultralytics YOLO Flutter plugin! Integrate cutting-edge [Ultralyt
 | Pose Estimation | ✅      | ✅  |
 | OBB Detection   | ✅      | ✅  |
 
-- **Official Ultralytics Plugin** - Direct from YOLO creators
-- **Real-time Performance** - Up to 30 FPS on modern devices
-- **5 AI Tasks** - Detection, Segmentation, Classification, Pose, OBB
-- **Cross-platform** - iOS & Android with single codebase
-- **Production Ready** - Performance controls & optimization built-in
-- **Dynamic Model Loading** - Switch models on-the-fly without restarting camera
-- **Frame Capture** - Capture frames with detection overlays for sharing or saving
+- Official Ultralytics plugin
+- One Flutter API for both Android and iOS
+- Metadata-first model loading
+- Official model download and caching built in
+- Real-time camera inference and single-image inference
+- Production-ready controls for thresholds, GPU use, and streaming
 
-## ⚡ Quick Start (2 minutes)
+## Quick Start
+
+Install the package:
+
+```yaml
+dependencies:
+  ultralytics_yolo: ^0.2.0
+```
+
+```bash
+flutter pub get
+```
+
+Start with the default official model:
 
 ```dart
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
-// Add this widget and you're detecting objects!
 YOLOView(
   modelPath: 'yolo26n',
   onResult: (results) {
-    print('Found ${results.length} objects!');
     for (final result in results) {
       print('${result.className}: ${result.confidence}');
     }
@@ -49,96 +64,102 @@ YOLOView(
 )
 ```
 
-**[▶️ Try the Live Demo](./example)** | **[📖 Full Setup Guide](doc/install.md)**
-
-## 🎯 What You Can Build
-
-| Task                | Description                    | Use Cases                     | Performance |
-| ------------------- | ------------------------------ | ----------------------------- | ----------- |
-| **Detection**       | Find objects & their locations | Security, Inventory, Shopping | 25-30 FPS   |
-| **Segmentation**    | Pixel-perfect object masks     | Photo editing                 | 15-25 FPS   |
-| **Classification**  | Identify image categories      | Content moderation, Tagging   | 30+ FPS     |
-| **Pose Estimation** | Human pose & keypoints         | Fitness apps, Motion capture  | 20-30 FPS   |
-| **OBB Detection**   | Rotated bounding boxes         | Aerial imagery                | 20-25 FPS   |
-
-**[📱 See Examples →](doc/usage.md)** | **[⚡ Performance Guide →](doc/performance.md)**
-
-## 🚀 Installation
-
-### 1. Add to pubspec.yaml
-
-```yaml
-dependencies:
-  ultralytics_yolo: ^0.2.0
-```
-
-### 2. Install dependencies
-
-```bash
-flutter pub get
-```
-
-### 3. Add a model
-
-The plugin now supports three model flows:
-
-1. Use an official model ID such as `yolo26n`
-   The plugin downloads and caches the latest release artifact automatically. Call `YOLO.officialModels()` to see which IDs are available on the current platform.
-
-2. Pass a custom local model path or bundled asset
-   The plugin reads exported metadata and infers the task when possible.
-
-3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) or download it from [Ultralytics HUB](https://www.ultralytics.com/hub)
-   Custom models still work, and you can pass `task` explicitly when metadata is unavailable.
-
-YOLO26 is the default first-party path and works out of the box:
+For single-image inference:
 
 ```dart
 final yolo = YOLO(modelPath: 'yolo26n');
 await yolo.loadModel();
+final results = await yolo.predict(imageBytes);
 ```
 
-### Export Models for iOS
+**[▶️ Example App](./example)** | **[📖 Installation Guide](doc/install.md)** | **[⚡ Quick Start Guide](doc/quickstart.md)**
+
+## Model Loading
+
+The plugin supports three model flows.
+
+### 1. Official model IDs
+
+Use an official ID such as `yolo26n` and let the plugin handle download and caching:
+
+```dart
+final yolo = YOLO(modelPath: 'yolo26n');
+```
+
+Call `YOLO.officialModels()` to see which official IDs are available on the current platform.
+
+### 2. Your own exported model
+
+Pass a local path or Flutter asset path:
+
+```dart
+final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
+```
+
+If the exported model includes metadata, the plugin infers `task` automatically. If metadata is missing, pass `task` explicitly.
+
+### 3. Remote model URL
+
+Pass an `http` or `https` URL and the plugin will download it into app storage before loading it.
+
+## Drop Your Own Model Into an App
+
+For custom models, keep the app-side setup minimal.
+
+- Android native assets: place `.tflite` files in `android/app/src/main/assets`
+- Flutter assets on Android: place `.tflite` files in `assets/models/`
+- iOS bundle: drag `.mlpackage` or `.mlmodel` into `ios/Runner.xcworkspace`
+- Flutter assets on iOS: place `.mlpackage.zip` files in `assets/models/`
+
+Then point `modelPath` at that file or asset path.
+
+### iOS export note
+
+Detection models exported to CoreML must use `nms=True`:
 
 ```python
-# Detection REQUIRES nms=True
-YOLO("yolo11n.pt").export(format="coreml", nms=True)
+from ultralytics import YOLO
 
-# All other tasks use nms=False (default)
-YOLO("yolo11n-seg.pt").export(format="coreml")
+YOLO("yolo11n.pt").export(format="coreml", nms=True)
 ```
 
-**[📥 Model Guide](doc/models.md)**
+Other tasks can use the default export settings.
 
-Manual bundling is still supported:
+## Choose The Right API
 
-- iOS: either drag `.mlpackage` or `.mlmodel` into **ios/Runner.xcworkspace**, or bundle `.mlpackage.zip` in Flutter assets
-- Android: place `.tflite` files in **android/app/src/main/assets**
-- Flutter assets: place `.tflite` on Android or `.mlpackage.zip` on iOS in `assets/models/`, then point `modelPath` at that asset path
+Use `YOLO` when you already have image bytes and want one prediction at a time:
 
-### 4. Platform-Specific Setup
+```dart
+final yolo = YOLO(modelPath: 'yolo26n');
+await yolo.loadModel();
+final results = await yolo.predict(imageBytes);
+```
 
-**[🔧 Setup Guide](doc/install.md)**
+Use `YOLOView` when you want live camera inference:
 
-## 🏆 Trusted by Developers
+```dart
+final controller = YOLOViewController();
 
-- ✅ **Official Ultralytics Plugin** - Maintained by YOLO creators
-- ✅ **Production Tested** - Used in apps with many users
-- ✅ **Active Development** - Regular updates & feature additions
-- ✅ **Community Driven** - Open source with responsive support
+YOLOView(
+  modelPath: 'yolo26n',
+  controller: controller,
+  onResult: (results) {},
+)
 
-**Performance**: Up to 30 FPS on modern devices | **Model Size**: Optimized from 6MB | **Platforms**: iOS 13.0+ & Android API 21+
+await controller.switchModel('yolo11n');
+```
 
-## 📚 Documentation
+## Documentation
 
-| Guide                                              | Description                       | For             |
-| -------------------------------------------------- | --------------------------------- | --------------- |
-| **[Installation Guide](doc/install.md)**           | Installation, setup, requirements | New users       |
-| **[Quick Start](doc/quickstart.md)**               | 2-minute setup guide              | New users       |
-| **[Usage Guide](doc/usage.md)**                    | Common use cases & code samples   | All users       |
-| **[Performance Optimization](doc/performance.md)** | Inference control & tuning        | Production apps |
-| **[API Reference](doc/api.md)**                    | Complete technical reference      | Developers      |
-| **[Troubleshooting](doc/troubleshooting.md)**      | Common issues & solutions         | All users       |
+| Guide                                              | Description                                |
+| -------------------------------------------------- | ------------------------------------------ |
+| **[Installation Guide](doc/install.md)**           | Requirements and platform setup            |
+| **[Quick Start](doc/quickstart.md)**               | Minimal setup for the first working app    |
+| **[Model Guide](doc/models.md)**                   | Official models, custom models, export flow |
+| **[Usage Guide](doc/usage.md)**                    | Common app patterns and examples           |
+| **[API Reference](doc/api.md)**                    | Full API surface                           |
+| **[Performance Guide](doc/performance.md)**        | Tuning and performance controls            |
+| **[Troubleshooting](doc/troubleshooting.md)**      | Common problems and fixes                  |
 
 ## 🤝 Community & Support
 

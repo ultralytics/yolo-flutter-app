@@ -383,13 +383,13 @@ Future<void> setTorchMode(bool enabled)
 Dynamically switch to a different model without restarting the camera.
 
 ```dart
-Future<void> switchModel(String modelPath, YOLOTask task)
+Future<void> switchModel(String modelPath, [YOLOTask? task])
 ```
 
 Parameters:
 
 - `modelPath`: Path to the new model file
-- `task`: The YOLO task type for the new model
+- `task`: The YOLO task type when metadata is missing
 
 **Throws**:
 
@@ -401,17 +401,17 @@ Example:
 
 ```dart
 // Switch to a different model
-await controller.switchModel('yolo11s', YOLOTask.detect);
+await controller.switchModel('yolo11n');
 
 // Platform-specific paths
 await controller.switchModel(
-  Platform.isIOS ? 'yolo11s' : 'yolo11s.tflite',
+  Platform.isIOS ? 'MyModel.mlpackage' : 'MyModel.tflite',
   YOLOTask.detect,
 );
 
 // Handle errors
 try {
-  await controller.switchModel('new_model.tflite', YOLOTask.detect);
+  await controller.switchModel('new_model.tflite');
 } catch (e) {
   print('Failed to load model: $e');
 }

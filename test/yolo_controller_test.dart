@@ -2,6 +2,8 @@
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
+import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'utils/test_helpers.dart';
 
@@ -109,6 +111,40 @@ void main() {
         returnsNormally,
       );
       expect(() => uninitializedController.switchCamera(), returnsNormally);
+    });
+
+    test('switchModel resolves metadata before updating the view', () async {
+      controller.init(mockChannel, 1);
+
+      await controller.switchModel('test_model.tflite');
+
+      YOLOTestHelpers.assertMethodCalled(
+        log,
+        'setModel',
+        arguments: {'modelPath': 'test_model.tflite', 'task': 'detect'},
+      );
+      YOLOTestHelpers.assertMethodCalled(log, 'inspectModel');
+    });
+
+    test('switchModel surfaces metadata mismatch', () async {
+      final setup = YOLOTestHelpers.createYOLOTestSetup(
+        customResponses: {
+          'inspectModel': (_) => {
+            'path': 'test_model.tflite',
+            'task': 'segment',
+            'labels': ['person'],
+          },
+          'setModel': (_) => true,
+        },
+      );
+      mockChannel = setup.$1;
+      log = setup.$2;
+      controller.init(mockChannel, 1);
+
+      await expectLater(
+        controller.switchModel('test_model.tflite', YOLOTask.detect),
+        throwsA(isA<ModelLoadingException>()),
+      );
     });
   });
 }

@@ -12,9 +12,14 @@
 [![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
 [![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://www.reddit.com/r/ultralytics/)
 
-欢迎使用 Ultralytics YOLO Flutter 插件！你可以将先进的 [Ultralytics YOLO](https://docs.ultralytics.com/) [计算机视觉](https://www.ultralytics.com/glossary/computer-vision-cv)模型无缝集成到 Flutter 移动应用中。该插件发布于 https://pub.dev/packages/ultralytics_yolo ，同时支持 Android 和 iOS 平台，并提供[目标检测](https://docs.ultralytics.com/tasks/detect/)、[图像分类](https://docs.ultralytics.com/tasks/classify/)、[实例分割](https://docs.ultralytics.com/tasks/segment/)、[姿态估计](https://docs.ultralytics.com/tasks/pose/)和[旋转框检测](https://docs.ultralytics.com/tasks/obb/) API。
+Ultralytics YOLO Flutter 是官方 Flutter 插件，用于在 iOS 和 Android 应用中运行 YOLO 模型。它支持[目标检测](https://docs.ultralytics.com/tasks/detect/)、[实例分割](https://docs.ultralytics.com/tasks/segment/)、[图像分类](https://docs.ultralytics.com/tasks/classify/)、[姿态估计](https://docs.ultralytics.com/tasks/pose/)和[旋转框检测](https://docs.ultralytics.com/tasks/obb/)，并提供两种核心用法：
 
-**✨ 为什么选择 YOLO Flutter？**
+- `YOLO`：单张图片推理
+- `YOLOView`：实时相机推理
+
+这个插件的目标很直接：要么使用官方模型 ID，要么把你自己的导出模型丢进应用里，让插件自动解析任务元数据。
+
+## 为什么用这个插件
 
 | 功能     | Android | iOS |
 | -------- | ------- | --- |
@@ -24,25 +29,34 @@
 | 姿态估计 | ✅      | ✅  |
 | OBB 检测 | ✅      | ✅  |
 
-- **Ultralytics 官方插件** - 直接来自 YOLO 创建团队
-- **实时性能** - 在现代移动设备上可达 30 FPS
-- **5 类 AI 任务** - 检测、分割、分类、姿态、OBB
-- **跨平台** - 单一代码库同时支持 iOS 与 Android
-- **可用于生产环境** - 内置性能控制与优化能力
-- **动态模型加载** - 无需重启相机即可切换模型
-- **帧捕获** - 可捕获带检测叠加层的画面用于分享或保存
+- Ultralytics 官方插件
+- 一套 Flutter API 同时覆盖 Android 和 iOS
+- 基于模型元数据的加载流程
+- 内置官方模型下载与缓存
+- 同时支持实时相机推理和单图推理
+- 提供阈值、GPU、流式数据等生产环境能力
 
-## ⚡ 快速开始（2 分钟）
+## 快速开始
+
+安装插件：
+
+```yaml
+dependencies:
+  ultralytics_yolo: ^0.2.0
+```
+
+```bash
+flutter pub get
+```
+
+先用默认官方模型跑起来：
 
 ```dart
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
-// 添加这个 widget 即可开始目标检测
 YOLOView(
-  modelPath: 'yolo11n',
-  task: YOLOTask.detect,
+  modelPath: 'yolo26n',
   onResult: (results) {
-    print('Found ${results.length} objects!');
     for (final result in results) {
       print('${result.className}: ${result.confidence}');
     }
@@ -50,86 +64,102 @@ YOLOView(
 )
 ```
 
-**[▶️ 体验在线示例](./example)** | **[📖 完整安装指南](doc/install.md)**
+单图推理示例：
 
-## 🎯 你可以构建什么
-
-| 任务         | 描述             | 使用场景           | 性能      |
-| ------------ | ---------------- | ------------------ | --------- |
-| **检测**     | 发现目标及其位置 | 安防、库存、购物   | 25-30 FPS |
-| **分割**     | 像素级目标掩码   | 图片编辑           | 15-25 FPS |
-| **分类**     | 识别图像类别     | 内容审核、自动标注 | 30+ FPS   |
-| **姿态估计** | 人体姿态与关键点 | 健身应用、动作捕捉 | 20-30 FPS |
-| **OBB 检测** | 旋转边界框检测   | 航拍图像           | 20-25 FPS |
-
-**[📱 查看示例 →](doc/usage.md)** | **[⚡ 性能指南 →](doc/performance.md)**
-
-## 🚀 安装
-
-### 1. 添加到 `pubspec.yaml`
-
-```yaml
-dependencies:
-  ultralytics_yolo: ^0.2.0
+```dart
+final yolo = YOLO(modelPath: 'yolo26n');
+await yolo.loadModel();
+final results = await yolo.predict(imageBytes);
 ```
 
-### 2. 安装依赖
+**[▶️ 示例应用](./example)** | **[📖 安装指南](doc/install.md)** | **[⚡ 快速开始文档](doc/quickstart.md)**
 
-```bash
-flutter pub get
+## 模型加载方式
+
+插件支持三种模型来源。
+
+### 1. 官方模型 ID
+
+直接使用官方 ID，例如 `yolo26n`：
+
+```dart
+final yolo = YOLO(modelPath: 'yolo26n');
 ```
 
-### 3. 添加模型
+插件会自动下载并缓存当前平台对应的官方产物。可通过 `YOLO.officialModels()` 查看当前平台可用的官方 ID。
 
-你可以通过以下任一方式获取模型：
+### 2. 你自己的导出模型
 
-1. 从本仓库的 [release assets](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0) 下载
-2. 从 [Ultralytics HUB](https://www.ultralytics.com/hub) 获取
-3. 通过 [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) 导出（[CoreML](https://docs.ultralytics.com/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/)）
+传入本地路径或 Flutter 资源路径：
 
-对于 YOLO26，使用相同步骤并从 `v0.2.0` release 中获取 `yolo26*` 产物即可，例如 `yolo26n.tflite` 或 `yolo26n.mlpackage`。
+```dart
+final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
+```
 
-### 为 iOS 导出模型
+如果模型导出时带有元数据，插件会自动推断 `task`。如果没有，就显式传入 `task`。
+
+### 3. 远程模型 URL
+
+传入 `http` 或 `https` URL，插件会先下载到应用存储，再完成加载。
+
+## 把你自己的模型放进应用
+
+对于自定义模型，应用侧配置应尽量简单：
+
+- Android 原生资源：把 `.tflite` 放到 `android/app/src/main/assets`
+- Android Flutter 资源：把 `.tflite` 放到 `assets/models/`
+- iOS 工程资源：把 `.mlpackage` 或 `.mlmodel` 拖进 `ios/Runner.xcworkspace`
+- iOS Flutter 资源：把 `.mlpackage.zip` 放到 `assets/models/`
+
+然后把对应路径传给 `modelPath` 即可。
+
+### iOS 导出注意事项
+
+导出 CoreML 检测模型时必须使用 `nms=True`：
 
 ```python
-# 检测任务必须使用 nms=True
-YOLO("yolo11n.pt").export(format="coreml", nms=True)
+from ultralytics import YOLO
 
-# 其他任务使用 nms=False（默认值）
-YOLO("yolo11n-seg.pt").export(format="coreml")
+YOLO("yolo11n.pt").export(format="coreml", nms=True)
 ```
 
-**[📥 下载模型](doc/models.md)**
+其他任务可以使用默认导出参数。
 
-请按以下方式将模型随应用一同打包。
+## 该用哪个 API
 
-对于 iOS：将 `mlpackage` 或 `mlmodel` 直接拖入 **ios/Runner.xcworkspace**，并将 target 设置为 `Runner`。
+如果你已经拿到了图片字节并且只想做单次推理，用 `YOLO`：
 
-对于 Android：创建 **android/app/src/main/assets** 文件夹，并将 `tflite` 文件放入其中。
+```dart
+final yolo = YOLO(modelPath: 'yolo26n');
+await yolo.loadModel();
+final results = await yolo.predict(imageBytes);
+```
 
-### 4. 平台相关配置
+如果你要做实时相机推理，用 `YOLOView`：
 
-**[🔧 安装配置指南](doc/install.md)**
+```dart
+final controller = YOLOViewController();
 
-## 🏆 受到开发者信赖
+YOLOView(
+  modelPath: 'yolo26n',
+  controller: controller,
+  onResult: (results) {},
+)
 
-- ✅ **Ultralytics 官方插件** - 由 YOLO 创建团队维护
-- ✅ **已在生产环境验证** - 已被多款应用实际使用
-- ✅ **持续活跃开发** - 定期更新与新增功能
-- ✅ **社区驱动** - 开源且支持响应及时
+await controller.switchModel('yolo11n');
+```
 
-**性能**：现代设备上最高可达 30 FPS | **模型大小**：已优化至 6MB 起 | **平台支持**：iOS 13.0+ 与 Android API 21+
+## 文档
 
-## 📚 文档
-
-| 指南                                   | 说明                 | 适合对象 |
-| -------------------------------------- | -------------------- | -------- |
-| **[安装指南](doc/install.md)**         | 安装、配置、环境要求 | 新用户   |
-| **[快速开始](doc/quickstart.md)**      | 2 分钟上手指南       | 新用户   |
-| **[使用指南](doc/usage.md)**           | 常见用例与代码示例   | 所有用户 |
-| **[性能优化](doc/performance.md)**     | 推理控制与调优       | 生产应用 |
-| **[API 参考](doc/api.md)**             | 完整技术参考         | 开发者   |
-| **[故障排查](doc/troubleshooting.md)** | 常见问题与解决方案   | 所有用户 |
+| 指南                                   | 说明                         |
+| -------------------------------------- | ---------------------------- |
+| **[安装指南](doc/install.md)**         | 环境要求与平台配置           |
+| **[快速开始](doc/quickstart.md)**      | 最短路径跑通第一个示例       |
+| **[模型指南](doc/models.md)**          | 官方模型、自定义模型、导出流程 |
+| **[使用指南](doc/usage.md)**           | 常见应用模式与示例           |
+| **[API 参考](doc/api.md)**             | 完整 API 文档                |
+| **[性能优化](doc/performance.md)**     | 性能调优与控制项             |
+| **[故障排查](doc/troubleshooting.md)** | 常见问题与修复方法           |
 
 ## 🤝 社区与支持
 
