@@ -35,7 +35,7 @@ Welcome to the official **Ultralytics YOLO Flutter Plugin** - the most comprehen
 Detect and locate objects in images with bounding boxes.
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo11n.tflite', task: YOLOTask.detect);
+final yolo = YOLO(modelPath: 'yolo26n');
 ```
 
 ### 🎭 Instance Segmentation
@@ -43,7 +43,7 @@ final yolo = YOLO(modelPath: 'yolo11n.tflite', task: YOLOTask.detect);
 Get pixel-perfect masks for each detected object.
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo11n-seg.tflite', task: YOLOTask.segment);
+final yolo = YOLO(modelPath: 'yolo26n-seg');
 ```
 
 ### 🏷️ Classification
@@ -51,7 +51,7 @@ final yolo = YOLO(modelPath: 'yolo11n-seg.tflite', task: YOLOTask.segment);
 Classify entire images into categories.
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo11n-cls.tflite', task: YOLOTask.classify);
+final yolo = YOLO(modelPath: 'yolo26n-cls');
 ```
 
 ### 🤸 Pose Estimation
@@ -59,7 +59,7 @@ final yolo = YOLO(modelPath: 'yolo11n-cls.tflite', task: YOLOTask.classify);
 Detect human poses and keypoints.
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo11n-pose.tflite', task: YOLOTask.pose);
+final yolo = YOLO(modelPath: 'yolo26n-pose');
 ```
 
 ### 📦 Oriented Bounding Box (OBB)
@@ -67,7 +67,7 @@ final yolo = YOLO(modelPath: 'yolo11n-pose.tflite', task: YOLOTask.pose);
 Detect objects with rotated bounding boxes.
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo11n-obb.tflite', task: YOLOTask.obb);
+final yolo = YOLO(modelPath: 'yolo26n-obb');
 ```
 
 ## 📚 Documentation Navigation

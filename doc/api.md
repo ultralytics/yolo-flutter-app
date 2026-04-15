@@ -18,7 +18,7 @@ The main class for YOLO model operations.
 class YOLO {
   YOLO({
     required String modelPath,
-    required YOLOTask task,
+    YOLOTask? task,
     bool useGpu = true,
     bool useMultiInstance = false,
     Map<String, dynamic>? classifierOptions,
@@ -31,8 +31,8 @@ class YOLO {
 
 | Parameter           | Type                    | Required | Default | Description                                           |
 | ------------------- | ----------------------- | -------- | ------- | ----------------------------------------------------- |
-| `modelPath`         | `String`                | ✅       | -       | Path to the YOLO model file                           |
-| `task`              | `YOLOTask`              | ✅       | -       | Type of YOLO task to perform                          |
+| `modelPath`         | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL     |
+| `task`              | `YOLOTask?`             | ❌       | `null`  | Type of YOLO task to perform when metadata is missing |
 | `useGpu`            | `bool`                  | ❌       | `true`  | Enable GPU acceleration when supported                |
 | `useMultiInstance`  | `bool`                  | ❌       | `false` | Enable multi-instance support                         |
 | `classifierOptions` | `Map<String, dynamic>?` | ❌       | `null`  | Optional classifier preprocessing and label overrides |
@@ -45,7 +45,7 @@ class YOLO {
 | `instanceId`    | `String`   | Unique identifier for this YOLO instance |
 | `isInitialized` | `bool`     | Whether the model has been loaded        |
 | `modelPath`     | `String`   | Path to the loaded model file            |
-| `task`          | `YOLOTask` | Current task type                        |
+| `task`          | `YOLOTask?` | Requested task type, if provided         |
 | `useGpu`        | `bool`     | Whether GPU acceleration is enabled      |
 
 #### Methods
@@ -68,7 +68,7 @@ Future<bool> loadModel()
 **Example**:
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo11n', task: YOLOTask.detect);
+final yolo = YOLO(modelPath: 'yolo26n');
 final success = await yolo.loadModel();
 if (success) {
   print('Model loaded successfully');
@@ -119,7 +119,7 @@ final results = await yolo.predict(
 Switch to a different model (requires viewId to be set).
 
 ```dart
-Future<void> switchModel(String newModelPath, YOLOTask newTask)
+Future<void> switchModel(String newModelPath, [YOLOTask? newTask])
 ```
 
 **Parameters**:
@@ -127,7 +127,7 @@ Future<void> switchModel(String newModelPath, YOLOTask newTask)
 | Parameter      | Type       | Description                 |
 | -------------- | ---------- | --------------------------- |
 | `newModelPath` | `String`   | Path to the new model file  |
-| `newTask`      | `YOLOTask` | Task type for the new model |
+| `newTask`      | `YOLOTask?` | Task type for the new model when metadata is missing |
 
 **Throws**:
 
@@ -177,11 +177,19 @@ Create a YOLO instance configured for classification models that need custom pre
 ```dart
 static YOLO withClassifierOptions({
   required String modelPath,
-  required YOLOTask task,
+  YOLOTask? task,
   required Map<String, dynamic> classifierOptions,
   bool useGpu = true,
   bool useMultiInstance = false,
 })
+```
+
+###### `inspectModel()`
+
+Read exported metadata for a model without loading it for inference.
+
+```dart
+static Future<Map<String, dynamic>> inspectModel(String modelPath)
 ```
 
 ---
@@ -218,7 +226,7 @@ class YOLOView extends StatefulWidget {
   const YOLOView({
     Key? key,
     required this.modelPath,
-    required this.task,
+    this.task,
     this.controller,
     this.cameraResolution = "720p",
     this.onResult,
@@ -241,8 +249,8 @@ class YOLOView extends StatefulWidget {
 
 | Parameter              | Type                                | Required | Default                    | Description                                             |
 | ---------------------- | ----------------------------------- | -------- | -------------------------- | ------------------------------------------------------- |
-| `modelPath`            | `String`                            | ✅       | -                          | Path to YOLO model file (camera starts even if invalid) |
-| `task`                 | `YOLOTask`                          | ✅       | -                          | YOLO task type                                          |
+| `modelPath`            | `String`                            | ✅       | -                          | Official model ID, local path, asset path, or URL       |
+| `task`                 | `YOLOTask?`                         | ❌       | `null`                     | YOLO task type when metadata is missing                 |
 | `controller`           | `YOLOViewController?`               | ❌       | `null`                     | Custom view controller                                  |
 | `cameraResolution`     | `String`                            | ❌       | `"720p"`                   | Camera resolution                                       |
 | `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`                     | Detection results callback                              |
@@ -263,8 +271,7 @@ class YOLOView extends StatefulWidget {
 ```dart
 // Basic usage with valid model
 YOLOView(
-  modelPath: 'assets/models/yolo11n.tflite',
-  task: YOLOTask.detect,
+  modelPath: 'yolo26n',
   onResult: (results) {
     print('Detected ${results.length} objects');
   },

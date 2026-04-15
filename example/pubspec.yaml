@@ -9,14 +9,11 @@ environment:
   flutter: ">=3.32.1"
 
 dependencies:
-  archive: ^4.0.9
   cupertino_icons: ^1.0.9
   flutter:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4
-  http: ^1.6.0
   image_picker: ^1.2.1
-  path_provider: ^2.1.5
   ultralytics_yolo:
     path: ../
 

@@ -23,8 +23,10 @@ environment:
   flutter: ">=3.32.1"
 
 dependencies:
+  archive: ^4.0.7
   flutter:
     sdk: flutter
+  path_provider: ^2.1.5
   plugin_platform_interface: ^2.1.8
 
 dev_dependencies:

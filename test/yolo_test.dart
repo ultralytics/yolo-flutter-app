@@ -73,6 +73,26 @@ void main() {
       expect(segmentYolo.task, YOLOTask.segment);
       expect(classifyYolo.task, YOLOTask.classify);
     });
+
+    test('official models are available per task', () {
+      expect(YOLO.officialModels(task: YOLOTask.detect), contains('yolo26n'));
+      expect(
+        YOLO.officialModels(task: YOLOTask.segment),
+        contains('yolo26n-seg'),
+      );
+      expect(
+        YOLO.officialModels(task: YOLOTask.classify),
+        contains('yolo26n-cls'),
+      );
+    });
+
+    test('task can be inferred from model metadata', () async {
+      final yolo = YOLO(modelPath: 'test_model.tflite');
+      await yolo.loadModel();
+
+      expect(yolo.resolvedTask, YOLOTask.detect);
+      expect(log.any((call) => call.method == 'inspectModel'), isTrue);
+    });
   });
 
   group('Platform Method Channel', () {

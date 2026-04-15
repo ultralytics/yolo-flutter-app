@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/services.dart';
+import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
 import 'package:ultralytics_yolo/yolo_instance_manager.dart';
@@ -23,8 +24,7 @@ export 'yolo_instance_manager.dart';
 /// Example usage:
 /// ```dart
 /// final yolo = YOLO(
-///   modelPath: 'assets/models/yolo11n.tflite',
-///   task: YOLOTask.detect,
+///   modelPath: 'yolo26n',
 ///   useGpu: false, // Disable GPU for stability on some devices
 /// );
 ///
@@ -32,9 +32,11 @@ export 'yolo_instance_manager.dart';
 /// final results = await yolo.predict(imageBytes);
 /// ```
 class YOLO {
-  late final YOLOInference _inference;
-  late final YOLOModelManager _modelManager;
+  YOLOInference? _inference;
+  YOLOModelManager? _modelManager;
+  YOLOResolvedModel? _resolvedModel;
   late final String _instanceId;
+  late final MethodChannel _channel;
   bool _isInitialized = false;
 
   /// The unique instance ID for this YOLO instance
@@ -46,6 +48,7 @@ class YOLO {
   bool get isInitialized => _isInitialized;
 
   /// Path to the YOLO model file. This can be:
+  /// - An official model ID (e.g., 'yolo26n')
   /// - An asset path (e.g., 'assets/models/yolo11n.tflite')
   /// - An absolute file path (e.g., '/data/user/0/com.example.app/files/models/yolo11n.tflite')
   /// - An internal storage reference (e.g., 'internal://models/yolo11n.tflite')
@@ -53,8 +56,10 @@ class YOLO {
   /// The 'internal://' prefix will be resolved to the app's internal storage directory.
   final String modelPath;
 
-  /// The type of task this YOLO model will perform (detection, segmentation, etc.)
-  final YOLOTask task;
+  /// The type of task this YOLO model will perform, if known ahead of time.
+  ///
+  /// When omitted, the plugin resolves it from model metadata during [loadModel].
+  final YOLOTask? task;
 
   /// Whether to use GPU acceleration for inference.
   ///
@@ -75,15 +80,16 @@ class YOLO {
 
   /// Creates a new YOLO instance with the specified model path and task.
   ///
-  /// The [modelPath] can refer to a model in assets, internal storage, or absolute path.
-  /// The [task] specifies what type of inference will be performed.
+  /// The [modelPath] can refer to an official model ID, asset, internal storage,
+  /// remote URL, or absolute file path.
+  /// The [task] is optional when the exported model metadata already includes it.
   /// The [useGpu] parameter controls whether to use GPU acceleration (default: true).
   ///
   /// If [useMultiInstance] is true, each YOLO instance gets a unique ID and its own channel.
   /// If false, uses the default channel for backward compatibility.
   YOLO({
     required this.modelPath,
-    required this.task,
+    this.task,
     this.useGpu = true,
     bool useMultiInstance = false,
     this.classifierOptions,
@@ -98,36 +104,44 @@ class YOLO {
     }
 
     this.numItemsThreshold = numItemsThreshold ?? 30;
-
-    _initializeComponents();
+    _channel = ChannelConfig.createSingleImageChannel(instanceId: _instanceId);
   }
 
-  void _initializeComponents() {
-    final channel = ChannelConfig.createSingleImageChannel(
-      instanceId: _instanceId,
-    );
+  static List<String> officialModels({YOLOTask? task}) =>
+      YOLOModelResolver.officialModels(task: task);
 
-    _modelManager = YOLOModelManager(
-      channel: channel,
-      instanceId: _instanceId,
+  YOLOTask? get resolvedTask => _resolvedModel?.task ?? task;
+
+  Future<YOLOResolvedModel> _ensureResolved() async {
+    final resolvedModel = _resolvedModel;
+    if (resolvedModel != null) return resolvedModel;
+
+    final nextResolvedModel = await YOLOModelResolver.resolve(
       modelPath: modelPath,
       task: task,
+    );
+    _resolvedModel = nextResolvedModel;
+    _modelManager = YOLOModelManager(
+      channel: _channel,
+      instanceId: _instanceId,
+      modelPath: nextResolvedModel.modelPath,
+      task: nextResolvedModel.task,
       useGpu: useGpu,
       classifierOptions: classifierOptions,
       viewId: _viewId,
       numItemsThreshold: numItemsThreshold,
     );
-
     _inference = YOLOInference(
-      channel: channel,
+      channel: _channel,
       instanceId: _instanceId,
-      task: task,
+      task: nextResolvedModel.task,
     );
+    return nextResolvedModel;
   }
 
   void setViewId(int viewId) {
     _viewId = viewId;
-    _modelManager.setViewId(viewId);
+    _modelManager?.setViewId(viewId);
   }
 
   /// Switches the model on the associated YoloView.
@@ -139,8 +153,23 @@ class YOLO {
   /// [newTask] The task type for the new model
   /// throws [StateError] if the view is not initialized
   /// throws [ModelLoadingException] if the model switch fails
-  Future<void> switchModel(String newModelPath, YOLOTask newTask) async {
-    await _modelManager.switchModel(newModelPath, newTask);
+  Future<void> switchModel(String newModelPath, [YOLOTask? newTask]) async {
+    await _ensureResolved();
+    final resolvedModel = await YOLOModelResolver.resolve(
+      modelPath: newModelPath,
+      task: newTask,
+    );
+    await _modelManager!.switchModel(
+      resolvedModel.modelPath,
+      resolvedModel.task,
+    );
+    _resolvedModel = resolvedModel;
+    _inference = YOLOInference(
+      channel: _channel,
+      instanceId: _instanceId,
+      task: resolvedModel.task,
+    );
+    _isInitialized = true;
   }
 
   /// Loads the YOLO model for inference.
@@ -160,7 +189,8 @@ class YOLO {
   ///
   /// throws [ModelLoadingException] if the model file cannot be found
   Future<bool> loadModel() async {
-    final success = await _modelManager.loadModel();
+    await _ensureResolved();
+    final success = await _modelManager!.loadModel();
     if (success) {
       _isInitialized = true;
     }
@@ -176,7 +206,7 @@ class YOLO {
         );
       }
     }
-    await _modelManager.predictorInstance();
+    await _modelManager!.predictorInstance();
   }
 
   /// Runs inference on a single image.
@@ -236,11 +266,17 @@ class YOLO {
         );
       }
     }
-    return await _inference.predict(
+    return await _inference!.predict(
       imageBytes,
       confidenceThreshold: confidenceThreshold,
       iouThreshold: iouThreshold,
     );
+  }
+
+  /// Reads exported metadata for a model without loading it for inference.
+  static Future<Map<String, dynamic>> inspectModel(String modelPath) async {
+    final resolvedPath = await YOLOModelResolver.preparePath(modelPath);
+    return YOLOModelResolver.inspect(resolvedPath);
   }
 
   /// Checks if a model exists at the specified path.
@@ -333,7 +369,7 @@ class YOLO {
 
   static YOLO withClassifierOptions({
     required String modelPath,
-    required YOLOTask task,
+    YOLOTask? task,
     required Map<String, dynamic> classifierOptions,
     bool useGpu = true,
     bool useMultiInstance = false,
@@ -348,7 +384,7 @@ class YOLO {
   }
 
   Future<void> dispose() async {
-    await _modelManager.dispose();
+    await _modelManager?.dispose();
     YOLOInstanceManager.unregisterInstance(_instanceId);
     _isInitialized = false;
   }

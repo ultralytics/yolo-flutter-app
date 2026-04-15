@@ -2,38 +2,37 @@
 
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
-import '../../models/models.dart';
 
-/// A widget for selecting YOLO family and task.
+/// A widget for selecting the active YOLO task and official model.
 class ModelSelector extends StatelessWidget {
   const ModelSelector({
     super.key,
-    required this.selectedFamily,
     required this.selectedTask,
-    required this.isModelLoading,
-    required this.onFamilyChanged,
+    required this.selectedModel,
+    required this.availableModels,
     required this.onTaskChanged,
+    required this.onModelChanged,
   });
 
-  final ModelFamily selectedFamily;
   final YOLOTask selectedTask;
-  final bool isModelLoading;
-  final ValueChanged<ModelFamily> onFamilyChanged;
+  final String selectedModel;
+  final List<String> availableModels;
   final ValueChanged<YOLOTask> onTaskChanged;
+  final ValueChanged<String> onModelChanged;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildFamilySelector(context),
+        _buildModelPicker(),
         const SizedBox(height: 8),
-        _buildTaskSelector(context),
+        _buildTaskSelector(),
       ],
     );
   }
 
-  Widget _buildFamilySelector(BuildContext context) {
+  Widget _buildModelPicker() {
     return Container(
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -45,7 +44,7 @@ class ModelSelector extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            selectedFamily.label,
+            selectedModel.toUpperCase(),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
@@ -53,19 +52,15 @@ class ModelSelector extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          PopupMenuButton<ModelFamily>(
+          PopupMenuButton<String>(
             padding: EdgeInsets.zero,
             elevation: 2,
-            onSelected: (family) {
-              if (!isModelLoading) {
-                onFamilyChanged(family);
-              }
-            },
-            itemBuilder: (_) => ModelFamily.values
+            onSelected: onModelChanged,
+            itemBuilder: (_) => availableModels
                 .map(
-                  (family) => PopupMenuItem<ModelFamily>(
-                    value: family,
-                    child: Text(family.label),
+                  (model) => PopupMenuItem<String>(
+                    value: model,
+                    child: Text(model.toUpperCase()),
                   ),
                 )
                 .toList(),
@@ -76,7 +71,7 @@ class ModelSelector extends StatelessWidget {
     );
   }
 
-  Widget _buildTaskSelector(BuildContext context) {
+  Widget _buildTaskSelector() {
     return Container(
       height: 36,
       padding: const EdgeInsets.all(2),
@@ -92,7 +87,7 @@ class ModelSelector extends StatelessWidget {
             final isSelected = selectedTask == task;
             return GestureDetector(
               onTap: () {
-                if (!isModelLoading && task != selectedTask) {
+                if (task != selectedTask) {
                   onTaskChanged(task);
                 }
               },
@@ -106,7 +101,7 @@ class ModelSelector extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  task.label,
+                  task.name.toUpperCase(),
                   style: TextStyle(
                     color: isSelected ? Colors.black : Colors.white,
                     fontSize: 12,

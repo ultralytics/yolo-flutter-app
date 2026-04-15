@@ -1,7 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/material.dart';
-import '../../models/models.dart';
+import '../controllers/camera_inference_controller.dart';
 import 'control_button.dart';
 
 /// A widget containing camera control buttons

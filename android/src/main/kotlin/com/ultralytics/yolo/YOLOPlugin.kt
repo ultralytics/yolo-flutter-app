@@ -418,6 +418,24 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           result.error("path_error", "Failed to get storage paths: ${e.message}", null)
         }
       }
+
+      "inspectModel" -> {
+        try {
+          val args = call.arguments as? Map<*, *>
+          val originalPath = args?.get("modelPath") as? String ?: ""
+          val modelPath = resolveModelPath(originalPath)
+          val metadata = YOLOFileUtils.loadMetadataFromAppendedZip(applicationContext, modelPath)
+          result.success(
+            metadata?.plus("path" to modelPath) ?: mapOf(
+              "path" to modelPath,
+              "task" to "",
+              "labels" to emptyList<String>()
+            )
+          )
+        } catch (e: Exception) {
+          result.error("inspect_error", "Failed to inspect model: ${e.message}", null)
+        }
+      }
       
       "setModel" -> {
         try {

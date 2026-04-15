@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/models/yolo_result.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
@@ -20,7 +21,7 @@ enum LensFacing { back, front }
 /// A Flutter widget that displays a real-time camera preview with YOLO object detection.
 class YOLOView extends StatefulWidget {
   final String modelPath;
-  final YOLOTask task;
+  final YOLOTask? task;
   final YOLOViewController? controller;
   final String cameraResolution;
   final Function(List<YOLOResult>)? onResult;
@@ -39,7 +40,7 @@ class YOLOView extends StatefulWidget {
   const YOLOView({
     super.key,
     required this.modelPath,
-    required this.task,
+    this.task,
     this.controller,
     this.cameraResolution = '720p',
     this.onResult,
@@ -65,6 +66,9 @@ class _YOLOViewState extends State<YOLOView> {
   late MethodChannel _methodChannel;
   late EventChannel _resultEventChannel;
   StreamSubscription<dynamic>? _resultSubscription;
+  YOLOResolvedModel? _resolvedModel;
+  Object? _resolutionError;
+  Future<void>? _resolveFuture;
 
   final String _viewId = UniqueKey().toString();
   int? _platformViewId;
@@ -75,6 +79,7 @@ class _YOLOViewState extends State<YOLOView> {
     super.initState();
     _setupController();
     _setupChannels();
+    _resolveModel();
   }
 
   void _setupController() {
@@ -203,6 +208,51 @@ class _YOLOViewState extends State<YOLOView> {
     return results;
   }
 
+  Future<void> _resolveModel({bool switchExisting = false}) async {
+    _resolveFuture ??= _performModelResolution(switchExisting: switchExisting);
+    try {
+      await _resolveFuture;
+    } finally {
+      _resolveFuture = null;
+    }
+  }
+
+  Future<void> _performModelResolution({required bool switchExisting}) async {
+    setState(() {
+      _resolutionError = null;
+    });
+
+    try {
+      final resolvedModel = await YOLOModelResolver.resolve(
+        modelPath: widget.modelPath,
+        task: widget.task,
+      );
+      if (!mounted) return;
+
+      final previousResolvedModel = _resolvedModel;
+      final didChange =
+          previousResolvedModel?.modelPath != resolvedModel.modelPath ||
+          previousResolvedModel?.task != resolvedModel.task;
+
+      setState(() {
+        _resolvedModel = resolvedModel;
+      });
+
+      if (switchExisting && didChange && _platformViewId != null) {
+        await _effectiveController.switchModel(
+          resolvedModel.modelPath,
+          resolvedModel.task,
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _resolutionError = error;
+        _resolvedModel = null;
+      });
+    }
+  }
+
   @override
   void didUpdateWidget(YOLOView oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -242,10 +292,9 @@ class _YOLOViewState extends State<YOLOView> {
     }
 
     // Handle model or task changes
-    if (_platformViewId != null &&
-        (oldWidget.modelPath != widget.modelPath ||
-            oldWidget.task != widget.task)) {
-      _effectiveController.switchModel(widget.modelPath, widget.task);
+    if (oldWidget.modelPath != widget.modelPath ||
+        oldWidget.task != widget.task) {
+      _resolveModel(switchExisting: _platformViewId != null);
     }
   }
 
@@ -266,6 +315,17 @@ class _YOLOViewState extends State<YOLOView> {
 
   @override
   Widget build(BuildContext context) {
+    if (defaultTargetPlatform != TargetPlatform.android &&
+        defaultTargetPlatform != TargetPlatform.iOS) {
+      return const Center(child: Text('Platform not supported for YOLOView'));
+    }
+    if (_resolutionError != null) {
+      return Center(child: Text('Failed to load model: $_resolutionError'));
+    }
+    if (_resolvedModel == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Stack(
       children: [
         _buildCameraView(),
@@ -310,9 +370,10 @@ class _YOLOViewState extends State<YOLOView> {
   }
 
   Map<String, dynamic> _buildCreationParams() {
+    final resolvedModel = _resolvedModel!;
     final creationParams = <String, dynamic>{
-      'modelPath': widget.modelPath,
-      'task': widget.task.name,
+      'modelPath': resolvedModel.modelPath,
+      'task': resolvedModel.task.name,
       'confidenceThreshold': widget.confidenceThreshold,
       'iouThreshold': widget.iouThreshold,
       'numItemsThreshold': _effectiveController.numItemsThreshold,

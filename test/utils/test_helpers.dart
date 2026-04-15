@@ -12,8 +12,23 @@ class YOLOTestHelpers {
     Map<String, dynamic Function(MethodCall)?>? customResponses,
   }) {
     final channel = MethodChannel(channelName);
+    const pathProviderChannel = MethodChannel(
+      'plugins.flutter.io/path_provider',
+    );
     final log = <MethodCall>[];
     bool modelLoaded = false;
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathProviderChannel, (
+          MethodCall methodCall,
+        ) async {
+          switch (methodCall.method) {
+            case 'getApplicationDocumentsDirectory':
+              return '/tmp/yolo_test';
+            default:
+              return null;
+          }
+        });
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
@@ -72,6 +87,12 @@ class YOLOTestHelpers {
                 'exists': true,
                 'path': methodCall.arguments['modelPath'],
                 'location': 'assets',
+              };
+            case 'inspectModel':
+              return {
+                'path': methodCall.arguments['modelPath'],
+                'task': 'detect',
+                'labels': ['person'],
               };
             case 'getStoragePaths':
               return {
@@ -436,6 +457,14 @@ class YOLOTestHelpers {
             'checkModelExists': (call) {
               log.add(call);
               return createMockModelExistsResult();
+            },
+            'inspectModel': (call) {
+              log.add(call);
+              return {
+                'path': call.arguments['modelPath'],
+                'task': 'detect',
+                'labels': ['person'],
+              };
             },
             'getStoragePaths': (call) {
               log.add(call);

@@ -121,8 +121,7 @@ class TestYOLO extends StatelessWidget {
           onPressed: () async {
             try {
               final yolo = YOLO(
-                modelPath: 'yolo11n',
-                task: YOLOTask.detect,
+                modelPath: 'yolo26n',
               );
 
               await yolo.loadModel();
@@ -178,7 +177,7 @@ android {
 
 ### Development Setup
 
-- Use smaller models (yolo11n) for faster iteration
+- Use smaller models (`yolo26n`) for faster iteration
 - Enable debug logging
 - Test on real devices for accurate performance
 

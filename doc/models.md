@@ -17,25 +17,17 @@ Complete guide for integrating YOLO models into your Flutter app with support fo
 
 ## 🎯 Getting YOLO Models
 
-### Option 1: Download Pre-converted Models
+### Option 1: Use Official Model IDs
 
-**Download ready-to-use models from our [releases](https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/):**
+The plugin can download the latest official release artifact for these IDs automatically:
 
-```bash
-# Download from GitHub releases
-curl -L -o yolo11n.tflite \
-  https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/yolo11n.tflite
-
-curl -L -o yolo11n.mlpackage \
-  https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/yolo11n.mlpackage
-
-# YOLO26 nano examples
-curl -L -o yolo26n.tflite \
-  https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/yolo26n.tflite
-
-curl -L -o yolo26n.mlpackage \
-  https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/yolo26n.mlpackage
+```dart
+final detector = YOLO(modelPath: 'yolo26n');
+final segmenter = YOLO(modelPath: 'yolo26n-seg');
+final classifier = YOLO(modelPath: 'yolo26n-cls');
 ```
+
+The resolver downloads and caches the right platform artifact automatically.
 
 ### Option 2: Ultralytics Hub
 
@@ -133,8 +125,7 @@ ios/
 
 ```dart
 final yolo = YOLO(
-  modelPath: 'yolo11n',  // CoreML model
-  task: YOLOTask.detect,
+  modelPath: 'yolo26n',
 );
 ```
 
@@ -180,14 +171,13 @@ android/
 │           └── AndroidManifest.xml
 ```
 
-> **Note:** A future update may allow placing models in `assets/models/` for both platforms, but this is not yet supported on Android.
+You can also place `.tflite` files in Flutter `assets/models/`; the plugin copies them to app storage automatically on Android before loading.
 
 #### 3. Use in Flutter Code
 
 ```dart
 final yolo = YOLO(
-  modelPath: 'yolo11n',  // TFLite model
-  task: YOLOTask.detect,
+  modelPath: 'yolo26n',
 );
 ```
 
@@ -221,17 +211,9 @@ class CrossPlatformYOLO {
 
   Future<void> initializePlatformSpecificModel() async {
     if (Platform.isIOS) {
-      // Use CoreML on iOS
-      _yolo = YOLO(
-        modelPath: 'yolo11n',
-        task: YOLOTask.detect,
-      );
+      _yolo = YOLO(modelPath: 'yolo26n');
     } else if (Platform.isAndroid) {
-      // Use TFLite on Android
-      _yolo = YOLO(
-        modelPath: 'yolo11n',
-        task: YOLOTask.detect,
-      );
+      _yolo = YOLO(modelPath: 'yolo26n');
     }
 
     await _yolo.loadModel();

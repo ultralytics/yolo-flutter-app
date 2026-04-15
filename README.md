@@ -39,8 +39,7 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 // Add this widget and you're detecting objects!
 YOLOView(
-  modelPath: 'yolo11n',
-  task: YOLOTask.detect,
+  modelPath: 'yolo26n',
   onResult: (results) {
     print('Found ${results.length} objects!');
     for (final result in results) {
@@ -81,15 +80,23 @@ flutter pub get
 
 ### 3. Add a model
 
-You can get the model in one of the following ways:
+The plugin now supports three model flows:
 
-1. Download from the [release assets](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0) of this repository
+1. Use an official model ID such as `yolo26n`, `yolo26n-seg`, or `yolo26s-pose`
+   The plugin downloads and caches the latest release artifact automatically.
 
-2. Get it from [Ultralytics HUB](https://www.ultralytics.com/hub)
+2. Pass a custom local model path or bundled asset
+   The plugin reads exported metadata and infers the task when possible.
 
-3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
+3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) or download it from [Ultralytics HUB](https://www.ultralytics.com/hub)
+   Custom models still work, and you can pass `task` explicitly when metadata is unavailable.
 
-For YOLO26, use the same steps and grab the `yolo26*` artifacts from the `v0.2.0` release (e.g., `yolo26n.tflite` / `yolo26n.mlpackage`).
+YOLO26 is the default first-party path and works out of the box:
+
+```dart
+final yolo = YOLO(modelPath: 'yolo26n');
+await yolo.loadModel();
+```
 
 ### Export Models for iOS
 
@@ -101,13 +108,13 @@ YOLO("yolo11n.pt").export(format="coreml", nms=True)
 YOLO("yolo11n-seg.pt").export(format="coreml")
 ```
 
-**[📥 Download Models](doc/models.md)**
+**[📥 Model Guide](doc/models.md)**
 
-Bundle the model with your app using the following method.
+Manual bundling is still supported:
 
-For iOS: Drag and drop mlpackage/mlmodel directly into **ios/Runner.xcworkspace** and set target to Runner.
-
-For Android: Create a folder called **android/app/src/main/assets** and place tflite files in it.
+- iOS: drag `.mlpackage` or `.mlmodel` into **ios/Runner.xcworkspace**
+- Android: place `.tflite` files in **android/app/src/main/assets**
+- Flutter assets on Android: place them in `assets/models/` and let the plugin copy them to app storage automatically
 
 ### 4. Platform-Specific Setup
 

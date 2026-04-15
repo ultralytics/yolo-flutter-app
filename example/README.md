@@ -154,8 +154,7 @@ lib/
 │   ├── camera_feed.dart    # Reusable camera feed widget
 │   └── visualization/      # Task-specific visualization widgets
 ├── utils/
-│   ├── image_utils.dart    # Image processing utilities
-│   └── model_manager.dart  # Model loading and management
+│   └── image_utils.dart    # Image processing utilities
 └── models/
     └── result_models.dart  # Structured models for results
 ```
