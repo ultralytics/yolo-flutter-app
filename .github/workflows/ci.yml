@@ -10,6 +10,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   checks: write
@@ -18,6 +22,7 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v6
@@ -29,12 +34,6 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
-
-      - name: Create test .env file
-        run: |
-          echo "# Test environment variables" > .env
-          echo "API_URL=https://test-api.ultralytics.com" >> .env
-          echo "FIREBASE_API_KEY=test-key" >> .env
 
       - name: Run tests with coverage
         run: flutter test --coverage
@@ -49,3 +48,43 @@ jobs:
           fail_ci_if_error: true
           name: flutter-codecov
           verbose: false
+
+  example-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install example dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Build example Android app
+        working-directory: example
+        run: flutter build apk --debug
+
+  example-ios:
+    runs-on: macos-26
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install example dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Build example iOS app
+        working-directory: example
+        run: flutter build ios --simulator --no-codesign
