@@ -102,6 +102,7 @@ void main() {
       expect(result.keypoints, isNull);
       expect(result.keypointConfidences, isNull);
       expect(result.angle, isNull);
+      expect(result.obbPoints, isNull);
     });
 
     test('fromMap handles null values gracefully', () {
@@ -126,6 +127,7 @@ void main() {
       expect(result.keypoints, isNull);
       expect(result.keypointConfidences, isNull);
       expect(result.angle, isNull);
+      expect(result.obbPoints, isNull);
     });
 
     test('fromMap handles OBB angle data', () {
@@ -146,6 +148,40 @@ void main() {
       final result = YOLOResult.fromMap(map);
 
       expect(result.angle, closeTo(0.5235987756, 1e-9));
+    });
+
+    test('fromMap keeps only valid polygon points', () {
+      final map = {
+        'classIndex': 1,
+        'className': 'airplane',
+        'confidence': 0.92,
+        'boundingBox': {
+          'left': 100.0,
+          'top': 150.0,
+          'right': 300.0,
+          'bottom': 250.0,
+        },
+        'normalizedBox': {
+          'left': 0.1,
+          'top': 0.15,
+          'right': 0.3,
+          'bottom': 0.25,
+        },
+        'polygon': [
+          {'x': 100.0, 'y': 150.0},
+          {'x': 300, 'y': 150},
+          {'x': '300.0', 'y': '250.0'},
+          {'x': null, 'y': 250.0},
+          {'x': 100.0},
+        ],
+      };
+
+      final result = YOLOResult.fromMap(map);
+
+      expect(result.obbPoints, [
+        {'x': 100.0, 'y': 150.0},
+        {'x': 300.0, 'y': 150.0},
+      ]);
     });
 
     test('constructor creates instance with all parameters', () {
@@ -176,6 +212,7 @@ void main() {
       expect(result.keypointConfidences, keypointConfidences);
       expect(result.mask, mask);
       expect(result.angle, isNull);
+      expect(result.obbPoints, isNull);
     });
 
     test('toMap converts instance to map', () {
@@ -195,6 +232,7 @@ void main() {
       expect(map['boundingBox'], isNotNull);
       expect(map['normalizedBox'], isNotNull);
       expect(map.containsKey('angle'), isFalse);
+      expect(map.containsKey('polygon'), isFalse);
     });
 
     test('constructor with keypoints and confidences', () {
@@ -221,6 +259,7 @@ void main() {
       expect(result.keypoints, keypoints);
       expect(result.keypointConfidences, confidences);
       expect(result.angle, isNull);
+      expect(result.obbPoints, isNull);
     });
 
     test('fromMap with keypoints data', () {
@@ -287,6 +326,28 @@ void main() {
       final map = result.toMap();
 
       expect(map['angle'], closeTo(0.5235987756, 1e-9));
+    });
+
+    test('toMap and fromMap round-trip polygon data', () {
+      final original = YOLOResult(
+        classIndex: 2,
+        className: 'airplane',
+        confidence: 0.92,
+        boundingBox: const Rect.fromLTRB(100, 150, 300, 250),
+        normalizedBox: const Rect.fromLTRB(0.1, 0.15, 0.3, 0.25),
+        obbPoints: const [
+          {'x': 100.0, 'y': 150.0},
+          {'x': 300.0, 'y': 150.0},
+          {'x': 300.0, 'y': 250.0},
+          {'x': 100.0, 'y': 250.0},
+        ],
+      );
+
+      final map = original.toMap();
+      final roundTripped = YOLOResult.fromMap(map);
+
+      expect(map['polygon'], original.obbPoints);
+      expect(roundTripped.obbPoints, original.obbPoints);
     });
   });
 
