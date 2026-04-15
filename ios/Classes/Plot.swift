@@ -197,9 +197,9 @@ func generateCombinedMaskImage(
   returnIndividualMasks: Bool = true
 ) -> (CGImage?, [[[Float]]]?)? {
   // 1) Check protos shape
-  let maskHeight = protos.shape[2].intValue  // 例: 160
-  let maskWidth = protos.shape[3].intValue  // 例: 160
-  let maskChannels = protos.shape[1].intValue  // 例: 32
+  let maskHeight = protos.shape[2].intValue  // example: 160
+  let maskWidth = protos.shape[3].intValue  // example: 160
+  let maskChannels = protos.shape[1].intValue  // example: 32
   guard
     protos.shape.count == 4,
     protos.shape[0].intValue == 1,
@@ -676,10 +676,10 @@ func drawPoseOnCIImage(
     drawSkeleton: drawSkeleton
   )
 
-  // rootLayer をコンテキストに合成
+  // Composite rootLayer into the current context
   rootLayer.render(in: currentContext)
 
-  // 4. 描画した結果を UIImage として取得
+  // 4. Get the rendered result as a UIImage
   let finalImage = UIGraphicsGetImageFromCurrentImageContext()
   UIGraphicsEndImageContext()
 

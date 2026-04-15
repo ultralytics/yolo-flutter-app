@@ -494,12 +494,12 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
         val args = call.arguments as? Map<*, *>
         val instanceId = args?.get("instanceId") as? String ?: "default"
 
-        // 使用GlobalScope.launch(Dispatchers.IO) 将耗时操作移至IO后台线程
+        // Run expensive work on the IO dispatcher via GlobalScope.launch(Dispatchers.IO)
         GlobalScope.launch(Dispatchers.IO){
 
           try {
             YOLOInstanceManager.shared.predictorInstance(instanceId);
-            // 耗时操作完成后，切回主线程返回结果（必须在主线程回调result）
+            // Once the work is done, switch back to the main thread before calling result
             withContext(Dispatchers.Main) {
               result.success(null)
             }
