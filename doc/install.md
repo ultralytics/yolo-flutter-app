@@ -83,7 +83,6 @@ Add permissions to `android/app/src/main/AndroidManifest.xml`:
 ```xml
 <!-- android/app/src/main/AndroidManifest.xml -->
 <uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 ```
 
 #### 3. ProGuard Configuration (Release Builds)
@@ -97,9 +96,23 @@ For release builds, add to `android/app/proguard-rules.pro`:
 -dontwarn org.tensorflow.**
 ```
 
-## 🎯 [Model Files Setup](quickstart.md#-step-3-add-a-model)
+## 🎯 Model Setup
 
-Please check out the [quickstart.md](quickstart.md#-step-3-add-a-model)
+The simplest setup is to use an official model ID:
+
+```dart
+final yolo = YOLO(modelPath: 'yolo26n');
+```
+
+Use `YOLO.officialModels()` to see which IDs are available on the current platform.
+
+For custom models:
+
+- Android Flutter assets: `.tflite`
+- iOS Flutter assets: `.mlpackage.zip`
+- iOS bundled models: `.mlpackage` or `.mlmodel`
+
+See [Quick Start](quickstart.md#-step-3-add-a-model) for the full flow.
 
 ## ✅ Verify Installation
 

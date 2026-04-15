@@ -49,9 +49,9 @@ class YOLO {
 
   /// Path to the YOLO model file. This can be:
   /// - An official model ID (e.g., 'yolo26n')
-  /// - An asset path (e.g., 'assets/models/yolo11n.tflite')
-  /// - An absolute file path (e.g., '/data/user/0/com.example.app/files/models/yolo11n.tflite')
-  /// - An internal storage reference (e.g., 'internal://models/yolo11n.tflite')
+  /// - An asset path (e.g., 'assets/models/custom.tflite')
+  /// - An absolute file path (e.g., '/data/user/0/com.example.app/files/custom.tflite')
+  /// - An internal storage reference (e.g., 'internal://models/custom.tflite')
   ///
   /// The 'internal://' prefix will be resolved to the app's internal storage directory.
   final String modelPath;
@@ -150,8 +150,8 @@ class YOLO {
   /// This method allows switching to a different model without recreating the view.
   /// The view must be initialized (have a viewId) before calling this method.
   ///
-  /// [newModelPath] The path to the new model
-  /// [newTask] The task type for the new model
+  /// [newModelPath] The official model ID, local path, asset path, or URL for the new model
+  /// [newTask] The task type for the new model when metadata is missing
   /// throws [StateError] if the view is not initialized
   /// throws [ModelLoadingException] if the model switch fails
   Future<void> switchModel(String newModelPath, [YOLOTask? newTask]) async {

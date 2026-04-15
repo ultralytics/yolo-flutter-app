@@ -439,7 +439,7 @@ class YOLOView @JvmOverloads constructor(
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to load model: $modelPath. Camera will run without inference.", e)
                 post {
-                    // Set predictor to null to ensure camera-only mode
+                    // Clear predictor so the camera can keep running until a valid model is set
                     this.predictor = null
                     this.modelName = "No Model"
                     modelLoadCallback?.invoke(false)

@@ -44,7 +44,7 @@ class YOLO {
 | --------------- | ----------- | ---------------------------------------- |
 | `instanceId`    | `String`    | Unique identifier for this YOLO instance |
 | `isInitialized` | `bool`      | Whether the model has been loaded        |
-| `modelPath`     | `String`    | Path to the loaded model file            |
+| `modelPath`     | `String`    | Original model reference passed to the constructor |
 | `task`          | `YOLOTask?` | Requested task type, if provided         |
 | `useGpu`        | `bool`      | Whether GPU acceleration is enabled      |
 
@@ -149,6 +149,14 @@ await yolo.dispose();
 ```
 
 ##### Static Methods
+
+###### `officialModels()`
+
+List official model IDs that are downloadable on the current platform.
+
+```dart
+static List<String> officialModels({YOLOTask? task})
+```
 
 ###### `checkModelExists()`
 
@@ -269,30 +277,14 @@ class YOLOView extends StatefulWidget {
 #### Example
 
 ```dart
-// Basic usage with valid model
+// Basic usage
 YOLOView(
   modelPath: 'yolo26n',
-  onResult: (results) {
-    print('Detected ${results.length} objects');
-  },
-  onPerformanceMetrics: (metrics) {
-    print('FPS: ${metrics.fps}');
-  },
-)
-
-// Camera-only mode: starts even with invalid model path
-YOLOView(
-  modelPath: 'model_not_yet_downloaded.tflite',  // Model doesn't exist yet
-  task: YOLOTask.detect,
   controller: controller,
   onResult: (results) {
-    // Will receive empty results until model is loaded
     print('Detections: ${results.length}');
   },
 )
-
-// Later, load the model dynamically
-await controller.switchModel('downloaded_model.tflite', YOLOTask.detect);
 ```
 
 ---
@@ -388,24 +380,21 @@ Future<void> switchModel(String modelPath, [YOLOTask? task])
 
 Parameters:
 
-- `modelPath`: Path to the new model file
+- `modelPath`: Official model ID, local path, asset path, or URL
 - `task`: The YOLO task type when metadata is missing
 
 **Throws**:
 
 - `PlatformException` - If model file cannot be found or loaded
 
-**Note**: YOLOView can start with an invalid model path (camera-only mode). Use this method to load a valid model later.
+**Note**: This method uses the same model resolver as `YOLO` and `YOLOView`, so it supports official IDs, asset paths, local files, remote URLs, and metadata-based task resolution.
 
 Example:
 
 ```dart
-// Switch to a different model
-await controller.switchModel('yolo11n');
-
-// Platform-specific paths
+// Switch to a custom model
 await controller.switchModel(
-  Platform.isIOS ? 'MyModel.mlpackage' : 'MyModel.tflite',
+  'assets/models/custom.tflite',
   YOLOTask.detect,
 );
 
@@ -928,43 +917,6 @@ const double PERFORMANCE_ISSUE_TIME_MS = 200.0;
 const List<String> SUPPORTED_RESOLUTIONS = [
   "480p", "720p", "1080p", "4K"
 ];
-```
-
----
-
-## 🎯 Migration Guide
-
-### From v0.1.15 to v0.1.18+
-
-#### Multi-Instance Support
-
-**Old (Single Instance)**:
-
-```dart
-final yolo = YOLO(modelPath: 'model.tflite', task: YOLOTask.detect);
-```
-
-**New (Multi-Instance)**:
-
-```dart
-final yolo = YOLO(
-  modelPath: 'model.tflite',
-  task: YOLOTask.detect,
-  useMultiInstance: true, // Add this line
-);
-```
-
-#### Streaming Configuration
-
-**New Feature**:
-
-```dart
-YOLOView(
-  modelPath: 'model.tflite',
-  task: YOLOTask.detect,
-  streamingConfig: YOLOStreamingConfig.throttled(maxFPS: 15), // New
-  onStreamingData: (data) { /* New comprehensive callback */ },
-)
 ```
 
 ---

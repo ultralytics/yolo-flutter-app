@@ -216,15 +216,14 @@ final controller = YOLOViewController();
 
 YOLOView(
   modelPath: 'yolo26n',  // Initial model
-  task: YOLOTask.detect,
   controller: controller,
   onResult: (results) {
     print('Detected ${results.length} objects');
   },
 )
 
-// Later, switch to a different model
-await controller.switchModel('yolo11n');
+// Later, switch to another official model or a custom export
+await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 ```
 
 ## 🎯 Multi-Instance Quick Example
@@ -234,8 +233,7 @@ Want to run multiple models? Try this:
 ```dart
 // Create two YOLO instances
 final detector = YOLO(
-  modelPath: 'assets/models/yolo26n.tflite',
-  task: YOLOTask.detect,
+  modelPath: 'yolo26n',
   useMultiInstance: true, // Enable multi-instance
 );
 

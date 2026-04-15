@@ -1,9 +1,16 @@
+## Unreleased
+
+- **Feature**: Add package-level model resolution for official IDs, remote URLs, local files, and Flutter assets.
+- **Enhancement**: Resolve `task` from exported metadata when available across `YOLO`, `YOLOView`, and `YOLOViewController.switchModel()`.
+- **Enhancement**: Replace hardcoded release URL assumptions with an official model catalog and latest-release resolution.
+- **Cleanup**: Remove example-only model management duplication and update docs around the metadata-first flow.
+
 ## 0.2.0
 
 - **Feature**: YOLO26 model release — `yolo26*` CoreML (`.mlpackage`) and TFLite (`.tflite`) artifacts published alongside YOLOv11 (#431, #432).
 - **Enhancement**: YOLO property and method surface updates (#428).
 - Documentation update for model downloads:
-  - All model download links point to GitHub release `v0.2.0` (no bundled models).
+  - Official models are hosted as GitHub release assets rather than bundled in the package.
   - Added YOLO26 references alongside YOLOv11 for both CoreML (`.mlpackage`) and TFLite (`.tflite`) artifacts.
   - Clarified that models are pulled from release assets rather than packaged in the app.
 

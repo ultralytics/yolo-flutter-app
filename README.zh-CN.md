@@ -120,7 +120,7 @@ final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo11n.pt").export(format="coreml", nms=True)
+YOLO("yolo26n.pt").export(format="coreml", nms=True)
 ```
 
 其他任务可以使用默认导出参数。
@@ -146,7 +146,7 @@ YOLOView(
   onResult: (results) {},
 )
 
-await controller.switchModel('yolo11n');
+await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 ```
 
 ## 📚 文档

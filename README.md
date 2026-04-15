@@ -120,7 +120,7 @@ Detection models exported to CoreML must use `nms=True`:
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo11n.pt").export(format="coreml", nms=True)
+YOLO("yolo26n.pt").export(format="coreml", nms=True)
 ```
 
 Other tasks can use the default export settings.
@@ -146,7 +146,7 @@ YOLOView(
   onResult: (results) {},
 )
 
-await controller.switchModel('yolo11n');
+await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 ```
 
 ## 📚 Documentation

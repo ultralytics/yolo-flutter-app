@@ -154,7 +154,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
       "loadModel" -> {
         try {
           val args = call.arguments as? Map<*, *>
-          var modelPath = args?.get("modelPath") as? String ?: "yolo11n"
+          var modelPath = args?.get("modelPath") as? String ?: "yolo26n"
           val taskString = args?.get("task") as? String ?: "detect"
           val instanceId = args?.get("instanceId") as? String ?: "default"
           val useGpu = args?.get("useGpu") as? Boolean ?: true

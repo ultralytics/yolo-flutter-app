@@ -1,543 +1,180 @@
 ---
 title: Model Integration
-description: Complete guide for integrating YOLO models - CoreML, LiteRT formats
+description: How official models, custom exports, metadata inspection, and platform asset loading work in YOLO Flutter
 path: /integrations/flutter/models/
 ---
 
 # Model Integration Guide
 
-Complete guide for integrating YOLO models into your Flutter app with support for CoreML (iOS), LiteRT, and TFLite formats.
+This plugin supports two model paths:
 
-## 📱 Supported Model Formats
+- official Ultralytics release assets resolved by model ID
+- your own exported models loaded from assets, local files, or remote URLs
 
-| Format     | Platform    | Extension                | Optimized For       | Performance |
-| ---------- | ----------- | ------------------------ | ------------------- | ----------- |
-| **CoreML** | iOS only    | `.mlpackage`, `.mlmodel` | Apple Neural Engine | Excellent   |
-| **LiteRT** | Android/iOS | `.tflite`                | TensorFlow Lite     | Very Good   |
+The plugin treats model metadata as the source of truth whenever it is available.
 
-## 🎯 Getting YOLO Models
+## 📦 Official Models
 
-### Option 1: Use Official Model IDs
-
-The plugin can download the latest official release artifact for the current platform automatically:
+Use an official model ID such as `yolo26n`:
 
 ```dart
-final detector = YOLO(modelPath: 'yolo26n');
-final availableOfficialModels = YOLO.officialModels();
+final yolo = YOLO(modelPath: 'yolo26n');
 ```
 
-The resolver downloads and caches the right platform artifact automatically. `YOLO.officialModels()` only returns IDs that are actually downloadable on the running platform.
+The plugin will:
 
-### Option 2: Ultralytics Hub
+1. resolve the current platform's artifact
+2. download it if needed
+3. cache it in app storage
+4. read metadata to determine the task when possible
 
-1. Visit [HUB](https://www.ultralytics.com/hub)
-2. Select your model
-3. Export as **CoreML** (iOS) or **TFLite** (Android)
-4. Download the exported model
+To see which official IDs exist on the current platform:
 
-### Option 3: Export from Ultralytics Python
+```dart
+final models = YOLO.officialModels();
+print(models);
+```
 
-Install Ultralytics and export models:
+`YOLO.officialModels()` only returns real downloadable artifacts for the running platform.
+
+## 📁 Custom Models
+
+You can also point the plugin at your own exported model:
+
+```dart
+final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
+```
+
+Supported sources:
+
+- official model ID, for example `yolo26n`
+- Flutter asset path
+- local file path
+- `http` or `https` URL
+
+If the exported model metadata includes `task`, the plugin resolves it automatically. If metadata is missing or ambiguous, pass `task` explicitly:
+
+```dart
+final yolo = YOLO(
+  modelPath: 'assets/models/custom.tflite',
+  task: YOLOTask.detect,
+);
+```
+
+## 🧠 Metadata Resolution
+
+Exported metadata commonly includes:
+
+- `task`
+- `names`
+- image size and stride
+- author/version/export details
+
+The plugin uses that metadata to keep the Dart API simpler:
+
+- `task` can usually be omitted
+- class names can come directly from the export
+- model switching uses the same metadata-based resolution path
+
+If you want to inspect a model without loading it for inference:
+
+```dart
+final info = await YOLO.inspectModel('assets/models/custom.tflite');
+print(info['task']);
+print(info['names']);
+```
+
+## 🏗️ Platform Asset Placement
+
+### Android
+
+You can use either:
+
+- native assets in `android/app/src/main/assets/`
+- Flutter assets such as `assets/models/custom.tflite`
+
+Flutter asset models are copied into app storage automatically before loading.
+
+### iOS
+
+You can use either:
+
+- `.mlpackage` or `.mlmodel` files added to `ios/Runner.xcworkspace`
+- zipped CoreML packages in Flutter assets, for example `assets/models/custom.mlpackage.zip`
+
+For Flutter assets on iOS, use `.mlpackage.zip` so the package can unpack the model into app storage before loading it.
+
+## 🐍 Exporting Models
+
+Install Ultralytics:
 
 ```bash
 pip install ultralytics
 ```
 
-#### Export to CoreML (iOS)
+### CoreML Export
+
+Detection models for iOS must be exported with `nms=True`:
 
 ```python
 from ultralytics import YOLO
 
-# Load a YOLOv11 model
-model = YOLO("yolo11n.pt")
-
-# Export to CoreML
-model.export(
-    format="coreml",
-    imgsz=640,
-    half=False,  # Use float32 for better compatibility
-    nms=True,  # Include NMS in the model
-)
+YOLO("yolo26n.pt").export(format="coreml", nms=True, imgsz=640)
 ```
 
-### ⚠️ Important: NMS Requirement for iOS Detection Models
-
-**Detection models MUST be exported with `nms=True` for iOS:**
-
-````python
-# ✅ CORRECT - Detection with NMS
-model = YOLO("yolo11n.pt")
-model.export(format="coreml", nms=True, imgsz=640)
-
-# ❌ WRONG - Detection without NMS (will fail to load)
-model.export(format="coreml", nms=False, imgsz=640)
-
-# ✅ CORRECT - Segmentation without NMS
-seg_model = YOLO("yolo11n-seg.pt")
-seg_model.export(format="coreml", imgsz=640)  # nms=False by default
-
-
-#### Advanced Export Options
-```python
-# For different YOLO tasks
-tasks = {"segment": "yolo11n-seg.pt", "classify": "yolo11n-cls.pt", "pose": "yolo11n-pose.pt", "obb": "yolo11n-obb.pt"}
-
-for task, model_path in tasks.items():
-    model = YOLO(model_path)
-
-    # Export CoreML
-    model.export(format="coreml", imgsz=640, half=False)
-
-    # Export TFLite
-    model.export(format="tflite", imgsz=640)
-````
-
-## 🏗️ Platform Integration
-
-### iOS - CoreML Integration
-
-#### 1. Add Model to Xcode Project
-
-```bash
-# Open your iOS project
-open ios/Runner.xcworkspace
-```
-
-1. **Drag and drop** the `.mlpackage` or `.mlmodel` file into the Xcode project
-2. **Select target**: Choose "Runner" as the target
-3. **Bundle settings**: Ensure "Add to target" is checked
-
-#### 2. Verify Model Integration
-
-Check that the model appears in your Xcode project:
-
-```
-ios/
-├── Runner.xcworkspace
-├── Runner/
-│   ├── Assets.xcassets/
-│   ├── yolo11n.mlpackage     ← Your model here
-│   └── Info.plist
-```
-
-#### 3. Use in Flutter Code
-
-```dart
-final yolo = YOLO(
-  modelPath: 'yolo26n',
-);
-```
-
-#### 3a. Use Flutter Assets Instead
-
-You can also bundle a zipped CoreML package in Flutter assets and skip the Xcode drag-and-drop step:
-
-```yaml
-flutter:
-  assets:
-    - assets/models/custom-yolo.mlpackage.zip
-```
-
-```dart
-final yolo = YOLO(
-  modelPath: 'assets/models/custom-yolo.mlpackage.zip',
-);
-```
-
-#### 4. iOS Optimization Settings
-
-Add to `ios/Runner/Info.plist`:
-
-```xml
-<!-- Enable Neural Engine -->
-<key>UIRequiredDeviceCapabilities</key>
-<array>
-    <string>neural-engine</string>
-</array>
-
-<!-- Metal for GPU acceleration -->
-<key>UIRequiredDeviceCapabilities</key>
-<array>
-    <string>metal</string>
-</array>
-```
-
-### Android - LiteRT/TFLite Integration
-
-#### 1. Create Assets Directory
-
-```bash
-mkdir -p android/app/src/main/assets
-```
-
-#### 2. Add Model Files
-
-Place your `.tflite` models in the Android native assets directory:
-
-```
-android/
-├── app/
-│   └── src/
-│       └── main/
-│           ├── assets/
-│           │   ├── yolo11n.tflite          ← Your models here
-│           │   ├── yolo11n-seg.tflite
-│           │   └── yolo11n-cls.tflite
-│           └── AndroidManifest.xml
-```
-
-You can also place `.tflite` files in Flutter `assets/models/`; the plugin copies them to app storage automatically on Android before loading.
-
-#### 3. Use in Flutter Code
-
-```dart
-final yolo = YOLO(
-  modelPath: 'yolo26n',
-);
-```
-
-#### 4. Android Optimization
-
-Update `android/app/build.gradle`:
-
-```gradle
-android {
-    defaultConfig {
-        // Enable NNAPI for hardware acceleration
-        ndk {
-            abiFilters 'arm64-v8a', 'armeabi-v7a'
-        }
-    }
-}
-
-dependencies {
-    // Add TensorFlow Lite GPU delegate (optional)
-    implementation 'org.tensorflow:tensorflow-lite-gpu:2.13.0'
-}
-```
-
-### Cross-Platform Strategy
-
-For apps targeting both iOS and Android, use conditional model loading:
-
-```dart
-class CrossPlatformYOLO {
-  late YOLO _yolo;
-
-  Future<void> initializePlatformSpecificModel() async {
-    if (Platform.isIOS) {
-      _yolo = YOLO(modelPath: 'yolo26n');
-    } else if (Platform.isAndroid) {
-      _yolo = YOLO(modelPath: 'yolo26n');
-    }
-
-    await _yolo.loadModel();
-  }
-}
-```
-
-## 📊 Model Comparison
-
-### Performance Characteristics
-
-| Model Size     | iOS (CoreML) | Android (TFLite) | Memory | Use Case             |
-| -------------- | ------------ | ---------------- | ------ | -------------------- |
-| **Nano (n)**   | 28-32 FPS    | 25-30 FPS        | ~150MB | Real-time apps       |
-| **Small (s)**  | 20-25 FPS    | 18-22 FPS        | ~200MB | Balanced performance |
-| **Medium (m)** | 15-18 FPS    | 12-15 FPS        | ~300MB | High accuracy        |
-| **Large (l)**  | 10-12 FPS    | 8-10 FPS         | ~450MB | Maximum accuracy     |
-
-### File Size Comparison
-
-| Model    | Original (.pt) | CoreML (.mlpackage) | TFLite (.tflite) | TFLite INT8 |
-| -------- | -------------- | ------------------- | ---------------- | ----------- |
-| YOLOv11n | 5.4 MB         | 6.8 MB              | 6.2 MB           | 3.1 MB      |
-| YOLOv11s | 19.8 MB        | 24.2 MB             | 21.5 MB          | 11.2 MB     |
-| YOLOv11m | 45.7 MB        | 55.1 MB             | 49.7 MB          | 25.8 MB     |
-
-## 🔧 Model Optimization
-
-### CoreML Optimization (iOS)
+Other tasks can use the default export behavior:
 
 ```python
-# Export with optimal settings for iOS
-model = YOLO("yolo11n.pt")
+from ultralytics import YOLO
 
-model.export(
-    format="coreml",
-    imgsz=640,
-    half=False,  # Use float32 for Neural Engine
-    nms=True,  # Include NMS in model
-    simplify=True,  # Simplify model for better performance
-)
+YOLO("yolo26n-seg.pt").export(format="coreml", imgsz=640)
+YOLO("yolo26n-cls.pt").export(format="coreml", imgsz=640)
+YOLO("yolo26n-pose.pt").export(format="coreml", imgsz=640)
+YOLO("yolo26n-obb.pt").export(format="coreml", imgsz=640)
 ```
 
-### TFLite Optimization (Android)
+### TFLite Export
 
 ```python
-# Different quantization options
-model = YOLO("yolo11n.pt")
+from ultralytics import YOLO
 
-# INT8 quantization (smallest size)
-model.export(
-    format="tflite",
-    imgsz=640,
-    int8=True,
-    data="coco128.yaml",  # Calibration dataset
-)
-
-# Float16 quantization (balance)
-model.export(format="tflite", imgsz=640, half=True)
-
-# No quantization (best accuracy)
-model.export(format="tflite", imgsz=640)
+YOLO("yolo26n.pt").export(format="tflite", imgsz=640)
 ```
 
-## 🚀 Advanced Model Features
+Quantized exports also work:
 
-### Multi-Model Setup
+```python
+from ultralytics import YOLO
+
+YOLO("yolo26n.pt").export(format="tflite", imgsz=640, int8=True)
+YOLO("yolo26n.pt").export(format="tflite", imgsz=640, half=True)
+```
+
+## 🔄 Switching Models
+
+`YOLO`, `YOLOView`, and `YOLOViewController.switchModel()` all use the same resolver.
+
+That means switching models supports:
+
+- official model IDs
+- asset paths
+- local file paths
+- remote URLs
+- metadata-inferred tasks
+
+Example:
 
 ```dart
-class MultiModelManager {
-  final Map<YOLOTask, YOLO> _models = {};
+final controller = YOLOViewController();
 
-  Future<void> loadAllModels() async {
-    final modelConfigs = Platform.isIOS ? {
-      YOLOTask.detect: 'yolo11n',
-      YOLOTask.segment: 'yolo11n-seg',
-      YOLOTask.classify: 'yolo11n-cls',
-    } : {
-      YOLOTask.detect: 'yolo11n',
-      YOLOTask.segment: 'yolo11n-seg',
-      YOLOTask.classify: 'yolo11n-cls',
-    };
-
-    for (final entry in modelConfigs.entries) {
-      _models[entry.key] = YOLO(
-        modelPath: entry.value,
-        task: entry.key,
-        useMultiInstance: true,
-      );
-      await _models[entry.key]!.loadModel();
-    }
-  }
-
-  YOLO? getModel(YOLOTask task) => _models[task];
-}
+await controller.switchModel('yolo26n');
+await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 ```
 
-### Model Switching
+## ✅ Recommendations
 
-```dart
-class AdaptiveModelLoader {
-  YOLO? _currentModel;
-
-  Future<void> switchToOptimalModel(String deviceType) async {
-    await _currentModel?.dispose();
-
-    String modelPath;
-    if (deviceType == 'high-end') {
-      modelPath = Platform.isIOS ? 'yolo11s' : 'yolo11s';
-    } else {
-      modelPath = Platform.isIOS ? 'yolo11n' : 'yolo11n';
-    }
-
-    _currentModel = YOLO(
-      modelPath: modelPath,
-      task: YOLOTask.detect,
-    );
-
-    await _currentModel!.loadModel();
-  }
-}
-```
-
-## 🔍 Model Validation
-
-### Verify Model Integration
-
-```dart
-class ModelValidator {
-  static Future<bool> validateModel(String modelPath, YOLOTask task) async {
-    try {
-      // Check if model file exists
-      final exists = await YOLO.checkModelExists(modelPath);
-      if (!exists['exists']) {
-        print('❌ Model file not found: $modelPath');
-        return false;
-      }
-
-      // Try to load the model
-      final yolo = YOLO(modelPath: modelPath, task: task);
-      final loaded = await yolo.loadModel();
-
-      if (!loaded) {
-        print('❌ Failed to load model: $modelPath');
-        return false;
-      }
-
-      // Test with dummy data
-      final testResult = await _testInference(yolo);
-      await yolo.dispose();
-
-      print('✅ Model validation successful: $modelPath');
-      return testResult;
-
-    } catch (e) {
-      print('❌ Model validation failed: $e');
-      return false;
-    }
-  }
-
-  static Future<bool> _testInference(YOLO yolo) async {
-    try {
-      // Create test image (1x1 white pixel)
-      final testImage = Uint8List.fromList([255, 255, 255, 255]);
-      await yolo.predict(testImage);
-      return true;
-    } catch (e) {
-      print('❌ Inference test failed: $e');
-      return false;
-    }
-  }
-}
-```
-
-### Model Performance Testing
-
-```dart
-class ModelBenchmark {
-  static Future<Map<String, dynamic>> benchmarkModel(
-    String modelPath,
-    YOLOTask task,
-    List<Uint8List> testImages,
-  ) async {
-    final yolo = YOLO(modelPath: modelPath, task: task);
-    await yolo.loadModel();
-
-    final times = <double>[];
-    final stopwatch = Stopwatch();
-
-    for (final image in testImages) {
-      stopwatch.reset();
-      stopwatch.start();
-
-      await yolo.predict(image);
-
-      stopwatch.stop();
-      times.add(stopwatch.elapsedMilliseconds.toDouble());
-    }
-
-    await yolo.dispose();
-
-    final avgTime = times.reduce((a, b) => a + b) / times.length;
-
-    return {
-      'model': modelPath,
-      'task': task.name,
-      'avg_time_ms': avgTime,
-      'avg_fps': 1000 / avgTime,
-      'samples': testImages.length,
-      'platform': Platform.isIOS ? 'iOS' : 'Android',
-    };
-  }
-}
-```
-
-## 🛠️ Troubleshooting Models
-
-### Common Issues
-
-**Issue**: Model file not found
-
-```dart
-// Solution: Verify file paths and asset configuration
-final exists = await YOLO.checkModelExists('your_model.tflite');
-print('Model exists: ${exists['exists']}');
-print('Location: ${exists['location']}');
-```
-
-**Issue**: CoreML model not loading on iOS
-
-```bash
-# Check Xcode project settings
-# 1. Verify model is added to Runner target
-# 2. Check Bundle Resources in Build Phases
-# 3. Ensure model format is compatible
-```
-
-**Issue**: TFLite model performance is slow
-
-```dart
-// Try different quantization levels
-// INT8 (smallest, fastest): model.export(format='tflite', int8=True)
-// Float16 (balanced): model.export(format='tflite', half=True)
-// Float32 (largest, most accurate): model.export(format='tflite')
-```
-
-**Issue**: Memory issues with large models
-
-```dart
-// Use model size appropriate for device
-class DeviceOptimizer {
-  static String getOptimalModel(YOLOTask task) {
-    final isLowEnd = _isLowEndDevice();
-    final suffix = Platform.isIOS ? '.mlpackage' : '.tflite';
-
-    if (isLowEnd) {
-      return 'yolo11n${_getTaskSuffix(task)}$suffix';  // Nano
-    } else {
-      return 'yolo11s${_getTaskSuffix(task)}$suffix';  // Small
-    }
-  }
-}
-```
-
-### Debug Model Loading
-
-```dart
-class ModelDebugger {
-  static Future<void> debugModelLoading(String modelPath) async {
-    print('🔍 Debugging model: $modelPath');
-
-    // Check file existence
-    final exists = await YOLO.checkModelExists(modelPath);
-    print('Exists: ${exists['exists']}');
-    print('Location: ${exists['location']}');
-
-    // Check storage paths
-    final paths = await YOLO.getStoragePaths();
-    print('Storage paths: $paths');
-
-    // Attempt loading with error handling
-    try {
-      final yolo = YOLO(modelPath: modelPath, task: YOLOTask.detect);
-      final loaded = await yolo.loadModel();
-      print('Loading success: $loaded');
-      await yolo.dispose();
-    } catch (e) {
-      print('Loading error: $e');
-    }
-  }
-}
-```
-
-## 📚 Additional Resources
-
-- **[CoreML Documentation](https://docs.ultralytics.com/integrations/coreml/)** - Official CoreML integration guide
-- **[TFLite Documentation](https://docs.ultralytics.com/integrations/tflite/)** - Official TensorFlow Lite guide
-- **[Model Export Guide](https://docs.ultralytics.com/modes/export/)** - Comprehensive export documentation
-- **[Ultralytics Hub](https://www.ultralytics.com/hub)** - Web-based model management
-
-## 🎯 Best Practices
-
-1. **Choose the right format**: CoreML for iOS-only apps, TFLite for cross-platform
-2. **Start with nano models**: Use yolo11n for development, upgrade for production
-3. **Test on real devices**: Emulators don't reflect real performance
-4. **Validate models**: Always test model loading and inference
-5. **Monitor performance**: Use benchmarking to compare model variants
-6. **Handle errors gracefully**: Implement fallbacks for model loading failures
-
----
-
-This model integration guide covers all aspects of working with YOLO models in Flutter. For implementation examples, see our [Usage Guide](usage.md), and for performance optimization, check the [Performance Guide](performance.md).
+- Start with `YOLO.officialModels()` when you want the simplest path.
+- Use official IDs for the default app flow.
+- Use custom models when you need a specific export or fine-tuned model.
+- Prefer metadata-driven loading over hardcoded task/model tables.
+- Pass `task` only when the export does not carry it.

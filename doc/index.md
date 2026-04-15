@@ -1,132 +1,66 @@
 ---
 title: Flutter YOLO Plugin
-description: Official Ultralytics YOLO plugin for Flutter - Real-time object detection, segmentation, and pose estimation
+description: Official Ultralytics YOLO plugin for Flutter - metadata-first model loading for single-image and camera inference
 path: /integrations/flutter/
 ---
 
 # Ultralytics YOLO Flutter Plugin
 
-Welcome to the official **Ultralytics YOLO Flutter Plugin** - the most comprehensive computer vision solution for Flutter applications. This plugin brings state-of-the-art AI capabilities directly to your mobile apps with real-time performance.
+Ultralytics YOLO Flutter is the official plugin for running YOLO models in Flutter apps on iOS and Android.
 
-## 🚀 Key Features
+It gives you two focused entry points:
 
-| Feature                     | Android | iOS | Performance |
-| --------------------------- | ------- | --- | ----------- |
-| **Object Detection**        | ✅      | ✅  | 25-30 FPS   |
-| **Instance Segmentation**   | ✅      | ✅  | 15-25 FPS   |
-| **Image Classification**    | ✅      | ✅  | 30+ FPS     |
-| **Pose Estimation**         | ✅      | ✅  | 20-30 FPS   |
-| **Oriented Bounding Boxes** | ✅      | ✅  | 20-25 FPS   |
-| **Multi-Instance Support**  | ✅      | ✅  | Variable    |
+- `YOLO` for single-image inference
+- `YOLOView` for real-time camera inference
 
-## 🎯 Why Choose YOLO Flutter?
+The plugin is built around one model-loading flow:
 
-- **Official Plugin**: Direct from the YOLO creators at Ultralytics
-- **Real-time Performance**: Optimized for mobile devices with up to 30 FPS
-- **Production Ready**: Built-in performance controls and memory management
-- **Cross-platform**: Single codebase for iOS and Android
-- **Multiple AI Tasks**: 5 different computer vision capabilities
-- **Multi-Instance**: Run multiple models simultaneously (New!)
+- use an official model ID such as `yolo26n`
+- or point to your own exported model
+- let the plugin resolve metadata and download/cache official assets when needed
 
-## 🎨 Supported Tasks
+## 🚀 What It Supports
 
-### 🔍 Object Detection
+| Task                     | Android | iOS |
+| ------------------------ | ------- | --- |
+| Object Detection         | ✅      | ✅  |
+| Instance Segmentation    | ✅      | ✅  |
+| Image Classification     | ✅      | ✅  |
+| Pose Estimation          | ✅      | ✅  |
+| Oriented Bounding Boxes  | ✅      | ✅  |
 
-Detect and locate objects in images with bounding boxes.
+## 🎯 Default Flow
 
 ```dart
 final yolo = YOLO(modelPath: 'yolo26n');
+await yolo.loadModel();
+final results = await yolo.predict(imageBytes);
 ```
 
-### 🎭 Instance Segmentation
-
-Get pixel-perfect masks for each detected object.
+If you want live camera inference:
 
 ```dart
-final yolo = YOLO(modelPath: 'assets/models/custom-seg.tflite');
+YOLOView(
+  modelPath: 'yolo26n',
+  onResult: (results) {},
+)
 ```
 
-### 🏷️ Classification
+For official assets, call `YOLO.officialModels()` to see which IDs are available on the current platform.
 
-Classify entire images into categories.
+## 📚 Documentation
 
-```dart
-final yolo = YOLO(modelPath: 'assets/models/custom-cls.tflite');
-```
+- [📦 Installation](install.md)
+- [⚡ Quick Start](quickstart.md)
+- [📖 Usage Guide](usage.md)
+- [🧠 Model Guide](models.md)
+- [🔧 API Reference](api.md)
+- [🚀 Performance Guide](performance.md)
+- [🛠️ Troubleshooting](troubleshooting.md)
 
-### 🤸 Pose Estimation
+## ✅ Design Principles
 
-Detect human poses and keypoints.
-
-```dart
-final yolo = YOLO(modelPath: 'assets/models/custom-pose.tflite');
-```
-
-### 📦 Oriented Bounding Box (OBB)
-
-Detect objects with rotated bounding boxes.
-
-```dart
-final yolo = YOLO(modelPath: 'assets/models/custom-obb.tflite');
-```
-
-## 📚 Documentation Navigation
-
-Explore our comprehensive documentation:
-
-- **[📦 Installation](install.md)** - Add the plugin to your Flutter project
-- **[⚡ Quick Start](quickstart.md)** - Get running in 2 minutes
-- **[📖 Usage Guide](usage.md)** - Comprehensive examples and patterns
-- **[🔧 API Reference](api.md)** - Complete API documentation
-- **[🚀 Performance](performance.md)** - Optimization tips and benchmarks
-- **[🛠️ Troubleshooting](troubleshooting.md)** - Common issues and solutions
-
-## 🏗️ Architecture Overview
-
-The YOLO Flutter Plugin uses a hybrid architecture:
-
-```
-Flutter App Layer
-    ↓
-Method Channel Bridge
-    ↓
-Native Platform Layer (iOS/Android)
-    ↓
-YOLO Model Inference Engine
-```
-
-## 🎯 Use Cases
-
-### 📱 Mobile Applications
-
-- **Security Apps**: Real-time surveillance and monitoring
-- **Retail Apps**: Product recognition and inventory management
-- **Health Apps**: Pose analysis for fitness and rehabilitation
-
-### 🏢 Enterprise Solutions
-
-- **Quality Control**: Automated defect detection in manufacturing
-- **Agriculture**: Crop monitoring and pest detection
-- **Construction**: Safety equipment compliance monitoring
-
-## 🔮 Roadmap
-
-- ✅ Multi-instance support (v0.1.18+)
-- ✅ Performance optimization (v0.1.15+)
-- ✅ Streaming configuration (v0.1.18+)
-
-## 🤝 Community & Support
-
-- **💬 Questions?** [Discord](https://discord.com/invite/ultralytics) | [Community Forums](https://community.ultralytics.com/)
-- **🐛 Found a bug?** [Report it here](https://github.com/ultralytics/yolo-flutter-app/issues/new)
-- **💡 Feature request?** [Let us know](https://github.com/ultralytics/yolo-flutter-app/discussions)
-
-## ⚡ Ready to Start?
-
-Jump straight into our [Quick Start Guide](quickstart.md) and have YOLO running in your Flutter app within minutes!
-
----
-
-<div align="center">
-<strong>Made with ❤️ by <a href="https://www.ultralytics.com/">Ultralytics</a></strong>
-</div>
+- Official models are discoverable and downloadable from the package, not the example app.
+- Custom models stay first-class.
+- `task` is optional when exported metadata already includes it.
+- `YOLO` and `YOLOView` stay separate APIs, but they share the same model resolver.
