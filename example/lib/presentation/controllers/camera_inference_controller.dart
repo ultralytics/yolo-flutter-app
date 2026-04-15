@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/models/yolo_result.dart';
+import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/utils/error_handler.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
@@ -23,12 +24,7 @@ class CameraInferenceController extends ChangeNotifier {
   SliderType _activeSlider = SliderType.none;
 
   // Model state
-  ModelFamily _selectedFamily = ModelFamily.yolo11;
-  ModelTask _selectedTask = ModelTask.detect;
-  ModelType _selectedModel = ModelType.forFamilyAndTask(
-    ModelFamily.yolo11,
-    ModelTask.detect,
-  );
+  ModelType _selectedModel = ModelType.detect;
   bool _isModelLoading = false;
   String? _modelPath;
   String _loadingMessage = '';
@@ -54,8 +50,8 @@ class CameraInferenceController extends ChangeNotifier {
   double get iouThreshold => _iouThreshold;
   int get numItemsThreshold => _numItemsThreshold;
   SliderType get activeSlider => _activeSlider;
-  ModelFamily get selectedFamily => _selectedFamily;
-  ModelTask get selectedTask => _selectedTask;
+  ModelFamily get selectedFamily => _selectedModel.family;
+  YOLOTask get selectedTask => _selectedModel.task;
   ModelType get selectedModel => _selectedModel;
   bool get isModelLoading => _isModelLoading;
   String? get modelPath => _modelPath;
@@ -212,30 +208,15 @@ class CameraInferenceController extends ChangeNotifier {
     }
   }
 
-  void changeModel(ModelType model) {
-    if (_isDisposed) return;
-
-    if (!_isModelLoading && model != _selectedModel) {
-      _selectedModel = model;
-      _selectedFamily = model.name.contains('26')
-          ? ModelFamily.yolo26
-          : ModelFamily.yolo11;
-      _selectedTask = _taskForModel(model);
-      _loadModelForPlatform();
-    }
-  }
-
   void changeFamily(ModelFamily family) {
-    if (_isDisposed || _selectedFamily == family) return;
-    _selectedFamily = family;
-    _selectedModel = ModelType.forFamilyAndTask(_selectedFamily, _selectedTask);
+    if (_isDisposed || _isModelLoading || selectedFamily == family) return;
+    _selectedModel = ModelType.forSelection(family, selectedTask);
     _loadModelForPlatform();
   }
 
-  void changeTask(ModelTask task) {
-    if (_isDisposed || _selectedTask == task) return;
-    _selectedTask = task;
-    _selectedModel = ModelType.forFamilyAndTask(_selectedFamily, _selectedTask);
+  void changeTask(YOLOTask task) {
+    if (_isDisposed || _isModelLoading || selectedTask == task) return;
+    _selectedModel = ModelType.forSelection(selectedFamily, task);
     _loadModelForPlatform();
   }
 
@@ -292,26 +273,6 @@ class CameraInferenceController extends ChangeNotifier {
       _downloadProgress = 0.0;
       notifyListeners();
       rethrow;
-    }
-  }
-
-  ModelTask _taskForModel(ModelType model) {
-    switch (model) {
-      case ModelType.detect:
-      case ModelType.detect26:
-        return ModelTask.detect;
-      case ModelType.segment:
-      case ModelType.segment26:
-        return ModelTask.segment;
-      case ModelType.classify:
-      case ModelType.classify26:
-        return ModelTask.classify;
-      case ModelType.pose:
-      case ModelType.pose26:
-        return ModelTask.pose;
-      case ModelType.obb:
-      case ModelType.obb26:
-        return ModelTask.obb;
     }
   }
 

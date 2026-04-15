@@ -99,8 +99,8 @@ class ModelManager {
 
   /// Helper method to download file with progress tracking
   Future<List<int>?> _downloadFile(String url) async {
+    final client = http.Client();
     try {
-      final client = http.Client();
       final request = await client.send(http.Request('GET', Uri.parse(url)));
       final contentLength = request.contentLength ?? 0;
       final bytes = <int>[];
@@ -113,10 +113,11 @@ class ModelManager {
           onDownloadProgress?.call(downloadedBytes / contentLength);
         }
       }
-      client.close();
       return bytes;
     } catch (_) {
       return null;
+    } finally {
+      client.close();
     }
   }
 

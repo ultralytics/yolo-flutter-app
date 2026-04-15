@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/material.dart';
+import 'package:ultralytics_yolo/models/yolo_task.dart';
 import '../../models/models.dart';
 
 /// A widget for selecting YOLO family and task.
@@ -15,10 +16,10 @@ class ModelSelector extends StatelessWidget {
   });
 
   final ModelFamily selectedFamily;
-  final ModelTask selectedTask;
+  final YOLOTask selectedTask;
   final bool isModelLoading;
   final ValueChanged<ModelFamily> onFamilyChanged;
-  final ValueChanged<ModelTask> onTaskChanged;
+  final ValueChanged<YOLOTask> onTaskChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +88,7 @@ class ModelSelector extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: ModelTask.values.map((task) {
+          children: YOLOTask.values.map((task) {
             final isSelected = selectedTask == task;
             return GestureDetector(
               onTap: () {

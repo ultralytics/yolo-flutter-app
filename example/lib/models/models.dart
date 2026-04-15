@@ -4,50 +4,28 @@ import 'package:ultralytics_yolo/models/yolo_task.dart';
 
 enum ModelFamily { yolo11, yolo26 }
 
-enum ModelTask { detect, segment, classify, pose, obb }
-
 enum ModelType {
-  detect('yolo11n', YOLOTask.detect),
-  detect26('yolo26n', YOLOTask.detect),
-  segment('yolo11n-seg', YOLOTask.segment),
-  segment26('yolo26n-seg', YOLOTask.segment),
-  classify('yolo11n-cls', YOLOTask.classify),
-  classify26('yolo26n-cls', YOLOTask.classify),
-  pose('yolo11n-pose', YOLOTask.pose),
-  pose26('yolo26n-pose', YOLOTask.pose),
-  obb('yolo11n-obb', YOLOTask.obb),
-  obb26('yolo26n-obb', YOLOTask.obb);
+  detect('yolo11n', ModelFamily.yolo11, YOLOTask.detect),
+  detect26('yolo26n', ModelFamily.yolo26, YOLOTask.detect),
+  segment('yolo11n-seg', ModelFamily.yolo11, YOLOTask.segment),
+  segment26('yolo26n-seg', ModelFamily.yolo26, YOLOTask.segment),
+  classify('yolo11n-cls', ModelFamily.yolo11, YOLOTask.classify),
+  classify26('yolo26n-cls', ModelFamily.yolo26, YOLOTask.classify),
+  pose('yolo11n-pose', ModelFamily.yolo11, YOLOTask.pose),
+  pose26('yolo26n-pose', ModelFamily.yolo26, YOLOTask.pose),
+  obb('yolo11n-obb', ModelFamily.yolo11, YOLOTask.obb),
+  obb26('yolo26n-obb', ModelFamily.yolo26, YOLOTask.obb);
 
   final String modelName;
 
+  final ModelFamily family;
+
   final YOLOTask task;
 
-  const ModelType(this.modelName, this.task);
+  const ModelType(this.modelName, this.family, this.task);
 
-  static ModelType forFamilyAndTask(ModelFamily family, ModelTask task) {
-    switch ((family, task)) {
-      case (ModelFamily.yolo11, ModelTask.detect):
-        return ModelType.detect;
-      case (ModelFamily.yolo11, ModelTask.segment):
-        return ModelType.segment;
-      case (ModelFamily.yolo11, ModelTask.classify):
-        return ModelType.classify;
-      case (ModelFamily.yolo11, ModelTask.pose):
-        return ModelType.pose;
-      case (ModelFamily.yolo11, ModelTask.obb):
-        return ModelType.obb;
-      case (ModelFamily.yolo26, ModelTask.detect):
-        return ModelType.detect26;
-      case (ModelFamily.yolo26, ModelTask.segment):
-        return ModelType.segment26;
-      case (ModelFamily.yolo26, ModelTask.classify):
-        return ModelType.classify26;
-      case (ModelFamily.yolo26, ModelTask.pose):
-        return ModelType.pose26;
-      case (ModelFamily.yolo26, ModelTask.obb):
-        return ModelType.obb26;
-    }
-  }
+  static ModelType forSelection(ModelFamily family, YOLOTask task) => values
+      .firstWhere((model) => model.family == family && model.task == task);
 }
 
 enum SliderType { none, numItems, confidence, iou }
@@ -59,6 +37,6 @@ extension ModelFamilyDisplay on ModelFamily {
   };
 }
 
-extension ModelTaskDisplay on ModelTask {
+extension YOLOTaskDisplay on YOLOTask {
   String get label => name.toUpperCase();
 }
