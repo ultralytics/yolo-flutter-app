@@ -156,7 +156,8 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
     }
 
     let creatorDefined =
-      model.modelDescription.metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String] ?? [:]
+      model.modelDescription.metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String]
+      ?? [:]
     let labels = parseLabels(from: creatorDefined)
 
     var result: [String: Any] = [
