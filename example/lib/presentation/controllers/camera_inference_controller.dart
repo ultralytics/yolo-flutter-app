@@ -1,93 +1,70 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/material.dart';
-import 'package:ultralytics_yolo/models/yolo_result.dart';
-import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
-import 'package:ultralytics_yolo/utils/error_handler.dart';
+import 'package:ultralytics_yolo/yolo.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
-import '../../models/models.dart';
-import '../../services/model_manager.dart';
 
-/// Controller that manages the state and business logic for camera inference
+enum SliderType { none, numItems, confidence, iou }
+
+/// Controller that manages the state and business logic for camera inference.
 class CameraInferenceController extends ChangeNotifier {
-  // Detection state
   int _detectionCount = 0;
   double _currentFps = 0.0;
   int _frameCount = 0;
   DateTime _lastFpsUpdate = DateTime.now();
 
-  // Threshold state
   double _confidenceThreshold = 0.5;
   double _iouThreshold = 0.45;
   int _numItemsThreshold = 30;
   SliderType _activeSlider = SliderType.none;
 
-  // Model state
-  ModelType _selectedModel = ModelType.detect;
-  bool _isModelLoading = false;
-  String? _modelPath;
-  String _loadingMessage = '';
-  double _downloadProgress = 0.0;
+  YOLOTask _selectedTask = YOLOTask.detect;
+  String _selectedModel = _defaultModelForTask(YOLOTask.detect);
 
-  // Camera state
   double _currentZoomLevel = 1.0;
   LensFacing _lensFacing = LensFacing.front;
   bool _isFrontCamera = false;
 
-  // Controllers
   final _yoloController = YOLOViewController();
-  late final ModelManager _modelManager;
-
-  // Performance optimization
   bool _isDisposed = false;
-  Future<void>? _loadingFuture;
 
-  // Getters
   int get detectionCount => _detectionCount;
   double get currentFps => _currentFps;
   double get confidenceThreshold => _confidenceThreshold;
   double get iouThreshold => _iouThreshold;
   int get numItemsThreshold => _numItemsThreshold;
   SliderType get activeSlider => _activeSlider;
-  ModelFamily get selectedFamily => _selectedModel.family;
-  YOLOTask get selectedTask => _selectedModel.task;
-  ModelType get selectedModel => _selectedModel;
-  bool get isModelLoading => _isModelLoading;
-  String? get modelPath => _modelPath;
-  String get loadingMessage => _loadingMessage;
-  double get downloadProgress => _downloadProgress;
+  YOLOTask get selectedTask => _selectedTask;
+  String get selectedModel => _selectedModel;
+  List<YOLOTask> get availableTasks => YOLOTask.values
+      .where((task) => YOLO.officialModels(task: task).isNotEmpty)
+      .toList(growable: false);
+  List<String> get availableModels => YOLO.officialModels(task: _selectedTask);
+  String get modelPath => _selectedModel;
   double get currentZoomLevel => _currentZoomLevel;
   bool get isFrontCamera => _isFrontCamera;
   LensFacing get lensFacing => _lensFacing;
   YOLOViewController get yoloController => _yoloController;
 
-  CameraInferenceController() {
-    _isFrontCamera = _lensFacing == LensFacing.front;
-
-    _modelManager = ModelManager(
-      onDownloadProgress: (progress) {
-        _downloadProgress = progress;
-        notifyListeners();
-      },
-      onStatusUpdate: (message) {
-        _loadingMessage = message;
-        notifyListeners();
-      },
-    );
+  static String _defaultModelForTask(YOLOTask task) {
+    final models = YOLO.officialModels(task: task);
+    final yolo26Models = models
+        .where((model) => model.startsWith('yolo26n'))
+        .toList(growable: false);
+    if (yolo26Models.isNotEmpty) return yolo26Models.first;
+    return models.isEmpty ? '' : models.first;
   }
 
-  /// Initialize the controller
   Future<void> initialize() async {
-    await _loadModelForPlatform();
-    _yoloController.setThresholds(
+    _isFrontCamera = _lensFacing == LensFacing.front;
+    await _yoloController.setThresholds(
       confidenceThreshold: _confidenceThreshold,
       iouThreshold: _iouThreshold,
       numItemsThreshold: _numItemsThreshold,
     );
   }
 
-  /// Handle detection results and calculate FPS
   void onDetectionResults(List<YOLOResult> results) {
     if (_isDisposed) return;
 
@@ -107,10 +84,8 @@ class CameraInferenceController extends ChangeNotifier {
     }
   }
 
-  /// Handle performance metrics
   void onPerformanceMetrics(double fps) {
     if (_isDisposed) return;
-
     if ((_currentFps - fps).abs() > 0.1) {
       _currentFps = fps;
       notifyListeners();
@@ -119,7 +94,6 @@ class CameraInferenceController extends ChangeNotifier {
 
   void onZoomChanged(double zoomLevel) {
     if (_isDisposed) return;
-
     if ((_currentZoomLevel - zoomLevel).abs() > 0.01) {
       _currentZoomLevel = zoomLevel;
       notifyListeners();
@@ -128,7 +102,6 @@ class CameraInferenceController extends ChangeNotifier {
 
   void toggleSlider(SliderType type) {
     if (_isDisposed) return;
-
     if (_activeSlider != type) {
       _activeSlider = _activeSlider == type ? SliderType.none : type;
       notifyListeners();
@@ -138,7 +111,7 @@ class CameraInferenceController extends ChangeNotifier {
   void updateSliderValue(double value) {
     if (_isDisposed) return;
 
-    bool changed = false;
+    var changed = false;
     switch (_activeSlider) {
       case SliderType.numItems:
         final newValue = value.toInt();
@@ -162,18 +135,15 @@ class CameraInferenceController extends ChangeNotifier {
           changed = true;
         }
         break;
-      default:
+      case SliderType.none:
         break;
     }
 
-    if (changed) {
-      notifyListeners();
-    }
+    if (changed) notifyListeners();
   }
 
   void setZoomLevel(double zoomLevel) {
     if (_isDisposed) return;
-
     if ((_currentZoomLevel - zoomLevel).abs() > 0.01) {
       _currentZoomLevel = zoomLevel;
       _yoloController.setZoomLevel(zoomLevel);
@@ -183,7 +153,6 @@ class CameraInferenceController extends ChangeNotifier {
 
   void flipCamera() {
     if (_isDisposed) return;
-
     _isFrontCamera = !_isFrontCamera;
     _lensFacing = _isFrontCamera ? LensFacing.front : LensFacing.back;
     if (_isFrontCamera) _currentZoomLevel = 1.0;
@@ -191,94 +160,31 @@ class CameraInferenceController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setLensFacing(LensFacing facing) {
-    if (_isDisposed) return;
-
-    if (_lensFacing != facing) {
-      _lensFacing = facing;
-      _isFrontCamera = facing == LensFacing.front;
-
-      _yoloController.switchCamera();
-
-      if (_isFrontCamera) {
-        _currentZoomLevel = 1.0;
-      }
-
-      notifyListeners();
-    }
-  }
-
-  void changeFamily(ModelFamily family) {
-    if (_isDisposed || _isModelLoading || selectedFamily == family) return;
-    _selectedModel = ModelType.forSelection(family, selectedTask);
-    _loadModelForPlatform();
-  }
-
   void changeTask(YOLOTask task) {
-    if (_isDisposed || _isModelLoading || selectedTask == task) return;
-    _selectedModel = ModelType.forSelection(selectedFamily, task);
-    _loadModelForPlatform();
-  }
-
-  Future<void> _loadModelForPlatform() async {
-    if (_isDisposed) return;
-
-    if (_loadingFuture != null) {
-      await _loadingFuture;
+    if (_isDisposed ||
+        _selectedTask == task ||
+        !availableTasks.contains(task)) {
       return;
     }
-
-    _loadingFuture = _performModelLoading();
-    try {
-      await _loadingFuture;
-    } finally {
-      _loadingFuture = null;
-    }
-  }
-
-  Future<void> _performModelLoading() async {
-    if (_isDisposed) return;
-
-    _isModelLoading = true;
-    _loadingMessage = 'Loading ${_selectedModel.modelName} model...';
-    _downloadProgress = 0.0;
+    _selectedTask = task;
+    _selectedModel = _defaultModelForTask(task);
     _detectionCount = 0;
     _currentFps = 0.0;
     notifyListeners();
+  }
 
-    try {
-      final modelPath = await _modelManager.getModelPath(_selectedModel);
-
-      if (_isDisposed) return;
-
-      _modelPath = modelPath;
-      _isModelLoading = false;
-      _loadingMessage = '';
-      _downloadProgress = 0.0;
-      notifyListeners();
-
-      if (modelPath == null) {
-        throw Exception('Failed to load ${_selectedModel.modelName} model');
-      }
-    } catch (e) {
-      if (_isDisposed) return;
-
-      final error = YOLOErrorHandler.handleError(
-        e,
-        'Failed to load model ${_selectedModel.modelName} for task ${_selectedModel.task.name}',
-      );
-
-      _isModelLoading = false;
-      _loadingMessage = 'Failed to load model: ${error.message}';
-      _downloadProgress = 0.0;
-      notifyListeners();
-      rethrow;
-    }
+  void changeModel(String modelId) {
+    if (_isDisposed || _selectedModel == modelId) return;
+    _selectedModel = modelId;
+    _detectionCount = 0;
+    _currentFps = 0.0;
+    notifyListeners();
   }
 
   @override
   void dispose() {
     _isDisposed = true;
+    _yoloController.stop();
     super.dispose();
   }
 }

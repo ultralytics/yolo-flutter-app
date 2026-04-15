@@ -45,23 +45,19 @@ flutter pub get
 
 ## 🎯 Step 3: Add a model
 
-You can get the model in one of the following ways:
+The simplest path is to use an official model ID and let the plugin download it automatically. Call `YOLO.officialModels()` to see which IDs are available on the current platform.
 
-1. Download from the [release assets](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0) of this repository (both `yolo11*` and `yolo26*` artifacts are available)
+```dart
+final yolo = YOLO(modelPath: 'yolo26n');
+```
 
-2. Get it from [Ultralytics Hub](https://www.ultralytics.com/hub)
+Custom local models are still supported:
 
-3. Export it from [Ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) ([CoreML](https://docs.ultralytics.com/integrations/coreml/)/[TFLite](https://docs.ultralytics.com/integrations/tflite/))
+- iOS: drag `.mlpackage` or `.mlmodel` into **ios/Runner.xcworkspace**, or bundle `.mlpackage.zip` in Flutter assets
+- Android native assets: place `.tflite` files in **android/app/src/main/assets/**
+- Flutter assets: place `.tflite` on Android or `.mlpackage.zip` on iOS in `assets/models/` and use that asset path directly
 
-**[📥 Download Models](./models.md)** |
-
-Bundle the model with your app using the following method.
-
-For iOS: Drag and drop mlpackage/mlmodel directly into **ios/Runner.xcworkspace** and set target to Runner.
-
-For Android: Place the tflite file in **android/app/src/main/assets/** (the Android native assets folder, not the Flutter assets folder).
-
-> **Note:** A future update may allow placing models in `assets/models/` for both platforms, but this is not yet supported on Android.
+If your custom model metadata does not include `task`, pass it explicitly.
 
 ## ⚡ Step 4: Minimal Detection Code
 
@@ -96,8 +92,7 @@ class _YOLODemoState extends State<YOLODemo> {
     setState(() => isLoading = true);
 
     yolo = YOLO(
-      modelPath: 'yolo11n',
-      task: YOLOTask.detect,
+      modelPath: 'yolo26n',
     );
 
     await yolo!.loadModel();
@@ -205,8 +200,7 @@ import 'package:ultralytics_yolo/yolo_view.dart';
 
 // Replace the Column with:
 YOLOView(
-  modelPath: 'yolo11n',
-  task: YOLOTask.detect,
+  modelPath: 'yolo26n',
   onResult: (results) {
     print('Detected ${results.length} objects');
   },
@@ -221,16 +215,15 @@ Switch models without restarting the camera:
 final controller = YOLOViewController();
 
 YOLOView(
-  modelPath: 'yolo11n',  // Initial model
-  task: YOLOTask.detect,
+  modelPath: 'yolo26n',  // Initial model
   controller: controller,
   onResult: (results) {
     print('Detected ${results.length} objects');
   },
 )
 
-// Later, switch to a different model
-await controller.switchModel('yolo11s', YOLOTask.detect);
+// Later, switch to another official model or a custom export
+await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 ```
 
 ## 🎯 Multi-Instance Quick Example
@@ -240,13 +233,12 @@ Want to run multiple models? Try this:
 ```dart
 // Create two YOLO instances
 final detector = YOLO(
-  modelPath: 'assets/models/yolo11n.tflite',
-  task: YOLOTask.detect,
+  modelPath: 'yolo26n',
   useMultiInstance: true, // Enable multi-instance
 );
 
 final classifier = YOLO(
-  modelPath: 'assets/models/yolo11n-cls.tflite',
+  modelPath: 'assets/models/yolo26n-cls.tflite',
   task: YOLOTask.classify,
   useMultiInstance: true,
 );
@@ -288,7 +280,7 @@ Now that you have YOLO working, explore more features:
 
 ## 💡 Pro Tips
 
-- **Start small**: Use yolo11n model for development, upgrade for production
+- **Start small**: Use `yolo26n` for development, then move up in size if needed
 - **Test on device**: Emulators don't show real performance
 - **Monitor memory**: Watch usage when running multiple instances
 - **Cache models**: Keep loaded models in memory for better performance

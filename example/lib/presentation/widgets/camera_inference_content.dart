@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import '../controllers/camera_inference_controller.dart';
-import 'model_loading_overlay.dart';
 
 /// Main content widget that handles the camera view and loading states
 class CameraInferenceContent extends StatelessWidget {
@@ -19,25 +18,20 @@ class CameraInferenceContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (controller.modelPath != null && !controller.isModelLoading) {
+    if (controller.modelPath.isNotEmpty) {
       return YOLOView(
         key: ValueKey(
-          'yolo_view_${controller.modelPath}_${controller.selectedModel.task.name}_$rebuildKey',
+          'yolo_view_${controller.modelPath}_${controller.selectedTask.name}_$rebuildKey',
         ),
         controller: controller.yoloController,
-        modelPath: controller.modelPath!,
-        task: controller.selectedModel.task,
+        modelPath: controller.modelPath,
+        task: controller.selectedTask,
         streamingConfig: const YOLOStreamingConfig.minimal(),
         onResult: controller.onDetectionResults,
         onPerformanceMetrics: (metrics) =>
             controller.onPerformanceMetrics(metrics.fps),
         onZoomChanged: controller.onZoomChanged,
         lensFacing: controller.lensFacing,
-      );
-    } else if (controller.isModelLoading) {
-      return ModelLoadingOverlay(
-        loadingMessage: controller.loadingMessage,
-        downloadProgress: controller.downloadProgress,
       );
     } else {
       return const Center(

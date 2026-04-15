@@ -1,5 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import CoreML
 import Flutter
 import UIKit
 
@@ -138,6 +139,102 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
       "cache": cachesDirectory?.path,
       "documents": documentsDirectory?.path,
     ]
+  }
+
+  private func inspectModel(modelPath: String) throws -> [String: Any] {
+    let checkResult = checkModelExists(modelPath: modelPath)
+    let resolvedPath = (checkResult["absolutePath"] as? String) ?? modelPath
+    let url = URL(fileURLWithPath: resolvedPath)
+    let ext = url.pathExtension.lowercased()
+
+    let model: MLModel
+    if ext == "mlmodelc" {
+      model = try MLModel(contentsOf: url)
+    } else {
+      let compiledURL = try MLModel.compileModel(at: url)
+      model = try MLModel(contentsOf: compiledURL)
+    }
+
+    let creatorDefined =
+      model.modelDescription.metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String]
+      ?? [:]
+    let labels = parseLabels(from: creatorDefined)
+
+    var result: [String: Any] = [
+      "path": resolvedPath,
+      "task": creatorDefined["task"] ?? "",
+      "labels": labels,
+    ]
+
+    if let names = creatorDefined["names"] {
+      result["names"] = names
+    }
+    if let description = creatorDefined["description"] {
+      result["description"] = description
+    }
+    if let imgsz = creatorDefined["imgsz"] {
+      result["imgsz"] = imgsz
+    }
+    if let stride = creatorDefined["stride"] {
+      result["stride"] = stride
+    }
+    if let channels = creatorDefined["channels"] {
+      result["channels"] = channels
+    }
+    if let end2end = creatorDefined["end2end"] {
+      result["end2end"] = end2end
+    }
+
+    return result
+  }
+
+  private func parseLabels(from userDefined: [String: String]) -> [String] {
+    if let labelsData = userDefined["classes"] {
+      return
+        labelsData
+        .components(separatedBy: ",")
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+    }
+
+    if let labelsData = userDefined["names"] {
+      let cleanedInput =
+        labelsData
+        .replacingOccurrences(of: "{", with: "")
+        .replacingOccurrences(of: "}", with: "")
+
+      let parsedPairs = cleanedInput.components(separatedBy: ",").compactMap {
+        pair -> (Int?, String)? in
+        let components = pair.split(
+          separator: ":",
+          maxSplits: 1,
+          omittingEmptySubsequences: false
+        )
+        guard components.count >= 2 else { return nil }
+
+        let key = Int(String(components[0]).trimmingCharacters(in: .whitespacesAndNewlines))
+        let value = String(components[1])
+          .trimmingCharacters(in: .whitespacesAndNewlines)
+          .replacingOccurrences(of: "'", with: "")
+        return (key, value)
+      }
+
+      let keyedLabels = parsedPairs.compactMap { key, value -> (Int, String)? in
+        guard let key else { return nil }
+        return (key, value)
+      }
+      if !keyedLabels.isEmpty {
+        let maxKey = keyedLabels.map(\.0).max() ?? -1
+        var labels = Array(repeating: "", count: maxKey + 1)
+        for (key, value) in keyedLabels {
+          labels[key] = value
+        }
+        return labels
+      }
+
+      return parsedPairs.map { $0.1 }
+    }
+
+    return []
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -281,6 +378,29 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
       case "getStoragePaths":
         let paths = getStoragePaths()
         result(paths)
+
+      case "inspectModel":
+        guard let args = call.arguments as? [String: Any],
+          let modelPath = args["modelPath"] as? String
+        else {
+          result(
+            FlutterError(
+              code: "bad_args", message: "Invalid arguments for inspectModel", details: nil)
+          )
+          return
+        }
+
+        do {
+          result(try inspectModel(modelPath: modelPath))
+        } catch {
+          result(
+            FlutterError(
+              code: "MODEL_INSPECTION_FAILED",
+              message: error.localizedDescription,
+              details: nil
+            )
+          )
+        }
 
       case "setModel":
         guard let args = call.arguments as? [String: Any],

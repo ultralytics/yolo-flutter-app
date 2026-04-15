@@ -16,7 +16,7 @@ class CameraLogoOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (controller.modelPath == null || controller.isModelLoading) {
+    if (controller.modelPath.isEmpty) {
       return const SizedBox.shrink();
     }
 

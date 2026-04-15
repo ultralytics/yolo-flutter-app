@@ -1,7 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/material.dart';
-import '../../models/models.dart';
 import '../controllers/camera_inference_controller.dart';
 import 'detection_stats_display.dart';
 import 'model_selector.dart';
@@ -28,11 +27,12 @@ class CameraInferenceOverlay extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           ModelSelector(
-            selectedFamily: controller.selectedFamily,
             selectedTask: controller.selectedTask,
-            isModelLoading: controller.isModelLoading,
-            onFamilyChanged: controller.changeFamily,
+            selectedModel: controller.selectedModel,
+            availableTasks: controller.availableTasks,
+            availableModels: controller.availableModels,
             onTaskChanged: controller.changeTask,
+            onModelChanged: controller.changeModel,
           ),
           SizedBox(height: isLandscape ? 8 : 12),
           DetectionStatsDisplay(

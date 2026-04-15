@@ -24,8 +24,7 @@ class YOLOScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('YOLO Detection')),
       body: YOLOView(
-        modelPath: 'yolo11n',
-        task: YOLOTask.detect,
+        modelPath: 'yolo26n',
         onResult: (results) {
           for (final result in results) {
             debugPrint('${result.className}: ${result.confidence}');
@@ -54,7 +53,7 @@ class _SingleImageExampleState extends State<SingleImageExample> {
   }
 
   Future<void> _initializeYOLO() async {
-    _yolo = YOLO(modelPath: 'yolo11n', task: YOLOTask.detect);
+    _yolo = YOLO(modelPath: 'yolo26n');
     await _yolo!.loadModel();
   }
 

@@ -49,8 +49,8 @@ abstract class YOLOPlatform extends PlatformInterface {
   ///
   /// Parameters:
   /// - [viewId]: The unique identifier of the YOLO view
-  /// - [modelPath]: The path to the new model file
-  /// - [task]: The YOLO task type for the new model
+  /// - [modelPath]: The official model ID, local path, asset path, or URL for the new model
+  /// - [task]: The YOLO task type for the new model when metadata is missing
   ///
   /// Throws:
   /// - [UnimplementedError] if not implemented by the platform

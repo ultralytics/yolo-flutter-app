@@ -58,7 +58,7 @@ class YOLOPlatformView(
         Log.d(TAG, "YOLOPlatformView[$viewId init]: Initialized with viewUniqueId: $viewUniqueId")
 
         // Parse model path and task from creation params
-        var modelPath = creationParams?.get("modelPath") as? String ?: "yolo11n"
+        var modelPath = creationParams?.get("modelPath") as? String ?: "yolo26n"
         val taskString = creationParams?.get("task") as? String ?: "detect"
         val confidenceParam = creationParams?.get("confidenceThreshold") as? Double ?: 0.5
         val iouParam = creationParams?.get("iouThreshold") as? Double ?: 0.45

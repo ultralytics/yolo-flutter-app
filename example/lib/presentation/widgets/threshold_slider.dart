@@ -1,7 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/material.dart';
-import '../../models/models.dart';
+import '../controllers/camera_inference_controller.dart';
 
 /// A slider widget for adjusting threshold values
 class ThresholdSlider extends StatelessWidget {

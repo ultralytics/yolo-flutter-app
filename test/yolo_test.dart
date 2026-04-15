@@ -73,6 +73,72 @@ void main() {
       expect(segmentYolo.task, YOLOTask.segment);
       expect(classifyYolo.task, YOLOTask.classify);
     });
+
+    test('official models are available per task', () {
+      expect(YOLO.officialModels(task: YOLOTask.detect), contains('yolo26n'));
+      expect(
+        YOLO.officialModels(task: YOLOTask.segment),
+        everyElement(endsWith('-seg')),
+      );
+      expect(
+        YOLO.officialModels(task: YOLOTask.classify),
+        everyElement(endsWith('-cls')),
+      );
+      expect(
+        YOLO.officialModels(task: YOLOTask.pose),
+        everyElement(endsWith('-pose')),
+      );
+      expect(
+        YOLO.officialModels(task: YOLOTask.obb),
+        everyElement(endsWith('-obb')),
+      );
+    });
+
+    test('task can be inferred from model metadata', () async {
+      final yolo = YOLO(modelPath: 'test_model.tflite');
+      await yolo.loadModel();
+
+      expect(yolo.resolvedTask, YOLOTask.detect);
+      expect(log.any((call) => call.method == 'inspectModel'), isTrue);
+    });
+
+    test('task mismatch from model metadata throws', () async {
+      final setup = YOLOTestHelpers.createYOLOTestSetup(
+        customResponses: {
+          'inspectModel': (_) => {
+            'path': 'test_model.tflite',
+            'task': 'segment',
+            'labels': ['person'],
+          },
+          'loadModel': (_) => true,
+        },
+      );
+      channel = setup.$1;
+      log = setup.$2;
+      final yolo = YOLO(modelPath: 'test_model.tflite', task: YOLOTask.detect);
+
+      await expectLater(
+        yolo.loadModel(),
+        throwsA(isA<ModelLoadingException>()),
+      );
+    });
+
+    test('missing task metadata requires explicit task', () async {
+      final setup = YOLOTestHelpers.createYOLOTestSetup(
+        customResponses: {
+          'inspectModel': (_) => {'path': 'test_model.tflite', 'labels': []},
+          'loadModel': (_) => true,
+        },
+      );
+      channel = setup.$1;
+      log = setup.$2;
+      final yolo = YOLO(modelPath: 'test_model.tflite');
+
+      await expectLater(
+        yolo.loadModel(),
+        throwsA(isA<ModelLoadingException>()),
+      );
+    });
   });
 
   group('Platform Method Channel', () {

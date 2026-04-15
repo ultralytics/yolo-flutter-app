@@ -22,3 +22,15 @@ enum YOLOTask {
   /// Oriented Bounding Box detection - detects rotated bounding boxes for objects
   obb,
 }
+
+extension YOLOTaskParsing on YOLOTask {
+  static YOLOTask? tryParse(String? value) {
+    if (value == null) return null;
+    for (final task in YOLOTask.values) {
+      if (task.name == value.toLowerCase()) {
+        return task;
+      }
+    }
+    return null;
+  }
+}
