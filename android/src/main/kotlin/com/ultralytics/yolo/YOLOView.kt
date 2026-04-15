@@ -1712,6 +1712,64 @@ class YOLOView @JvmOverloads constructor(
             map["detections"] = detections
             Log.d(TAG, "✅ Total detections in stream: ${detections.size} (boxes: ${result.boxes.size}, obb: ${result.obb.size})")
         }
+
+        // Add classification results (if available and enabled for CLASSIFY task)
+        if (config.includeClassifications && result.probs != null && result.boxes.isEmpty()) {
+            val probs = result.probs!!
+
+            val top5List = if (probs.top5Indices != null) {
+              probs.top5Indices!!
+                .zip(probs.top5Labels)
+                .zip(probs.top5Confs.toList())
+                .take(5)
+                .map { ((classIdx, name), conf) ->
+                  mapOf(
+                    "class" to classIdx,
+                    "name" to name,
+                    "confidence" to conf.toDouble()
+                  )
+                }
+            } else {
+              // Fallback: omit class when indices unavailable
+              probs.top5Labels
+                .zip(probs.top5Confs.toList())
+                .take(5)
+                .map { (name, conf) ->
+                  mapOf(
+                    "name" to name,
+                    "confidence" to conf.toDouble()
+                  )
+                }
+            }
+
+            // Add classification result to detections array (for compatibility with YOLOResult.fromMap)
+            val detections = (map["detections"] as? List<Map<String, Any>>)?.toMutableList() ?: ArrayList()
+
+            val classificationDetection = HashMap<String, Any>()
+            classificationDetection["class"] = probs.top1Index
+            classificationDetection["name"] = probs.top1Label
+            classificationDetection["confidence"] = probs.top1Conf.toDouble()
+            classificationDetection["top5"] = top5List
+
+            // Full image bounding box for classification
+            val boundingBox = HashMap<String, Any>()
+            boundingBox["left"] = 0.0
+            boundingBox["top"] = 0.0
+            boundingBox["right"] = result.origShape.width.toDouble()
+            boundingBox["bottom"] = result.origShape.height.toDouble()
+            classificationDetection["boundingBox"] = boundingBox
+
+            // Normalized bounding box (full image)
+            val normalizedBox = HashMap<String, Any>()
+            normalizedBox["left"] = 0.0
+            normalizedBox["top"] = 0.0
+            normalizedBox["right"] = 1.0
+            normalizedBox["bottom"] = 1.0
+            classificationDetection["normalizedBox"] = normalizedBox
+
+            detections.add(classificationDetection)
+            map["detections"] = detections
+        }
         
         // Add performance metrics (if enabled)
         if (config.includeProcessingTimeMs) {
