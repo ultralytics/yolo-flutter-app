@@ -1214,6 +1214,25 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
+  public func setTorchMode(_ enabled: Bool) {
+    guard let device = videoCapture.captureDevice, device.hasTorch else { return }
+
+    do {
+      try device.lockForConfiguration()
+      defer {
+        device.unlockForConfiguration()
+      }
+
+      if enabled {
+        try device.setTorchModeOn(level: AVCaptureDevice.maxAvailableTorchLevel)
+      } else {
+        device.torchMode = .off
+      }
+    } catch {
+      print("Failed to set torch mode: \(error.localizedDescription)")
+    }
+  }
+
   @objc func playTapped() {
     selection.selectionChanged()
     self.videoCapture.start()

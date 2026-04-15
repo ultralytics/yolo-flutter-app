@@ -395,6 +395,14 @@ class YOLOView @JvmOverloads constructor(
         }
     }
 
+    fun setTorchMode(enabled: Boolean) {
+        camera?.let { cam ->
+            if (cam.cameraInfo.hasFlashUnit()) {
+                cam.cameraControl.enableTorch(enabled)
+            }
+        }
+    }
+
     // endregion
 
     // region Model / Task

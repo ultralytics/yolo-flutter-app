@@ -55,6 +55,8 @@ class YOLOTestHelpers {
               return true;
             case 'switchCamera':
               return true;
+            case 'setTorchMode':
+              return true;
             case 'zoomIn':
               return true;
             case 'zoomOut':
@@ -404,6 +406,10 @@ class YOLOTestHelpers {
               return true;
             },
             'switchCamera': (call) {
+              log.add(call);
+              return true;
+            },
+            'setTorchMode': (call) {
               log.add(call);
               return true;
             },
