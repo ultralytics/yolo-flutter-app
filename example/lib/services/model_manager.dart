@@ -5,8 +5,6 @@ import 'package:archive/archive.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:ultralytics_yolo/utils/map_converter.dart';
-import 'package:ultralytics_yolo/config/channel_config.dart';
 import '../models/models.dart';
 
 /// Manages YOLO model loading, downloading, and caching.
@@ -19,10 +17,7 @@ import '../models/models.dart';
 class ModelManager {
   /// Base URL for downloading model files from GitHub releases
   static const String _modelDownloadBaseUrl =
-      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.0.0';
-
-  static final MethodChannel _channel =
-      ChannelConfig.createSingleImageChannel();
+      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0';
 
   /// Callback for download progress updates (0.0 to 1.0)
   final void Function(double progress)? onDownloadProgress;
@@ -46,10 +41,6 @@ class ModelManager {
   /// Gets the iOS model path (.mlpackage format).
   Future<String?> _getIOSModelPath(ModelType modelType) async {
     _updateStatus('Checking for ${modelType.modelName} model...');
-    try {
-      final bundleCheck = await _checkModelExistsInBundle(modelType.modelName);
-      if (bundleCheck['exists'] == true) return modelType.modelName;
-    } catch (_) {}
     final dir = await getApplicationDocumentsDirectory();
     final modelDir = Directory('${dir.path}/${modelType.modelName}.mlpackage');
     if (await modelDir.exists()) {
@@ -60,21 +51,6 @@ class ModelManager {
     }
     _updateStatus('Downloading ${modelType.modelName} model...');
     return _downloadIOSModel(modelType);
-  }
-
-  /// Check if a model exists in the iOS bundle
-  Future<Map<String, dynamic>> _checkModelExistsInBundle(
-    String modelName,
-  ) async {
-    if (!Platform.isIOS) return {'exists': false};
-    try {
-      final result = await _channel.invokeMethod('checkModelExists', {
-        'modelPath': modelName,
-      });
-      return MapConverter.convertToTypedMap(result);
-    } catch (_) {
-      return {'exists': false};
-    }
   }
 
   /// Download iOS model (.mlpackage format) or extract from assets
@@ -100,22 +76,16 @@ class ModelManager {
     _updateStatus('Checking for ${modelType.modelName} model...');
     final bundledName = '${modelType.modelName}.tflite';
 
-    // Check Android native assets first
-    try {
-      final result = await _channel.invokeMethod('checkModelExists', {
-        'modelPath': bundledName,
-      });
-      if (result != null && result['exists'] == true) {
-        return result['location'] == 'assets'
-            ? bundledName
-            : result['path'] as String;
-      }
-    } catch (_) {}
-
     // Check local storage
     final dir = await getApplicationDocumentsDirectory();
     final modelFile = File('${dir.path}/$bundledName');
     if (await modelFile.exists()) return modelFile.path;
+
+    try {
+      final assetData = await rootBundle.load('assets/models/$bundledName');
+      await modelFile.writeAsBytes(assetData.buffer.asUint8List());
+      return modelFile.path;
+    } catch (_) {}
 
     // Download if not found
     _updateStatus('Downloading ${modelType.modelName} model...');
