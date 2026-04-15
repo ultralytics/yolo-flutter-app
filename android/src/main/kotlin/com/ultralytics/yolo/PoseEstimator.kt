@@ -327,7 +327,7 @@ class PoseEstimator(
             val right  = xScaled + wScaled / 2f
             val bottom = yScaled + hScaled / 2f
 
-            // modelInputSize スケールでの RectF
+            // RectF in modelInputSize scale
             val normBox = RectF(left / modelW, top / modelH, right / modelW, bottom / modelH)
 
             val rectF = RectF(

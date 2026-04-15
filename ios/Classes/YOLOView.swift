@@ -97,7 +97,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         obbDetections: obbDetections,
         on: obbLayer,
         imageViewSize: self.overlayLayer.frame.size,
-        originalImageSize: result.orig_shape,  // 例
+        originalImageSize: result.orig_shape,  // example
         lineWidth: 3
       )
     }
