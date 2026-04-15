@@ -238,6 +238,7 @@ class Classifier(
         val top1Score = top1?.second ?: 0f
         val top1Index: Int = if (top1 != null) top1.first else 0
 
+        val top5Indices = top5.map { it.first }
         val top5Labels = top5.map { (idx, _) -> labels.getOrElse(idx) { "Unknown" } }
         val top5Scores = top5.map { it.second }
 
@@ -246,7 +247,8 @@ class Classifier(
             top5Labels = top5Labels,
             top1Conf = top1Score,
             top5Confs = top5Scores,
-            top1Index = top1Index
+            top1Index = top1Index,
+            top5Indices = top5Indices
         )
 
         val fpsVal = if (t4 > 0) 1.0 / t4 else 0.0

@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/models/yolo_result.dart';
+import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/utils/error_handler.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
@@ -49,6 +50,8 @@ class CameraInferenceController extends ChangeNotifier {
   double get iouThreshold => _iouThreshold;
   int get numItemsThreshold => _numItemsThreshold;
   SliderType get activeSlider => _activeSlider;
+  ModelFamily get selectedFamily => _selectedModel.family;
+  YOLOTask get selectedTask => _selectedModel.task;
   ModelType get selectedModel => _selectedModel;
   bool get isModelLoading => _isModelLoading;
   String? get modelPath => _modelPath;
@@ -205,13 +208,16 @@ class CameraInferenceController extends ChangeNotifier {
     }
   }
 
-  void changeModel(ModelType model) {
-    if (_isDisposed) return;
+  void changeFamily(ModelFamily family) {
+    if (_isDisposed || _isModelLoading || selectedFamily == family) return;
+    _selectedModel = ModelType.forSelection(family, selectedTask);
+    _loadModelForPlatform();
+  }
 
-    if (!_isModelLoading && model != _selectedModel) {
-      _selectedModel = model;
-      _loadModelForPlatform();
-    }
+  void changeTask(YOLOTask task) {
+    if (_isDisposed || _isModelLoading || selectedTask == task) return;
+    _selectedModel = ModelType.forSelection(selectedFamily, task);
+    _loadModelForPlatform();
   }
 
   Future<void> _loadModelForPlatform() async {
