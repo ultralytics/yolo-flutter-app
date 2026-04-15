@@ -1865,7 +1865,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
       for i in 0..<min(top5Labels.count, top5Confs.count) {
         top5List.append([
           "name": top5Labels[i],
-          "confidence": Double(top5Confs[i])
+          "confidence": Double(top5Confs[i]),
         ])
       }
 
@@ -1883,7 +1883,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
         "left": 0.0,
         "top": 0.0,
         "right": Double(result.orig_shape.width),
-        "bottom": Double(result.orig_shape.height)
+        "bottom": Double(result.orig_shape.height),
       ]
       detection["boundingBox"] = boundingBox
 
@@ -1892,7 +1892,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
         "left": 0.0,
         "top": 0.0,
         "right": 1.0,
-        "bottom": 1.0
+        "bottom": 1.0,
       ]
       detection["normalizedBox"] = normalizedBox
 

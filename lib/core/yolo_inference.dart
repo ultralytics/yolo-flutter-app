@@ -212,25 +212,43 @@ class YOLOInference {
         if (obb is Map) {
           final obbMap = MapConverter.convertToTypedMap(obb);
           final points = obbMap['points'] as List<dynamic>? ?? [];
+          final polygonPoints = points
+              .whereType<Map>()
+              .map(MapConverter.convertToTypedMap)
+              .where((pointMap) => pointMap['x'] is num && pointMap['y'] is num)
+              .map(
+                (pointMap) => <String, double>{
+                  'x': (pointMap['x'] as num).toDouble(),
+                  'y': (pointMap['y'] as num).toDouble(),
+                },
+              )
+              .toList();
 
           double minX = double.infinity, minY = double.infinity;
           double maxX = double.negativeInfinity, maxY = double.negativeInfinity;
 
-          for (final point in points) {
-            if (point is Map) {
-              final pointMap = MapConverter.convertToTypedMap(point);
-              final x = MapConverter.safeGetDouble(pointMap, 'x');
-              final y = MapConverter.safeGetDouble(pointMap, 'y');
-              minX = minX > x ? x : minX;
-              minY = minY > y ? y : minY;
-              maxX = maxX < x ? x : maxX;
-              maxY = maxY < y ? y : maxY;
-            }
+          for (final point in polygonPoints) {
+            final x = point['x']!;
+            final y = point['y']!;
+            minX = minX > x ? x : minX;
+            minY = minY > y ? y : minY;
+            maxX = maxX < x ? x : maxX;
+            maxY = maxY < y ? y : maxY;
+          }
+
+          if (!minX.isFinite ||
+              !minY.isFinite ||
+              !maxX.isFinite ||
+              !maxY.isFinite) {
+            minX = 0.0;
+            minY = 0.0;
+            maxX = 0.0;
+            maxY = 0.0;
           }
 
           final detection = <String, dynamic>{
-            'classIndex': 0,
-            'className': obbMap['class'] ?? '',
+            'classIndex': MapConverter.safeGetInt(obbMap, 'classIndex'),
+            'className': MapConverter.safeGetString(obbMap, 'class'),
             'confidence': MapConverter.safeGetDouble(obbMap, 'confidence'),
             'boundingBox': {
               'left': minX,
@@ -244,6 +262,7 @@ class YOLOInference {
               'right': maxX,
               'bottom': maxY,
             },
+            'polygon': polygonPoints,
           };
 
           if (obbMap['angle'] is num) {

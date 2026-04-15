@@ -79,6 +79,9 @@ class YOLOResult {
   /// Only available when using OBB models (YOLOTask.obb).
   final double? angle;
 
+  /// Polygon points for oriented bounding boxes.
+  final List<Map<String, num>>? obbPoints;
+
   YOLOResult({
     required this.classIndex,
     required this.className,
@@ -89,6 +92,7 @@ class YOLOResult {
     this.keypoints,
     this.keypointConfidences,
     this.angle,
+    this.obbPoints,
   });
 
   /// Creates a [YOLOResult] from a map representation.
@@ -137,6 +141,19 @@ class YOLOResult {
     }
 
     final angle = map['angle'] is num ? (map['angle'] as num).toDouble() : null;
+    final polygonRaw = map['polygon'] ?? map['obbPoints'];
+    final polygon = polygonRaw is List ? polygonRaw : null;
+    final obbPoints = polygon
+        ?.whereType<Map>()
+        .map(MapConverter.convertToTypedMap)
+        .where((pointMap) => pointMap['x'] is num && pointMap['y'] is num)
+        .map(
+          (pointMap) => <String, num>{
+            'x': (pointMap['x'] as num).toDouble(),
+            'y': (pointMap['y'] as num).toDouble(),
+          },
+        )
+        .toList();
 
     return YOLOResult(
       classIndex: classIndex,
@@ -148,6 +165,7 @@ class YOLOResult {
       keypoints: keypoints,
       keypointConfidences: keypointConfidences,
       angle: angle,
+      obbPoints: obbPoints,
     );
   }
 
@@ -186,6 +204,10 @@ class YOLOResult {
 
     if (angle != null) {
       map['angle'] = angle;
+    }
+
+    if (obbPoints != null) {
+      map['polygon'] = obbPoints;
     }
 
     return map;
