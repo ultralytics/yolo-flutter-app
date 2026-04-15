@@ -391,6 +391,15 @@ class YOLOPlatformView(
                     yoloView.switchCamera()
                     result.success(null)
                 }
+                "setTorchMode" -> {
+                    val enabled = call.argument<Boolean>("enabled")
+                    if (enabled != null) {
+                        yoloView.setTorchMode(enabled)
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "enabled is required", null)
+                    }
+                }
                 "setZoomLevel" -> {
                     val zoomLevel = call.argument<Double>("zoomLevel")
                     if (zoomLevel != null) {

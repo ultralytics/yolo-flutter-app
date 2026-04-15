@@ -117,6 +117,18 @@ class YOLOViewController {
     }
   }
 
+  Future<void> setTorchMode(bool enabled) async {
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('setTorchMode', {
+          'enabled': enabled,
+        });
+      } catch (e) {
+        logInfo('Error setting torch mode: $e');
+      }
+    }
+  }
+
   Future<void> zoomIn() async {
     if (_methodChannel != null) {
       try {

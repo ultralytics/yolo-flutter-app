@@ -76,6 +76,13 @@ void main() {
       await controller.switchCamera();
       YOLOTestHelpers.assertMethodCalled(log, 'switchCamera');
 
+      await controller.setTorchMode(true);
+      YOLOTestHelpers.assertMethodCalled(
+        log,
+        'setTorchMode',
+        arguments: {'enabled': true},
+      );
+
       await controller.zoomIn();
       YOLOTestHelpers.assertMethodCalled(log, 'zoomIn');
 

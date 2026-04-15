@@ -330,6 +330,18 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         self.yoloView?.switchCameraTapped()
         result(nil)  // Success
 
+      case "setTorchMode":
+        if let args = call.arguments as? [String: Any],
+          let enabled = args["enabled"] as? Bool
+        {
+          self.yoloView?.setTorchMode(enabled)
+          result(nil)  // Success
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for setTorchMode", details: nil))
+        }
+
       case "setZoomLevel":
         if let args = call.arguments as? [String: Any],
           let zoomLevel = args["zoomLevel"] as? Double

@@ -361,6 +361,16 @@ Switch between front and back camera.
 Future<void> switchCamera()
 ```
 
+##### `setTorchMode()`
+
+Turn the active camera torch on or off when supported.
+
+```dart
+Future<void> setTorchMode(bool enabled)
+```
+
+**Parameters**: `enabled` - `true` to enable the torch, `false` to disable it
+
 ##### `switchModel()`
 
 Dynamically switch to a different model without restarting the camera.
