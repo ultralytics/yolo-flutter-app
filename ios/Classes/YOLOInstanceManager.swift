@@ -390,6 +390,7 @@ class YOLOInstanceManager {
 
         obbArray.append([
           "points": points,
+          "angle": Double(angle),
           "class": obbResult.cls,
           "confidence": obbResult.confidence,
         ])

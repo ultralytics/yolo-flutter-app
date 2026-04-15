@@ -207,16 +207,13 @@ class OBBExample {
     final imageBytes = await loadImageBytes();
     final results = await yolo.predict(imageBytes);
 
-    // Process oriented bounding boxes
-    final boxes = results['boxes'] as List<dynamic>;
-    for (final box in boxes) {
-      print('Object: ${box['class']}');
-      print('Confidence: ${box['confidence']}');
-      print('Rotation: ${box['angle']} degrees');
-
-      // Access rotated box coordinates
-      final points = box['points'] as List<dynamic>? ?? [];
-      print('Box corners: $points');
+    // Process normalized OBB detections
+    final detections = results['detections'] as List<dynamic>;
+    for (final detection in detections) {
+      final result = YOLOResult.fromMap(detection as Map<String, dynamic>);
+      print('Object: ${result.className}');
+      print('Confidence: ${result.confidence}');
+      print('Rotation: ${result.angle} radians');
     }
   }
 }
