@@ -37,6 +37,11 @@ class PoseEstimator(
     private val customOptions: Interpreter.Options? = null
 ) : BasePredictor() {
 
+    private enum class OutputLayout {
+        FEATURES_FIRST,
+        ANCHORS_FIRST
+    }
+
     companion object {
         // xywh(4) + conf(1) + keypoints(17*3=51) = 56
         private const val OUTPUT_FEATURES = 56
@@ -116,6 +121,7 @@ class PoseEstimator(
     // Output dimensions
     private var batchSize = 0
     private var numAnchors = 0
+    private lateinit var outputLayout: OutputLayout
 
     init {
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
@@ -154,17 +160,39 @@ class PoseEstimator(
         inputSize = com.ultralytics.yolo.Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
         
-        val outputShape = interpreter.getOutputTensor(0).shape()  // e.g.: [1, 56, 2100]
-        batchSize = outputShape[0]           // 1
-        val outFeatures = outputShape[1]     // 56
-        numAnchors = outputShape[2]          // 2100 etc.
-        require(outFeatures == OUTPUT_FEATURES) {
-            "Unexpected output feature size. Expected=$OUTPUT_FEATURES, Actual=$outFeatures"
+        val outputShape = interpreter.getOutputTensor(0).shape()
+        batchSize = outputShape[0]
+        outputLayout = when {
+            outputShape[1] == OUTPUT_FEATURES -> OutputLayout.FEATURES_FIRST
+            outputShape[2] == OUTPUT_FEATURES -> OutputLayout.ANCHORS_FIRST
+            else -> throw IllegalArgumentException(
+                "Unexpected output feature size. Expected $OUTPUT_FEATURES in one output axis, Actual=${outputShape.contentToString()}"
+            )
         }
-        
+
+        val outFeatures: Int
+        when (outputLayout) {
+            OutputLayout.FEATURES_FIRST -> {
+                outFeatures = outputShape[1]
+                numAnchors = outputShape[2]
+            }
+            OutputLayout.ANCHORS_FIRST -> {
+                outFeatures = outputShape[2]
+                numAnchors = outputShape[1]
+            }
+        }
+
         outputArray = Array(batchSize) {
-            Array(outFeatures) { FloatArray(numAnchors) }
+            when (outputLayout) {
+                OutputLayout.FEATURES_FIRST -> Array(outFeatures) { FloatArray(numAnchors) }
+                OutputLayout.ANCHORS_FIRST -> Array(numAnchors) { FloatArray(outFeatures) }
+            }
         }
+
+        Log.d(
+            "PoseEstimator",
+            "Pose output shape=${outputShape.contentToString()} layout=$outputLayout anchors=$numAnchors"
+        )
         
         val inputBytes = 1 * inHeight * inWidth * 3 * 4 // FLOAT32 is 4 bytes
         inputBuffer = ByteBuffer.allocateDirect(inputBytes).apply {
@@ -281,11 +309,11 @@ class PoseEstimator(
         val scaleY = origHeight.toFloat() / modelH
 
         for (j in 0 until numAnchors) {
-            val rawX = features[0][j]       // 0..1
-            val rawY = features[1][j]       // 0..1
-            val rawW = features[2][j]       // 0..1
-            val rawH = features[3][j]       // 0..1
-            val conf = features[4][j]       // 0..1
+            val rawX = featureValue(features, 0, j)
+            val rawY = featureValue(features, 1, j)
+            val rawW = featureValue(features, 2, j)
+            val rawH = featureValue(features, 3, j)
+            val conf = featureValue(features, 4, j)
 
             if (conf < confidenceThreshold) continue
 
@@ -312,9 +340,9 @@ class PoseEstimator(
             val kpArray = mutableListOf<Pair<Float, Float>>()
             val kpConfArray = mutableListOf<Float>()
             for (k in 0 until KEYPOINTS_COUNT) {
-                val rawKx = features[5 + k * 3][j]
-                val rawKy = features[5 + k * 3 + 1][j]
-                val kpC   = features[5 + k * 3 + 2][j]
+                val rawKx = featureValue(features, 5 + k * 3, j)
+                val rawKy = featureValue(features, 5 + k * 3 + 1, j)
+                val kpC   = featureValue(features, 5 + k * 3 + 2, j)
 
                 val isNormalized = rawKx <= 1.0f && rawKy <= 1.0f
                 
@@ -366,6 +394,17 @@ class PoseEstimator(
 
         val finalDetections = nmsPoseDetections(detections, iouThreshold)
         return finalDetections
+    }
+
+    private fun featureValue(
+        features: Array<FloatArray>,
+        featureIndex: Int,
+        anchorIndex: Int
+    ): Float {
+        return when (outputLayout) {
+            OutputLayout.FEATURES_FIRST -> features[featureIndex][anchorIndex]
+            OutputLayout.ANCHORS_FIRST -> features[anchorIndex][featureIndex]
+        }
     }
 
 

@@ -1672,6 +1672,69 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
         }
       }
 
+      if !result.obb.isEmpty && result.boxes.isEmpty {
+        let imgWidth = result.orig_shape.width
+        let imgHeight = result.orig_shape.height
+
+        for obbResult in result.obb {
+          var detection: [String: Any] = [:]
+          detection["classIndex"] = obbResult.index
+          detection["className"] = obbResult.cls
+          detection["confidence"] = Double(obbResult.confidence)
+
+          let polygon = obbResult.box.toPolygon()
+          let points = polygon.map { point in
+            [
+              "x": Double(point.x),
+              "y": Double(point.y),
+            ]
+          }
+
+          var minX = CGFloat.greatestFiniteMagnitude
+          var minY = CGFloat.greatestFiniteMagnitude
+          var maxX = -CGFloat.greatestFiniteMagnitude
+          var maxY = -CGFloat.greatestFiniteMagnitude
+
+          for point in polygon {
+            minX = min(minX, point.x)
+            minY = min(minY, point.y)
+            maxX = max(maxX, point.x)
+            maxY = max(maxY, point.y)
+          }
+
+          detection["boundingBox"] = [
+            "left": Double(minX * imgWidth),
+            "top": Double(minY * imgHeight),
+            "right": Double(maxX * imgWidth),
+            "bottom": Double(maxY * imgHeight),
+          ]
+          detection["normalizedBox"] = [
+            "left": Double(minX),
+            "top": Double(minY),
+            "right": Double(maxX),
+            "bottom": Double(maxY),
+          ]
+
+          if config.includeOBB {
+            detection["obb"] = [
+              "centerX": Double(obbResult.box.cx),
+              "centerY": Double(obbResult.box.cy),
+              "width": Double(obbResult.box.w),
+              "height": Double(obbResult.box.h),
+              "angle": Double(obbResult.box.angle),
+              "angleDegrees": (Double(obbResult.box.angle) * 180.0 / Double.pi),
+              "area": Double(obbResult.box.area),
+              "points": points,
+              "confidence": Double(obbResult.confidence),
+              "className": obbResult.cls,
+              "classIndex": obbResult.index,
+            ]
+          }
+
+          detections.append(detection)
+        }
+      }
+
       // Convert detection boxes - CRITICAL: use detectionIndex, not class index
       for (detectionIndex, box) in result.boxes.enumerated() {
         var detection: [String: Any] = [:]

@@ -77,8 +77,8 @@ end
 android {
     defaultConfig {
         minSdkVersion 21  // Change from 16 to 21
-        targetSdkVersion 35
-        compileSdkVersion 35
+        targetSdkVersion 36
+        compileSdkVersion 36
     }
 }
 ```

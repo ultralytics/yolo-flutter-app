@@ -67,11 +67,11 @@ Edit `android/app/build.gradle`:
 ```gradle
 // android/app/build.gradle
 android {
-    compileSdkVersion 35
+    compileSdkVersion 36
 
     defaultConfig {
         minSdkVersion 21  // Minimum API level 21 required
-        targetSdkVersion 35
+        targetSdkVersion 36
     }
 }
 ```
@@ -221,7 +221,7 @@ cd ios && pod install --repo-update
 **Issue**: Android build fails with "API level" error
 
 ```bash
-# Solution: Update compileSdkVersion and targetSdkVersion in android/app/build.gradle
+# Solution: Update compileSdkVersion and targetSdkVersion in android/app/build.gradle to 36
 ```
 
 **Issue**: Model file not found
