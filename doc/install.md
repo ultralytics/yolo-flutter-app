@@ -12,11 +12,13 @@ Get the Ultralytics YOLO Flutter plugin up and running in your project with this
 
 Add the plugin to your Flutter project's `pubspec.yaml`:
 
+Package: https://pub.dev/packages/ultralytics_yolo
+
 ```yaml
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.2.0 # Latest version
+  ultralytics_yolo: ^0.3.0 # Latest version
 ```
 
 Run the installation command:
