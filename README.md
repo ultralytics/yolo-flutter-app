@@ -57,8 +57,8 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 YOLOView(
   modelPath: 'yolo26n',
   onResult: (results) {
-    for (final result in results) {
-      print('${result.className}: ${result.confidence}');
+    for (final r in results) {
+      debugPrint('${r.className}: ${r.confidence}');
     }
   },
 )
@@ -102,7 +102,7 @@ If the exported model includes metadata, the plugin infers `task` automatically.
 
 Pass an `http` or `https` URL and the plugin will download it into app storage before loading it.
 
-## 🧭 Official Vs Custom
+## 🧭 Official vs. Custom
 
 | Use case                                              | Recommended path                  |
 | ----------------------------------------------------- | --------------------------------- |

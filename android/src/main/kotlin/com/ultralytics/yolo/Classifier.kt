@@ -41,7 +41,6 @@ class Classifier(
         if (useGpu) {
             try {
                 addDelegate(GpuDelegate())
-                Log.d(TAG, "GPU delegate is used.")
             } catch (e: Exception) {
                 Log.e(TAG, "GPU delegate error: ${e.message}")
             }
@@ -61,11 +60,11 @@ class Classifier(
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
         // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
-        var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         var labelsWereLoaded = loadedLabels != null
 
-        if (labelsWereLoaded) {
-            this.labels = loadedLabels!! // Use labels from appended ZIP
+        if (loadedLabels != null) {
+            this.labels = loadedLabels // Use labels from appended ZIP
             Log.i(TAG, "Labels successfully loaded from appended ZIP.")
         } else {
             Log.w(TAG, "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
@@ -112,25 +111,20 @@ class Classifier(
         require(inChannels == expectedChannels || (expectedChannels == 1 && inChannels == 1) || (expectedChannels == 3 && inChannels == 3)) {
             "Unexpected input channels. Expected $expectedChannels channels, but got $inChannels channels. Input shape: ${inputShape.joinToString()}"
         }
-        
-        Log.d(TAG, "Model configuration: ${inChannels}-channel input, grayscale mode: $isGrayscaleModel")
 
         inputSize = Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
-        Log.d(TAG, "Model input size = $inWidth x $inHeight")
 
         val outputShape = interpreter.getOutputTensor(0).shape()
         // e.g. outputShape = [1, 1000] for ImageNet, [1, 12] for EMNIST
         numClass = outputShape[1]
-        
+
         // Validate expected classes if specified
         (classifierOptions?.get("expectedClasses") as? Int)?.let { expectedClasses ->
             if (numClass != expectedClasses) {
                 Log.w(TAG, "Warning: Expected $expectedClasses output classes, but model has $numClass classes")
             }
         }
-        
-        Log.d(TAG, "Model output shape = [1, $numClass] (${if (isGrayscaleModel) "grayscale" else "RGB"} model)")
 
         // Setup ImageProcessors only for RGB models (3-channel)
         // For grayscale models (1-channel), we'll use custom processing
@@ -165,8 +159,6 @@ class Classifier(
             .add(CastOp(DataType.FLOAT32))
             .build()
         }
-
-        Log.d(TAG, "Classifier initialized.")
     }
 
     override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
@@ -193,7 +185,6 @@ class Classifier(
                 inputMean = inputMean,
                 inputStd = inputStd
             )
-            Log.d(TAG, "Using grayscale processing for 1-channel model")
         } else {
             // Use standard RGB processing for 3-channel models
         val tensorImage = TensorImage(DataType.FLOAT32)
@@ -217,7 +208,6 @@ class Classifier(
             imageProcessorSingleImage.process(tensorImage)
         }
             inputBuffer = processedImage.buffer
-            Log.d(TAG, "Using RGB processing for 3-channel model")
         }
 
         val outputArray = Array(1) { FloatArray(numClass) }
@@ -253,10 +243,6 @@ class Classifier(
 
         val fpsVal = if (t4 > 0) 1.0 / t4 else 0.0
 
-        Log.d(TAG, "Classification result: top1Label=${probs.top1Label}, top1Conf=${probs.top1Conf}, top1Index=${probs.top1Index}")
-        Log.d(TAG, "Labels: ${labels}")
-        Log.d(TAG, "Prediction completed successfully")
-
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
             probs = probs,
@@ -281,10 +267,8 @@ class Classifier(
         val files = extractor.associatedFileNames
         if (!files.isNullOrEmpty()) {
             for (fileName in files) {
-                Log.d(TAG, "Found associated file: $fileName")
                 extractor.getAssociatedFile(fileName)?.use { stream ->
                     val fileString = String(stream.readBytes(), Charsets.UTF_8)
-                    Log.d(TAG, "Associated file contents:\n$fileString")
 
                     val yaml = Yaml()
                     @Suppress("UNCHECKED_CAST")
@@ -293,14 +277,11 @@ class Classifier(
                         val namesMap = data["names"] as? Map<Int, String>
                         if (namesMap != null) {
                             labels = namesMap.values.toList()
-                            Log.d(TAG, "Loaded labels from metadata: $labels")
                             return true
                         }
                     }
                 }
             }
-        } else {
-            Log.d(TAG, "No associated files found in the metadata.")
         }
         false
     } catch (e: Exception) {

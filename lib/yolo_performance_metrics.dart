@@ -1,19 +1,8 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-/// Performance metrics from YOLO inference processing.
-///
-/// This class provides real-time performance data about YOLO model execution,
-/// including frame rate, processing time, and frame tracking information.
-///
-/// Example:
-/// ```dart
-/// YOLOView(
-///   onPerformanceMetrics: (YOLOPerformanceMetrics metrics) {
-///     print('FPS: ${metrics.fps}');
-///     print('Processing time: ${metrics.processingTimeMs}ms');
-///   },
-/// )
-/// ```
+/// Real-time performance data for a YOLO inference: frame rate, processing
+/// time, frame counter, and timestamp. Delivered via
+/// [YOLOView.onPerformanceMetrics].
 class YOLOPerformanceMetrics {
   /// Current frames per second.
   ///

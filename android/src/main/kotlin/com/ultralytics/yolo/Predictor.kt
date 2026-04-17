@@ -43,7 +43,7 @@ abstract class BasePredictor : Predictor {
     protected var t4: Double = 0.0
 
     var CONFIDENCE_THRESHOLD:Float = 0.25f
-    var IOU_THRESHOLD:Float = 0.4f
+    var IOU_THRESHOLD:Float = 0.7f
     var transformationMatrix: Matrix? = null
     var pendingBitmapFrame: Bitmap? = null
     var isFrontCamera: Boolean = false

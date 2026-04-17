@@ -29,8 +29,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   private var yoloView: YOLOView?
 
   // Track current threshold values to maintain state
-  private var currentConfidenceThreshold: Double = 0.5
-  private var currentIouThreshold: Double = 0.45
+  private var currentConfidenceThreshold: Double = 0.25
+  private var currentIouThreshold: Double = 0.7
   private var currentNumItemsThreshold: Int = 30
   private var currentShowOverlays: Bool = true
 
@@ -76,8 +76,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       let task = YOLOTask.fromString(taskRaw)
 
       // Get new threshold parameters
-      let confidenceThreshold = dict["confidenceThreshold"] as? Double ?? 0.5
-      let iouThreshold = dict["iouThreshold"] as? Double ?? 0.45
+      let confidenceThreshold = dict["confidenceThreshold"] as? Double ?? 0.25
+      let iouThreshold = dict["iouThreshold"] as? Double ?? 0.7
       let numItemsThreshold = dict["numItemsThreshold"] as? Int ?? 30
       let showOverlays = dict["showOverlays"] as? Bool ?? true
 
@@ -93,7 +93,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       self.currentShowOverlays = showOverlays
 
       // Old threshold parameter for backward compatibility
-      let oldThreshold = dict["threshold"] as? Double ?? 0.5
+      let oldThreshold = dict["threshold"] as? Double ?? 0.25
 
       // Determine which thresholds to use (prioritize new parameters)
 
@@ -134,7 +134,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
   // Method for backward compatibility
   private func setupYOLOView(threshold: Double) {
-    setupYOLOView(confidenceThreshold: threshold, iouThreshold: 0.45)  // Use default IoU value
+    setupYOLOView(confidenceThreshold: threshold, iouThreshold: 0.7)
   }
 
   // Setup YOLOView and connect callbacks (using new parameters)

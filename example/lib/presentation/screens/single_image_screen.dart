@@ -4,11 +4,9 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:ultralytics_yolo/utils/error_handler.dart';
-import 'package:ultralytics_yolo/utils/map_converter.dart';
-import 'package:ultralytics_yolo/yolo.dart';
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
-/// A screen that demonstrates YOLO inference on a single image.
+/// Demonstrates YOLO inference on a single gallery image.
 class SingleImageScreen extends StatefulWidget {
   const SingleImageScreen({super.key});
 
@@ -20,7 +18,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   final _picker = ImagePicker();
   final _yolo = YOLO(modelPath: 'yolo26n');
 
-  List<Map<String, dynamic>> _detections = [];
+  List<YOLOResult> _detections = const [];
   Uint8List? _imageBytes;
   Uint8List? _annotatedImage;
   bool _isModelReady = false;
@@ -34,16 +32,9 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   Future<void> _initializeYOLO() async {
     try {
       await _yolo.loadModel();
-      if (mounted) {
-        setState(() => _isModelReady = true);
-      }
+      if (mounted) setState(() => _isModelReady = true);
     } catch (e) {
-      if (!mounted) return;
-      final error = YOLOErrorHandler.handleError(
-        e,
-        'Failed to load yolo26n for single-image inference',
-      );
-      _showSnackBar('Error loading model: ${error.message}');
+      if (mounted) _showSnackBar('Error loading model: $e');
     }
   }
 
@@ -52,25 +43,23 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       _showSnackBar('Model is loading, please wait...');
       return;
     }
-
     final file = await _picker.pickImage(source: ImageSource.gallery);
     if (file == null) return;
-
     final bytes = await file.readAsBytes();
     final result = await _yolo.predict(bytes);
     if (!mounted) return;
-
+    final detections = (result['detections'] as List?)
+        ?.whereType<Map>()
+        .map(YOLOResult.fromMap)
+        .toList(growable: false);
     setState(() {
-      _detections = result['boxes'] is List
-          ? MapConverter.convertBoxesList(result['boxes'] as List)
-          : [];
+      _detections = detections ?? const [];
       _annotatedImage = result['annotatedImage'] as Uint8List?;
       _imageBytes = bytes;
     });
   }
 
   void _showSnackBar(String message) {
-    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
@@ -85,13 +74,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Single Image Inference'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Single Image Inference')),
       body: Column(
         children: [
           const SizedBox(height: 20),
@@ -113,20 +96,32 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
               ),
             ),
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  if (_annotatedImage != null || _imageBytes != null)
-                    SizedBox(
-                      height: 300,
-                      width: double.infinity,
-                      child: Image.memory(_annotatedImage ?? _imageBytes!),
+            child: ListView(
+              children: [
+                if (_annotatedImage != null || _imageBytes != null)
+                  SizedBox(
+                    height: 300,
+                    width: double.infinity,
+                    child: Image.memory(_annotatedImage ?? _imageBytes!),
+                  ),
+                const SizedBox(height: 10),
+                if (_detections.isNotEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'Detections',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  const SizedBox(height: 10),
-                  const Text('Detections:'),
-                  Text(_detections.toString()),
-                ],
-              ),
+                  ),
+                for (final d in _detections)
+                  ListTile(
+                    dense: true,
+                    title: Text(d.className),
+                    trailing: Text(
+                      '${(d.confidence * 100).toStringAsFixed(1)}%',
+                    ),
+                  ),
+              ],
             ),
           ),
         ],

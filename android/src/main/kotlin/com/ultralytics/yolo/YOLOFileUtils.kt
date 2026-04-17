@@ -94,10 +94,10 @@ object YOLOFileUtils {
                 Channels.newInputStream(fileChannel).use { channelIs ->
                     BufferedInputStream(channelIs).use { bis ->
                         ZipInputStream(bis).use { zis ->
-                            var entry: ZipEntry?
-                            while (zis.nextEntry.also { entry = it } != null) {
-                                val entryName = entry!!.name
-                                if (entry!!.isDirectory) continue
+                            while (true) {
+                                val entry: ZipEntry = zis.nextEntry ?: break
+                                if (entry.isDirectory) continue
+                                val entryName = entry.name
                                 if (entryName != "TFLITE_ULTRALYTICS_METADATA.json" && entryName != "metadata.json") {
                                     continue
                                 }
@@ -160,7 +160,6 @@ object YOLOFileUtils {
     }
 
     private fun closeResources(afd: AssetFileDescriptor?, fis: FileInputStream?, fileChannel: FileChannel?, reason: String) {
-        Log.d(TAG, "Appended ZIP: Closing resources ($reason).")
         try { fileChannel?.close() } catch (e: IOException) { Log.e(TAG, "Error closing FileChannel", e) }
         try { fis?.close() } catch (e: IOException) { Log.e(TAG, "Error closing FileInputStream", e) }
         try { afd?.close() } catch (e: IOException) { Log.e(TAG, "Error closing AssetFileDescriptor", e) }

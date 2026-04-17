@@ -45,9 +45,6 @@ class YOLO(
                 
                 // Allow FP16 precision for faster computation
                 setAllowFp16PrecisionForFp32(true)
-                
-                // Log configuration
-                Log.d(TAG, "Interpreter options: threads=${Runtime.getRuntime().availableProcessors()}, FP16 enabled")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error creating interpreter options: ${e.message}")
@@ -93,7 +90,6 @@ class YOLO(
         
         // Don't create annotated image for classification tasks to save memory and processing time
         val annotatedImage = if (task == YOLOTask.CLASSIFY) {
-            Log.d(TAG, "Skipping annotation for CLASSIFY task")
             null
         } else {
             drawAnnotations(bitmap, result, rotateForCamera)

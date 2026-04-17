@@ -45,7 +45,6 @@ class ObbDetector(
         if (useGpu) {
             try {
                 addDelegate(GpuDelegate())
-                Log.d("ObbDetector", "GPU delegate is used.")
             } catch (e: Exception) {
                 Log.e("ObbDetector", "GPU delegate error: ${e.message}")
             }
@@ -76,11 +75,11 @@ class ObbDetector(
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
         // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
-        var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         var labelsWereLoaded = loadedLabels != null
 
-        if (labelsWereLoaded) {
-            this.labels = loadedLabels!! // Use labels from appended ZIP
+        if (loadedLabels != null) {
+            this.labels = loadedLabels // Use labels from appended ZIP
             Log.i("ObbDetector", "Labels successfully loaded from appended ZIP.")
         } else {
             Log.w("ObbDetector", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
@@ -101,7 +100,6 @@ class ObbDetector(
         interpreter = Interpreter(modelBuffer, interpreterOptions)
         // Call allocateTensors() once during initialization, not in the inference loop
         interpreter.allocateTensors()
-        Log.d("ObbDetector", "TFLite model loaded and tensors allocated")
 
         val inputShape = interpreter.getInputTensor(0).shape()
         val inHeight = inputShape[1]
@@ -464,10 +462,8 @@ class ObbDetector(
         val files = extractor.associatedFileNames
         if (!files.isNullOrEmpty()) {
             for (fileName in files) {
-                Log.d("ObbDetector", "Found associated file: $fileName")
                 extractor.getAssociatedFile(fileName)?.use { stream ->
                     val fileString = String(stream.readBytes(), Charsets.UTF_8)
-                    Log.d("ObbDetector", "Associated file contents:\n$fileString")
 
                     val yaml = Yaml()
                     @Suppress("UNCHECKED_CAST")
@@ -476,14 +472,11 @@ class ObbDetector(
                         val namesMap = data["names"] as? Map<Int, String>
                         if (namesMap != null) {
                             labels = namesMap.values.toList()
-                            Log.d("ObbDetector", "Loaded labels from metadata: $labels")
                             return true
                         }
                     }
                 }
             }
-        } else {
-            Log.d("ObbDetector", "No associated files found in the metadata.")
         }
         false
     } catch (e: Exception) {

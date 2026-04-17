@@ -35,7 +35,6 @@ object YOLOInstanceManager {
     fun createInstance(instanceId: String) {
         // Just register the ID, actual YOLO instance created on load
         loadingStates[instanceId] = false
-        Log.d(TAG, "Created instance placeholder: $instanceId")
     }
 
     /**
@@ -100,14 +99,12 @@ object YOLOInstanceManager {
             // Store classifier options if provided
             classifierOptions?.let { options ->
                 instanceOptions[instanceId] = options
-                Log.d(TAG, "Stored classifier options for instance $instanceId: $options")
             }
 
             // Create YOLO instance with the specified parameters
             val yolo = YOLO(context, modelPath, task, emptyList(), useGpu, numItemsThreshold, classifierOptions)
             instances[instanceId] = yolo
             loadingStates[instanceId] = false
-            Log.d(TAG, "Model loaded successfully for instance: $instanceId ${if (classifierOptions != null) "with classifier options" else ""}")
             callback(Result.success(Unit))
         } catch (e: Exception) {
             loadingStates[instanceId] = false
@@ -171,7 +168,6 @@ object YOLOInstanceManager {
         instances[instanceId]?.let { yolo ->
             try {
                 // YOLO class doesn't have a close() method, just remove from map
-                Log.d(TAG, "Disposing instance: $instanceId")
             } catch (e: Exception) {
                 Log.e(TAG, "Error disposing instance $instanceId: ${e.message}")
             }
@@ -194,7 +190,6 @@ object YOLOInstanceManager {
     fun disposeAll() {
         val allIds = instances.keys.toList()
         allIds.forEach { dispose(it) }
-        Log.d(TAG, "Disposed all ${allIds.size} instances")
     }
 
     /**

@@ -155,7 +155,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         let a = Date()
 
         let detectedObjects = postProcessSegment(
-          feature: pred, confidenceThreshold: 0.25, iouThreshold: 0.4)
+          feature: pred, confidenceThreshold: 0.25, iouThreshold: 0.7)
         var boxes: [Box] = []
         var colorMasks: [CGImage?] = []
         var alhaMasks: [CGImage?] = []
@@ -209,7 +209,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         //                }
       }
     } catch {
-      print(error)
+      NSLog("YOLO Segmenter: %@", String(describing: error))
     }
     return result
   }

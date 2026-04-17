@@ -31,7 +31,7 @@ public class YOLO {
   }
 
   /// IoU threshold for non-maximum suppression (0.0-1.0)
-  public var iouThreshold: Double = 0.4 {
+  public var iouThreshold: Double = 0.7 {
     didSet {
       // Apply to predictor if it has been loaded
       if let basePredictor = predictor as? BasePredictor {
@@ -45,8 +45,6 @@ public class YOLO {
     numItemsThreshold: Int = 30,
     completion: ((Result<YOLO, Error>) -> Void)? = nil
   ) {
-    print("YOLO.init: Received modelPath: \(modelPathOrName)")
-
     var modelURL: URL?
 
     let lowercasedPath = modelPathOrName.lowercased()
@@ -78,14 +76,9 @@ public class YOLO {
 
     // If the model URL is still unresolved, check Flutter assets
     if modelURL == nil {
-      print("YOLO Debug: Searching for model at path: \(modelPathOrName)")
-
       // For absolute paths, use them directly and allow directories
       var isDirectory: ObjCBool = false
       if fileManager.fileExists(atPath: modelPathOrName, isDirectory: &isDirectory) {
-        print(
-          "YOLO Debug: Found model at absolute path: \(modelPathOrName) (isDirectory: \(isDirectory.boolValue))"
-        )
         modelURL = URL(fileURLWithPath: modelPathOrName)
       }
 
@@ -96,13 +89,10 @@ public class YOLO {
         let directory = components.dropLast().joined(separator: "/")
         let assetDirectory = "flutter_assets/\(directory)"
 
-        print("YOLO Debug: Checking in asset directory: \(assetDirectory) for file: \(fileName)")
-
         // Try resolving with the filename as-is
         if let assetPath = Bundle.main.path(
           forResource: fileName, ofType: nil, inDirectory: assetDirectory)
         {
-          print("YOLO Debug: Found model in assets directory: \(assetPath)")
           modelURL = URL(fileURLWithPath: assetPath)
         }
 
@@ -112,14 +102,9 @@ public class YOLO {
           let name = fileComponents.dropLast().joined(separator: ".")
           let ext = fileComponents.last ?? ""
 
-          print(
-            "YOLO Debug: Trying with separated name: \(name) and extension: \(ext) in directory: \(assetDirectory)"
-          )
-
           if let assetPath = Bundle.main.path(
             forResource: name, ofType: ext, inDirectory: assetDirectory)
           {
-            print("YOLO Debug: Found model with separated extension: \(assetPath)")
             modelURL = URL(fileURLWithPath: assetPath)
           }
         }
@@ -128,10 +113,8 @@ public class YOLO {
       // Check the asset directory directly
       if modelURL == nil && modelPathOrName.contains("/") {
         let assetPath = "flutter_assets/\(modelPathOrName)"
-        print("YOLO Debug: Checking direct asset path: \(assetPath)")
 
         if let directPath = Bundle.main.path(forResource: assetPath, ofType: nil) {
-          print("YOLO Debug: Found model at direct asset path: \(directPath)")
           modelURL = URL(fileURLWithPath: directPath)
         }
       }
@@ -139,13 +122,11 @@ public class YOLO {
       // If there is no folder structure, search by filename only
       if modelURL == nil {
         let fileName = modelPathOrName.components(separatedBy: "/").last ?? modelPathOrName
-        print("YOLO Debug: Checking filename only: \(fileName) in flutter_assets root")
 
         // Check the Flutter assets root
         if let assetPath = Bundle.main.path(
           forResource: fileName, ofType: nil, inDirectory: "flutter_assets")
         {
-          print("YOLO Debug: Found model in flutter_assets root: \(assetPath)")
           modelURL = URL(fileURLWithPath: assetPath)
         }
 
@@ -155,13 +136,9 @@ public class YOLO {
           let name = fileComponents.dropLast().joined(separator: ".")
           let ext = fileComponents.last ?? ""
 
-          print("YOLO Debug: Trying with separated filename: \(name) and extension: \(ext)")
-
           if let assetPath = Bundle.main.path(
             forResource: name, ofType: ext, inDirectory: "flutter_assets")
           {
-            print(
-              "YOLO Debug: Found model with separated extension in flutter_assets: \(assetPath)")
             modelURL = URL(fileURLWithPath: assetPath)
           }
         }
@@ -171,9 +148,6 @@ public class YOLO {
     // Check resource bundles (for example, Example/Flutter/App.frameworks/App.framework)
     if modelURL == nil {
       for bundle in Bundle.allBundles {
-        let bundleID = bundle.bundleIdentifier ?? "unknown"
-        print("YOLO Debug: Checking bundle: \(bundleID)")
-
         // Handle paths that include folder structure
         if modelPathOrName.contains("/") {
           let components = modelPathOrName.components(separatedBy: "/")
@@ -181,7 +155,6 @@ public class YOLO {
 
           // Search using the filename only
           if let path = bundle.path(forResource: fileName, ofType: nil) {
-            print("YOLO Debug: Found model in bundle \(bundleID): \(path)")
             modelURL = URL(fileURLWithPath: path)
             break
           }
@@ -193,7 +166,6 @@ public class YOLO {
             let ext = fileComponents.last ?? ""
 
             if let path = bundle.path(forResource: name, ofType: ext) {
-              print("YOLO Debug: Found model with ext in bundle \(bundleID): \(path)")
               modelURL = URL(fileURLWithPath: path)
               break
             }
@@ -203,46 +175,7 @@ public class YOLO {
     }
 
     guard let unwrappedModelURL = modelURL else {
-      print("YOLO Error: Model not found at path: \(modelPathOrName)")
-      print("YOLO Debug: Original model path: \(modelPathOrName)")
-      print("YOLO Debug: Lowercased path: \(lowercasedPath)")
-
-      // Check if the path exists as directory
-      var isDirectory: ObjCBool = false
-      if fileManager.fileExists(atPath: modelPathOrName, isDirectory: &isDirectory) {
-        print("YOLO Debug: Path exists. Is directory: \(isDirectory.boolValue)")
-
-        // If it's a directory and ends with .mlpackage, it should have been found
-        if isDirectory.boolValue && lowercasedPath.hasSuffix(".mlpackage") {
-          print("YOLO Error: mlpackage directory exists but was not properly recognized")
-        }
-      } else {
-        print("YOLO Debug: Path does not exist")
-      }
-
-      // Print the list of available bundles and assets
-      print("YOLO Debug: Available bundles:")
-      for bundle in Bundle.allBundles {
-        print(" - \(bundle.bundleIdentifier ?? "unknown"): \(bundle.bundlePath)")
-      }
-      print("YOLO Debug: Checking if flutter_assets directory exists:")
-      let flutterAssetsPath = Bundle.main.bundlePath + "/flutter_assets"
-      if fileManager.fileExists(atPath: flutterAssetsPath) {
-        print(" - flutter_assets exists at: \(flutterAssetsPath)")
-        // List files inside flutter_assets
-        do {
-          let items = try fileManager.contentsOfDirectory(atPath: flutterAssetsPath)
-          print("YOLO Debug: Files in flutter_assets:")
-          for item in items {
-            print(" - \(item)")
-          }
-        } catch {
-          print("YOLO Debug: Error listing flutter_assets: \(error)")
-        }
-      } else {
-        print(" - flutter_assets NOT found")
-      }
-
+      NSLog("YOLO: Model not found at path: %@", modelPathOrName)
       completion?(.failure(PredictorError.modelFileNotFound))
       return
     }
@@ -254,7 +187,7 @@ public class YOLO {
 
     // Common failure handling for all tasks
     func handleFailure(_ error: Error) {
-      print("Failed to load model with error: \(error)")
+      NSLog("YOLO: Failed to load model: %@", String(describing: error))
       completion?(.failure(error))
     }
 
@@ -321,11 +254,7 @@ public class YOLO {
 
   public func callAsFunction(_ uiImage: UIImage, returnAnnotatedImage: Bool = true) -> YOLOResult {
     let ciImage = CIImage(image: uiImage)!
-    var result = predictor.predictOnImage(image: ciImage)
-    //        if returnAnnotatedImage {
-    //            let annotatedImage = drawYOLODetections(on: ciImage, result: result)
-    //            result.annotatedImage = annotatedImage
-    //        }
+    let result = predictor.predictOnImage(image: ciImage)
     return result
   }
 

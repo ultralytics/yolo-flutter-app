@@ -62,28 +62,23 @@ object YOLOUtils {
      */
     fun loadModelFile(context: Context, modelPath: String): java.nio.MappedByteBuffer {
         val finalModelPath = ensureTFLiteExtension(modelPath)
-        Log.d(TAG, "Loading model from path: $finalModelPath")
-        
+
         try {
             // Check if it's an absolute path and the file exists
             if (isAbsolutePath(finalModelPath) && fileExistsAtPath(finalModelPath)) {
-                Log.d(TAG, "Loading model from absolute path: $finalModelPath")
                 return loadModelFromFilesystem(finalModelPath)
             } else {
                 // Try loading from assets
-                Log.d(TAG, "Loading model from assets: $finalModelPath")
                 return FileUtil.loadMappedFile(context, finalModelPath)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load model with path: $finalModelPath, error: ${e.message}")
-            
+
             // If the model with extension can't be found, try the original path as a fallback
             try {
                 if (isAbsolutePath(modelPath) && fileExistsAtPath(modelPath)) {
-                    Log.d(TAG, "Loading model from absolute path (fallback): $modelPath")
                     return loadModelFromFilesystem(modelPath)
                 } else {
-                    Log.d(TAG, "Loading model from assets (fallback): $modelPath")
                     return FileUtil.loadMappedFile(context, modelPath)
                 }
             } catch (e2: Exception) {

@@ -63,8 +63,6 @@ class YOLOInference {
       }
 
       throw InferenceException('Invalid result format returned from inference');
-    } on PlatformException catch (e) {
-      throw YOLOErrorHandler.handleError(e, 'Error during image prediction');
     } catch (e) {
       throw YOLOErrorHandler.handleError(e, 'Error during image prediction');
     }

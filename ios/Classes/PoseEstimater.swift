@@ -127,7 +127,7 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
         }
       }
     } catch {
-      print(error)
+      NSLog("YOLO PoseEstimator error: %@", String(describing: error))
     }
     return result
   }

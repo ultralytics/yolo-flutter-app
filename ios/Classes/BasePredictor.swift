@@ -145,18 +145,14 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     return []
   }
 
-  /// Performs cleanup when the predictor is deallocated.
-  ///
-  /// Cancels any pending vision requests and releases references to avoid memory leaks.
+  /// Cancels any pending Vision requests and releases references on deinit.
   deinit {
-
     visionRequest?.cancel()
     visionRequest = nil
     detector = nil
     currentBuffer = nil
     currentOnResultsListener = nil
     currentOnInferenceTimeListener = nil
-    print("BaseP  redictor: deinit completed")
   }
 
   /// Factory method to asynchronously create and initialize a predictor with the specified model.
@@ -216,11 +212,6 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         // Continue even when top-level metadata is missing. Some CoreML pipeline exports
         // only keep labels on nested models, and hard-failing here leaves the predictor nil.
         predictor.labels = userDefined.map(Self.parseLabels(from:)) ?? []
-        if predictor.labels.isEmpty {
-          print(
-            "BasePredictor: No top-level creatorDefined labels found. Continuing with fallback class labels."
-          )
-        }
 
         // (3) Store model input size
         predictor.modelInputSize = predictor.getModelInputSize(for: mlModel)
@@ -289,35 +280,21 @@ public class BasePredictor: Predictor, @unchecked Sendable {
       let imageOrientation: CGImagePropertyOrientation = .up
 
       // Capture original image data for streaming if needed
-      var originalImageData: Data? = nil
-
-      if let streamConfig = streamConfig {
-
-        if streamConfig.includeOriginalImage {
-
-          if let imageData = convertPixelBufferToJPEGData(pixelBuffer) {
-            originalImageData = imageData
-
-          } else {
-
-          }
-        } else {
-
-        }
-      } else {
-
-      }
+      let originalImageData: Data? =
+        streamConfig?.includeOriginalImage == true
+        ? convertPixelBufferToJPEGData(pixelBuffer)
+        : nil
 
       // Invoke a VNRequestHandler with that image
       let handler = VNImageRequestHandler(
         cvPixelBuffer: pixelBuffer, orientation: imageOrientation, options: [:])
       t0 = CACurrentMediaTime()  // inference start
       do {
-        if visionRequest != nil {
-          try handler.perform([visionRequest!])
+        if let request = visionRequest {
+          try handler.perform([request])
         }
       } catch {
-        print(error)
+        NSLog("YOLO inference error: %@", String(describing: error))
       }
       t1 = CACurrentMediaTime() - t0  // inference dt
 
@@ -340,10 +317,10 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     confidenceThreshold = confidence
   }
 
-  /// The IoU (Intersection over Union) threshold for non-maximum suppression (default: 0.4).
+  /// The IoU (Intersection over Union) threshold for non-maximum suppression (default: 0.7).
   ///
   /// Used to filter overlapping detections during non-maximum suppression.
-  var iouThreshold = 0.4
+  var iouThreshold = 0.7
 
   /// Sets the IoU threshold for non-maximum suppression.
   ///
@@ -399,26 +376,22 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   /// - Returns: A tuple containing the width and height in pixels required by the model.
   func getModelInputSize(for model: MLModel) -> (width: Int, height: Int) {
     guard let inputDescription = model.modelDescription.inputDescriptionsByName.first?.value else {
-      print("can not find input description")
       return (0, 0)
     }
 
     if let multiArrayConstraint = inputDescription.multiArrayConstraint {
       let shape = multiArrayConstraint.shape
       if shape.count >= 2 {
-        let height = shape[0].intValue
-        let width = shape[1].intValue
-        return (width: width, height: height)
+        return (width: shape[1].intValue, height: shape[0].intValue)
       }
     }
 
     if let imageConstraint = inputDescription.imageConstraint {
-      let width = Int(imageConstraint.pixelsWide)
-      let height = Int(imageConstraint.pixelsHigh)
-      return (width: width, height: height)
+      return (
+        width: Int(imageConstraint.pixelsWide), height: Int(imageConstraint.pixelsHigh)
+      )
     }
 
-    print("an not find input size")
     return (0, 0)
   }
 

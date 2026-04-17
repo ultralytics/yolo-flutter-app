@@ -207,7 +207,6 @@ func generateCombinedMaskImage(
     maskWidth > 0,
     maskChannels > 0
   else {
-    print("Invalid protos shape!")
     return nil
   }
 
@@ -502,10 +501,6 @@ func drawSinglePersonKeypoints(
   confThreshold: Float,
   drawSkeleton: Bool
 ) {
-  //      guard keypoints.count == 17 else {
-  //        print("Keypoints array must have 51 elements.")
-  //        return
-  //      }
   let lineWidth = radius * 0.4
   let scaleXToView = Float(imageViewSize.width / originalImageSize.width)
   let scaleYToView = Float(imageViewSize.height / originalImageSize.height)
@@ -534,7 +529,6 @@ func drawSinglePersonKeypoints(
       let (startIdx, endIdx) = (bone[0] - 1, bone[1] - 1)
 
       guard startIdx < points.count, endIdx < points.count else {
-        print("Invalid skeleton indices: \(startIdx), \(endIdx)")
         continue
       }
 
@@ -831,7 +825,6 @@ func drawOBBsOnCIImage(
   let context = CIContext(options: nil)
   let extent = ciImage.extent
   guard let cgImage = context.createCGImage(ciImage, from: extent) else {
-    print("Failed to create CGImage from CIImage")
     return nil
   }
 

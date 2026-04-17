@@ -32,7 +32,7 @@ class PoseEstimator(
     override var labels: List<String>,
     private val useGpu: Boolean = true,
     private var confidenceThreshold: Float = 0.25f,   // Can be changed as needed
-    private var iouThreshold: Float = 0.45f,          // Can be changed as needed
+    private var iouThreshold: Float = 0.7f,
     private var numItemsThreshold: Int = 30,
     private val customOptions: Interpreter.Options? = null
 ) : BasePredictor() {
@@ -100,7 +100,6 @@ class PoseEstimator(
         if (useGpu) {
             try {
                 addDelegate(GpuDelegate())
-                Log.d("PoseEstimator", "GPU delegate is used.")
             } catch (e: Exception) {
                 Log.e("PoseEstimator", "GPU delegate error: ${e.message}")
             }
@@ -127,11 +126,11 @@ class PoseEstimator(
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
         // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
-        var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         var labelsWereLoaded = loadedLabels != null
 
-        if (labelsWereLoaded) {
-            this.labels = loadedLabels!! // Use labels from appended ZIP
+        if (loadedLabels != null) {
+            this.labels = loadedLabels // Use labels from appended ZIP
             Log.i("PoseEstimator", "Labels successfully loaded from appended ZIP.")
         } else {
             Log.w("PoseEstimator", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
@@ -152,7 +151,6 @@ class PoseEstimator(
         interpreter = Interpreter(modelBuffer, interpreterOptions)
         // Call allocateTensors() once during initialization
         interpreter.allocateTensors()
-        Log.d("PoseEstimator", "TFLite model loaded and tensors allocated")
 
         val inputShape = interpreter.getInputTensor(0).shape()
         val inHeight = inputShape[1]
@@ -189,16 +187,10 @@ class PoseEstimator(
             }
         }
 
-        Log.d(
-            "PoseEstimator",
-            "Pose output shape=${outputShape.contentToString()} layout=$outputLayout anchors=$numAnchors"
-        )
-        
         val inputBytes = 1 * inHeight * inWidth * 3 * 4 // FLOAT32 is 4 bytes
         inputBuffer = ByteBuffer.allocateDirect(inputBytes).apply {
             order(java.nio.ByteOrder.nativeOrder())
         }
-        Log.d("PoseEstimator", "Direct ByteBuffer allocated with native ordering: $inputBytes bytes")
         
         // For camera feed in portrait mode (with rotation)
         imageProcessorCameraPortrait = ImageProcessor.Builder()
@@ -520,10 +512,8 @@ class PoseEstimator(
         val files = extractor.associatedFileNames
         if (!files.isNullOrEmpty()) {
             for (fileName in files) {
-                Log.d("PoseEstimator", "Found associated file: $fileName")
                 extractor.getAssociatedFile(fileName)?.use { stream ->
                     val fileString = String(stream.readBytes(), Charsets.UTF_8)
-                    Log.d("PoseEstimator", "Associated file contents:\n$fileString")
 
                     val yaml = Yaml()
                     @Suppress("UNCHECKED_CAST")
@@ -532,14 +522,11 @@ class PoseEstimator(
                         val namesMap = data["names"] as? Map<Int, String>
                         if (namesMap != null) {
                             labels = namesMap.values.toList()
-                            Log.d("PoseEstimator", "Loaded labels from metadata: $labels")
                             return true
                         }
                     }
                 }
             }
-        } else {
-            Log.d("PoseEstimator", "No associated files found in the metadata.")
         }
         false
     } catch (e: Exception) {

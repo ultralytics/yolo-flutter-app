@@ -57,8 +57,8 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 YOLOView(
   modelPath: 'yolo26n',
   onResult: (results) {
-    for (final result in results) {
-      print('${result.className}: ${result.confidence}');
+    for (final r in results) {
+      debugPrint('${r.className}: ${r.confidence}');
     }
   },
 )

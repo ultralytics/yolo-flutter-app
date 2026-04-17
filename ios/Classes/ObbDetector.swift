@@ -101,7 +101,7 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
           let nmsResults = postProcessOBB(
             feature: prediction,  // your MLMultiArray
             confidenceThreshold: 0.25,
-            iouThreshold: 0.45
+            iouThreshold: 0.7
           )
 
           var obbResults: [OBBResult] = []
@@ -121,12 +121,12 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
         }
       }
     } catch {
-      print(error)
+      NSLog("YOLO ObbDetector error: %@", String(describing: error))
     }
     return result
   }
 
-  fileprivate let lockQueue = DispatchQueue(label: "com.example.obbLock")
+  fileprivate let lockQueue = DispatchQueue(label: "com.ultralytics.yolo.obbLock")
 
   func postProcessOBB(
     feature: MLMultiArray,

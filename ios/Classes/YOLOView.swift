@@ -260,8 +260,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       var isDirectory: ObjCBool = false
       if fileManager.fileExists(atPath: possibleURL.path, isDirectory: &isDirectory) {
         modelURL = possibleURL
-        print(
-          "YOLOView: Found model at: \(possibleURL.path) (isDirectory: \(isDirectory.boolValue))")
       }
     } else {
       if let compiledURL = Bundle.main.url(forResource: modelPathOrName, withExtension: "mlmodelc")
@@ -276,9 +274,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     guard let unwrappedModelURL = modelURL else {
       // Model not found - allow camera preview without inference
-      print(
-        "YOLOView Warning: Model file not found: \(modelPathOrName). Camera will run without inference."
-      )
+      NSLog(
+        "YOLOView: Model file not found: %@. Camera will run without inference.", modelPathOrName)
       self.videoCapture.predictor = nil
       self.activityIndicator.stopAnimating()
       self.labelName.text = "No Model"
@@ -310,7 +307,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     // Common failure handling for all tasks
     func handleFailure(_ error: Error) {
-      print("Failed to load model with error: \(error)")
+      NSLog("YOLOView: Failed to load model: %@", String(describing: error))
       self.activityIndicator.stopAnimating()
       completion?(.failure(error))
     }
@@ -395,7 +392,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
           // Once everything is set up, we can start capturing live video.
           self.videoCapture.start()
         } else {
-          print("Failed to set up camera - permission may be denied or camera unavailable")
+          NSLog("YOLOView: Failed to set up camera - permission may be denied or camera unavailable")
         }
         self.busy = false
       }
@@ -616,7 +613,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
               width: rect.width,
               height: rect.height)
           case .unknown:
-            print("The device orientation is unknown, the predictions may be affected")
             fallthrough
           default: break
           }
@@ -847,7 +843,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     sliderConf.addTarget(self, action: #selector(sliderChanged), for: .valueChanged)
     self.addSubview(sliderConf)
 
-    labelSliderIoU.text = "0.45 IoU Threshold"
+    labelSliderIoU.text = "0.7 IoU Threshold"
     labelSliderIoU.textAlignment = .left
     labelSliderIoU.textColor = .black
     labelSliderIoU.font = UIFont.preferredFont(forTextStyle: .subheadline)
@@ -855,7 +851,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     sliderIoU.minimumValue = 0
     sliderIoU.maximumValue = 1
-    sliderIoU.value = 0.45
+    sliderIoU.value = 0.7
     sliderIoU.minimumTrackTintColor = .darkGray
     sliderIoU.maximumTrackTintColor = .systemGray.withAlphaComponent(0.7)
     sliderIoU.addTarget(self, action: #selector(sliderChanged), for: .valueChanged)
@@ -865,7 +861,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       self.labelSliderNumItems.text = "0 items (max " + String(Int(sliderNumItems.value)) + ")"
     }
     self.labelSliderConf.text = "0.25 Confidence Threshold"
-    self.labelSliderIoU.text = "0.45 IoU Threshold"
+    self.labelSliderIoU.text = "0.7 IoU Threshold"
 
     labelZoom.text = "1.00x"
     labelZoom.textColor = .black
@@ -1163,7 +1159,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         }
         device.videoZoomFactor = factor
       } catch {
-        print("\(error.localizedDescription)")
+        NSLog("YOLOView: %@", error.localizedDescription)
       }
     }
 
@@ -1210,7 +1206,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       // Notify zoom change
       onZoomChanged?(newZoomFactor)
     } catch {
-      print("Failed to set zoom level: \(error.localizedDescription)")
+      NSLog("YOLOView: Failed to set zoom level: %@", error.localizedDescription)
     }
   }
 
@@ -1229,7 +1225,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         device.torchMode = .off
       }
     } catch {
-      print("Failed to set torch mode: \(error.localizedDescription)")
+      NSLog("YOLOView: Failed to set torch mode: %@", error.localizedDescription)
     }
   }
 
@@ -1251,14 +1247,14 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
     if authStatus != .authorized {
-      print("Camera permission not authorized. Cannot switch camera.")
+      NSLog("YOLOView: Camera permission not authorized. Cannot switch camera.")
       return
     }
 
     self.videoCapture.captureSession.beginConfiguration()
     guard let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput
     else {
-      print("No current camera input to remove")
+      NSLog("YOLOView: No current camera input to remove")
       self.videoCapture.captureSession.commitConfiguration()
       return
     }
@@ -1270,13 +1266,15 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     let nextCameraPosition: AVCaptureDevice.Position = currentPosition == .back ? .front : .back
 
     guard let newCameraDevice = bestCaptureDevice(position: nextCameraPosition) else {
-      print("No camera device available for position: \(nextCameraPosition)")
+      NSLog(
+        "YOLOView: No camera device available for position: %@",
+        String(describing: nextCameraPosition))
       self.videoCapture.captureSession.commitConfiguration()
       return
     }
 
     guard let videoInput1 = try? AVCaptureDeviceInput(device: newCameraDevice) else {
-      print("Failed to create AVCaptureDeviceInput for camera switch")
+      NSLog("YOLOView: Failed to create AVCaptureDeviceInput for camera switch")
       self.videoCapture.captureSession.commitConfiguration()
       return
     }
@@ -1338,7 +1336,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
     _ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?
   ) {
     if let error = error {
-      print("error occurred : \(error.localizedDescription)")
+      NSLog("YOLOView: Photo capture error: %@", error.localizedDescription)
     }
     if let dataImage = photo.fileDataRepresentation() {
       let dataProvider = CGDataProvider(data: dataImage as CFData)
@@ -1685,7 +1683,6 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
             }
           }
           detection["keypoints"] = keypointsFlat
-          print("YOLOView: Added pose detection with \(keypoints.xy.count) keypoints")
 
           detections.append(detection)
         }
@@ -1808,9 +1805,6 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
             }
           }
           detection["keypoints"] = keypointsFlat
-          print(
-            "YOLOView: Added keypoints data (\(keypoints.xy.count) points) for detection \(detectionIndex)"
-          )
         }
 
         // Add OBB data (if available and enabled)
