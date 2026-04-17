@@ -93,7 +93,7 @@ Future<Map<String, dynamic>> predict(
 | --------------------- | ----------- | -------- | ------- | ------------------------------- |
 | `imageBytes`          | `Uint8List` | ✅       | -       | Raw image data                  |
 | `confidenceThreshold` | `double?`   | ❌       | `0.25`  | Confidence threshold (0.0-1.0)  |
-| `iouThreshold`        | `double?`   | ❌       | `0.4`   | IoU threshold for NMS (0.0-1.0) |
+| `iouThreshold`        | `double?`   | ❌       | `0.7`   | IoU threshold for NMS (0.0-1.0) |
 
 **Returns**: `Future<Map<String, dynamic>>` - Prediction results
 
@@ -243,8 +243,8 @@ class YOLOView extends StatefulWidget {
     this.showNativeUI = false,
     this.onZoomChanged,
     this.streamingConfig,
-    this.confidenceThreshold = 0.5,
-    this.iouThreshold = 0.45,
+    this.confidenceThreshold = 0.25,
+    this.iouThreshold = 0.7,
     this.useGpu = true,
     this.showOverlays = true,
     this.overlayTheme = const YOLOOverlayTheme(),
@@ -267,8 +267,8 @@ class YOLOView extends StatefulWidget {
 | `showNativeUI`         | `bool`                              | ❌       | `false`                    | Show native camera controls                       |
 | `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`                     | Zoom level change callback                        |
 | `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`                     | Streaming configuration                           |
-| `confidenceThreshold`  | `double`                            | ❌       | `0.5`                      | Initial confidence threshold for YOLOView         |
-| `iouThreshold`         | `double`                            | ❌       | `0.45`                     | Initial IoU threshold for YOLOView                |
+| `confidenceThreshold`  | `double`                            | ❌       | `0.25`                     | Initial confidence threshold for YOLOView         |
+| `iouThreshold`         | `double`                            | ❌       | `0.7`                      | Initial IoU threshold for YOLOView                |
 | `useGpu`               | `bool`                              | ❌       | `true`                     | Enable GPU acceleration for camera inference      |
 | `showOverlays`         | `bool`                              | ❌       | `true`                     | Draw Flutter-side detection overlays              |
 | `overlayTheme`         | `YOLOOverlayTheme`                  | ❌       | `const YOLOOverlayTheme()` | Customize Flutter overlay styling                 |
@@ -904,7 +904,7 @@ typedef PoseKeypoints = List<Map<String, dynamic>>;
 ```dart
 // Default thresholds
 const double DEFAULT_CONFIDENCE_THRESHOLD = 0.25;
-const double DEFAULT_IOU_THRESHOLD = 0.4;
+const double DEFAULT_IOU_THRESHOLD = 0.7;
 const int DEFAULT_NUM_ITEMS_THRESHOLD = 30;
 
 // Performance thresholds
