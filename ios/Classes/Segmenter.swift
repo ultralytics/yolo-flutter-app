@@ -155,7 +155,8 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         let a = Date()
 
         let detectedObjects = postProcessSegment(
-          feature: pred, confidenceThreshold: 0.25, iouThreshold: 0.7)
+          feature: pred, confidenceThreshold: Float(confidenceThreshold),
+          iouThreshold: Float(iouThreshold))
         var boxes: [Box] = []
         var colorMasks: [CGImage?] = []
         var alhaMasks: [CGImage?] = []

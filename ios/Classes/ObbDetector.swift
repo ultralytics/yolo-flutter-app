@@ -100,8 +100,8 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
         if let prediction = results.first?.featureValue.multiArrayValue {
           let nmsResults = postProcessOBB(
             feature: prediction,  // your MLMultiArray
-            confidenceThreshold: 0.25,
-            iouThreshold: 0.7
+            confidenceThreshold: Float(confidenceThreshold),
+            iouThreshold: Float(iouThreshold)
           )
 
           var obbResults: [OBBResult] = []
