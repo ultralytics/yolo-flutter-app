@@ -92,11 +92,6 @@ class YOLOModelManager {
 
       final result = await _channel.invokeMethod('loadModel', arguments);
       return result == true;
-    } on PlatformException catch (e) {
-      throw YOLOErrorHandler.handleError(
-        e,
-        'Failed to load model $_modelPath for task ${_task.name}',
-      );
     } catch (e) {
       throw YOLOErrorHandler.handleError(
         e,
@@ -123,11 +118,6 @@ class YOLOModelManager {
       }
 
       await _channel.invokeMethod('setModel', arguments);
-    } on PlatformException catch (e) {
-      throw YOLOErrorHandler.handleError(
-        e,
-        'Failed to switch to model $newModelPath for task ${newTask.name}',
-      );
     } catch (e) {
       throw YOLOErrorHandler.handleError(
         e,

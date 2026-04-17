@@ -25,9 +25,6 @@ protocol VideoCaptureDelegate: AnyObject {
 }
 
 func bestCaptureDevice(position: AVCaptureDevice.Position) -> AVCaptureDevice? {
-  // print("USE TELEPHOTO: ")
-  // print(UserDefaults.standard.bool(forKey: "use_telephoto"))
-
   if UserDefaults.standard.bool(forKey: "use_telephoto"),
     let device = AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: position)
   {
@@ -85,12 +82,13 @@ class VideoCapture: NSObject, @unchecked Sendable {
 
     let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
     if authStatus == .denied || authStatus == .restricted {
-      print("Camera permission denied or restricted. Cannot initialize camera.")
+      NSLog("YOLO VideoCapture: Camera permission denied or restricted. Cannot initialize camera.")
       return false
     }
 
     if authStatus == .notDetermined {
-      print("Camera permission not determined. Please request permission first.")
+      NSLog(
+        "YOLO VideoCapture: Camera permission not determined. Please request permission first.")
       return false
     }
 
@@ -98,7 +96,9 @@ class VideoCapture: NSObject, @unchecked Sendable {
     captureSession.sessionPreset = sessionPreset
 
     guard let device = bestCaptureDevice(position: position) else {
-      print("No camera device available for position: \(position)")
+      NSLog(
+        "YOLO VideoCapture: No camera device available for position: %@",
+        String(describing: position))
       captureSession.commitConfiguration()
       return false
     }
@@ -109,7 +109,8 @@ class VideoCapture: NSObject, @unchecked Sendable {
     do {
       input = try AVCaptureDeviceInput(device: device)
     } catch {
-      print("Failed to create AVCaptureDeviceInput: \(error.localizedDescription)")
+      NSLog(
+        "YOLO VideoCapture: Failed to create AVCaptureDeviceInput: %@", error.localizedDescription)
       captureSession.commitConfiguration()
       return false
     }
@@ -119,7 +120,7 @@ class VideoCapture: NSObject, @unchecked Sendable {
     if captureSession.canAddInput(input) {
       captureSession.addInput(input)
     } else {
-      print("Cannot add video input to capture session")
+      NSLog("YOLO VideoCapture: Cannot add video input to capture session")
       captureSession.commitConfiguration()
       return false
     }
@@ -166,7 +167,7 @@ class VideoCapture: NSObject, @unchecked Sendable {
 
     // Configure captureDevice
     guard let device = captureDevice else {
-      print("captureDevice is nil, cannot configure")
+      NSLog("YOLO VideoCapture: captureDevice is nil, cannot configure")
       captureSession.commitConfiguration()
       return false
     }
@@ -183,7 +184,7 @@ class VideoCapture: NSObject, @unchecked Sendable {
       device.exposureMode = AVCaptureDevice.ExposureMode.continuousAutoExposure
       device.unlockForConfiguration()
     } catch {
-      print("device configuration not working: \(error.localizedDescription)")
+      NSLog("YOLO VideoCapture: device configuration failed: %@", error.localizedDescription)
       captureSession.commitConfiguration()
       return false
     }
@@ -210,7 +211,7 @@ class VideoCapture: NSObject, @unchecked Sendable {
 
   func setZoomRatio(ratio: CGFloat) {
     guard let device = captureDevice else {
-      print("Cannot set zoom: captureDevice is nil")
+      NSLog("YOLO VideoCapture: Cannot set zoom: captureDevice is nil")
       return
     }
     do {
@@ -220,13 +221,12 @@ class VideoCapture: NSObject, @unchecked Sendable {
       }
       device.videoZoomFactor = ratio
     } catch {
-      print("Failed to set zoom ratio: \(error.localizedDescription)")
+      NSLog("YOLO VideoCapture: Failed to set zoom ratio: %@", error.localizedDescription)
     }
   }
 
   private func predictOnFrame(sampleBuffer: CMSampleBuffer) {
     guard let predictor = predictor else {
-      print("predictor is nil")
       return
     }
     if currentBuffer == nil, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
@@ -279,7 +279,6 @@ class VideoCapture: NSObject, @unchecked Sendable {
   }
 
   deinit {
-    print("VideoCapture: deinit called - ensuring capture session is stopped")
     if captureSession.isRunning {
       captureSession.stopRunning()
     }
@@ -296,8 +295,6 @@ class VideoCapture: NSObject, @unchecked Sendable {
         captureSession.removeOutput(output)
       }
     }
-
-    print("VideoCapture: deinit completed")
   }
 }
 

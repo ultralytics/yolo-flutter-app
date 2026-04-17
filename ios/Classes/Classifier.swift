@@ -198,7 +198,7 @@ class Classifier: BasePredictor {
       }
 
     } catch {
-      print(error)
+      NSLog("YOLO Classifier error: %@", String(describing: error))
     }
 
     var result = YOLOResult(

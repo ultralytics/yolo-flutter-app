@@ -1,17 +1,17 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/services.dart';
-import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
-import 'package:ultralytics_yolo/models/yolo_task.dart';
-import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
-import 'package:ultralytics_yolo/yolo_instance_manager.dart';
+import 'package:ultralytics_yolo/config/channel_config.dart';
 import 'package:ultralytics_yolo/core/yolo_inference.dart';
 import 'package:ultralytics_yolo/core/yolo_model_manager.dart';
-import 'package:ultralytics_yolo/config/channel_config.dart';
+import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
+import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
+import 'package:ultralytics_yolo/models/yolo_task.dart';
+import 'package:ultralytics_yolo/yolo_instance_manager.dart';
 
-export 'models/yolo_task.dart';
 export 'models/yolo_exceptions.dart';
 export 'models/yolo_result.dart';
+export 'models/yolo_task.dart';
 export 'yolo_instance_manager.dart';
 
 /// YOLO (You Only Look Once) is a class that provides machine learning inference
@@ -111,6 +111,10 @@ class YOLO {
   static List<String> officialModels({YOLOTask? task}) =>
       YOLOModelResolver.officialModels(task: task);
 
+  /// Returns the default official model ID for [task] on the current platform.
+  static String? defaultOfficialModel({YOLOTask task = YOLOTask.detect}) =>
+      YOLOModelResolver.defaultOfficialModel(task: task);
+
   YOLOTask? get resolvedTask => _resolvedModel?.task ?? task;
 
   Future<YOLOResolvedModel> _ensureResolved() async {
@@ -180,12 +184,7 @@ class YOLO {
   ///
   /// Example:
   /// ```dart
-  /// bool success = await yolo.loadModel();
-  /// if (success) {
-  ///   print('Model loaded successfully');
-  /// } else {
-  ///   print('Failed to load model');
-  /// }
+  /// final ok = await yolo.loadModel();
   /// ```
   ///
   /// throws [ModelLoadingException] if the model file cannot be found
@@ -222,32 +221,14 @@ class YOLO {
   ///
   /// Example:
   /// ```dart
-  /// // Basic detection usage
   /// final results = await yolo.predict(imageBytes);
-  /// final boxes = results['boxes'] as List<dynamic>;
-  /// for (var box in boxes) {
-  ///   print('Class: ${box['class']}, Confidence: ${box['confidence']}');
-  /// }
-  ///
-  /// // Pose estimation with YOLOResult
-  /// final results = await yolo.predict(imageBytes);
-  /// final detections = results['detections'] as List<dynamic>;
-  /// for (var detection in detections) {
-  ///   final result = YOLOResult.fromMap(detection);
-  ///   if (result.keypoints != null) {
-  ///     print('Found ${result.keypoints!.length} keypoints');
-  ///     for (int i = 0; i < result.keypoints!.length; i++) {
-  ///       final kp = result.keypoints![i];
-  ///       final conf = result.keypointConfidences![i];
-  ///       print('Keypoint $i: (${kp.x}, ${kp.y}) confidence: $conf');
-  ///     }
-  ///   }
-  /// }
+  /// final detections = (results['detections'] as List)
+  ///     .map((d) => YOLOResult.fromMap(d as Map));
   /// ```
   ///
   /// [imageBytes] The raw image data as a Uint8List
   /// [confidenceThreshold] Optional confidence threshold (0.0-1.0). Defaults to 0.25 if not specified.
-  /// [iouThreshold] Optional IoU threshold for NMS (0.0-1.0). Defaults to 0.4 if not specified.
+  /// [iouThreshold] Optional IoU threshold for NMS (0.0-1.0). Defaults to 0.7 if not specified.
   /// returns A map containing:
   ///   - 'boxes': List of bounding boxes
   ///   - 'detections': List of YOLOResult-compatible detection maps

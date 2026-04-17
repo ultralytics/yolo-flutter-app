@@ -35,8 +35,8 @@ class CameraControls extends StatelessWidget {
           child: Column(
             children: [
               if (!isFrontCamera)
-                ControlButton(
-                  content: '${currentZoomLevel.toStringAsFixed(1)}x',
+                ControlButton.text(
+                  label: '${currentZoomLevel.toStringAsFixed(1)}x',
                   onPressed: () => onZoomChanged(
                     currentZoomLevel < 0.75
                         ? 1.0
@@ -46,18 +46,18 @@ class CameraControls extends StatelessWidget {
                   ),
                 ),
               SizedBox(height: isLandscape ? 8 : 12),
-              ControlButton(
-                content: Icons.layers,
+              ControlButton.icon(
+                icon: Icons.layers,
                 onPressed: () => onSliderToggled(SliderType.numItems),
               ),
               SizedBox(height: isLandscape ? 8 : 12),
-              ControlButton(
-                content: Icons.adjust,
+              ControlButton.icon(
+                icon: Icons.adjust,
                 onPressed: () => onSliderToggled(SliderType.confidence),
               ),
               SizedBox(height: isLandscape ? 8 : 12),
-              ControlButton(
-                content: 'assets/iou.png',
+              ControlButton.asset(
+                assetPath: 'assets/iou.png',
                 onPressed: () => onSliderToggled(SliderType.iou),
               ),
               SizedBox(height: isLandscape ? 16 : 40),

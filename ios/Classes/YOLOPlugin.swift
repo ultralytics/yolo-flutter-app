@@ -348,13 +348,11 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           return
         }
 
-        print("YOLOPlugin: disposeInstance called for instanceId: \(instanceId)")
         YOLOInstanceManager.shared.removeInstance(instanceId: instanceId)
 
         // Remove the channel for this instance
         YOLOPlugin.instanceChannels.removeValue(forKey: instanceId)
 
-        print("YOLOPlugin: Instance \(instanceId) disposed successfully")
         result(nil)
 
       case "predictorInstance":

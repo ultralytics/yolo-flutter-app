@@ -49,8 +49,8 @@ class YOLOView extends StatefulWidget {
     this.showNativeUI = false,
     this.onZoomChanged,
     this.streamingConfig,
-    this.confidenceThreshold = 0.5,
-    this.iouThreshold = 0.45,
+    this.confidenceThreshold = 0.25,
+    this.iouThreshold = 0.7,
     this.useGpu = true,
     this.showOverlays = true,
     this.overlayTheme = const YOLOOverlayTheme(),
@@ -173,22 +173,10 @@ class _YOLOViewState extends State<YOLOView> {
   }
 
   List<YOLOResult> _parseDetectionResults(Map<dynamic, dynamic> event) {
-    final List<dynamic> detectionsData = event['detections'] ?? [];
+    final detectionsData = event['detections'] as List<dynamic>? ?? const [];
     final results = <YOLOResult>[];
-
     for (final detection in detectionsData) {
       if (detection is! Map) continue;
-
-      // Validate required fields
-      if (!detection.containsKey('classIndex') ||
-          !detection.containsKey('className') ||
-          !detection.containsKey('confidence') ||
-          !detection.containsKey('boundingBox') ||
-          !detection.containsKey('normalizedBox')) {
-        continue;
-      }
-
-      // Validate non-null values
       if (detection['classIndex'] == null ||
           detection['className'] == null ||
           detection['confidence'] == null ||
@@ -196,15 +184,12 @@ class _YOLOViewState extends State<YOLOView> {
           detection['normalizedBox'] == null) {
         continue;
       }
-
       try {
-        final result = YOLOResult.fromMap(detection);
-        results.add(result);
+        results.add(YOLOResult.fromMap(detection));
       } catch (e) {
         logInfo('YOLOView: Error parsing detection: $e');
       }
     }
-
     return results;
   }
 

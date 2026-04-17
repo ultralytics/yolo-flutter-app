@@ -1,8 +1,11 @@
-## Unreleased
+## 0.3.0
 
 - **Feature**: Add package-level model resolution for official IDs, remote URLs, local files, and Flutter assets.
 - **Enhancement**: Resolve `task` from exported metadata when available across `YOLO`, `YOLOView`, and `YOLOViewController.switchModel()`.
 - **Enhancement**: Replace hardcoded release URL assumptions with an official model catalog and latest-release resolution.
+- **Enhancement**: Add `YOLO.defaultOfficialModel()` to make the default official model path explicit for new users.
+- **Bug Fix**: Enforce official Ultralytics defaults everywhere with `confidenceThreshold = 0.25` and `iouThreshold = 0.7`.
+- **Compatibility**: Preserve deprecated API shims and widget wrapper exports to avoid regressions for existing integrations.
 - **Cleanup**: Remove example-only model management duplication and update docs around the metadata-first flow.
 
 ## 0.2.0

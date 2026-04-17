@@ -79,7 +79,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
 
       DispatchQueue.global(qos: .userInitiated).async {
         guard
-          let procceessedMasks = generateCombinedMaskImage(
+          let processedMasks = generateCombinedMaskImage(
             detectedObjects: limitedDetections,
             protos: masks,
             inputWidth: self.modelInputSize.width,
@@ -91,7 +91,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           DispatchQueue.main.async { self.isUpdating = false }
           return
         }
-        var maskResults = Masks(masks: procceessedMasks.1, combinedMask: procceessedMasks.0)
+        var maskResults = Masks(masks: processedMasks.1, combinedMask: processedMasks.0)
         var result = YOLOResult(
           orig_shape: self.inputSize, boxes: boxes, masks: maskResults, speed: self.t2,
           fps: 1 / self.t4, names: self.labels)
@@ -155,7 +155,8 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         let a = Date()
 
         let detectedObjects = postProcessSegment(
-          feature: pred, confidenceThreshold: 0.25, iouThreshold: 0.4)
+          feature: pred, confidenceThreshold: Float(confidenceThreshold),
+          iouThreshold: Float(iouThreshold))
         var boxes: [Box] = []
         var colorMasks: [CGImage?] = []
         var alhaMasks: [CGImage?] = []
@@ -177,7 +178,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         }
 
         guard
-          let procceessedMasks = generateCombinedMaskImage(
+          let processedMasks = generateCombinedMaskImage(
             detectedObjects: detectedObjects,
             protos: masks,
             inputWidth: self.modelInputSize.width,
@@ -192,8 +193,8 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         }
         let cgImage = CIContext().createCGImage(image, from: image.extent)!
         var annotatedImage = composeImageWithMask(
-          baseImage: cgImage, maskImage: procceessedMasks.0!)
-        var maskResults: Masks = Masks(masks: procceessedMasks.1, combinedMask: procceessedMasks.0)
+          baseImage: cgImage, maskImage: processedMasks.0!)
+        var maskResults: Masks = Masks(masks: processedMasks.1, combinedMask: processedMasks.0)
         if self.t1 < 10.0 {  // valid dt
           self.t2 = self.t1 * 0.05 + self.t2 * 0.95  // smoothed inference time
         }
@@ -209,7 +210,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         //                }
       }
     } catch {
-      print(error)
+      NSLog("YOLO Segmenter: %@", String(describing: error))
     }
     return result
   }

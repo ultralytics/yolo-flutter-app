@@ -54,7 +54,6 @@ class Segmenter(
         if (useGpu) {
             try {
                 addDelegate(GpuDelegate())
-                Log.d("Segmenter", "GPU delegate is used.")
             } catch (e: Exception) {
                 Log.e("Segmenter", "GPU delegate error: ${e.message}")
             }
@@ -80,11 +79,11 @@ class Segmenter(
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
 
         // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
-        var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         var labelsWereLoaded = loadedLabels != null
 
-        if (labelsWereLoaded) {
-            this.labels = loadedLabels!! // Use labels from appended ZIP
+        if (loadedLabels != null) {
+            this.labels = loadedLabels // Use labels from appended ZIP
             Log.i("Segmenter", "Labels successfully loaded from appended ZIP.")
         } else {
             Log.w("Segmenter", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
@@ -112,7 +111,6 @@ class Segmenter(
         interpreter = Interpreter(modelBuffer, interpreterOptions)
         // Call allocateTensors() once during initialization
         interpreter.allocateTensors()
-        Log.d("Segmenter", "TFLite model loaded and tensors allocated")
 
         // Input tensor shape: [1, height, width, 3]
         val inputShape = interpreter.getInputTensor(0).shape()
@@ -427,10 +425,8 @@ class Segmenter(
         val files = extractor.associatedFileNames
         if (!files.isNullOrEmpty()) {
             for (fileName in files) {
-                Log.d("Segmenter", "Found associated file: $fileName")
                 extractor.getAssociatedFile(fileName)?.use { stream ->
                     val fileString = String(stream.readBytes(), Charsets.UTF_8)
-                    Log.d("Segmenter", "Associated file contents:\n$fileString")
 
                     val yaml = Yaml()
 
@@ -440,14 +436,11 @@ class Segmenter(
                         val namesMap = data["names"] as? Map<Int, String>
                         if (namesMap != null) {
                             labels = namesMap.values.toList()
-                            Log.d("Segmenter", "Loaded labels from metadata: $labels")
                             return true
                         }
                     }
                 }
             }
-        } else {
-            Log.d("Segmenter", "No associated files found in the metadata.")
         }
         false
     } catch (e: Exception) {

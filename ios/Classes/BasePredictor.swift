@@ -6,7 +6,7 @@
 //  Access the source code: https://github.com/ultralytics/yolo-ios-app
 //
 //  The BasePredictor class is the foundation for all task-specific predictors in the YOLO framework.
-//  It manages the loading and initialization of CoreML models, handling common operations such as
+//  It manages the loading and initialization of Core ML models, handling common operations such as
 //  model loading, class label extraction, and inference timing. The class provides an asynchronous
 //  model loading mechanism that runs on background threads and includes support for configuring
 //  model parameters like confidence thresholds and IoU thresholds. Specific task implementations
@@ -21,7 +21,7 @@ import Vision
 /// Base class for all YOLO model predictors, handling common model loading and inference logic.
 ///
 /// The BasePredictor serves as the foundation for all task-specific YOLO model predictors.
-/// It manages CoreML model loading, initialization, and common inference operations.
+/// It manages Core ML model loading, initialization, and common inference operations.
 /// Specialized predictors (for detection, segmentation, etc.) inherit from this class
 /// and override the prediction-specific methods to handle task-specific processing.
 ///
@@ -32,10 +32,10 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   /// Flag indicating if the model has been successfully loaded and is ready for inference.
   private(set) var isModelLoaded: Bool = false
 
-  /// The Vision CoreML model used for inference operations.
+  /// The Vision Core ML model used for inference operations.
   var detector: VNCoreMLModel!
 
-  /// The Vision request that processes images using the CoreML model.
+  /// The Vision request that processes images using the Core ML model.
   var visionRequest: VNCoreMLRequest?
 
   /// The class labels used by the model for categorizing detections.
@@ -145,28 +145,24 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     return []
   }
 
-  /// Performs cleanup when the predictor is deallocated.
-  ///
-  /// Cancels any pending vision requests and releases references to avoid memory leaks.
+  /// Cancels any pending Vision requests and releases references on deinit.
   deinit {
-
     visionRequest?.cancel()
     visionRequest = nil
     detector = nil
     currentBuffer = nil
     currentOnResultsListener = nil
     currentOnInferenceTimeListener = nil
-    print("BaseP  redictor: deinit completed")
   }
 
   /// Factory method to asynchronously create and initialize a predictor with the specified model.
   ///
-  /// This method loads the CoreML model in a background thread and sets up the prediction
+  /// This method loads the Core ML model in a background thread and sets up the prediction
   /// infrastructure. The completion handler is called on the main thread with either a
   /// successfully initialized predictor or an error.
   ///
   /// - Parameters:
-  ///   - unwrappedModelURL: The URL of the CoreML model file to load.
+  ///   - unwrappedModelURL: The URL of the Core ML model file to load.
   ///   - isRealTime: Flag indicating if the predictor will be used for real-time processing (camera feed).
   ///   - useGpu: Flag indicating whether to use GPU acceleration
   ///   - completion: Callback that receives the initialized predictor or an error.
@@ -213,14 +209,9 @@ public class BasePredictor: Predictor, @unchecked Sendable {
           mlModel.modelDescription
           .metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String]
 
-        // Continue even when top-level metadata is missing. Some CoreML pipeline exports
+        // Continue even when top-level metadata is missing. Some Core ML pipeline exports
         // only keep labels on nested models, and hard-failing here leaves the predictor nil.
         predictor.labels = userDefined.map(Self.parseLabels(from:)) ?? []
-        if predictor.labels.isEmpty {
-          print(
-            "BasePredictor: No top-level creatorDefined labels found. Continuing with fallback class labels."
-          )
-        }
 
         // (3) Store model input size
         predictor.modelInputSize = predictor.getModelInputSize(for: mlModel)
@@ -289,35 +280,21 @@ public class BasePredictor: Predictor, @unchecked Sendable {
       let imageOrientation: CGImagePropertyOrientation = .up
 
       // Capture original image data for streaming if needed
-      var originalImageData: Data? = nil
-
-      if let streamConfig = streamConfig {
-
-        if streamConfig.includeOriginalImage {
-
-          if let imageData = convertPixelBufferToJPEGData(pixelBuffer) {
-            originalImageData = imageData
-
-          } else {
-
-          }
-        } else {
-
-        }
-      } else {
-
-      }
+      let originalImageData: Data? =
+        streamConfig?.includeOriginalImage == true
+        ? convertPixelBufferToJPEGData(pixelBuffer)
+        : nil
 
       // Invoke a VNRequestHandler with that image
       let handler = VNImageRequestHandler(
         cvPixelBuffer: pixelBuffer, orientation: imageOrientation, options: [:])
       t0 = CACurrentMediaTime()  // inference start
       do {
-        if visionRequest != nil {
-          try handler.perform([visionRequest!])
+        if let request = visionRequest {
+          try handler.perform([request])
         }
       } catch {
-        print(error)
+        NSLog("YOLO inference error: %@", String(describing: error))
       }
       t1 = CACurrentMediaTime() - t0  // inference dt
 
@@ -340,10 +317,10 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     confidenceThreshold = confidence
   }
 
-  /// The IoU (Intersection over Union) threshold for non-maximum suppression (default: 0.4).
+  /// The IoU (Intersection over Union) threshold for non-maximum suppression (default: 0.7).
   ///
   /// Used to filter overlapping detections during non-maximum suppression.
-  var iouThreshold = 0.4
+  var iouThreshold = 0.7
 
   /// Sets the IoU threshold for non-maximum suppression.
   ///
@@ -391,34 +368,30 @@ public class BasePredictor: Predictor, @unchecked Sendable {
 
   /// Extracts the required input dimensions from the model description.
   ///
-  /// This utility method determines the expected input size for the CoreML model
+  /// This utility method determines the expected input size for the Core ML model
   /// by examining its input description, which is essential for properly sizing
   /// and formatting images before inference.
   ///
-  /// - Parameter model: The CoreML model to analyze.
+  /// - Parameter model: The Core ML model to analyze.
   /// - Returns: A tuple containing the width and height in pixels required by the model.
   func getModelInputSize(for model: MLModel) -> (width: Int, height: Int) {
     guard let inputDescription = model.modelDescription.inputDescriptionsByName.first?.value else {
-      print("can not find input description")
       return (0, 0)
     }
 
     if let multiArrayConstraint = inputDescription.multiArrayConstraint {
       let shape = multiArrayConstraint.shape
       if shape.count >= 2 {
-        let height = shape[0].intValue
-        let width = shape[1].intValue
-        return (width: width, height: height)
+        return (width: shape[1].intValue, height: shape[0].intValue)
       }
     }
 
     if let imageConstraint = inputDescription.imageConstraint {
-      let width = Int(imageConstraint.pixelsWide)
-      let height = Int(imageConstraint.pixelsHigh)
-      return (width: width, height: height)
+      return (
+        width: Int(imageConstraint.pixelsWide), height: Int(imageConstraint.pixelsHigh)
+      )
     }
 
-    print("an not find input size")
     return (0, 0)
   }
 

@@ -52,20 +52,16 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
       "yolo_single_image_channel"
     )
     methodChannel.setMethodCallHandler(this)
-    
-    Log.d(TAG, "YOLOPlugin attached to engine")
   }
-  
+
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
     activity = binding.activity
     activityBinding = binding // Store the binding
     viewFactory.setActivity(activity)
     activityBinding?.addRequestPermissionsResultListener(this)
-    Log.d(TAG, "YOLOPlugin attached to activity: ${activity?.javaClass?.simpleName}, stored binding, and added RequestPermissionsResultListener")
   }
 
   override fun onDetachedFromActivityForConfigChanges() {
-    Log.d(TAG, "YOLOPlugin detached from activity for config changes. Listener will be removed in onDetachedFromActivity.")
     // activity and viewFactory.setActivity(null) will be handled by onDetachedFromActivity
     // activityBinding will also be cleared in onDetachedFromActivity
   }
@@ -75,21 +71,17 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
     activityBinding = binding // Store the new binding
     viewFactory.setActivity(activity)
     activityBinding?.addRequestPermissionsResultListener(this) // Add listener with new binding
-    Log.d(TAG, "YOLOPlugin reattached to activity: ${activity?.javaClass?.simpleName}, stored new binding, and re-added RequestPermissionsResultListener")
   }
 
   override fun onDetachedFromActivity() {
-    Log.d(TAG, "YOLOPlugin detached from activity")
     activityBinding?.removeRequestPermissionsResultListener(this)
     activityBinding = null
     activity = null
     viewFactory.setActivity(null)
-    Log.d(TAG, "Cleared activity, activityBinding, and removed RequestPermissionsResultListener")
   }
 
   override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
     methodChannel.setMethodCallHandler(null)
-    Log.d(TAG, "YoloPlugin detached from engine")
     // Clean up view factory resources
     viewFactory.dispose()
     // YOLO class doesn't need explicit release
@@ -169,12 +161,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           
           // Use classifier options map directly (follows existing pattern)
           val classifierOptions = classifierOptionsMap
-          
-          // Log classifier options for debugging
-          if (classifierOptions != null) {
-            Log.d(TAG, "Parsed classifier options: $classifierOptions")
-          }
-          
+
           // Load labels (in real implementation, you would load from metadata)
           val labels = loadLabels(modelPath)
           
@@ -188,11 +175,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             numItemsThreshold = numItemsThreshold,
             classifierOptions = classifierOptions
           ) { loadResult ->
-            if(task == YOLOTask.CLASSIFY){
-              Log.d(TAG,"task CLASSIFY not support numItemsThreshold ignore it.")
-            }
             if (loadResult.isSuccess) {
-              Log.d(TAG, "Model loaded successfully: $modelPath for task: $task, instance: $instanceId, useGpu: $useGpu ${if (classifierOptions != null) "with classifier options" else ""}")
               result.success(true)
             } else {
               Log.e(TAG, "Failed to load model for instance $instanceId", loadResult.exceptionOrNull())
@@ -534,14 +517,11 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
     permissions: Array<String>,
     grantResults: IntArray
   ): Boolean {
-    Log.d(TAG, "onRequestPermissionsResult called in YoloPlugin. requestCode: $requestCode, activeViews: ${viewFactory.activeViews.size}")
     var handled = false
     // Iterate over a copy of the values to avoid concurrent modification issues.
     val viewsToNotify = ArrayList(viewFactory.activeViews.values)
     for (platformView in viewsToNotify) {
         try {
-            // Log that we're processing permission results
-            Log.d(TAG, "Processing permission result for YOLOPlatformView")
             handled = true
             // Assuming only one view actively requests permissions at a time.
             // If multiple views could request, 'handled' logic might need adjustment
@@ -554,8 +534,6 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
     if (!handled && viewsToNotify.isNotEmpty()) {
         // This log means we iterated views but none seemed to handle it, or an exception occurred.
         Log.w(TAG, "onRequestPermissionsResult was iterated but not confirmed handled by any YoloPlatformView, or an error occurred during delegation.")
-    } else if (viewsToNotify.isEmpty()) {
-        Log.d(TAG, "onRequestPermissionsResult: No active YoloPlatformViews to notify.")
     }
     return handled // Return true if any view instance successfully processed it.
   }

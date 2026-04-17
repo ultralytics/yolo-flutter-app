@@ -143,6 +143,11 @@ class YOLOModelResolver {
         .toList(growable: false);
   }
 
+  static String? defaultOfficialModel({YOLOTask task = YOLOTask.detect}) {
+    final models = officialModels(task: task);
+    return models.isEmpty ? null : models.first;
+  }
+
   static bool isOfficialModel(String source) =>
       _officialModelForId(_normalizeOfficialModelId(source)) != null;
 

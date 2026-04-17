@@ -3,7 +3,7 @@
 //
 //  Threshold Provider for Ultralytics YOLO App
 //  This class is designed to supply custom Intersection Over Union (IoU) and confidence thresholds
-//  for the YOLOv8 object detection models within the Ultralytics YOLO app. It conforms to the MLFeatureProvider protocol,
+//  for the YOLO object detection models within the Ultralytics YOLO app. It conforms to the MLFeatureProvider protocol,
 //  allowing these thresholds to be dynamically adjusted and applied to model predictions.
 //  Licensed under AGPL-3.0. For commercial use, refer to Ultralytics licensing: https://ultralytics.com/license
 //  Access the source code: https://github.com/ultralytics/yolo-ios-app
@@ -27,7 +27,7 @@ class ThresholdProvider: MLFeatureProvider {
   /// - Parameters:
   ///   - iouThreshold: The IoU threshold for determining object overlap.
   ///   - confidenceThreshold: The minimum confidence for considering a detection valid.
-  init(iouThreshold: Double = 0.45, confidenceThreshold: Double = 0.25) {
+  init(iouThreshold: Double = 0.7, confidenceThreshold: Double = 0.25) {
     values = [
       "iouThreshold": MLFeatureValue(double: iouThreshold),
       "confidenceThreshold": MLFeatureValue(double: confidenceThreshold),

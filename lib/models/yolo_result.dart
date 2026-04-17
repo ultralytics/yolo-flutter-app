@@ -142,18 +142,17 @@ class YOLOResult {
 
     final angle = map['angle'] is num ? (map['angle'] as num).toDouble() : null;
     final polygonRaw = map['polygon'] ?? map['obbPoints'];
-    final polygon = polygonRaw is List ? polygonRaw : null;
-    final obbPoints = polygon
-        ?.whereType<Map>()
-        .map(MapConverter.convertToTypedMap)
-        .where((pointMap) => pointMap['x'] is num && pointMap['y'] is num)
-        .map(
-          (pointMap) => <String, num>{
-            'x': (pointMap['x'] as num).toDouble(),
-            'y': (pointMap['y'] as num).toDouble(),
-          },
-        )
-        .toList();
+    List<Map<String, num>>? obbPoints;
+    if (polygonRaw is List) {
+      obbPoints = <Map<String, num>>[];
+      for (final point in polygonRaw) {
+        if (point is! Map) continue;
+        final x = point['x'];
+        final y = point['y'];
+        if (x is! num || y is! num) continue;
+        obbPoints.add({'x': x.toDouble(), 'y': y.toDouble()});
+      }
+    }
 
     return YOLOResult(
       classIndex: classIndex,
@@ -219,21 +218,8 @@ class YOLOResult {
   }
 }
 
-/// Represents a collection of detection results from YOLO models.
-///
-/// This class encapsulates the complete output from a YOLO inference,
-/// including all detected objects, an optional annotated image showing
-/// the detections, and performance metrics.
-///
-/// Example:
-/// ```dart
-/// final results = await yolo.predict(imageBytes);
-/// print('Found ${results.detections.length} objects');
-/// print('Processing took ${results.processingTimeMs}ms');
-/// if (results.annotatedImage != null) {
-///   // Display or save the annotated image
-/// }
-/// ```
+/// Complete output from a YOLO inference: detections, optional annotated
+/// image, and processing time in milliseconds.
 class YOLODetectionResults {
   /// List of all objects detected in the image.
   ///
@@ -298,13 +284,7 @@ class YOLODetectionResults {
   }
 }
 
-/// Represents a point in 2D space.
-///
-/// Example:
-/// ```dart
-/// final point = Point(150.5, 200.0);
-/// print('Point at (${point.x}, ${point.y})');
-/// ```
+/// A 2D point in image/pixel space.
 class Point {
   final double x;
   final double y;

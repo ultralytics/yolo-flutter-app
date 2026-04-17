@@ -54,11 +54,13 @@ flutter pub get
 ```dart
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
+final modelId = YOLO.defaultOfficialModel() ?? 'yolo26n';
+
 YOLOView(
-  modelPath: 'yolo26n',
+  modelPath: modelId,
   onResult: (results) {
-    for (final result in results) {
-      print('${result.className}: ${result.confidence}');
+    for (final r in results) {
+      debugPrint('${r.className}: ${r.confidence}');
     }
   },
 )
@@ -80,23 +82,31 @@ final results = await yolo.predict(imageBytes);
 
 ### 1. 官方模型 ID
 
-直接使用官方 ID，例如 `yolo26n`：
+可直接使用默认官方模型，或传入指定官方 ID，例如 `yolo26n`：
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo26n');
+final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 ```
 
-插件会自动下载并缓存当前平台对应的官方产物。可通过 `YOLO.officialModels()` 查看当前平台可用的官方 ID。
+插件会自动下载并缓存当前平台对应的官方产物。可通过
+`YOLO.officialModels()` 查看当前平台可用的全部官方 ID。
 
 ### 2. 你自己的导出模型
 
-传入本地路径或 Flutter 资源路径：
+传入你自己的导出 YOLO 模型本地路径或 Flutter 资源路径：
 
 ```dart
-final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
+final yolo = YOLO(modelPath: 'assets/models/my-finetuned-model.tflite');
 ```
 
 如果模型导出时带有元数据，插件会自动推断 `task`。如果没有，就显式传入 `task`。
+
+```dart
+final yolo = YOLO(
+  modelPath: 'assets/models/my-finetuned-model.tflite',
+  task: YOLOTask.detect,
+);
+```
 
 ### 3. 远程模型 URL
 
@@ -112,7 +122,8 @@ final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
 | 希望插件自动推断 `task`    | 使用带元数据的导出模型          |
 | 你的导出模型没有元数据     | 自定义模型并显式传入 `task`     |
 
-官方模型先看 `YOLO.officialModels()`；自定义模型则直接从你准备实际交付的导出文件开始。
+官方模型可直接从 `YOLO.defaultOfficialModel()` 或
+`YOLO.officialModels()` 开始；自定义模型则直接从你准备实际交付的导出文件开始。
 
 ## 📥 把你自己的模型放进应用
 
@@ -127,7 +138,7 @@ final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
 
 ### iOS 导出注意事项
 
-导出 CoreML 检测模型时必须使用 `nms=True`：
+导出 Core ML 检测模型时必须使用 `nms=True`：
 
 ```python
 from ultralytics import YOLO
@@ -163,13 +174,13 @@ await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 
 ## 🧩 推荐接入模式
 
-| 应用类型                               | 推荐模型加载方式                                 |
-| -------------------------------------- | ------------------------------------------------ |
-| 实时相机场景                           | `YOLOView(modelPath: 'yolo26n')`                 |
-| 图库或单图推理流程                     | `YOLO(modelPath: 'yolo26n')`                     |
-| 应用内置自定义模型                     | `YOLO(modelPath: 'assets/models/custom.tflite')` |
-| 同时支持 CoreML 与 TFLite 的跨平台应用 | 使用各平台对应导出文件，并让元数据决定 `task`    |
-| 运行时动态切换模型                     | `YOLOViewController.switchModel(...)`            |
+| 应用类型                                | 推荐模型加载方式                                 |
+| --------------------------------------- | ------------------------------------------------ |
+| 实时相机场景                            | `YOLOView(modelPath: 'yolo26n')`                 |
+| 图库或单图推理流程                      | `YOLO(modelPath: 'yolo26n')`                     |
+| 应用内置自定义模型                      | `YOLO(modelPath: 'assets/models/custom.tflite')` |
+| 同时支持 Core ML 与 TFLite 的跨平台应用 | 使用各平台对应导出文件，并让元数据决定 `task`    |
+| 运行时动态切换模型                      | `YOLOViewController.switchModel(...)`            |
 
 ## 📚 文档
 

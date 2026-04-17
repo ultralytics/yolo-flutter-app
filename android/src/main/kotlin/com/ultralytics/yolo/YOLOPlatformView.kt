@@ -50,20 +50,18 @@ class YOLOPlatformView(
     private var retryRunnable: Runnable? = null
     
     init {
-        Log.d(TAG, "YOLOPlatformView[$viewId] INIT BLOCK STARTING")
         val dartViewIdParam = creationParams?.get("viewId")
         viewUniqueId = dartViewIdParam as? String ?: viewId.toString().also {
             Log.w(TAG, "YOLOPlatformView[$viewId init]: Using platform int viewId '$it' as fallback")
         }
-        Log.d(TAG, "YOLOPlatformView[$viewId init]: Initialized with viewUniqueId: $viewUniqueId")
 
         // Parse model path and task from creation params
         var modelPath = creationParams?.get("modelPath") as? String ?: "yolo26n"
         val taskString = creationParams?.get("task") as? String ?: "detect"
-        val confidenceParam = creationParams?.get("confidenceThreshold") as? Double ?: 0.5
-        val iouParam = creationParams?.get("iouThreshold") as? Double ?: 0.45
+        val confidenceParam = creationParams?.get("confidenceThreshold") as? Double ?: 0.25
+        val iouParam = creationParams?.get("iouThreshold") as? Double ?: 0.7
         val showOverlaysParam = creationParams?.get("showOverlays") as? Boolean ?: true
-        
+
         // Parse lensFacing parameter
         val lensFacingParam = creationParams?.get("lensFacing") as? String ?: "back"
         val lensFacing = when (lensFacingParam.lowercase()) {
@@ -75,40 +73,34 @@ class YOLOPlatformView(
         methodChannel?.setMethodCallHandler(this)
 
         // Set initial thresholds
-        Log.d(TAG, "Setting initial thresholds: conf=$confidenceParam, iou=$iouParam")
         yoloView.setConfidenceThreshold(confidenceParam)
         yoloView.setIouThreshold(iouParam)
         yoloView.setShowOverlays(showOverlaysParam)
-        
+
         // Set lens facing before initializing camera
-        Log.d(TAG, "Setting lens facing: $lensFacingParam")
         yoloView.setLensFacing(lensFacing)
-        
+
         // Configure YOLOView streaming functionality
         setupYOLOViewStreaming(creationParams)
 
         // Notify lifecycle FIRST before initializing camera
         // This ensures lifecycle owner is set before camera tries to start
         if (context is LifecycleOwner) {
-            Log.d(TAG, "Initial context is a LifecycleOwner, notifying YOLOView")
             yoloView.onLifecycleOwnerAvailable(context)
             // initCamera will be called by onLifecycleOwnerAvailable if permissions are granted
             // But we also call it here as a fallback
-            Log.d(TAG, "Attempting camera initialization after lifecycle owner setup")
             yoloView.initCamera()
         } else {
             Log.w(TAG, "Context is not a LifecycleOwner, camera may not start")
             // Still try to initialize camera - it will request permissions if needed
             yoloView.initCamera()
         }
-        
+
         try {
             // Resolve model path
             modelPath = resolveModelPath(context, modelPath)
             val task = YOLOTask.valueOf(taskString.uppercase())
-            
-            Log.d(TAG, "Initializing with model: $modelPath, task: $task")
-            
+
             // Set up model loading callback
             yoloView.setOnModelLoadCallback { success ->
                 if (success) {
@@ -183,8 +175,6 @@ class YOLOPlatformView(
         yoloView.setStreamCallback { streamData ->
             sendStreamDataWithRetry(streamData)
         }
-        
-        Log.d(TAG, "YOLOView streaming configured with setState resilience")
     }
     
     /**
@@ -261,8 +251,6 @@ class YOLOPlatformView(
         
         retryRunnable = Runnable {
             if (isStreaming.get()) {
-                Log.d(TAG, "Retrying to send stream data")
-                
                 // Check if sink is available
                 if (streamHandler.sink != null) {
                     // Resend last data if available
@@ -271,7 +259,6 @@ class YOLOPlatformView(
                     }
                 } else {
                     // Request Flutter to recreate the event channel
-                    Log.d(TAG, "Requesting Flutter to reconnect event channel")
                     methodChannel?.invokeMethod("reconnectEventChannel", mapOf(
                         "viewId" to viewUniqueId,
                         "reason" to "sink_disconnected"
@@ -292,8 +279,6 @@ class YOLOPlatformView(
      */
     private fun startStreaming() {
         if (isStreaming.compareAndSet(false, true)) {
-            Log.d(TAG, "Started streaming for view $viewId")
-            
             // Send initial test message to verify connection
             sendStreamData(mapOf(
                 "test" to "Streaming started",
@@ -302,13 +287,12 @@ class YOLOPlatformView(
             ))
         }
     }
-    
+
     /**
      * Stop streaming
      */
     private fun stopStreaming() {
         if (isStreaming.compareAndSet(true, false)) {
-            Log.d(TAG, "Stopped streaming for view $viewId")
             retryRunnable?.let { retryHandler.removeCallbacks(it) }
             retryRunnable = null
         }
@@ -379,7 +363,6 @@ class YOLOPlatformView(
                     
                     yoloView.setModel(modelPath, task, useGpu) { success ->
                         if (success) {
-                            Log.d(TAG, "Model switched successfully")
                             result.success(null)
                         } else {
                             Log.e(TAG, "Failed to switch model")
@@ -428,7 +411,6 @@ class YOLOPlatformView(
                             skipFrames = (configMap["skipFrames"] as? Number)?.toInt()
                         )
                         yoloView.setStreamConfig(streamConfig)
-                        Log.d(TAG, "Streaming config updated")
                         result.success(null)
                     } else {
                         result.error("invalid_args", "Invalid streaming config", null)
@@ -436,18 +418,15 @@ class YOLOPlatformView(
                 }
                 "stop" -> {
                     yoloView.stop()
-                    Log.d(TAG, "Camera and inference stopped")
                     result.success(null)
                 }
                 "restartCamera" -> {
-                    Log.d(TAG, "Restarting camera (requested from Flutter)")
                     yoloView.startCamera()
                     result.success(null)
                 }
                 "captureFrame" -> {
                     val imageData = yoloView.captureFrame()
                     if (imageData != null) {
-                        Log.d(TAG, "Frame captured: ${imageData.size} bytes")
                         result.success(imageData)
                     } else {
                         result.error("capture_failed", "Failed to capture frame", null)
@@ -455,7 +434,6 @@ class YOLOPlatformView(
                 }
                 "reconnectStream" -> {
                     // Handle reconnection request from Flutter
-                    Log.d(TAG, "Received reconnect request from Flutter")
                     startStreaming()
                     result.success(null)
                 }
@@ -479,10 +457,8 @@ class YOLOPlatformView(
     }
     
     override fun dispose() {
-        Log.d(TAG, "Disposing YOLOPlatformView for viewId: $viewId")
-        
         stopStreaming()
-        
+
         try {
             yoloView.stop()
             // Clear callbacks by setting them to empty implementations
@@ -492,11 +468,9 @@ class YOLOPlatformView(
         } catch (e: Exception) {
             Log.e(TAG, "Error during disposal", e)
         }
-        
+
         methodChannel?.setMethodCallHandler(null)
         factory.onPlatformViewDisposed(viewId)
-        
-        Log.d(TAG, "YOLOPlatformView disposed successfully")
     }
     
     private fun resolveModelPath(context: Context, modelPath: String): String {

@@ -94,6 +94,13 @@ void main() {
       );
     });
 
+    test('default official model returns the first supported ID', () {
+      expect(
+        YOLO.defaultOfficialModel(task: YOLOTask.detect),
+        YOLO.officialModels(task: YOLOTask.detect).first,
+      );
+    });
+
     test('task can be inferred from model metadata', () async {
       final yolo = YOLO(modelPath: 'test_model.tflite');
       await yolo.loadModel();

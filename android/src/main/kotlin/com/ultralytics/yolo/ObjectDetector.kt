@@ -84,7 +84,6 @@ class ObjectDetector(
         if (useGpu) {
             try {
                 addDelegate(GpuDelegate())
-                Log.d("ObjectDetector", "GPU delegate is used.")
             } catch (e: Exception) {
                 Log.e("ObjectDetector", "GPU delegate error: ${e.message}")
             }
@@ -99,11 +98,11 @@ class ObjectDetector(
         val modelBuffer  = YOLOUtils.loadModelFile(context, modelPath)
 
         /* --- Get labels from metadata (try Appended ZIP → FlatBuffers in order) --- */
-        var loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
         var labelsWereLoaded = loadedLabels != null
 
-        if (labelsWereLoaded) {
-            this.labels = loadedLabels!! // Use labels from appended ZIP
+        if (loadedLabels != null) {
+            this.labels = loadedLabels // Use labels from appended ZIP
             Log.i(TAG, "Labels successfully loaded from appended ZIP.")
         } else {
             Log.w(TAG, "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
@@ -128,7 +127,6 @@ class ObjectDetector(
         interpreter = Interpreter(modelBuffer, interpreterOptions)
         // Call allocateTensors() once during initialization, not in the inference loop
         interpreter.allocateTensors()
-        Log.d("TAG", "TFLite model loaded: $modelPath, tensors allocated")
 
         // Check input shape (example: [1, inHeight, inWidth, 3])
         val inputShape = interpreter.getInputTensor(0).shape()
@@ -141,14 +139,12 @@ class ObjectDetector(
         }
         inputSize = Size(inWidth, inHeight) // Set variable in BasePredictor
         modelInputSize = Pair(inWidth, inHeight)
-        Log.d("TAG", "Model input size = $inWidth x $inHeight")
 
         // Output shape (varies by model, modify as needed)
         // Example: [1, 84, 2100] = [batch, outHeight, outWidth]
         val outputShape = interpreter.getOutputTensor(0).shape()
         out1 = outputShape[1] // 84
         out2 = outputShape[2] // 2100
-        Log.d("TAG", "Model output shape = [1, $out1, $out2]")
 
         // Allocate preprocessing resources
         initPreprocessingResources(inWidth, inHeight)
@@ -188,8 +184,6 @@ class ObjectDetector(
             .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
             .add(CastOp(INPUT_IMAGE_TYPE))
             .build()
-            
-        Log.d("TAG", "ObjectDetector initialized.")
     }
 
     /* =================================================================== */
@@ -212,10 +206,8 @@ class ObjectDetector(
         val files = extractor.associatedFileNames
         if (!files.isNullOrEmpty()) {
             for (fileName in files) {
-                Log.d(TAG, "Found associated file: $fileName")
                 extractor.getAssociatedFile(fileName)?.use { stream ->
                     val fileString = String(stream.readBytes(), Charsets.UTF_8)
-                    Log.d(TAG, "Associated file contents:\n$fileString")
 
                     val yaml = Yaml()
                     @Suppress("UNCHECKED_CAST")
@@ -224,14 +216,11 @@ class ObjectDetector(
                         val namesMap = data["names"] as? Map<Int, String>
                         if (namesMap != null) {
                             labels = namesMap.values.toList()          // Same as old code
-                            Log.d(TAG, "Loaded labels from metadata: $labels")
                             return true
                         }
                     }
                 }
             }
-        } else {
-            Log.d(TAG, "No associated files found in the metadata.")
         }
         false
     } catch (e: Exception) {
@@ -269,7 +258,6 @@ class ObjectDetector(
         var stageStartTime = System.nanoTime()
 
         // ======== Preprocessing: Convert Bitmap to ByteBuffer via TensorImage ========
-        Log.d(TAG, "Predict Start: Preprocessing")
         // 1. Resize to input size (using createScaledBitmap instead of the original scaledBitmap)
 //        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, inputSize.width, inputSize.height, false)
 
@@ -304,23 +292,18 @@ class ObjectDetector(
         inputBuffer.rewind()
         
         var preprocessTimeMs = (System.nanoTime() - stageStartTime) / 1_000_000.0
-        Log.d(TAG, "Predict Stage: Preprocessing done in $preprocessTimeMs ms")
         stageStartTime = System.nanoTime()
 
         // ======== Inference ============
-        Log.d(TAG, "Predict Start: Inference")
         interpreter.run(inputBuffer, rawOutput)
         var inferenceTimeMs = (System.nanoTime() - stageStartTime) / 1_000_000.0
-        Log.d(TAG, "Predict Stage: Inference done in $inferenceTimeMs ms")
         stageStartTime = System.nanoTime()
 
         // ======== Post-processing (same as existing code) ============
-        Log.d(TAG, "Predict Start: Postprocessing")
         // val postStart = System.nanoTime() // This was previously here, now using stageStartTime
         val outHeight = rawOutput[0].size      // out1
         val outWidth = rawOutput[0][0].size      // out2
         val shape = interpreter.getOutputTensor(0).shape() // example: [1, 84, 8400]
-        Log.d("TFLite", "Output shape: " + shape.contentToString())
 
 //        // Transpose output ([1][c][w] → [w][c])
 //        for (i in 0 until outHeight) {
@@ -340,9 +323,6 @@ class ObjectDetector(
             numItemsThreshold = numItemsThreshold,
             numClasses = labels.size
         )
-        for ((index, boxArray) in resultBoxes.withIndex()) {
-            Log.d(TAG, "Postprocess result - Box $index: ${boxArray.joinToString(", ")}")
-        }
         // Convert to Box list
         val boxes = mutableListOf<Box>()
         for (boxArray in resultBoxes) {
@@ -377,10 +357,8 @@ class ObjectDetector(
 
         // val postEnd = System.nanoTime() // This was previously here, now using stageStartTime for end of postprocess
         var postprocessTimeMs = (System.nanoTime() - stageStartTime) / 1_000_000.0
-        Log.d(TAG, "Predict Stage: Postprocessing done in $postprocessTimeMs ms")
 
         val totalMs = (System.nanoTime() - overallStartTime) / 1_000_000.0
-        Log.d(TAG, "Predict Total time: $totalMs ms (Pre: $preprocessTimeMs, Inf: $inferenceTimeMs, Post: $postprocessTimeMs)")
 
         updateTiming() // This updates t0, t1, t2, t3, t4 based on its own logic
 
@@ -395,7 +373,7 @@ class ObjectDetector(
 
     // Thresholds (like setConfidenceThreshold, setIouThreshold in TFLiteDetector)
     private var confidenceThreshold = 0.25f
-    private var iouThreshold = 0.4f
+    private var iouThreshold = 0.7f
 //    private var numItemsThreshold = 30
 
     override fun setConfidenceThreshold(conf: Double) {
@@ -443,6 +421,6 @@ class ObjectDetector(
         private val INPUT_IMAGE_TYPE = DataType.FLOAT32
         private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
         private const val CONFIDENCE_THRESHOLD = 0.25F
-        private const val IOU_THRESHOLD = 0.4F
+        private const val IOU_THRESHOLD = 0.7F
     }
 }

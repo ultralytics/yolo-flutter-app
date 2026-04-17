@@ -154,7 +154,7 @@ class ObjectDetector: BasePredictor {
         }
       }
     } catch {
-      print(error)
+      NSLog("YOLO ObjectDetector error: %@", String(describing: error))
     }
     let speed = Date().timeIntervalSince(start)
     var result = YOLOResult(orig_shape: inputSize, boxes: boxes, speed: t1, names: labels)
