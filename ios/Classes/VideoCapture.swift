@@ -97,7 +97,8 @@ class VideoCapture: NSObject, @unchecked Sendable {
 
     guard let device = bestCaptureDevice(position: position) else {
       NSLog(
-        "YOLO VideoCapture: No camera device available for position: %@", String(describing: position))
+        "YOLO VideoCapture: No camera device available for position: %@",
+        String(describing: position))
       captureSession.commitConfiguration()
       return false
     }

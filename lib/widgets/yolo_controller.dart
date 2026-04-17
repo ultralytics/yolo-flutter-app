@@ -104,23 +104,21 @@ class YOLOViewController {
     });
   }
 
-  Future<void> setStreamingConfig(YOLOStreamingConfig config) => _invoke(
-    'setStreamingConfig',
-    {
-      'includeDetections': config.includeDetections,
-      'includeClassifications': config.includeClassifications,
-      'includeProcessingTimeMs': config.includeProcessingTimeMs,
-      'includeFps': config.includeFps,
-      'includeMasks': config.includeMasks,
-      'includePoses': config.includePoses,
-      'includeOBB': config.includeOBB,
-      'includeOriginalImage': config.includeOriginalImage,
-      'maxFPS': config.maxFPS,
-      'throttleIntervalMs': config.throttleInterval?.inMilliseconds,
-      'inferenceFrequency': config.inferenceFrequency,
-      'skipFrames': config.skipFrames,
-    },
-  );
+  Future<void> setStreamingConfig(YOLOStreamingConfig config) =>
+      _invoke('setStreamingConfig', {
+        'includeDetections': config.includeDetections,
+        'includeClassifications': config.includeClassifications,
+        'includeProcessingTimeMs': config.includeProcessingTimeMs,
+        'includeFps': config.includeFps,
+        'includeMasks': config.includeMasks,
+        'includePoses': config.includePoses,
+        'includeOBB': config.includeOBB,
+        'includeOriginalImage': config.includeOriginalImage,
+        'maxFPS': config.maxFPS,
+        'throttleIntervalMs': config.throttleInterval?.inMilliseconds,
+        'inferenceFrequency': config.inferenceFrequency,
+        'skipFrames': config.skipFrames,
+      });
 
   Future<void> stop() => _invoke('stop');
 

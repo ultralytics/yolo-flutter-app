@@ -392,7 +392,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
           // Once everything is set up, we can start capturing live video.
           self.videoCapture.start()
         } else {
-          NSLog("YOLOView: Failed to set up camera - permission may be denied or camera unavailable")
+          NSLog(
+            "YOLOView: Failed to set up camera - permission may be denied or camera unavailable")
         }
         self.busy = false
       }
