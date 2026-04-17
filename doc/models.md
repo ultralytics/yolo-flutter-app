@@ -141,7 +141,7 @@ Flutter asset models are copied into app storage automatically before loading.
 You can use either:
 
 - `.mlpackage` or `.mlmodel` files added to `ios/Runner.xcworkspace`
-- zipped CoreML packages in Flutter assets, for example `assets/models/custom.mlpackage.zip`
+- zipped Core ML packages in Flutter assets, for example `assets/models/custom.mlpackage.zip`
 
 For Flutter assets on iOS, use `.mlpackage.zip` so the package can unpack the model into app storage before loading it.
 
@@ -153,7 +153,7 @@ Install Ultralytics:
 pip install ultralytics
 ```
 
-### CoreML Export
+### Core ML Export
 
 Detection models for iOS must be exported with `nms=True`:
 

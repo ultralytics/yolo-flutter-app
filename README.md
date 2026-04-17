@@ -140,7 +140,7 @@ Then point `modelPath` at that file or asset path.
 
 ### iOS export note
 
-Detection models exported to CoreML must use `nms=True`:
+Detection models exported to Core ML must use `nms=True`:
 
 ```python
 from ultralytics import YOLO
@@ -181,7 +181,7 @@ await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 | Live camera app                    | `YOLOView(modelPath: 'yolo26n')`                                       |
 | Photo picker or gallery workflow   | `YOLO(modelPath: 'yolo26n')`                                           |
 | App with your own bundled model    | `YOLO(modelPath: 'assets/models/custom.tflite')`                       |
-| Cross-platform CoreML + TFLite app | Use platform-appropriate exported assets and let metadata drive `task` |
+| Cross-platform Core ML + TFLite app | Use platform-appropriate exported assets and let metadata drive `task` |
 | App that changes models at runtime | `YOLOViewController.switchModel(...)`                                  |
 
 ## 📚 Documentation

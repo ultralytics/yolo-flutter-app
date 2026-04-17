@@ -138,7 +138,7 @@ final yolo = YOLO(
 
 ### iOS 导出注意事项
 
-导出 CoreML 检测模型时必须使用 `nms=True`：
+导出 Core ML 检测模型时必须使用 `nms=True`：
 
 ```python
 from ultralytics import YOLO
@@ -179,7 +179,7 @@ await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 | 实时相机场景                           | `YOLOView(modelPath: 'yolo26n')`                 |
 | 图库或单图推理流程                     | `YOLO(modelPath: 'yolo26n')`                     |
 | 应用内置自定义模型                     | `YOLO(modelPath: 'assets/models/custom.tflite')` |
-| 同时支持 CoreML 与 TFLite 的跨平台应用 | 使用各平台对应导出文件，并让元数据决定 `task`    |
+| 同时支持 Core ML 与 TFLite 的跨平台应用 | 使用各平台对应导出文件，并让元数据决定 `task`    |
 | 运行时动态切换模型                     | `YOLOViewController.switchModel(...)`            |
 
 ## 📚 文档

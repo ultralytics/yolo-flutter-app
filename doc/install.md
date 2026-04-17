@@ -138,13 +138,13 @@ class TestYOLO extends StatelessWidget {
               );
 
               await yolo.loadModel();
-              print('✅ YOLO loaded successfully!');
+              debugPrint('YOLO loaded successfully');
 
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('YOLO plugin working!')),
+                const SnackBar(content: Text('YOLO plugin working!')),
               );
             } catch (e) {
-              print('❌ Error: $e');
+              debugPrint('Error: $e');
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Error: $e')),
               );

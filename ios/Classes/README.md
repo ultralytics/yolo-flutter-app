@@ -34,7 +34,7 @@ The Flutter side can hand the iOS layer:
 
 ## Export Reminder
 
-For detection models on iOS, CoreML exports must use `nms=True`:
+For detection models on iOS, Core ML exports must use `nms=True`:
 
 ```python
 from ultralytics import YOLO
