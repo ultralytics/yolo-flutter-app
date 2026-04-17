@@ -40,9 +40,11 @@ The main goal is simple integration: use an official model ID, or drop in your o
 
 Install the package:
 
+Package: https://pub.dev/packages/ultralytics_yolo
+
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.2.0
+  ultralytics_yolo: ^0.3.0
 ```
 
 ```bash

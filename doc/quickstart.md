@@ -29,11 +29,13 @@ cd yolo_demo
 
 Add to `pubspec.yaml`:
 
+Package: https://pub.dev/packages/ultralytics_yolo
+
 ```yaml
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.2.0
+  ultralytics_yolo: ^0.3.0
   image_picker: ^1.2.1 # For image selection
 ```
 
