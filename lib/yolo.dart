@@ -111,6 +111,10 @@ class YOLO {
   static List<String> officialModels({YOLOTask? task}) =>
       YOLOModelResolver.officialModels(task: task);
 
+  /// Returns the default official model ID for [task] on the current platform.
+  static String? defaultOfficialModel({YOLOTask task = YOLOTask.detect}) =>
+      YOLOModelResolver.defaultOfficialModel(task: task);
+
   YOLOTask? get resolvedTask => _resolvedModel?.task ?? task;
 
   Future<YOLOResolvedModel> _ensureResolved() async {

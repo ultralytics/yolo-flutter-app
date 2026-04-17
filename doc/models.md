@@ -15,10 +15,11 @@ The plugin treats model metadata as the source of truth whenever it is available
 
 ## 📦 Official Models
 
-Use an official model ID such as `yolo26n`:
+Use the default official model or a specific official model ID such as
+`yolo26n`:
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo26n');
+final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 ```
 
 The plugin will:
@@ -37,12 +38,15 @@ print(models);
 
 `YOLO.officialModels()` only returns real downloadable artifacts for the running platform.
 
+If you want the simplest “start from the default Ultralytics model” entry
+point, prefer `YOLO.defaultOfficialModel()`.
+
 ## 📁 Custom Models
 
-You can also point the plugin at your own exported model:
+You can also point the plugin at your own fine-tuned exported model:
 
 ```dart
-final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
+final yolo = YOLO(modelPath: 'assets/models/my-finetuned-model.tflite');
 ```
 
 Supported sources:
@@ -56,7 +60,7 @@ If the exported model metadata includes `task`, the plugin resolves it automatic
 
 ```dart
 final yolo = YOLO(
-  modelPath: 'assets/models/custom.tflite',
+  modelPath: 'assets/models/my-finetuned-model.tflite',
   task: YOLOTask.detect,
 );
 ```

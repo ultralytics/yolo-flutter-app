@@ -48,11 +48,9 @@ class CameraInferenceController extends ChangeNotifier {
   YOLOViewController get yoloController => _yoloController;
 
   static String _defaultModelForTask(YOLOTask task) {
+    final defaultModel = YOLO.defaultOfficialModel(task: task);
+    if (defaultModel != null) return defaultModel;
     final models = YOLO.officialModels(task: task);
-    final yolo26Models = models
-        .where((model) => model.startsWith('yolo26n'))
-        .toList(growable: false);
-    if (yolo26Models.isNotEmpty) return yolo26Models.first;
     return models.isEmpty ? '' : models.first;
   }
 

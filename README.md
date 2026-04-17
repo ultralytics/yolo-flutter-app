@@ -54,8 +54,10 @@ Start with the default official model:
 ```dart
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
+final modelId = YOLO.defaultOfficialModel() ?? 'yolo26n';
+
 YOLOView(
-  modelPath: 'yolo26n',
+  modelPath: modelId,
   onResult: (results) {
     for (final r in results) {
       debugPrint('${r.className}: ${r.confidence}');
@@ -80,23 +82,32 @@ The plugin supports three model flows.
 
 ### 1. Official model IDs
 
-Use an official ID such as `yolo26n` and let the plugin handle download and caching:
+Use the default official model or a specific official ID and let the plugin
+handle download and caching:
 
 ```dart
-final yolo = YOLO(modelPath: 'yolo26n');
+final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 ```
 
-Call `YOLO.officialModels()` to see which official IDs are available on the current platform.
+Call `YOLO.officialModels()` to see which official IDs are available on the
+current platform.
 
 ### 2. Your own exported model
 
-Pass a local path or Flutter asset path:
+Pass your own exported YOLO model as a local path or Flutter asset path:
 
 ```dart
-final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
+final yolo = YOLO(modelPath: 'assets/models/my-finetuned-model.tflite');
 ```
 
 If the exported model includes metadata, the plugin infers `task` automatically. If metadata is missing, pass `task` explicitly.
+
+```dart
+final yolo = YOLO(
+  modelPath: 'assets/models/my-finetuned-model.tflite',
+  task: YOLOTask.detect,
+);
+```
 
 ### 3. Remote model URL
 
@@ -112,7 +123,9 @@ Pass an `http` or `https` URL and the plugin will download it into app storage b
 | You need the plugin to infer `task` automatically     | Any export with metadata          |
 | You have an older or stripped export without metadata | Custom model plus explicit `task` |
 
-For official models, start with `YOLO.officialModels()`. For custom models, start with the exported file you actually plan to ship.
+For official models, start with `YOLO.defaultOfficialModel()` or
+`YOLO.officialModels()`. For custom models, start with the exported file you
+actually plan to ship.
 
 ## 📥 Drop Your Own Model Into an App
 
