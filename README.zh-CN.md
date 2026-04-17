@@ -174,13 +174,13 @@ await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 
 ## 🧩 推荐接入模式
 
-| 应用类型                               | 推荐模型加载方式                                 |
-| -------------------------------------- | ------------------------------------------------ |
-| 实时相机场景                           | `YOLOView(modelPath: 'yolo26n')`                 |
-| 图库或单图推理流程                     | `YOLO(modelPath: 'yolo26n')`                     |
-| 应用内置自定义模型                     | `YOLO(modelPath: 'assets/models/custom.tflite')` |
+| 应用类型                                | 推荐模型加载方式                                 |
+| --------------------------------------- | ------------------------------------------------ |
+| 实时相机场景                            | `YOLOView(modelPath: 'yolo26n')`                 |
+| 图库或单图推理流程                      | `YOLO(modelPath: 'yolo26n')`                     |
+| 应用内置自定义模型                      | `YOLO(modelPath: 'assets/models/custom.tflite')` |
 | 同时支持 Core ML 与 TFLite 的跨平台应用 | 使用各平台对应导出文件，并让元数据决定 `task`    |
-| 运行时动态切换模型                     | `YOLOViewController.switchModel(...)`            |
+| 运行时动态切换模型                      | `YOLOViewController.switchModel(...)`            |
 
 ## 📚 文档
 

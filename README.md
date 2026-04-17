@@ -176,13 +176,13 @@ await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 
 ## 🧩 Recommended Patterns
 
-| App type                           | Model loading pattern                                                  |
-| ---------------------------------- | ---------------------------------------------------------------------- |
-| Live camera app                    | `YOLOView(modelPath: 'yolo26n')`                                       |
-| Photo picker or gallery workflow   | `YOLO(modelPath: 'yolo26n')`                                           |
-| App with your own bundled model    | `YOLO(modelPath: 'assets/models/custom.tflite')`                       |
+| App type                            | Model loading pattern                                                  |
+| ----------------------------------- | ---------------------------------------------------------------------- |
+| Live camera app                     | `YOLOView(modelPath: 'yolo26n')`                                       |
+| Photo picker or gallery workflow    | `YOLO(modelPath: 'yolo26n')`                                           |
+| App with your own bundled model     | `YOLO(modelPath: 'assets/models/custom.tflite')`                       |
 | Cross-platform Core ML + TFLite app | Use platform-appropriate exported assets and let metadata drive `task` |
-| App that changes models at runtime | `YOLOViewController.switchModel(...)`                                  |
+| App that changes models at runtime  | `YOLOViewController.switchModel(...)`                                  |
 
 ## 📚 Documentation
 
