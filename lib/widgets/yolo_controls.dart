@@ -78,19 +78,23 @@ class YOLOControls extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
-                  onPressed:
-                      controller.isInitialized ? controller.switchCamera : null,
+                  onPressed: controller.isInitialized
+                      ? controller.switchCamera
+                      : null,
                   icon: const Icon(Icons.switch_camera),
                   label: const Text('Switch Camera'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: controller.isInitialized ? controller.zoomIn : null,
+                  onPressed: controller.isInitialized
+                      ? controller.zoomIn
+                      : null,
                   icon: const Icon(Icons.zoom_in),
                   label: const Text('Zoom In'),
                 ),
                 ElevatedButton.icon(
-                  onPressed:
-                      controller.isInitialized ? controller.zoomOut : null,
+                  onPressed: controller.isInitialized
+                      ? controller.zoomOut
+                      : null,
                   icon: const Icon(Icons.zoom_out),
                   label: const Text('Zoom Out'),
                 ),
@@ -124,7 +128,9 @@ class YOLOControlsCompact extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            onPressed: controller.isInitialized ? controller.switchCamera : null,
+            onPressed: controller.isInitialized
+                ? controller.switchCamera
+                : null,
             icon: const Icon(Icons.switch_camera, color: Colors.white),
             tooltip: 'Switch Camera',
           ),
