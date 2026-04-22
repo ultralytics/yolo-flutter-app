@@ -55,8 +55,10 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
           obbResults.append(obbResult)
         }
 
+        self.updateTime()
+
         var result = YOLOResult(
-          orig_shape: inputSize, boxes: [], obb: obbResults, speed: 0, names: labels)
+          orig_shape: inputSize, boxes: [], obb: obbResults, speed: self.t2, fps: 1 / self.t4, names: labels)
 
         // Add original image data if available
         if let originalImageData = self.originalImageData {
@@ -65,7 +67,6 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
         }
 
         self.currentOnResultsListener?.on(result: result)
-        self.updateTime()
       }
     }
   }

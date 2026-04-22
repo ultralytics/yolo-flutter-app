@@ -130,11 +130,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   private var busy = false
   private var currentBuffer: CVPixelBuffer?
   var framesDone = 0
-  var t0 = 0.0  // inference start
-  var t1 = 0.0  // inference dt
-  var t2 = 0.0  // inference dt smoothed
-  var t3 = CACurrentMediaTime()  // FPS start
-  var t4 = 0.0  // FPS dt smoothed
   var task = YOLOTask.detect
   var colors: [String: UIColor] = [:]
   var modelName: String = ""
