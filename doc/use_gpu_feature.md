@@ -10,7 +10,7 @@ The default is still:
 useGpu: true
 ```
 
-That is usually the best choice for performance, but CPU-only mode is useful when a device-specific GPU path is unstable.
+That is usually the best choice for performance, but disabling GPU is useful when a device-specific GPU path is unstable.
 
 ## Basic Usage
 
@@ -49,7 +49,7 @@ Disable GPU when:
 ### iOS
 
 - `useGpu: true` uses broader Core ML compute units
-- `useGpu: false` restricts execution to CPU-only mode
+- `useGpu: false` avoids the GPU path
 
 ## Recommendation
 

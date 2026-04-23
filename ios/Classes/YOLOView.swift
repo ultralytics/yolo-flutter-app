@@ -200,11 +200,12 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     frame: CGRect,
     modelPathOrName: String,
     task: YOLOTask,
+    useGpu: Bool = true,
     cameraPosition: AVCaptureDevice.Position = .back
   ) {
     self.videoCapture = VideoCapture()
     super.init(frame: frame)
-    setModel(modelPathOrName: modelPathOrName, task: task)
+    setModel(modelPathOrName: modelPathOrName, task: task, useGpu: useGpu)
     setUpOrientationChangeNotification()
     self.setUpBoundingBoxViews()
     self.setupUI()
@@ -237,6 +238,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   public func setModel(
     modelPathOrName: String,
     task: YOLOTask,
+    useGpu: Bool = true,
     completion: ((Result<Void, Error>) -> Void)? = nil
   ) {
     activityIndicator.startAnimating()
@@ -314,7 +316,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     switch task {
     case .classify:
-      Classifier.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true) {
+      Classifier.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
         [weak self] result in
         switch result {
         case .success(let predictor):
@@ -325,7 +327,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
 
     case .segment:
-      Segmenter.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true) {
+      Segmenter.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
         [weak self] result in
         switch result {
         case .success(let predictor):
@@ -336,7 +338,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
 
     case .pose:
-      PoseEstimater.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true) {
+      PoseEstimater.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
         [weak self] result in
         switch result {
         case .success(let predictor):
@@ -347,7 +349,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
 
     case .obb:
-      ObbDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true) {
+      ObbDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
         [weak self] result in
         switch result {
         case .success(let predictor):
@@ -360,7 +362,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
 
     default:
-      ObjectDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true) {
+      ObjectDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu)
+      {
         [weak self] result in
         switch result {
         case .success(let predictor):

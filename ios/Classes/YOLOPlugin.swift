@@ -412,6 +412,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         }
 
         let task = YOLOTask.fromString(taskString)
+        let useGpu = args["useGpu"] as? Bool ?? true
 
         // Handle both String viewId (from Flutter) and Int viewId
         var viewIdInt: Int?
@@ -449,7 +450,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
 
         // Get the YOLOView instance from the factory
         if let yoloView = SwiftYOLOPlatformViewFactory.getYOLOView(for: viewIdInt!) {
-          yoloView.setModel(modelPathOrName: modelPath, task: task) { modelResult in
+          yoloView.setModel(modelPathOrName: modelPath, task: task, useGpu: useGpu) { modelResult in
             switch modelResult {
             case .success:
               result(nil)  // Success

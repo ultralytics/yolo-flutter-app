@@ -189,8 +189,12 @@ public class BasePredictor: Predictor, @unchecked Sendable {
           // Enable GPU acceleration
           config.computeUnits = .all
         } else {
-          // Force CPU only for stability on problematic devices
-          config.computeUnits = .cpuOnly
+          // Avoid GPU while keeping Neural Engine acceleration available.
+          if #available(iOS 16.0, *) {
+            config.computeUnits = .cpuAndNeuralEngine
+          } else {
+            config.computeUnits = .cpuOnly
+          }
         }
 
         if #available(iOS 17.0, *) {
