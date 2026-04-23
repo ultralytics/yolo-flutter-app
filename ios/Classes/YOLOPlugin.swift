@@ -284,7 +284,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
               modelName: modelPath,
               task: task,
               useGpu: useGpu,
-              numItemsThreshold: numItemsThreshold,
+              numItemsThreshold: numItemsThreshold
             ) { modelResult in
               switch modelResult {
               case .success:
