@@ -79,6 +79,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       let confidenceThreshold = dict["confidenceThreshold"] as? Double ?? 0.25
       let iouThreshold = dict["iouThreshold"] as? Double ?? 0.7
       let numItemsThreshold = dict["numItemsThreshold"] as? Int ?? 30
+      let useGpu = dict["useGpu"] as? Bool ?? true
       let showOverlays = dict["showOverlays"] as? Bool ?? true
 
       // Get lensFacing parameter
@@ -102,6 +103,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         frame: frame,
         modelPathOrName: modelName,
         task: task,
+        useGpu: useGpu,
         cameraPosition: cameraPosition
       )
 
@@ -384,9 +386,10 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           let taskString = args["task"] as? String
         {
           let task = YOLOTask.fromString(taskString)
+          let useGpu = args["useGpu"] as? Bool ?? true
 
           // Use YOLOView's setModel method to switch the model
-          self.yoloView?.setModel(modelPathOrName: modelPath, task: task) { modelResult in
+          self.yoloView?.setModel(modelPathOrName: modelPath, task: task, useGpu: useGpu) { modelResult in
             switch modelResult {
             case .success:
 
