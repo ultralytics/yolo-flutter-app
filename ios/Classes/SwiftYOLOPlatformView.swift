@@ -389,7 +389,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           let useGpu = args["useGpu"] as? Bool ?? true
 
           // Use YOLOView's setModel method to switch the model
-          self.yoloView?.setModel(modelPathOrName: modelPath, task: task, useGpu: useGpu) { modelResult in
+          self.yoloView?.setModel(modelPathOrName: modelPath, task: task, useGpu: useGpu) {
+            modelResult in
             switch modelResult {
             case .success:
 

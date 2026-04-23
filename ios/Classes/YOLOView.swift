@@ -362,7 +362,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
 
     default:
-      ObjectDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
+      ObjectDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu)
+      {
         [weak self] result in
         switch result {
         case .success(let predictor):
