@@ -92,6 +92,9 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           return
         }
         var maskResults = Masks(masks: processedMasks.1, combinedMask: processedMasks.0)
+
+        self.updateTime()
+
         var result = YOLOResult(
           orig_shape: self.inputSize, boxes: boxes, masks: maskResults, speed: self.t2,
           fps: 1 / self.t4, names: self.labels)
@@ -101,7 +104,6 @@ class Segmenter: BasePredictor, @unchecked Sendable {
 
         }
 
-        self.updateTime()
         self.currentOnResultsListener?.on(result: result)
       }
     }

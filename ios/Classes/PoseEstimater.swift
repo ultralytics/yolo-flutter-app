@@ -52,9 +52,11 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
           boxes.append(person.box)
           keypointsList.append(person.keypoints)
         }
+        self.updateTime()
+
         var result = YOLOResult(
           orig_shape: inputSize, boxes: boxes, masks: nil, probs: nil, keypointsList: keypointsList,
-          annotatedImage: nil, speed: 0, fps: 0, originalImage: nil, names: labels)
+          annotatedImage: nil, speed: self.t2, fps: 1 / self.t4, originalImage: nil, names: labels)
 
         if let originalImageData = self.originalImageData {
           result.originalImage = UIImage(data: originalImageData)
@@ -62,7 +64,6 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
         }
 
         self.currentOnResultsListener?.on(result: result)
-        self.updateTime()
       }
     }
   }

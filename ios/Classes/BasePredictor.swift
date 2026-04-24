@@ -69,7 +69,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   var t3 = CACurrentMediaTime()  // FPS start
 
   /// Smoothed frames per second measurement (averaged over recent frames).
-  var t4 = 0.0  // FPS dt smoothed
+  var t4 = 1.0  // FPS dt smoothed (init to 1 to avoid initial division by zero)
 
   /// Flag indicating whether the predictor is currently processing an update.
   public var isUpdating: Bool = false
