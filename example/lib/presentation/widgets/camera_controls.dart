@@ -27,10 +27,12 @@ class CameraControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+
     return Stack(
       children: [
         Positioned(
-          bottom: isLandscape ? 16 : 32,
+          bottom: (isLandscape ? 16 : 32) + bottomInset,
           right: isLandscape ? 8 : 16,
           child: Column(
             children: [
@@ -66,7 +68,7 @@ class CameraControls extends StatelessWidget {
         ),
 
         Positioned(
-          bottom: MediaQuery.of(context).padding.top + (isLandscape ? 32 : 16),
+          bottom: MediaQuery.of(context).padding.top + (isLandscape ? 32 : 16) + bottomInset,
           left: isLandscape ? 32 : 16,
           child: CircleAvatar(
             radius: isLandscape ? 20 : 24,
