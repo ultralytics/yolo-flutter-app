@@ -55,10 +55,10 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
           obbResults.append(obbResult)
         }
 
-        self.updateTime()
+        let timing = updateTiming()
 
         var result = YOLOResult(
-          orig_shape: inputSize, boxes: [], obb: obbResults, speed: self.t2, fps: 1 / self.t4, names: labels)
+          orig_shape: inputSize, boxes: [], obb: obbResults, speed: timing.speed, fps: timing.fps, names: labels)
 
         // Add original image data if available
         if let originalImageData = self.originalImageData {
@@ -69,17 +69,6 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
         self.currentOnResultsListener?.on(result: result)
       }
     }
-  }
-
-  private func updateTime() {
-    if self.t1 < 10.0 {  // valid dt
-      self.t2 = self.t1 * 0.05 + self.t2 * 0.95  // smoothed inference time
-    }
-    self.t4 = (CACurrentMediaTime() - self.t3) * 0.05 + self.t4 * 0.95  // smoothed delivered FPS
-    self.t3 = CACurrentMediaTime()
-
-    self.currentOnInferenceTimeListener?.on(inferenceTime: self.t2 * 1000, fpsRate: 1 / self.t4)  // t2 seconds to ms
-
   }
 
   override func predictOnImage(image: CIImage) -> YOLOResult {
@@ -114,10 +103,10 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
             obbResults.append(obbResult)
           }
           let annotatedImage = drawOBBsOnCIImage(ciImage: image, obbDetections: obbResults)
-          updateTime()
+          let timing = updateTiming()
           return YOLOResult(
             orig_shape: inputSize, boxes: [], masks: nil, probs: nil, keypointsList: [],
-            obb: obbResults, annotatedImage: annotatedImage, speed: self.t2, fps: 1 / self.t4,
+            obb: obbResults, annotatedImage: annotatedImage, speed: timing.speed, fps: timing.fps,
             originalImage: nil, names: labels)
         }
       }
