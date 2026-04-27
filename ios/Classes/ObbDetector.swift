@@ -58,8 +58,7 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
         let timing = updateTiming()
 
         var result = YOLOResult(
-          orig_shape: inputSize, boxes: [], obb: obbResults, speed: timing.speed, fps: timing.fps,
-          names: labels)
+          orig_shape: inputSize, boxes: [], obb: obbResults, speed: timing.speed, fps: timing.fps, names: labels)
 
         // Add original image data if available
         if let originalImageData = self.originalImageData {
