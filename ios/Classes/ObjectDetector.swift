@@ -86,17 +86,9 @@ class ObjectDetector: BasePredictor {
         boxes.append(box)
       }
 
-      // Measure FPS
-      if self.t1 < 10.0 {  // valid dt
-        self.t2 = self.t1 * 0.05 + self.t2 * 0.95  // smoothed inference time
-      }
-      self.t4 = (CACurrentMediaTime() - self.t3) * 0.05 + self.t4 * 0.95  // smoothed delivered FPS
-      self.t3 = CACurrentMediaTime()
-
-      self.currentOnInferenceTimeListener?.on(inferenceTime: self.t2 * 1000, fpsRate: 1 / self.t4)  // t2 seconds to ms
-      //                self.currentOnFpsRateListener?.on(fpsRate: 1 / self.t4)
+      let timing = updateTiming()
       var result = YOLOResult(
-        orig_shape: inputSize, boxes: boxes, speed: self.t2, fps: 1 / self.t4, names: labels)
+        orig_shape: inputSize, boxes: boxes, speed: timing.speed, fps: timing.fps, names: labels)
 
       if let originalImageData = self.originalImageData {
         result.originalImage = UIImage(data: originalImageData)

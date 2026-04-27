@@ -292,6 +292,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
       // Invoke a VNRequestHandler with that image
       let handler = VNImageRequestHandler(
         cvPixelBuffer: pixelBuffer, orientation: imageOrientation, options: [:])
+      self.originalImageData = originalImageData
       t0 = CACurrentMediaTime()  // inference start
       do {
         if let request = visionRequest {
@@ -302,11 +303,30 @@ public class BasePredictor: Predictor, @unchecked Sendable {
       }
       t1 = CACurrentMediaTime() - t0  // inference dt
 
-      // Store original image data for result creation
-      self.originalImageData = originalImageData
-
       currentBuffer = nil
     }
+  }
+
+  /// Updates inference and FPS timing with the current frame measurements.
+  @discardableResult
+  func updateTiming() -> (speed: Double, fps: Double) {
+    let now = CACurrentMediaTime()
+    let inferenceTime = t0 > 0 ? now - t0 : t1
+    t1 = inferenceTime
+
+    if inferenceTime < 10.0 {
+      t2 = t2 == 0 ? inferenceTime : inferenceTime * 0.05 + t2 * 0.95
+    }
+
+    let frameInterval = now - t3
+    if frameInterval > 0, frameInterval < 10.0 {
+      t4 = t4 == 0 ? frameInterval : frameInterval * 0.05 + t4 * 0.95
+    }
+    t3 = now
+
+    let fps = t4 > 0 ? 1 / t4 : 0
+    currentOnInferenceTimeListener?.on(inferenceTime: t2 * 1000, fpsRate: fps)
+    return (speed: t2, fps: fps)
   }
 
   /// The confidence threshold for filtering detection results (default: 0.25).

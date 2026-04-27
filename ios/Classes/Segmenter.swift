@@ -92,30 +92,21 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           return
         }
         var maskResults = Masks(masks: processedMasks.1, combinedMask: processedMasks.0)
+
+        let timing = self.updateTiming()
+
         var result = YOLOResult(
-          orig_shape: self.inputSize, boxes: boxes, masks: maskResults, speed: self.t2,
-          fps: 1 / self.t4, names: self.labels)
+          orig_shape: self.inputSize, boxes: boxes, masks: maskResults, speed: timing.speed,
+          fps: timing.fps, names: self.labels)
 
         if let originalImageData = self.originalImageData {
           result.originalImage = UIImage(data: originalImageData)
 
         }
 
-        self.updateTime()
         self.currentOnResultsListener?.on(result: result)
       }
     }
-  }
-
-  private func updateTime() {
-    if self.t1 < 10.0 {  // valid dt
-      self.t2 = self.t1 * 0.05 + self.t2 * 0.95  // smoothed inference time
-    }
-    self.t4 = (CACurrentMediaTime() - self.t3) * 0.05 + self.t4 * 0.95  // smoothed delivered FPS
-    self.t3 = CACurrentMediaTime()
-
-    self.currentOnInferenceTimeListener?.on(inferenceTime: self.t2 * 1000, fpsRate: 1 / self.t4)  // t2 seconds to ms
-
   }
 
   override func predictOnImage(image: CIImage) -> YOLOResult {
@@ -195,14 +186,10 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         var annotatedImage = composeImageWithMask(
           baseImage: cgImage, maskImage: processedMasks.0!)
         var maskResults: Masks = Masks(masks: processedMasks.1, combinedMask: processedMasks.0)
-        if self.t1 < 10.0 {  // valid dt
-          self.t2 = self.t1 * 0.05 + self.t2 * 0.95  // smoothed inference time
-        }
-        self.t4 = (CACurrentMediaTime() - self.t3) * 0.05 + self.t4 * 0.95  // smoothed delivered FPS
-        self.t3 = CACurrentMediaTime()
+        let timing = updateTiming()
         result = YOLOResult(
           orig_shape: inputSize, boxes: boxes, masks: maskResults, annotatedImage: annotatedImage,
-          speed: self.t2, fps: 1 / self.t4, names: labels)
+          speed: timing.speed, fps: timing.fps, names: labels)
         annotatedImage = drawYOLODetections(on: CIImage(image: annotatedImage!)!, result: result)
         result.annotatedImage = annotatedImage
         return result

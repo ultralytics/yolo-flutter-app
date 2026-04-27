@@ -52,9 +52,11 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
           boxes.append(person.box)
           keypointsList.append(person.keypoints)
         }
+        let timing = updateTiming()
+
         var result = YOLOResult(
           orig_shape: inputSize, boxes: boxes, masks: nil, probs: nil, keypointsList: keypointsList,
-          annotatedImage: nil, speed: 0, fps: 0, originalImage: nil, names: labels)
+          annotatedImage: nil, speed: timing.speed, fps: timing.fps, originalImage: nil, names: labels)
 
         if let originalImageData = self.originalImageData {
           result.originalImage = UIImage(data: originalImageData)
@@ -62,20 +64,8 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
         }
 
         self.currentOnResultsListener?.on(result: result)
-        self.updateTime()
       }
     }
-  }
-
-  private func updateTime() {
-    if self.t1 < 10.0 {  // valid dt
-      self.t2 = self.t1 * 0.05 + self.t2 * 0.95  // smoothed inference time
-    }
-    self.t4 = (CACurrentMediaTime() - self.t3) * 0.05 + self.t4 * 0.95  // smoothed delivered FPS
-    self.t3 = CACurrentMediaTime()
-
-    self.currentOnInferenceTimeListener?.on(inferenceTime: self.t2 * 1000, fpsRate: 1 / self.t4)  // t2 seconds to ms
-
   }
 
   override func predictOnImage(image: CIImage) -> YOLOResult {
@@ -119,11 +109,11 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
           let annotatedImage = drawPoseOnCIImage(
             ciImage: image, keypointsList: keypointsForImage, confsList: confsList,
             boundingBoxes: boxes, originalImageSize: inputSize)
-          updateTime()
+          let timing = updateTiming()
           return YOLOResult(
             orig_shape: inputSize, boxes: boxes, masks: nil, probs: nil,
-            keypointsList: keypointsList, annotatedImage: annotatedImage, speed: self.t2,
-            fps: 1 / self.t4, originalImage: nil, names: labels)
+            keypointsList: keypointsList, annotatedImage: annotatedImage, speed: timing.speed,
+            fps: timing.fps, originalImage: nil, names: labels)
         }
       }
     } catch {
