@@ -28,14 +28,19 @@ class ThresholdSlider extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final viewPadding = MediaQuery.of(context).viewPadding;
+    final horizontalInset = isLandscape ? viewPadding : EdgeInsets.zero;
+
     return Positioned(
       left: 0,
       right: 0,
       bottom: 0,
       child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isLandscape ? 16 : 24,
-          vertical: isLandscape ? 8 : 12,
+        padding: EdgeInsets.only(
+          left: (isLandscape ? 16 : 24) + horizontalInset.left,
+          right: (isLandscape ? 16 : 24) + horizontalInset.right,
+          top: isLandscape ? 8 : 12,
+          bottom: (isLandscape ? 8 : 12) + viewPadding.bottom,
         ),
         color: Colors.black.withValues(alpha: 0.8),
         child: SliderTheme(
