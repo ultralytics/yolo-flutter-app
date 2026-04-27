@@ -65,13 +65,7 @@ class YOLOPlatformView(
         // Parse lensFacing parameter
         val lensFacingParam = creationParams?.get("lensFacing") as? String ?: "back"
         val lensFacingValue = lensFacingParam.lowercase()
-        val preferWideBackCamera = lensFacingValue in setOf(
-            "backwide",
-            "back_wide",
-            "wide",
-            "ultrawide",
-            "ultra_wide"
-        )
+        val preferWideBackCamera = lensFacingValue == "backwide"
         val lensFacing = when (lensFacingValue) {
             "front" -> androidx.camera.core.CameraSelector.LENS_FACING_FRONT
             else -> androidx.camera.core.CameraSelector.LENS_FACING_BACK
