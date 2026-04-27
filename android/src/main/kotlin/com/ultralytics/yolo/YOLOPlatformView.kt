@@ -64,7 +64,15 @@ class YOLOPlatformView(
 
         // Parse lensFacing parameter
         val lensFacingParam = creationParams?.get("lensFacing") as? String ?: "back"
-        val lensFacing = when (lensFacingParam.lowercase()) {
+        val lensFacingValue = lensFacingParam.lowercase()
+        val preferWideBackCamera = lensFacingValue in setOf(
+            "backwide",
+            "back_wide",
+            "wide",
+            "ultrawide",
+            "ultra_wide"
+        )
+        val lensFacing = when (lensFacingValue) {
             "front" -> androidx.camera.core.CameraSelector.LENS_FACING_FRONT
             else -> androidx.camera.core.CameraSelector.LENS_FACING_BACK
         }
@@ -78,7 +86,7 @@ class YOLOPlatformView(
         yoloView.setShowOverlays(showOverlaysParam)
 
         // Set lens facing before initializing camera
-        yoloView.setLensFacing(lensFacing)
+        yoloView.setLensFacing(lensFacing, preferWideBackCamera)
 
         // Configure YOLOView streaming functionality
         setupYOLOViewStreaming(creationParams)
