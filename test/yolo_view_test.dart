@@ -361,6 +361,15 @@ void main() {
         expect(widget.lensFacing, LensFacing.front);
       });
 
+      test('YOLOView accepts LensFacing.backWide', () {
+        const widget = YOLOView(
+          modelPath: 'test_model.tflite',
+          task: YOLOTask.detect,
+          lensFacing: LensFacing.backWide,
+        );
+        expect(widget.lensFacing, LensFacing.backWide);
+      });
+
       testWidgets('creates widget with front camera', (
         WidgetTester tester,
       ) async {
@@ -395,6 +404,24 @@ void main() {
         expect(find.byType(YOLOView), findsOneWidget);
         final yoloView = tester.widget<YOLOView>(find.byType(YOLOView));
         expect(yoloView.lensFacing, LensFacing.back);
+      });
+
+      testWidgets('creates widget with wide back camera preference', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: YOLOView(
+              modelPath: 'test_model.tflite',
+              task: YOLOTask.detect,
+              lensFacing: LensFacing.backWide,
+            ),
+          ),
+        );
+
+        expect(find.byType(YOLOView), findsOneWidget);
+        final yoloView = tester.widget<YOLOView>(find.byType(YOLOView));
+        expect(yoloView.lensFacing, LensFacing.backWide);
       });
 
       testWidgets('lensFacing parameter does not force widget recreation', (

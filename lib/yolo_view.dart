@@ -15,8 +15,14 @@ import 'package:ultralytics_yolo/config/channel_config.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/widgets/yolo_overlay.dart';
 
-/// Enum for camera lens facing direction
-enum LensFacing { back, front }
+/// Enum for camera lens selection.
+enum LensFacing {
+  back,
+  front,
+
+  /// Prefer the shortest-focal-length rear camera on Android, falling back to [back].
+  backWide,
+}
 
 /// A Flutter widget that displays a real-time camera preview with YOLO object detection.
 class YOLOView extends StatefulWidget {

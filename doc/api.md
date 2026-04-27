@@ -274,6 +274,10 @@ class YOLOView extends StatefulWidget {
 | `overlayTheme`         | `YOLOOverlayTheme`                  | ❌       | `const YOLOOverlayTheme()` | Customize Flutter overlay styling                 |
 | `lensFacing`           | `LensFacing`                        | ❌       | `LensFacing.back`          | Initial camera lens selection                     |
 
+`LensFacing.backWide` prefers the shortest-focal-length rear camera on Android
+and falls back to the default back camera when the device does not expose a
+wide rear lens. Other platforms treat it as `LensFacing.back`.
+
 #### Example
 
 ```dart

@@ -13,6 +13,8 @@ import android.view.*
 import android.widget.FrameLayout
 import android.widget.Toast
 import android.view.ScaleGestureDetector
+import android.hardware.camera2.CameraCharacteristics
+import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.core.*
 import androidx.camera.core.Camera
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -197,6 +199,7 @@ class YOLOView @JvmOverloads constructor(
 
     // Camera config
     private var lensFacing = CameraSelector.LENS_FACING_BACK
+    private var preferWideBackCamera = false
     private lateinit var cameraProviderFuture: ListenableFuture<ProcessCameraProvider>
     private var camera: Camera? = null
 
@@ -537,9 +540,7 @@ class YOLOView @JvmOverloads constructor(
                         onFrame(imageProxy)
                     }
 
-                    val cameraSelector = CameraSelector.Builder()
-                        .requireLensFacing(lensFacing)
-                        .build()
+                    val cameraSelector = buildCameraSelector(cameraProvider)
 
                     cameraProvider.unbindAll()
 
@@ -582,8 +583,46 @@ class YOLOView @JvmOverloads constructor(
         }
     }
 
-    fun setLensFacing(facing: Int) {
+    private fun buildCameraSelector(cameraProvider: ProcessCameraProvider): CameraSelector {
+        if (lensFacing != CameraSelector.LENS_FACING_BACK || !preferWideBackCamera) {
+            return CameraSelector.Builder()
+                .requireLensFacing(lensFacing)
+                .build()
+        }
+
+        return selectWidestBackCamera(cameraProvider)?.let { wideCamera ->
+            CameraSelector.Builder()
+                .addCameraFilter { cameraInfos ->
+                    cameraInfos.filter { it == wideCamera }
+                }
+                .build()
+        } ?: CameraSelector.DEFAULT_BACK_CAMERA
+    }
+
+    private fun selectWidestBackCamera(cameraProvider: ProcessCameraProvider): CameraInfo? {
+        return cameraProvider.availableCameraInfos
+            .mapNotNull { cameraInfo ->
+                try {
+                    val camera2Info = Camera2CameraInfo.from(cameraInfo)
+                    val facing = camera2Info.getCameraCharacteristic(CameraCharacteristics.LENS_FACING)
+                    if (facing != CameraCharacteristics.LENS_FACING_BACK) return@mapNotNull null
+
+                    val focalLength = camera2Info
+                        .getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+                        ?.minOrNull() ?: return@mapNotNull null
+                    cameraInfo to focalLength
+                } catch (e: Exception) {
+                    Log.w(TAG, "Skipping camera with unreadable metadata", e)
+                    null
+                }
+            }
+            .minByOrNull { it.second }
+            ?.first
+    }
+
+    fun setLensFacing(facing: Int, preferWideBackCamera: Boolean = false) {
         lensFacing = facing
+        this.preferWideBackCamera = preferWideBackCamera && facing == CameraSelector.LENS_FACING_BACK
         // Restart camera if already started
         if (::cameraProviderFuture.isInitialized) {
             startCamera()
@@ -591,6 +630,7 @@ class YOLOView @JvmOverloads constructor(
     }
 
     fun switchCamera() {
+        preferWideBackCamera = false
         lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
             CameraSelector.LENS_FACING_FRONT
         } else {
