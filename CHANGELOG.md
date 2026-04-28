@@ -1,3 +1,11 @@
+## 0.3.1
+
+- **Feature**: Add `LensFacing.backWide` on Android to prefer the shortest-focal-length rear camera and fall back to the default back camera when unavailable (#478).
+- **Bug Fix**: Fix iOS Core ML `useGpu: false` handling in the camera model-loading path (#475).
+- **Bug Fix**: Fix iOS camera FPS reporting so live view metrics no longer stay at `0.0` (#477).
+- **Bug Fix**: Fix Android preview padding with 3-button navigation mode across orientations (#476).
+- **Bug Fix**: Fix Swift compilation for the iOS `loadModel` call (#474).
+
 ## 0.3.0
 
 - **Feature**: Add package-level model resolution for official IDs, remote URLs, local files, and Flutter assets.
