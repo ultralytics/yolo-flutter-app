@@ -1,3 +1,7 @@
+## 0.3.2
+
+- **Bug Fix**: Fix Android NDK C++ runtime linkage for release builds that failed with unresolved `std::__throw_length_error` symbols (#480, #481).
+
 ## 0.3.1
 
 - **Feature**: Add `LensFacing.backWide` on Android to prefer the shortest-focal-length rear camera and fall back to the default back camera when unavailable (#478).
