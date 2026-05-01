@@ -39,6 +39,6 @@ log
 
 target_link_libraries(
 ultralytics
+c++_shared
 ${log-lib}
 )
-
