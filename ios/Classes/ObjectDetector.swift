@@ -70,17 +70,16 @@ class ObjectDetector: BasePredictor {
 
       for i in 0..<maxDetections {
         let prediction = results[i]
+        guard let topLabel = prediction.labels.first else { continue }
         let invertedBox = CGRect(
           x: prediction.boundingBox.minX, y: 1 - prediction.boundingBox.maxY,
           width: prediction.boundingBox.width, height: prediction.boundingBox.height)
         let imageRect = VNImageRectForNormalizedRect(
           invertedBox, Int(inputSize.width), Int(inputSize.height))
 
-        // The labels array is a list of VNClassificationObservation objects,
-        // with the highest scoring class first in the list.
-        let label = prediction.labels[0].identifier
+        let label = topLabel.identifier
         let index = self.labels.firstIndex(of: label) ?? 0
-        let confidence = prediction.labels[0].confidence
+        let confidence = topLabel.confidence
         let box = Box(
           index: index, cls: label, conf: confidence, xywh: imageRect, xywhn: invertedBox)
         boxes.append(box)
@@ -129,17 +128,16 @@ class ObjectDetector: BasePredictor {
 
         for i in 0..<maxDetections {
           let prediction = results[i]
+          guard let topLabel = prediction.labels.first else { continue }
           let invertedBox = CGRect(
             x: prediction.boundingBox.minX, y: 1 - prediction.boundingBox.maxY,
             width: prediction.boundingBox.width, height: prediction.boundingBox.height)
           let imageRect = VNImageRectForNormalizedRect(
             invertedBox, Int(inputSize.width), Int(inputSize.height))
 
-          // The labels array is a list of VNClassificationObservation objects,
-          // with the highest scoring class first in the list.
-          let label = prediction.labels[0].identifier
+          let label = topLabel.identifier
           let index = self.labels.firstIndex(of: label) ?? 0
-          let confidence = prediction.labels[0].confidence
+          let confidence = topLabel.confidence
           let box = Box(
             index: index, cls: label, conf: confidence, xywh: imageRect, xywhn: invertedBox)
           boxes.append(box)

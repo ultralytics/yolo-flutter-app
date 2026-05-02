@@ -65,10 +65,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Set self as stream handler for event channel
     self.eventChannel.setStreamHandler(self)
 
-    // Unwrap creation parameters
-    if let dict = args as? [String: Any] {
-    }
-
     if let dict = args as? [String: Any],
       let modelName = dict["modelPath"] as? String,
       let taskRaw = dict["task"] as? String
@@ -93,11 +89,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       self.currentNumItemsThreshold = numItemsThreshold
       self.currentShowOverlays = showOverlays
 
-      // Old threshold parameter for backward compatibility
-      let oldThreshold = dict["threshold"] as? Double ?? 0.25
-
-      // Determine which thresholds to use (prioritize new parameters)
-
       // Create YOLOView
       yoloView = YOLOView(
         frame: frame,
@@ -117,7 +108,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       setupYOLOViewStreaming(args: dict)
 
       // Configure YOLOView
-      setupYOLOView(confidenceThreshold: confidenceThreshold, iouThreshold: iouThreshold)
+      updateThresholds(confidenceThreshold: confidenceThreshold, iouThreshold: iouThreshold)
 
       // Setup method channel handler
       setupMethodChannel()
@@ -132,29 +123,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         SwiftYOLOPlatformViewFactory.register(yoloView, for: Int(viewId))
       }
     }
-  }
-
-  // Method for backward compatibility
-  private func setupYOLOView(threshold: Double) {
-    setupYOLOView(confidenceThreshold: threshold, iouThreshold: 0.7)
-  }
-
-  // Setup YOLOView and connect callbacks (using new parameters)
-  private func setupYOLOView(confidenceThreshold: Double, iouThreshold: Double) {
-    guard let yoloView = yoloView else { return }
-
-    // YOLOView streaming is now configured separately
-    // Keep simple detection callback for compatibility
-    yoloView.onDetection = { result in
-    }
-
-    // Set thresholds
-    updateThresholds(confidenceThreshold: confidenceThreshold, iouThreshold: iouThreshold)
-  }
-
-  // Method to update threshold (kept for backward compatibility)
-  private func updateThreshold(threshold: Double) {
-    updateThresholds(confidenceThreshold: threshold, iouThreshold: nil)
   }
 
   // Overloaded method for setting just numItemsThreshold
@@ -215,7 +183,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         if let args = call.arguments as? [String: Any],
           let threshold = args["threshold"] as? Double
         {
-          self.updateThreshold(threshold: threshold)
+          self.updateThresholds(confidenceThreshold: threshold, iouThreshold: nil)
           result(nil)  // Success
         } else {
           result(

@@ -362,12 +362,14 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             val stream = ByteArrayOutputStream()
             annotated.compress(Bitmap.CompressFormat.JPEG, 90, stream)
             response["annotatedImage"] = stream.toByteArray()
+            if (annotated !== bitmap) annotated.recycle()
           }
-          
+
           // Include inference speed
           response["speed"] = yoloResult.speed
-          
+
           result.success(response)
+          bitmap.recycle()
         } catch (e: Exception) {
           Log.e(TAG, "Error during prediction", e)
           result.error("prediction_error", "Error during prediction: ${e.message}", null)
