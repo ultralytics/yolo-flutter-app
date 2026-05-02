@@ -182,19 +182,26 @@ class Segmenter: BasePredictor, @unchecked Sendable {
             orig_shape: inputSize, boxes: boxes, masks: nil, annotatedImage: nil, speed: 0,
             names: labels)
         }
-        let cgImage = CIContext().createCGImage(image, from: image.extent)!
+        guard
+          let cgImage = CIContext().createCGImage(image, from: image.extent),
+          let combinedMask = processedMasks.0
+        else {
+          return YOLOResult(
+            orig_shape: inputSize, boxes: boxes, masks: nil, annotatedImage: nil, speed: 0,
+            names: labels)
+        }
         var annotatedImage = composeImageWithMask(
-          baseImage: cgImage, maskImage: processedMasks.0!)
-        var maskResults: Masks = Masks(masks: processedMasks.1, combinedMask: processedMasks.0)
+          baseImage: cgImage, maskImage: combinedMask)
+        let maskResults = Masks(masks: processedMasks.1, combinedMask: combinedMask)
         let timing = updateTiming()
         result = YOLOResult(
           orig_shape: inputSize, boxes: boxes, masks: maskResults, annotatedImage: annotatedImage,
           speed: timing.speed, fps: timing.fps, names: labels)
-        annotatedImage = drawYOLODetections(on: CIImage(image: annotatedImage!)!, result: result)
-        result.annotatedImage = annotatedImage
+        if let annotated = annotatedImage, let annotatedCI = CIImage(image: annotated) {
+          annotatedImage = drawYOLODetections(on: annotatedCI, result: result)
+          result.annotatedImage = annotatedImage
+        }
         return result
-
-        //                }
       }
     } catch {
       NSLog("YOLO Segmenter: %@", String(describing: error))

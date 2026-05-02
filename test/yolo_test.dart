@@ -40,13 +40,6 @@ void main() {
     log.clear();
   });
 
-  test('YOLO instance creation works', () {
-    final yolo = YOLO(modelPath: 'test_model.tflite', task: YOLOTask.detect);
-    expect(yolo, isNotNull);
-    expect(yolo.modelPath, 'test_model.tflite');
-    expect(yolo.task, YOLOTask.detect);
-  });
-
   group('YOLO Basic Functionality', () {
     test('YOLO instance creation works', () {
       final yolo = YOLO(modelPath: 'test_model.tflite', task: YOLOTask.detect);

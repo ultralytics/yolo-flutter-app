@@ -237,6 +237,7 @@ class YOLO(
 
             // Draw on rotated bitmap
             output = rotatedBitmap.copy(Bitmap.Config.ARGB_8888, true)
+            if (rotatedBitmap !== output) rotatedBitmap.recycle()
             canvas = Canvas(output)
         } else {
             // Single image: no rotation needed
@@ -280,14 +281,14 @@ class YOLO(
         when (task) {
             YOLOTask.DETECT -> {
                 // Draw bounding boxes
-                for ((i, box) in result.boxes.withIndex()) {
+                for (box in result.boxes) {
                     paint.color = ultralyticsColors[box.index % ultralyticsColors.size]
 
                     // Transform coordinates
                     val transformedRect = transformRect(box.xywh)
                     // Draw rounded rectangle with corner radius
                     val cornerRadius = 12f
-                    canvas.drawRoundRect(box.xywh, cornerRadius, cornerRadius, paint)
+                    canvas.drawRoundRect(transformedRect, cornerRadius, cornerRadius, paint)
 
                     // Draw label with background
                     val labelText = "${box.cls} ${(box.conf * 100).toInt()}%"
@@ -329,7 +330,7 @@ class YOLO(
             }
             YOLOTask.SEGMENT -> {
                 // Draw bounding boxes
-                for ((i, box) in result.boxes.withIndex()) {
+                for (box in result.boxes) {
                     paint.color = ultralyticsColors[box.index % ultralyticsColors.size]
 
                     // Transform coordinates
@@ -408,6 +409,8 @@ class YOLO(
                     paint.style = Paint.Style.FILL
                     paint.alpha = 128
                     canvas.drawBitmap(maskScaled, 0f, 0f, paint)
+                    if (maskScaled !== maskToUse) maskScaled.recycle()
+                    if (maskToUse !== mask) maskToUse.recycle()
                 }
             }
             YOLOTask.CLASSIFY -> {
@@ -443,7 +446,7 @@ class YOLO(
             }
             YOLOTask.POSE -> {
                 // Draw bounding boxes
-                for ((i, box) in result.boxes.withIndex()) {
+                for (box in result.boxes) {
                     paint.color = ultralyticsColors[box.index % ultralyticsColors.size]
 
                     // Transform coordinates

@@ -253,7 +253,9 @@ public class YOLO {
   }
 
   public func callAsFunction(_ uiImage: UIImage, returnAnnotatedImage: Bool = true) -> YOLOResult {
-    let ciImage = CIImage(image: uiImage)!
+    guard let ciImage = CIImage(image: uiImage) else {
+      return YOLOResult(orig_shape: .zero, boxes: [], speed: 0, names: [])
+    }
     let result = predictor.predictOnImage(image: ciImage)
     return result
   }
