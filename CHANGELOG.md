@@ -1,3 +1,7 @@
+## 0.3.3
+
+- **Bug Fix**: Improve Android overlay alignment and bitmap cleanup, harden iOS image inference crash paths, and remove unused platform code (#484).
+
 ## 0.3.2
 
 - **Bug Fix**: Fix Android NDK C++ runtime linkage for release builds that failed with unresolved `std::__throw_length_error` symbols (#480, #481).
