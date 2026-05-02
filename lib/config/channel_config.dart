@@ -30,4 +30,38 @@ class ChannelConfig {
   /// Event channel that streams detection results for a specific view.
   static EventChannel createDetectionResultsChannel(String viewId) =>
       EventChannel('$detectionResultsPrefix$viewId');
+
+  @Deprecated(
+    'Use typed arguments directly at the call site. This shim will be removed '
+    'in a future release.',
+  )
+  static void validateMethodCall(MethodCall call, List<String> requiredKeys) {
+    if (call.arguments is! Map) {
+      throw ArgumentError('Method ${call.method} requires Map arguments');
+    }
+    final args = call.arguments as Map;
+    for (final key in requiredKeys) {
+      if (!args.containsKey(key)) {
+        throw ArgumentError('Method ${call.method} requires argument: $key');
+      }
+    }
+  }
+
+  @Deprecated(
+    'Build the argument map inline instead. This shim will be removed in a '
+    'future release.',
+  )
+  static Map<String, dynamic> createStandardArgs({
+    int? viewId,
+    String? modelPath,
+    String? task,
+    Map<String, dynamic>? additionalArgs,
+  }) {
+    final args = <String, dynamic>{};
+    if (viewId != null) args['viewId'] = viewId;
+    if (modelPath != null) args['modelPath'] = modelPath;
+    if (task != null) args['task'] = task;
+    if (additionalArgs != null) args.addAll(additionalArgs);
+    return args;
+  }
 }

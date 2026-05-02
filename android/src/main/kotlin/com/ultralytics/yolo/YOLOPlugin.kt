@@ -207,169 +207,172 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             result.error("image_error", "Failed to decode image", null)
             return
           }
-          
-          // Run inference using instance manager
-          val yoloResult = YOLOInstanceManager.shared.predict(
-            instanceId = instanceId,
-            bitmap = bitmap,
-            confidenceThreshold = confidenceThreshold?.toFloat(),
-            iouThreshold = iouThreshold?.toFloat()
-          )
-          
-          if (yoloResult == null) {
-            result.error("MODEL_NOT_LOADED", "Model has not been loaded. Call loadModel() first.", null)
-            return
-          }
-          
-          // Create response
-          val response = HashMap<String, Any>()
-          
-          // Get image dimensions for normalization
-          val imageWidth = bitmap.width.toFloat()
-          val imageHeight = bitmap.height.toFloat()
-          
-          // Convert boxes to map for Flutter
-          response["boxes"] = yoloResult.boxes.map { box ->
-            mapOf(
-              "x1" to box.xywh.left,
-              "y1" to box.xywh.top,
-              "x2" to box.xywh.right,
-              "y2" to box.xywh.bottom,
-              "x1_norm" to box.xywh.left / imageWidth,
-              "y1_norm" to box.xywh.top / imageHeight,
-              "x2_norm" to box.xywh.right / imageWidth,
-              "y2_norm" to box.xywh.bottom / imageHeight,
-              "class" to box.cls,
-              "className" to box.cls, // Add className for compatibility with YOLOResult
-              "confidence" to box.conf
+
+          try {
+            // Run inference using instance manager
+            val yoloResult = YOLOInstanceManager.shared.predict(
+              instanceId = instanceId,
+              bitmap = bitmap,
+              confidenceThreshold = confidenceThreshold?.toFloat(),
+              iouThreshold = iouThreshold?.toFloat()
             )
-          }
-          
-          // Include image size in response
-          response["imageSize"] = mapOf(
-            "width" to imageWidth.toInt(),
-            "height" to imageHeight.toInt()
-          )
-          
-          // Get instance to check task type
-          val yolo = YOLOInstanceManager.shared.getInstance(instanceId)
-          
-          // Add task-specific data to response
-          when (yolo?.task) {
-            YOLOTask.SEGMENT -> {
-              // Include raw segmentation masks if available
-              yoloResult.masks?.let { masks ->
-                // Send raw mask data for each detected instance
-                val rawMasks = mutableListOf<List<List<Double>>>()
-                for (instanceMask in masks.masks) {
-                  val mask2D = mutableListOf<List<Double>>()
-                  for (row in instanceMask) {
-                    mask2D.add(row.map { it.toDouble() })
-                  }
-                  rawMasks.add(mask2D)
-                }
-                response["masks"] = rawMasks
-                
-                // Also send PNG for backward compatibility (optional)
-                masks.combinedMask?.let { combinedMask ->
-                  val stream = ByteArrayOutputStream()
-                  combinedMask.compress(Bitmap.CompressFormat.PNG, 90, stream)
-                  response["maskPng"] = stream.toByteArray()
-                }
-              }
+  
+            if (yoloResult == null) {
+              result.error("MODEL_NOT_LOADED", "Model has not been loaded. Call loadModel() first.", null)
+              return
             }
-            YOLOTask.CLASSIFY -> {
-              yoloResult.probs?.let { probs ->
-                val top5Count = minOf(
-                  probs.top5Indices.size,
-                  probs.top5Labels.size,
-                  probs.top5Confs.size
-                )
-                val top5List = (0 until top5Count).map { index ->
-                  val classIdx = probs.top5Indices[index]
-                  val name = probs.top5Labels[index]
-                  val conf = probs.top5Confs[index]
-                  mapOf(
-                    "class" to classIdx,
-                    "name" to name,
-                    "confidence" to conf.toDouble()
-                  )
-                }
-
-                // Classification response following Results.summary() format
-                // Reference: https://docs.ultralytics.com/reference/engine/results/
-                response["classification"] = mapOf(
-                  "name" to probs.top1Label,
-                  "class" to probs.top1Index,
-                  "confidence" to probs.top1Conf.toDouble(),
-                  "top5" to top5List
-                )
-
-                // Populate boxes array for UI compatibility (full-image bounding box)
-                response["boxes"] = listOf(
-                  mapOf(
-                    "class" to probs.top1Index,
-                    "name" to probs.top1Label,
-                    "classIndex" to probs.top1Index,
-                    "className" to probs.top1Label,
-                    "confidence" to probs.top1Conf.toDouble(),
-                    "x1" to 0.0,
-                    "y1" to 0.0,
-                    "x2" to imageWidth.toDouble(),
-                    "y2" to imageHeight.toDouble(),
-                    "x1_norm" to 0.0,
-                    "y1_norm" to 0.0,
-                    "x2_norm" to 1.0,
-                    "y2_norm" to 1.0
-                  )
-                )
-              } ?: run {
-                Log.w(TAG, "YOLOResult.probs is null for CLASSIFY task")
-              }
+  
+            // Create response
+            val response = HashMap<String, Any>()
+            
+            // Get image dimensions for normalization
+            val imageWidth = bitmap.width.toFloat()
+            val imageHeight = bitmap.height.toFloat()
+            
+            // Convert boxes to map for Flutter
+            response["boxes"] = yoloResult.boxes.map { box ->
+              mapOf(
+                "x1" to box.xywh.left,
+                "y1" to box.xywh.top,
+                "x2" to box.xywh.right,
+                "y2" to box.xywh.bottom,
+                "x1_norm" to box.xywh.left / imageWidth,
+                "y1_norm" to box.xywh.top / imageHeight,
+                "x2_norm" to box.xywh.right / imageWidth,
+                "y2_norm" to box.xywh.bottom / imageHeight,
+                "class" to box.cls,
+                "className" to box.cls, // Add className for compatibility with YOLOResult
+                "confidence" to box.conf
+              )
             }
-            YOLOTask.POSE -> {
-              // Include pose keypoints if available
-              if (yoloResult.keypointsList.isNotEmpty()) {
-                response["keypoints"] = yoloResult.keypointsList.map { keypoints ->
-                  mapOf(
-                    "coordinates" to keypoints.xyn.mapIndexed { i, (x, y) ->
-                      mapOf("x" to x, "y" to y, "confidence" to keypoints.conf[i])
+            
+            // Include image size in response
+            response["imageSize"] = mapOf(
+              "width" to imageWidth.toInt(),
+              "height" to imageHeight.toInt()
+            )
+            
+            // Get instance to check task type
+            val yolo = YOLOInstanceManager.shared.getInstance(instanceId)
+            
+            // Add task-specific data to response
+            when (yolo?.task) {
+              YOLOTask.SEGMENT -> {
+                // Include raw segmentation masks if available
+                yoloResult.masks?.let { masks ->
+                  // Send raw mask data for each detected instance
+                  val rawMasks = mutableListOf<List<List<Double>>>()
+                  for (instanceMask in masks.masks) {
+                    val mask2D = mutableListOf<List<Double>>()
+                    for (row in instanceMask) {
+                      mask2D.add(row.map { it.toDouble() })
                     }
-                  )
+                    rawMasks.add(mask2D)
+                  }
+                  response["masks"] = rawMasks
+                  
+                  // Also send PNG for backward compatibility (optional)
+                  masks.combinedMask?.let { combinedMask ->
+                    val stream = ByteArrayOutputStream()
+                    combinedMask.compress(Bitmap.CompressFormat.PNG, 90, stream)
+                    response["maskPng"] = stream.toByteArray()
+                  }
                 }
               }
-            }
-            YOLOTask.OBB -> {
-              // Include oriented bounding boxes if available
-              if (yoloResult.obb.isNotEmpty()) {
-                response["obb"] = yoloResult.obb.map { obb ->
-                  val poly = obb.box.toPolygon()
-                  mapOf(
-                    "points" to poly.map { mapOf("x" to it.x, "y" to it.y) },
-                    "angle" to obb.box.angle,
-                    "classIndex" to obb.index,
-                    "class" to obb.cls,
-                    "confidence" to obb.confidence
+              YOLOTask.CLASSIFY -> {
+                yoloResult.probs?.let { probs ->
+                  val top5Count = minOf(
+                    probs.top5Indices.size,
+                    probs.top5Labels.size,
+                    probs.top5Confs.size
                   )
+                  val top5List = (0 until top5Count).map { index ->
+                    val classIdx = probs.top5Indices[index]
+                    val name = probs.top5Labels[index]
+                    val conf = probs.top5Confs[index]
+                    mapOf(
+                      "class" to classIdx,
+                      "name" to name,
+                      "confidence" to conf.toDouble()
+                    )
+                  }
+  
+                  // Classification response following Results.summary() format
+                  // Reference: https://docs.ultralytics.com/reference/engine/results/
+                  response["classification"] = mapOf(
+                    "name" to probs.top1Label,
+                    "class" to probs.top1Index,
+                    "confidence" to probs.top1Conf.toDouble(),
+                    "top5" to top5List
+                  )
+  
+                  // Populate boxes array for UI compatibility (full-image bounding box)
+                  response["boxes"] = listOf(
+                    mapOf(
+                      "class" to probs.top1Index,
+                      "name" to probs.top1Label,
+                      "classIndex" to probs.top1Index,
+                      "className" to probs.top1Label,
+                      "confidence" to probs.top1Conf.toDouble(),
+                      "x1" to 0.0,
+                      "y1" to 0.0,
+                      "x2" to imageWidth.toDouble(),
+                      "y2" to imageHeight.toDouble(),
+                      "x1_norm" to 0.0,
+                      "y1_norm" to 0.0,
+                      "x2_norm" to 1.0,
+                      "y2_norm" to 1.0
+                    )
+                  )
+                } ?: run {
+                  Log.w(TAG, "YOLOResult.probs is null for CLASSIFY task")
                 }
               }
+              YOLOTask.POSE -> {
+                // Include pose keypoints if available
+                if (yoloResult.keypointsList.isNotEmpty()) {
+                  response["keypoints"] = yoloResult.keypointsList.map { keypoints ->
+                    mapOf(
+                      "coordinates" to keypoints.xyn.mapIndexed { i, (x, y) ->
+                        mapOf("x" to x, "y" to y, "confidence" to keypoints.conf[i])
+                      }
+                    )
+                  }
+                }
+              }
+              YOLOTask.OBB -> {
+                // Include oriented bounding boxes if available
+                if (yoloResult.obb.isNotEmpty()) {
+                  response["obb"] = yoloResult.obb.map { obb ->
+                    val poly = obb.box.toPolygon()
+                    mapOf(
+                      "points" to poly.map { mapOf("x" to it.x, "y" to it.y) },
+                      "angle" to obb.box.angle,
+                      "classIndex" to obb.index,
+                      "class" to obb.cls,
+                      "confidence" to obb.confidence
+                    )
+                  }
+                }
+              }
+              else -> {} // DETECT is handled by boxes
             }
-            else -> {} // DETECT is handled by boxes
+            
+            // Include annotated image in response
+            yoloResult.annotatedImage?.let { annotated ->
+              val stream = ByteArrayOutputStream()
+              annotated.compress(Bitmap.CompressFormat.JPEG, 90, stream)
+              response["annotatedImage"] = stream.toByteArray()
+              if (annotated !== bitmap) annotated.recycle()
+            }
+  
+            // Include inference speed
+            response["speed"] = yoloResult.speed
+  
+            result.success(response)
+          } finally {
+            bitmap.recycle()
           }
-          
-          // Include annotated image in response
-          yoloResult.annotatedImage?.let { annotated ->
-            val stream = ByteArrayOutputStream()
-            annotated.compress(Bitmap.CompressFormat.JPEG, 90, stream)
-            response["annotatedImage"] = stream.toByteArray()
-            if (annotated !== bitmap) annotated.recycle()
-          }
-
-          // Include inference speed
-          response["speed"] = yoloResult.speed
-
-          result.success(response)
-          bitmap.recycle()
         } catch (e: Exception) {
           Log.e(TAG, "Error during prediction", e)
           result.error("prediction_error", "Error during prediction: ${e.message}", null)
