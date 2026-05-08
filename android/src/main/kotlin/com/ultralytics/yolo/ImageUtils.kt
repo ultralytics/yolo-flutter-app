@@ -6,7 +6,6 @@ import android.graphics.*
 import androidx.camera.core.ImageProxy
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -192,6 +191,8 @@ object ImageUtils {
      * @param bitmap Input bitmap to process
      * @param targetWidth Target width for the model
      * @param targetHeight Target height for the model  
+     * @param outputBuffer Reusable buffer for 1-channel float32 data
+     * @param pixels Reusable pixel scratch array
      * @param enableColorInversion Whether to invert colors (white-on-black → black-on-white)
      * @param enableMaxNormalization Whether to use 0-1 normalization instead of mean/std
      * @param inputMean Mean value for normalization
@@ -203,6 +204,8 @@ object ImageUtils {
         bitmap: Bitmap,
         targetWidth: Int,
         targetHeight: Int,
+        outputBuffer: ByteBuffer,
+        pixels: IntArray,
         enableColorInversion: Boolean = false,
         enableMaxNormalization: Boolean = false,
         inputMean: Float = 0f,
@@ -222,15 +225,13 @@ object ImageUtils {
             )
         }
         
-        // Allocate ByteBuffer for 1-channel float32 data
-        val byteBuffer = ByteBuffer.allocateDirect(targetWidth * targetHeight * 4) // 4 bytes per float
-        byteBuffer.order(ByteOrder.nativeOrder())
+        outputBuffer.clear()
         
         // Process each pixel
-        val pixels = IntArray(targetWidth * targetHeight)
         scaledBitmap.getPixels(pixels, 0, targetWidth, 0, 0, targetWidth, targetHeight)
         
-        for (pixel in pixels) {
+        for (i in 0 until targetWidth * targetHeight) {
+            val pixel = pixels[i]
             // Extract RGB components
             val r = (pixel shr 16) and 0xFF
             val g = (pixel shr 8) and 0xFF  
@@ -253,7 +254,7 @@ object ImageUtils {
                 (gray - inputMean) / inputStd
             }
             
-            byteBuffer.putFloat(normalizedValue)
+            outputBuffer.putFloat(normalizedValue)
         }
         
         // Clean up scaled bitmap if it's different from input
@@ -261,8 +262,8 @@ object ImageUtils {
             scaledBitmap.recycle()
         }
         
-        byteBuffer.rewind()
-        return byteBuffer
+        outputBuffer.rewind()
+        return outputBuffer
     }
 
 

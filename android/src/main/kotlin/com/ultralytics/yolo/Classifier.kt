@@ -138,18 +138,18 @@ class Classifier(
 
         if (isGrayscaleModel) {
             // Use custom grayscale processing for 1-channel models
-            val modelInputSize = inputSize
-            
             // Extract options from classifierOptions map
             val enableColorInversion = classifierOptions?.get("enableColorInversion") as? Boolean ?: false
             val enableMaxNormalization = classifierOptions?.get("enableMaxNormalization") as? Boolean ?: false
             val inputMean = (classifierOptions?.get("inputMean") as? Number)?.toFloat() ?: 0f
             val inputStd = (classifierOptions?.get("inputStd") as? Number)?.toFloat() ?: 255f
             
-            inputBuffer = ImageUtils.processGrayscaleImage(
+            ImageUtils.processGrayscaleImage(
                 bitmap = inputBitmap,
-                targetWidth = modelInputSize.width,
-                targetHeight = modelInputSize.height,
+                targetWidth = inputSize.width,
+                targetHeight = inputSize.height,
+                outputBuffer = inputBuffer,
+                pixels = intValues,
                 enableColorInversion = enableColorInversion,
                 enableMaxNormalization = enableMaxNormalization,
                 inputMean = inputMean,

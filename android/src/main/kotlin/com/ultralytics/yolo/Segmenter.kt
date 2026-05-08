@@ -189,15 +189,18 @@ class Segmenter(
         val limitedDetections = rawDetections.take(numItemsThreshold)
 
         val boxes = mutableListOf<Box>()
-        for ((boxRect, cls, score, _) in limitedDetections) {
+        val maskDetections = mutableListOf<Detection>()
+        for (detection in limitedDetections) {
+            val (boxRect, cls, score, _) = detection
             val rectF = inputRectFromOutputRect(boxRect, origWidth, origHeight) ?: continue
             val normRect = normalizedRectFromInputRect(rectF, origWidth, origHeight)
             val label = labels.getOrElse(cls) { "Unknown" }
             boxes.add(Box(cls, label, score, rectF, normRect))
+            maskDetections.add(detection)
         }
 
         val (combinedMask, probMasks) = generateCombinedMaskImage(
-            detections = limitedDetections,
+            detections = maskDetections,
             protos = output1[0],
             maskW = maskW,
             maskH = maskH,
