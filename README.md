@@ -72,7 +72,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.3.3
+  ultralytics_yolo: ^0.3.4
 ```
 
 ```bash

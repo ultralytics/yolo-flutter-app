@@ -1,3 +1,8 @@
+## 0.3.4
+
+- **Bug Fix**: Preserve YOLO input aspect ratio on Android and iOS with letterbox preprocessing for detection-style tasks, center-crop classification preprocessing, and rotation-aware result remapping.
+- **Documentation**: Clarify square export shapes for mixed portrait/landscape inference and refresh the README feature tables and app preview.
+
 ## 0.3.3
 
 - **Bug Fix**: Improve Android overlay alignment and bitmap cleanup, harden iOS image inference crash paths, and remove unused platform code (#484).
