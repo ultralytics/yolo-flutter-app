@@ -222,7 +222,7 @@ Ultralytics thrives on community collaboration, and we deeply value your contrib
 
 Ultralytics offers two licensing options to accommodate diverse needs:
 
-- **AGPL-3.0 License**: Ideal for students, researchers, and enthusiasts passionate about open-source collaboration. This [OSI-approved](https://opensource.org/license/agpl-3.0) license promotes knowledge sharing and open contribution. See the [LICENSE](https://github.com/ultralytics/ultralytics/blob/main/LICENSE) file for details.
+- **AGPL-3.0 License**: Ideal for students, researchers, and enthusiasts passionate about open-source collaboration. This [OSI-approved](https://opensource.org/license/agpl-3.0) license promotes knowledge sharing and open contribution. See the [LICENSE](https://github.com/ultralytics/yolo-flutter-app/blob/main/LICENSE) file for details.
 - **Enterprise License**: Designed for commercial applications, this license permits seamless integration of Ultralytics software and AI models into commercial products and services, bypassing the open-source requirements of AGPL-3.0. For commercial use cases, please inquire about an [Enterprise License](https://www.ultralytics.com/license).
 
 ## 🔗 Related Resources
@@ -231,7 +231,7 @@ Ultralytics offers two licensing options to accommodate diverse needs:
 
 If you're interested in using YOLO models directly in iOS applications with Swift (without Flutter), check out our dedicated iOS repository:
 
-👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - A native iOS application demonstrating real-time object detection, segmentation, classification, and pose estimation using Ultralytics YOLO models.
+👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - A native iOS application for real-time detection, segmentation, classification, pose estimation, and OBB detection with Ultralytics YOLO models.
 
 This repository provides:
 
