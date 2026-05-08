@@ -373,7 +373,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   private func start(position: AVCaptureDevice.Position) {
     if !busy {
       busy = true
-      videoCapture.setUp(sessionPreset: .photo, position: position, videoOrientation: currentVideoOrientation()) {
+      videoCapture.setUp(
+        sessionPreset: .photo, position: position, videoOrientation: currentVideoOrientation()
+      ) {
         success in
         // .hd4K3840x2160 or .photo (4032x3024)  Warning: 4k may not work on all devices i.e. 2019 iPod
         if success {
