@@ -145,10 +145,13 @@ final yolo = YOLO(
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="coreml", nms=True)
+# Square [640, 640] works best when one model must run in both portrait and landscape.
+# Ultralytics imgsz order is [height, width]; use [640, 384] for portrait-only or [384, 640] for landscape-only.
+YOLO("yolo26n.pt").export(format="coreml", nms=True, imgsz=[640, 640])
 ```
 
-其他任务可以使用默认导出参数。
+其他任务可以使用默认导出参数，`imgsz` 同样优先使用方形尺寸。
+固定方向场景再使用对应的长宽比。
 
 ## 🎯 该用哪个 API
 

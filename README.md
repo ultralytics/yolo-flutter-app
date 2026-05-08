@@ -147,10 +147,12 @@ Detection models exported to Core ML must use `nms=True`:
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="coreml", nms=True)
+# Square [640, 640] works best when one model must run in both portrait and landscape.
+# Ultralytics imgsz order is [height, width]; use [640, 384] for portrait-only or [384, 640] for landscape-only.
+YOLO("yolo26n.pt").export(format="coreml", nms=True, imgsz=[640, 640])
 ```
 
-Other tasks can use the default export settings.
+Other tasks can use the default export settings, with the same square-orientation guidance for `imgsz`.
 
 ## 🎯 Choose The Right API
 
