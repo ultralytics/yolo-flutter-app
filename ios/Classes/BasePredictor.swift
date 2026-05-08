@@ -435,6 +435,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     guard gain > 0 else { return nil }
     let resizedWidth = (inputWidth * gain).rounded()
     let resizedHeight = (inputHeight * gain).rounded()
+    // Match Ultralytics LetterBox leading-pad rounding: round(d - 0.1).
     let padX = ((modelWidth - resizedWidth) / 2 - 0.1).rounded()
     let padY = ((modelHeight - resizedHeight) / 2 - 0.1).rounded()
     return (gain, padX, padY)

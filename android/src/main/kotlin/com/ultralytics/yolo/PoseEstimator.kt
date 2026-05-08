@@ -206,7 +206,13 @@ class PoseEstimator(
                 rawX + rawW / 2f,
                 rawY + rawH / 2f
             )
-            val rectF = inputRectFromOutputRect(outputRect, origWidth, origHeight) ?: continue
+            val outputIsNormalized = outputCoordinatesAreNormalized(outputRect)
+            val rectF = inputRectFromOutputRect(
+                outputRect,
+                origWidth,
+                origHeight,
+                outputIsNormalized
+            ) ?: continue
             val normBox = normalizedRectFromInputRect(rectF, origWidth, origHeight)
 
             val kpArray = mutableListOf<Pair<Float, Float>>()
@@ -216,7 +222,13 @@ class PoseEstimator(
                 val rawKy = featureValue(features, 5 + k * 3 + 1, j)
                 val kpC   = featureValue(features, 5 + k * 3 + 2, j)
 
-                val (finalKx, finalKy) = inputPointFromOutputPoint(rawKx, rawKy, origWidth, origHeight)
+                val (finalKx, finalKy) = inputPointFromOutputPoint(
+                    rawKx,
+                    rawKy,
+                    origWidth,
+                    origHeight,
+                    outputIsNormalized
+                )
 
                 kpArray.add(finalKx to finalKy)
                 kpConfArray.add(kpC)

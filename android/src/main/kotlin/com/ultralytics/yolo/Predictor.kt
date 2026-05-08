@@ -84,9 +84,23 @@ abstract class BasePredictor : Predictor {
         return IOU_THRESHOLD.toDouble()
     }
 
-    protected fun inputRectFromOutputRect(outputRect: RectF, origWidth: Int, origHeight: Int): RectF? {
-        val modelRect = modelRectFromOutputRect(outputRect)
+    protected fun inputRectFromOutputRect(
+        outputRect: RectF,
+        origWidth: Int,
+        origHeight: Int,
+        outputIsNormalized: Boolean = outputCoordinatesAreNormalized(outputRect)
+    ): RectF? {
+        val modelRect = modelRectFromOutputRect(outputRect, outputIsNormalized)
         return inputRectFromModelRect(modelRect, origWidth, origHeight)
+    }
+
+    // YOLO exports here use either normalized 0..1 or model-pixel coordinates.
+    protected fun outputCoordinatesAreNormalized(rect: RectF): Boolean {
+        val maxCoordinate = max(
+            max(abs(rect.left), abs(rect.top)),
+            max(abs(rect.right), abs(rect.bottom))
+        )
+        return maxCoordinate <= 2f
     }
 
     protected fun normalizedRectFromInputRect(rect: RectF, origWidth: Int, origHeight: Int): RectF {
@@ -102,10 +116,11 @@ abstract class BasePredictor : Predictor {
         x: Float,
         y: Float,
         origWidth: Int,
-        origHeight: Int
+        origHeight: Int,
+        outputIsNormalized: Boolean = outputCoordinatesAreNormalized(x, y)
     ): Pair<Float, Float> {
-        val modelX = modelCoordinate(x, modelInputSize.first)
-        val modelY = modelCoordinate(y, modelInputSize.second)
+        val modelX = modelCoordinate(x, modelInputSize.first, outputIsNormalized)
+        val modelY = modelCoordinate(y, modelInputSize.second, outputIsNormalized)
         val transform = letterboxTransform(origWidth, origHeight) ?: return x to y
         return (
             ((modelX - transform.padX) / transform.gain).coerceIn(0f, origWidth.toFloat())
@@ -118,10 +133,11 @@ abstract class BasePredictor : Predictor {
         val transform = letterboxTransform(origWidth, origHeight) ?: return obb
         val modelWidth = modelInputSize.first
         val modelHeight = modelInputSize.second
-        val cx = modelCoordinate(obb.cx, modelWidth)
-        val cy = modelCoordinate(obb.cy, modelHeight)
-        val w = modelCoordinate(obb.w, modelWidth)
-        val h = modelCoordinate(obb.h, modelHeight)
+        val outputIsNormalized = outputCoordinatesAreNormalized(obb)
+        val cx = modelCoordinate(obb.cx, modelWidth, outputIsNormalized)
+        val cy = modelCoordinate(obb.cy, modelHeight, outputIsNormalized)
+        val w = modelCoordinate(obb.w, modelWidth, outputIsNormalized)
+        val h = modelCoordinate(obb.h, modelHeight, outputIsNormalized)
 
         return OBB(
             cx = ((cx - transform.padX) / transform.gain) / origWidth,
@@ -143,6 +159,7 @@ abstract class BasePredictor : Predictor {
         if (gain <= 0f) return null
         val resizedWidth = (origWidth * gain).roundToInt()
         val resizedHeight = (origHeight * gain).roundToInt()
+        // Match Ultralytics LetterBox leading-pad rounding: round(d - 0.1).
         val padX = ((modelWidth - resizedWidth) / 2f - 0.1f).roundToInt().toFloat()
         val padY = ((modelHeight - resizedHeight) / 2f - 0.1f).roundToInt().toFloat()
         return LetterboxTransform(gain, padX, padY)
@@ -158,12 +175,8 @@ abstract class BasePredictor : Predictor {
         return rect.takeIf { it.width() > 0f && it.height() > 0f }
     }
 
-    private fun modelRectFromOutputRect(rect: RectF): RectF {
-        val maxCoordinate = max(
-            max(abs(rect.left), abs(rect.top)),
-            max(abs(rect.right), abs(rect.bottom))
-        )
-        return if (maxCoordinate <= 2f) {
+    private fun modelRectFromOutputRect(rect: RectF, outputIsNormalized: Boolean): RectF {
+        return if (outputIsNormalized) {
             RectF(
                 rect.left * modelInputSize.first,
                 rect.top * modelInputSize.second,
@@ -175,7 +188,19 @@ abstract class BasePredictor : Predictor {
         }
     }
 
-    private fun modelCoordinate(value: Float, axisSize: Int): Float {
-        return if (abs(value) <= 2f) value * axisSize else value
+    private fun outputCoordinatesAreNormalized(x: Float, y: Float): Boolean {
+        return max(abs(x), abs(y)) <= 2f
+    }
+
+    private fun outputCoordinatesAreNormalized(obb: OBB): Boolean {
+        val maxCoordinate = max(
+            max(abs(obb.cx), abs(obb.cy)),
+            max(abs(obb.w), abs(obb.h))
+        )
+        return maxCoordinate <= 2f
+    }
+
+    private fun modelCoordinate(value: Float, axisSize: Int, outputIsNormalized: Boolean): Float {
+        return if (outputIsNormalized) value * axisSize else value
     }
 }

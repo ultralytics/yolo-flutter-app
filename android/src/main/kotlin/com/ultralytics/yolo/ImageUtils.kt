@@ -12,6 +12,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 object ImageUtils {
+    // Shared read-only paint for frame preprocessing.
     private val filterPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
 
     /**
@@ -125,49 +126,42 @@ object ImageUtils {
         rotationDegrees: Int? = null,
         centerCrop: Boolean = false
     ): Bitmap {
-        val orientedBitmap = orientBitmapForCamera(
-            bitmap,
-            rotateForCamera,
-            isLandscape,
-            isFrontCamera,
-            rotationDegrees
-        )
+        val degrees = cameraRotationDegrees(rotateForCamera, isLandscape, isFrontCamera, rotationDegrees)
+        val isRotated = degrees % 180 != 0
+        val orientedWidth = if (isRotated) bitmap.height else bitmap.width
+        val orientedHeight = if (isRotated) bitmap.width else bitmap.height
         val targetWidth = targetBitmap.width
         val targetHeight = targetBitmap.height
-        val scaleX = targetWidth.toFloat() / orientedBitmap.width
-        val scaleY = targetHeight.toFloat() / orientedBitmap.height
+        val scaleX = targetWidth.toFloat() / orientedWidth
+        val scaleY = targetHeight.toFloat() / orientedHeight
         val scale = if (centerCrop) max(scaleX, scaleY) else min(scaleX, scaleY)
-        val scaledWidth = (orientedBitmap.width * scale).roundToInt()
-        val scaledHeight = (orientedBitmap.height * scale).roundToInt()
+        val scaledWidth = (orientedWidth * scale).roundToInt()
+        val scaledHeight = (orientedHeight * scale).roundToInt()
         val left = (targetWidth - scaledWidth) / 2
         val top = (targetHeight - scaledHeight) / 2
-        val dst = Rect(left, top, left + scaledWidth, top + scaledHeight)
 
         Canvas(targetBitmap).apply {
             drawColor(Color.BLACK)
-            drawBitmap(orientedBitmap, null, dst, filterPaint)
-        }
-        if (orientedBitmap !== bitmap) {
-            orientedBitmap.recycle()
+            save()
+            translate(left + scaledWidth / 2f, top + scaledHeight / 2f)
+            rotate(degrees.toFloat())
+            scale(scale, scale)
+            drawBitmap(bitmap, -bitmap.width / 2f, -bitmap.height / 2f, filterPaint)
+            restore()
         }
         return targetBitmap
     }
 
-    private fun orientBitmapForCamera(
-        bitmap: Bitmap,
+    private fun cameraRotationDegrees(
         rotateForCamera: Boolean,
         isLandscape: Boolean,
         isFrontCamera: Boolean,
         rotationDegrees: Int?
-    ): Bitmap {
-        if (!rotateForCamera) return bitmap
+    ): Int {
+        if (!rotateForCamera) return 0
 
         val fallbackDegrees = if (isLandscape) 0 else if (isFrontCamera) 90 else 270
-        val degrees = (rotationDegrees ?: fallbackDegrees).floorMod(360)
-        if (degrees == 0) return bitmap
-
-        val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        return (rotationDegrees ?: fallbackDegrees).floorMod(360)
     }
 
     private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
