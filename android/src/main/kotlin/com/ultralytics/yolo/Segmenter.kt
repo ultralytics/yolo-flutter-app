@@ -5,25 +5,16 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.*
 import android.util.Log
-import android.util.Size
-import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.gpu.GpuDelegate
-import org.tensorflow.lite.support.common.FileUtil
-import org.tensorflow.lite.support.common.ops.CastOp
-import org.tensorflow.lite.support.common.ops.NormalizeOp
-import org.tensorflow.lite.support.image.ImageProcessor
-import org.tensorflow.lite.support.image.TensorImage
-import org.tensorflow.lite.support.image.ops.ResizeOp
-import org.tensorflow.lite.support.image.ops.Rot90Op
 import org.tensorflow.lite.support.metadata.MetadataExtractor
-import org.tensorflow.lite.support.metadata.schema.ModelMetadata
 import org.yaml.snakeyaml.Yaml
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 class Segmenter(
     context: Context,
@@ -42,7 +33,6 @@ class Segmenter(
     private var maskH = 0
     private var maskW = 0
     private var maskC = 0
-//    private var numItemsThreshold = 30
 
     // TFLite Interpreter options
     private val interpreterOptions = (customOptions ?: Interpreter.Options()).apply {
@@ -60,14 +50,10 @@ class Segmenter(
         }
     }
 
-    /** ImageProcessor for image preprocessing - separate ones for camera portrait/landscape and single images */
-    private lateinit var imageProcessorCameraPortrait: ImageProcessor
-    private lateinit var imageProcessorCameraPortraitFront: ImageProcessor
-    private lateinit var imageProcessorCameraLandscape: ImageProcessor
-    private lateinit var imageProcessorSingleImage: ImageProcessor
-
     // Reuse ByteBuffer for input to reduce allocations
     private lateinit var inputBuffer: ByteBuffer
+    private lateinit var inputBitmap: Bitmap
+    private lateinit var intValues: IntArray
 
     // Reuse output arrays to reduce allocations
     private lateinit var output0: Array<Array<FloatArray>>
@@ -143,38 +129,8 @@ class Segmenter(
         inputBuffer = ByteBuffer.allocateDirect(inputBytes).apply {
             order(ByteOrder.nativeOrder())
         }
-
-        // Initialize ImageProcessor - separate ones for camera portrait/landscape and single images
-
-        // 1. For camera feed in portrait mode (with rotation)
-        imageProcessorCameraPortrait = ImageProcessor.Builder()
-            .add(Rot90Op(3)) // 270-degree rotation for back camera
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-
-        // 2. For front camera in portrait mode (90-degree rotation)
-        imageProcessorCameraPortraitFront = ImageProcessor.Builder()
-            .add(Rot90Op(1)) // 90-degree rotation for front camera
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-
-        // 3. For camera feed in landscape mode (no rotation)
-        imageProcessorCameraLandscape = ImageProcessor.Builder()
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-
-        // 4. For single images (no rotation)
-        imageProcessorSingleImage = ImageProcessor.Builder()
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
+        inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
+        intValues = IntArray(inWidth * inHeight)
     }
 
     override fun setNumItemsThreshold(n: Int) {
@@ -191,32 +147,15 @@ class Segmenter(
     ): YOLOResult {
         t0 = System.nanoTime()
 
-        // (1) Preprocess with TensorImage
-        val tensorImage = TensorImage(DataType.FLOAT32)
-        tensorImage.load(bitmap)
-
-        // Choose appropriate processor based on input source and orientation
-        val processedImage = if (rotateForCamera) {
-            // Use appropriate camera processor based on device orientation
-            if (isLandscape) {
-                imageProcessorCameraLandscape.process(tensorImage)
-            } else {
-                // Use different rotation for front vs back camera
-                if (isFrontCamera) {
-                    imageProcessorCameraPortraitFront.process(tensorImage)
-                } else {
-                    imageProcessorCameraPortrait.process(tensorImage)
-                }
-            }
-        } else {
-            // Use single image processor (no rotation) for regular images
-            imageProcessorSingleImage.process(tensorImage)
-        }
-
-        // Reuse the pre-allocated input buffer
-        inputBuffer.clear()
-        inputBuffer.put(processedImage.buffer)
-        inputBuffer.rewind()
+        ImageUtils.prepareBitmapForModel(
+            bitmap = bitmap,
+            targetBitmap = inputBitmap,
+            rotateForCamera = rotateForCamera,
+            isLandscape = isLandscape,
+            isFrontCamera = isFrontCamera,
+            rotationDegrees = cameraRotationDegrees
+        )
+        ImageUtils.copyRgbBitmapToFloatBuffer(inputBitmap, inputBuffer, intValues)
 
         // (2) Output buffer already allocated during initialization
         numClasses = out0NumFeatures - boxFeatureLength - maskConfidenceLength
@@ -250,27 +189,23 @@ class Segmenter(
         val limitedDetections = rawDetections.take(numItemsThreshold)
 
         val boxes = mutableListOf<Box>()
-        for ((normRect, cls, score, maskCoeffs) in limitedDetections) {
-            // normRect already contains normalized coordinates (0-1)
-
-            // Convert to absolute pixel coordinates for xywh
-            val rectF = RectF(
-                normRect.left * origWidth,
-                normRect.top * origHeight,
-                normRect.right * origWidth,
-                normRect.bottom * origHeight
-            )
-
+        val maskDetections = mutableListOf<Detection>()
+        for (detection in limitedDetections) {
+            val (boxRect, cls, score, _) = detection
+            val rectF = inputRectFromOutputRect(boxRect, origWidth, origHeight) ?: continue
+            val normRect = normalizedRectFromInputRect(rectF, origWidth, origHeight)
             val label = labels.getOrElse(cls) { "Unknown" }
-            // Use normRect for xywhn (normalized 0-1 coordinates) and rectF for xywh (pixel coordinates)
             boxes.add(Box(cls, label, score, rectF, normRect))
+            maskDetections.add(detection)
         }
 
         val (combinedMask, probMasks) = generateCombinedMaskImage(
-            detections = limitedDetections,
+            detections = maskDetections,
             protos = output1[0],
             maskW = maskW,
             maskH = maskH,
+            origWidth = origWidth,
+            origHeight = origHeight,
             threshold = 0.5f
         )
         val masks = Masks(probMasks ?: emptyList(), combinedMask)
@@ -379,12 +314,15 @@ class Segmenter(
         protos: Array<Array<FloatArray>>,
         maskW: Int,
         maskH: Int,
+        origWidth: Int,
+        origHeight: Int,
         threshold: Float
     ): Pair<Bitmap?, List<List<List<Float>>>?> {
         if (detections.isEmpty()) return Pair(null, null)
+        val contentRect = maskContentRect(maskW, maskH, origWidth, origHeight)
         val combinedPixels = IntArray(maskW * maskH) { Color.TRANSPARENT }
         val probabilityMasks = mutableListOf<List<List<Float>>>()
-        detections.forEachIndexed { detIndex, det ->
+        detections.forEach { det ->
             val color = ultralyticsColors[det.cls % ultralyticsColors.size]
             val pm = Array(maskH) { FloatArray(maskW) }
             for (y in 0 until maskH) {
@@ -403,11 +341,53 @@ class Segmenter(
                     }
                 }
             }
-            probabilityMasks.add(pm.map { it.toList() })
+            probabilityMasks.add((contentRect.top until contentRect.bottom).map { y ->
+                pm[y].copyOfRange(contentRect.left, contentRect.right).toList()
+            })
         }
         val bmp = Bitmap.createBitmap(maskW, maskH, Bitmap.Config.ARGB_8888)
         bmp.setPixels(combinedPixels, 0, maskW, 0, 0, maskW, maskH)
-        return Pair(bmp, probabilityMasks)
+        val croppedBmp = if (
+            contentRect.left == 0 &&
+            contentRect.top == 0 &&
+            contentRect.right == maskW &&
+            contentRect.bottom == maskH
+        ) {
+            bmp
+        } else {
+            Bitmap.createBitmap(
+                bmp,
+                contentRect.left,
+                contentRect.top,
+                contentRect.width(),
+                contentRect.height()
+            ).also { bmp.recycle() }
+        }
+        return Pair(croppedBmp, probabilityMasks)
+    }
+
+    private fun maskContentRect(maskW: Int, maskH: Int, origWidth: Int, origHeight: Int): Rect {
+        // Remove prototype-space letterbox padding before masks are scaled to the original image.
+        val modelWidth = modelInputSize.first.toFloat()
+        val modelHeight = modelInputSize.second.toFloat()
+        if (modelWidth <= 0f || modelHeight <= 0f || origWidth <= 0 || origHeight <= 0) {
+            return Rect(0, 0, maskW, maskH)
+        }
+
+        val gain = min(modelWidth / origWidth, modelHeight / origHeight)
+        if (gain <= 0f) return Rect(0, 0, maskW, maskH)
+        val resizedWidth = (origWidth * gain).roundToInt()
+        val resizedHeight = (origHeight * gain).roundToInt()
+        // Match Ultralytics LetterBox leading-pad rounding: round(d - 0.1).
+        val padX = ((modelWidth - resizedWidth) / 2f - 0.1f).roundToInt()
+        val padY = ((modelHeight - resizedHeight) / 2f - 0.1f).roundToInt()
+        val scaleX = maskW / modelWidth
+        val scaleY = maskH / modelHeight
+        val left = (padX * scaleX).roundToInt().coerceIn(0, maskW - 1)
+        val top = (padY * scaleY).roundToInt().coerceIn(0, maskH - 1)
+        val right = ((padX + resizedWidth) * scaleX).roundToInt().coerceIn(left + 1, maskW)
+        val bottom = ((padY + resizedHeight) * scaleY).roundToInt().coerceIn(top + 1, maskH)
+        return Rect(left, top, right, bottom)
     }
 
     data class Detection(

@@ -366,31 +366,13 @@ class YOLOInstanceManager {
 
       for obbResult in result.obb {
         let box = obbResult.box
-
-        let angle = box.angle
-        let cx = box.cx
-        let cy = box.cy
-        let w = box.w
-        let h = box.h
-
-        let cos_a = cos(angle)
-        let sin_a = sin(angle)
-
-        let dx1 = w / 2 * cos_a
-        let dy1 = w / 2 * sin_a
-        let dx2 = h / 2 * sin_a
-        let dy2 = h / 2 * cos_a
-
-        let points = [
-          ["x": cx - dx1 + dx2, "y": cy - dy1 - dy2],
-          ["x": cx + dx1 + dx2, "y": cy + dy1 - dy2],
-          ["x": cx + dx1 - dx2, "y": cy + dy1 + dy2],
-          ["x": cx - dx1 - dx2, "y": cy - dy1 + dy2],
-        ]
+        let points = box.toPolygon(in: result.orig_shape).map { point in
+          ["x": Float(point.x), "y": Float(point.y)]
+        }
 
         obbArray.append([
           "points": points,
-          "angle": Double(angle),
+          "angle": Double(box.angle),
           "classIndex": obbResult.index,
           "class": obbResult.cls,
           "confidence": obbResult.confidence,

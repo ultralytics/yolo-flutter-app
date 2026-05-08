@@ -5,18 +5,9 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.*
 import android.util.Log
-import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.gpu.GpuDelegate
-import org.tensorflow.lite.support.common.FileUtil
-import org.tensorflow.lite.support.common.ops.CastOp
-import org.tensorflow.lite.support.common.ops.NormalizeOp
-import org.tensorflow.lite.support.image.ImageProcessor
-import org.tensorflow.lite.support.image.TensorImage
-import org.tensorflow.lite.support.image.ops.ResizeOp
-import org.tensorflow.lite.support.image.ops.Rot90Op
 import org.tensorflow.lite.support.metadata.MetadataExtractor
-import org.tensorflow.lite.support.metadata.schema.ModelMetadata
 import org.yaml.snakeyaml.Yaml
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -33,8 +24,6 @@ class ObbDetector(
     private var numItemsThreshold: Int = 30,
     private val customOptions: Interpreter.Options? = null
 ) : BasePredictor() {
-    
-//    private var numItemsThreshold = 30
 
     private val interpreterOptions: Interpreter.Options = (customOptions ?: Interpreter.Options()).apply {
         // If no custom options provided, use default threads
@@ -51,14 +40,10 @@ class ObbDetector(
         }
     }
 
-    // Similar to PoseEstimator, use ImageProcessor - separate ones for camera portrait/landscape and single images
-    private lateinit var imageProcessorCameraPortrait: ImageProcessor
-    private lateinit var imageProcessorCameraPortraitFront: ImageProcessor
-    private lateinit var imageProcessorCameraLandscape: ImageProcessor
-    private lateinit var imageProcessorSingleImage: ImageProcessor
-    
     // Reuse ByteBuffer for input to reduce allocations
     private lateinit var inputBuffer: ByteBuffer
+    private lateinit var inputBitmap: Bitmap
+    private lateinit var intValues: IntArray
     
     // Reuse output arrays to reduce allocations
     private lateinit var rawOutput: Array<Array<FloatArray>>
@@ -124,37 +109,8 @@ class ObbDetector(
         inputBuffer = ByteBuffer.allocateDirect(inputBytes).apply {
             order(ByteOrder.nativeOrder())
         }
-
-        
-        // For camera feed in portrait mode (with rotation)
-        imageProcessorCameraPortrait = ImageProcessor.Builder()
-            .add(Rot90Op(3))  // 270-degree rotation for back camera
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))  // Normalize to 0~1
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-            
-        // For front camera in portrait mode (90-degree rotation)
-        imageProcessorCameraPortraitFront = ImageProcessor.Builder()
-            .add(Rot90Op(1))  // 90-degree rotation for front camera
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))  // Normalize to 0~1
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-            
-        // For camera feed in landscape mode (no rotation)
-        imageProcessorCameraLandscape = ImageProcessor.Builder()
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))  // Normalize to 0~1
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-            
-        // For single images (no rotation)
-        imageProcessorSingleImage = ImageProcessor.Builder()
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))  // Normalize to 0~1
-            .add(CastOp(DataType.FLOAT32))
-            .build()
+        inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
+        intValues = IntArray(inWidth * inHeight)
     }
     
     override fun setNumItemsThreshold(n: Int) {
@@ -165,30 +121,15 @@ class ObbDetector(
     override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         t0 = System.nanoTime()
 
-        val tensorImage = TensorImage(DataType.FLOAT32)
-        tensorImage.load(bitmap)
-        
-        // Choose appropriate processor based on input source and orientation
-        val processedImage = if (rotateForCamera) {
-            // Apply appropriate rotation based on device orientation
-            if (isLandscape) {
-                imageProcessorCameraLandscape.process(tensorImage)
-            } else {
-                // Use different rotation for front vs back camera
-                if (isFrontCamera) {
-                    imageProcessorCameraPortraitFront.process(tensorImage)
-                } else {
-                    imageProcessorCameraPortrait.process(tensorImage)
-                }
-            }
-        } else {
-            // No rotation for single image
-            imageProcessorSingleImage.process(tensorImage)
-        }
-        
-        inputBuffer.clear()
-        inputBuffer.put(processedImage.buffer)
-        inputBuffer.rewind()
+        ImageUtils.prepareBitmapForModel(
+            bitmap = bitmap,
+            targetBitmap = inputBitmap,
+            rotateForCamera = rotateForCamera,
+            isLandscape = isLandscape,
+            isFrontCamera = isFrontCamera,
+            rotationDegrees = cameraRotationDegrees
+        )
+        ImageUtils.copyRgbBitmapToFloatBuffer(inputBitmap, inputBuffer, intValues)
 
         interpreter.run(inputBuffer, rawOutput)
         updateTiming()
@@ -202,13 +143,17 @@ class ObbDetector(
         val obbDetections = postProcessOBB(
             detections2D = transposedOutput,
             confidenceThreshold = CONFIDENCE_THRESHOLD,
-            iouThreshold = IOU_THRESHOLD
+            iouThreshold = IOU_THRESHOLD,
+            origWidth = origWidth,
+            origHeight = origHeight
         )
         
         // Apply numItemsThreshold limit
         val limitedDetections = obbDetections.take(numItemsThreshold)
 
-        val annotatedImage = drawOBBsOnBitmap(bitmap, limitedDetections)
+        val annotatedImage = if (rotateForCamera) null else {
+            drawOBBsOnBitmap(bitmap, limitedDetections, origWidth, origHeight)
+        }
 
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
@@ -224,7 +169,9 @@ class ObbDetector(
     private fun postProcessOBB(
         detections2D: Array<FloatArray>,
         confidenceThreshold: Float,
-        iouThreshold: Float
+        iouThreshold: Float,
+        origWidth: Int,
+        origHeight: Int
     ): List<OBBResult> {
         val anchorsCount = detections2D.size
         val numClasses = labels.size
@@ -266,7 +213,7 @@ class ObbDetector(
         return keepIndices.map { idx ->
             val d = detections[idx]
             OBBResult(
-                box = d.obb,
+                box = inputOBBFromModelOBB(d.obb, origWidth, origHeight),
                 confidence = d.score,
                 cls = labels.getOrElse(d.cls) { "Unknown" },
                 index = d.cls
@@ -276,7 +223,12 @@ class ObbDetector(
 
     data class Detection(val obb: OBB, val score: Float, val cls: Int)
 
-    private fun drawOBBsOnBitmap(bitmap: Bitmap, obbDetections: List<OBBResult>): Bitmap {
+    private fun drawOBBsOnBitmap(
+        bitmap: Bitmap,
+        obbDetections: List<OBBResult>,
+        origWidth: Int,
+        origHeight: Int
+    ): Bitmap {
         val output = bitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(output)
         val paint = Paint().apply {
@@ -286,7 +238,7 @@ class ObbDetector(
         for (detection in obbDetections) {
             paint.color = ultralyticsColors[detection.index % ultralyticsColors.size]
 
-            val poly = detection.box.toPolygon().map {
+            val poly = detection.box.toPolygon(origWidth.toFloat(), origHeight.toFloat()).map {
                 PointF(it.x * bitmap.width, it.y * bitmap.height)
             }
             if (poly.size >= 4) {

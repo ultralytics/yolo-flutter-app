@@ -107,10 +107,21 @@ class YOLO(
      */
     fun predict(imageProxy: ImageProxy): YOLOResult? {
         val bitmap = ImageUtils.toBitmap(imageProxy) ?: return null
-        val result = predictor.predict(bitmap, imageProxy.width, imageProxy.height, rotateForCamera = true, isLandscape = false)
+        val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+        val isRotated = rotationDegrees % 180 != 0
+        val orientedWidth = if (isRotated) imageProxy.height else imageProxy.width
+        val orientedHeight = if (isRotated) imageProxy.width else imageProxy.height
+        (predictor as? BasePredictor)?.cameraRotationDegrees = rotationDegrees
+        val result = predictor.predict(
+            bitmap,
+            orientedWidth,
+            orientedHeight,
+            rotateForCamera = true,
+            isLandscape = false
+        )
         return result.copy(
             originalImage = bitmap,
-            annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = true)
+            annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = true, rotationDegrees)
         )
     }
 
@@ -210,9 +221,14 @@ class YOLO(
      * @param result YOLOResult containing detection results
      * @param rotateForCamera If true, rotate the image 90 degrees (for camera feed), otherwise don't rotate
      */
-    private fun drawAnnotations(bitmap: Bitmap, result: YOLOResult, rotateForCamera: Boolean = true): Bitmap {
-        // If the result already contains an annotated image, return it
-        if (result.annotatedImage != null) {
+    private fun drawAnnotations(
+        bitmap: Bitmap,
+        result: YOLOResult,
+        rotateForCamera: Boolean = true,
+        rotationDegrees: Int? = null
+    ): Bitmap {
+        // Static-image predictors can return a pre-rendered annotation.
+        if (!rotateForCamera && result.annotatedImage != null) {
             return result.annotatedImage
         }
 
@@ -220,25 +236,20 @@ class YOLO(
         val canvas: Canvas
 
         if (rotateForCamera) {
-            // Camera feed: rotate 90 degrees as before
-            val matrix = Matrix().apply {
-                // Rotate 90 degrees clockwise
-                postRotate(90f)
-            }
-            val rotatedBitmap = Bitmap.createBitmap(
-                bitmap,
-                0,
-                0,
-                bitmap.width,
-                bitmap.height,
-                matrix,
-                true
+            val degrees = rotationDegrees ?: 90
+            val isRotated = degrees % 180 != 0
+            output = Bitmap.createBitmap(
+                if (isRotated) bitmap.height else bitmap.width,
+                if (isRotated) bitmap.width else bitmap.height,
+                Bitmap.Config.ARGB_8888
             )
-
-            // Draw on rotated bitmap
-            output = rotatedBitmap.copy(Bitmap.Config.ARGB_8888, true)
-            if (rotatedBitmap !== output) rotatedBitmap.recycle()
             canvas = Canvas(output)
+            // Draw the camera frame in the same orientation used for inference.
+            canvas.save()
+            canvas.translate(output.width / 2f, output.height / 2f)
+            canvas.rotate(degrees.toFloat())
+            canvas.drawBitmap(bitmap, -bitmap.width / 2f, -bitmap.height / 2f, null)
+            canvas.restore()
         } else {
             // Single image: no rotation needed
             output = bitmap.copy(Bitmap.Config.ARGB_8888, true)
@@ -256,25 +267,22 @@ class YOLO(
             textSize = calculatedTextSize.coerceAtLeast(40f) // Minimum 40f
         }
 
-        // Helper function for coordinate transformation
-        // Transform from original coordinates to rotated coordinates (only when needed)
-        fun transformRect(rect: RectF): RectF {
-            if (!rotateForCamera) {
-                // Return as-is if no rotation
-                return rect
-            }
-            
-            // Get dimensions of original and rotated images
-            val originalWidth = bitmap.width.toFloat()
-            val originalHeight = bitmap.height.toFloat()
+        val resultWidth = result.origShape.width.toFloat().takeIf { it > 0f } ?: output.width.toFloat()
+        val resultHeight = result.origShape.height.toFloat().takeIf { it > 0f } ?: output.height.toFloat()
+        val scaleX = output.width / resultWidth
+        val scaleY = output.height / resultHeight
 
-            // Coordinate transformation after 90-degree rotation
-            // x' = y, y' = width - x
+        fun transformPoint(x: Float, y: Float): PointF {
+            return PointF(x * scaleX, y * scaleY)
+        }
+
+        // Result coordinates are already mapped into the image orientation used for inference.
+        fun transformRect(rect: RectF): RectF {
             return RectF(
-                rect.top,                    // new left = original top
-                originalWidth - rect.right,  // new top = distance from original right edge
-                rect.bottom,                 // new right = original bottom
-                originalWidth - rect.left    // new bottom = distance from original left edge
+                rect.left * scaleX,
+                rect.top * scaleY,
+                rect.right * scaleX,
+                rect.bottom * scaleY
             )
         }
 
@@ -379,29 +387,8 @@ class YOLO(
 
                 // Overlay segmentation mask if available
                 result.masks?.combinedMask?.let { mask ->
-                    val maskToUse: Bitmap
-                    
-                    if (rotateForCamera) {
-                        // Mask also needs to be rotated (camera feed)
-                        val maskMatrix = Matrix().apply {
-                            postRotate(90f)
-                        }
-                        maskToUse = Bitmap.createBitmap(
-                            mask,
-                            0,
-                            0,
-                            mask.width,
-                            mask.height,
-                            maskMatrix,
-                            true
-                        )
-                    } else {
-                        // No rotation for single image
-                        maskToUse = mask
-                    }
-
                     val maskScaled = Bitmap.createScaledBitmap(
-                        maskToUse,
+                        mask,
                         output.width,
                         output.height,
                         true
@@ -409,8 +396,7 @@ class YOLO(
                     paint.style = Paint.Style.FILL
                     paint.alpha = 128
                     canvas.drawBitmap(maskScaled, 0f, 0f, paint)
-                    if (maskScaled !== maskToUse) maskScaled.recycle()
-                    if (maskToUse !== mask) maskToUse.recycle()
+                    if (maskScaled !== mask) maskScaled.recycle()
                 }
             }
             YOLOTask.CLASSIFY -> {
@@ -497,16 +483,9 @@ class YOLO(
                 for (keypoints in result.keypointsList) {
                     paint.style = Paint.Style.FILL
 
-                    // Transform and draw keypoint coordinates (only when needed)
                     val transformedPoints = keypoints.xy.map { (x, y) ->
-                        if (rotateForCamera) {
-                            // x' = y, y' = width - x (camera feed rotation)
-                            val originalWidth = bitmap.width.toFloat()
-                            Pair(y, originalWidth - x)
-                        } else {
-                            // No rotation for single image
-                            Pair(x, y)
-                        }
+                        val point = transformPoint(x, y)
+                        Pair(point.x, point.y)
                     }
 
                     // Define keypoint color indices (same as YoloView)
@@ -628,20 +607,8 @@ class YOLO(
                 for (obbResult in result.obb) {
                     paint.color = ultralyticsColors[obbResult.index % ultralyticsColors.size]
 
-                    // Transform OBB polygon vertices (only when needed)
-                    val poly = obbResult.box.toPolygon().map {
-                        // Scale original coordinates to image size
-                        val x = it.x * bitmap.width
-                        val y = it.y * bitmap.height
-
-                        if (rotateForCamera) {
-                            // Rotation transformation (camera feed)
-                            val originalWidth = bitmap.width.toFloat()
-                            PointF(y, originalWidth - x)
-                        } else {
-                            // No rotation for single image
-                            PointF(x, y)
-                        }
+                    val poly = obbResult.box.toPolygon(resultWidth, resultHeight).map {
+                        transformPoint(it.x * resultWidth, it.y * resultHeight)
                     }
 
                     if (poly.size >= 4) {

@@ -413,7 +413,7 @@ class YOLOView @JvmOverloads constructor(
                     YOLOTask.POSE -> PoseEstimator(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.OBB -> ObbDetector(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
                 }
-                
+
                 // Apply thresholds to all predictor types
                 newPredictor.apply {
                     setConfidenceThreshold(confidenceThreshold)
@@ -676,8 +676,6 @@ class YOLOView @JvmOverloads constructor(
 
         val w = imageProxy.width
         val h = imageProxy.height
-        val orientation = context.resources.configuration.orientation
-        val isLandscapeDevice = orientation == Configuration.ORIENTATION_LANDSCAPE
 
         val bitmap = ImageUtils.toBitmap(imageProxy) ?: run {
             Log.e(TAG, "Failed to convert ImageProxy to Bitmap")
@@ -711,19 +709,25 @@ class YOLOView @JvmOverloads constructor(
                 
                 // Check if using front camera
                 val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
+                val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+                val isRotated = rotationDegrees % 180 != 0
+                val orientedWidth = if (isRotated) h else w
+                val orientedHeight = if (isRotated) w else h
                 
                 // Set camera facing information in predictor
-                (p as? BasePredictor)?.isFrontCamera = isFrontCamera
-                
-                // For camera feed, we typically rotate the bitmap
-                // In landscape mode, we don't rotate, so width/height should match actual bitmap dimensions
-                val result = if (isLandscape) {
-                    p.predict(bitmap, w, h, rotateForCamera = true, isLandscape = isLandscape)
-                } else {
-                    // In portrait mode, keep the original behavior (h, w)
-                    p.predict(bitmap, h, w, rotateForCamera = true, isLandscape = isLandscape)
+                (p as? BasePredictor)?.let { basePredictor ->
+                    basePredictor.isFrontCamera = isFrontCamera
+                    basePredictor.cameraRotationDegrees = rotationDegrees
                 }
                 
+                val result = p.predict(
+                    bitmap,
+                    orientedWidth,
+                    orientedHeight,
+                    rotateForCamera = true,
+                    isLandscape = isLandscape
+                )
+
                 // Apply originalImage if streaming config requires it
                 val resultWithOriginalImage = if (streamConfig?.includeOriginalImage == true) {
                     result.copy(originalImage = bitmap)  // Reuse bitmap from ImageProxy conversion
@@ -1254,7 +1258,7 @@ class YOLOView @JvmOverloads constructor(
                         paint.strokeWidth = BOX_LINE_WIDTH
 
                         // Draw rotated rectangle (polygon) using path
-                        val polygon = obbRes.box.toPolygon().map { pt ->
+                        val polygon = obbRes.box.toPolygon(iw, ih).map { pt ->
                             var x = pt.x * scaledW + dx
                             val y = pt.y * scaledH + dy
                             
@@ -1629,9 +1633,9 @@ class YOLOView @JvmOverloads constructor(
                 detection["confidence"] = obbRes.confidence.toDouble()
                 
                 // Get OBB polygon points (4 corners of rotated rectangle)
-                val polygon = obbRes.box.toPolygon()
                 val imgWidth = result.origShape.width.toFloat()
                 val imgHeight = result.origShape.height.toFloat()
+                val polygon = obbRes.box.toPolygon(imgWidth, imgHeight)
                 
                 // Convert polygon points to pixel coordinates  
                 val polygonPixels = polygon.map { point ->

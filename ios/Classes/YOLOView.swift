@@ -373,8 +373,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   private func start(position: AVCaptureDevice.Position) {
     if !busy {
       busy = true
-      let orientation = UIDevice.current.orientation
-      videoCapture.setUp(sessionPreset: .photo, position: position, orientation: orientation) {
+      videoCapture.setUp(
+        sessionPreset: .photo, position: position, videoOrientation: currentVideoOrientation()
+      ) {
         success in
         // .hd4K3840x2160 or .photo (4032x3024)  Warning: 4k may not work on all devices i.e. 2019 iPod
         if success {
@@ -1105,22 +1106,37 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   @objc func orientationDidChange() {
-    var orientation: AVCaptureVideoOrientation = .portrait
+    videoCapture.updateVideoOrientation(orientation: currentVideoOrientation())
+  }
+
+  private func currentVideoOrientation() -> AVCaptureVideoOrientation {
+    if let interfaceOrientation = window?.windowScene?.interfaceOrientation {
+      switch interfaceOrientation {
+      case .portrait:
+        return .portrait
+      case .portraitUpsideDown:
+        return .portraitUpsideDown
+      case .landscapeLeft:
+        return .landscapeLeft
+      case .landscapeRight:
+        return .landscapeRight
+      default:
+        break
+      }
+    }
+
     switch UIDevice.current.orientation {
     case .portrait:
-      orientation = .portrait
+      return .portrait
     case .portraitUpsideDown:
-      orientation = .portraitUpsideDown
-    case .landscapeRight:
-      orientation = .landscapeLeft
+      return .portraitUpsideDown
     case .landscapeLeft:
-      orientation = .landscapeRight
+      return .landscapeRight
+    case .landscapeRight:
+      return .landscapeLeft
     default:
-      return
+      return videoCapture.previewLayer?.connection?.videoOrientation ?? .portrait
     }
-    videoCapture.updateVideoOrientation(orientation: orientation)
-
-    //      frameSizeCaptured = false
   }
 
   @objc func sliderChanged(_ sender: Any) {
@@ -1279,20 +1295,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
 
     self.videoCapture.captureSession.addInput(videoInput1)
-    var orientation: AVCaptureVideoOrientation = .portrait
-    switch UIDevice.current.orientation {
-    case .portrait:
-      orientation = .portrait
-    case .portraitUpsideDown:
-      orientation = .portraitUpsideDown
-    case .landscapeRight:
-      orientation = .landscapeLeft
-    case .landscapeLeft:
-      orientation = .landscapeRight
-    default:
-      return
-    }
-    self.videoCapture.updateVideoOrientation(orientation: orientation)
+    self.videoCapture.updateVideoOrientation(orientation: currentVideoOrientation())
 
     self.videoCapture.captureSession.commitConfiguration()
   }
@@ -1697,7 +1700,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
           detection["className"] = obbResult.cls
           detection["confidence"] = Double(obbResult.confidence)
 
-          let polygon = obbResult.box.toPolygon()
+          let polygon = obbResult.box.toPolygon(in: result.orig_shape)
           let points = polygon.map { point in
             [
               "x": Double(point.x),
@@ -1812,7 +1815,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
           let obbBox = obbResult.box
 
           // Convert OBB to 4 corner points
-          let polygon = obbBox.toPolygon()
+          let polygon = obbBox.toPolygon(in: result.orig_shape)
           let points = polygon.map { point in
             [
               "x": Double(point.x),

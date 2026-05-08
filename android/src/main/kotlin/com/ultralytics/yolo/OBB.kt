@@ -34,4 +34,18 @@ data class OBB(
             )
         }
     }
+
+    fun toPolygon(imageWidth: Float, imageHeight: Float): List<PointF> {
+        if (imageWidth <= 0f || imageHeight <= 0f) return toPolygon()
+        // Rotate in pixel space so normalized x/y axes do not skew non-square images.
+        return OBB(
+            cx = cx * imageWidth,
+            cy = cy * imageHeight,
+            w = w * imageWidth,
+            h = h * imageHeight,
+            angle = angle
+        ).toPolygon().map { pt ->
+            PointF(pt.x / imageWidth, pt.y / imageHeight)
+        }
+    }
 }

@@ -38,6 +38,9 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   /// The Vision request that processes images using the Core ML model.
   var visionRequest: VNCoreMLRequest?
 
+  /// Vision preprocessing mode for this predictor.
+  var imageCropAndScaleOption: VNImageCropAndScaleOption { .scaleFit }
+
   /// The class labels used by the model for categorizing detections.
   public var labels = [String]()
 
@@ -236,7 +239,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
                 predictor.processObservations(for: request, error: error)
               }
             })
-          request.imageCropAndScaleOption = .scaleFill
+          request.imageCropAndScaleOption = predictor.imageCropAndScaleOption
           return request
         }()
 
@@ -406,7 +409,9 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     if let multiArrayConstraint = inputDescription.multiArrayConstraint {
       let shape = multiArrayConstraint.shape
       if shape.count >= 2 {
-        return (width: shape[1].intValue, height: shape[0].intValue)
+        let height = shape[shape.count - 2].intValue
+        let width = shape[shape.count - 1].intValue
+        return (width: width, height: height)
       }
     }
 
@@ -417,6 +422,78 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     }
 
     return (0, 0)
+  }
+
+  private func letterboxTransform() -> (gain: CGFloat, padX: CGFloat, padY: CGFloat)? {
+    let modelWidth = CGFloat(modelInputSize.width)
+    let modelHeight = CGFloat(modelInputSize.height)
+    let inputWidth = inputSize.width
+    let inputHeight = inputSize.height
+    guard modelWidth > 0, modelHeight > 0, inputWidth > 0, inputHeight > 0 else { return nil }
+
+    let gain = min(modelWidth / inputWidth, modelHeight / inputHeight)
+    guard gain > 0 else { return nil }
+    let resizedWidth = (inputWidth * gain).rounded()
+    let resizedHeight = (inputHeight * gain).rounded()
+    // Match Ultralytics LetterBox leading-pad rounding: round(d - 0.1).
+    let padX = ((modelWidth - resizedWidth) / 2 - 0.1).rounded()
+    let padY = ((modelHeight - resizedHeight) / 2 - 0.1).rounded()
+    return (gain, padX, padY)
+  }
+
+  func inputRect(fromModelRect rect: CGRect) -> CGRect {
+    guard let transform = letterboxTransform() else { return rect }
+    let x1 = (rect.minX - transform.padX) / transform.gain
+    let y1 = (rect.minY - transform.padY) / transform.gain
+    let x2 = (rect.maxX - transform.padX) / transform.gain
+    let y2 = (rect.maxY - transform.padY) / transform.gain
+
+    let minX = min(max(min(x1, x2), 0), inputSize.width)
+    let minY = min(max(min(y1, y2), 0), inputSize.height)
+    let maxX = min(max(max(x1, x2), 0), inputSize.width)
+    let maxY = min(max(max(y1, y2), 0), inputSize.height)
+    return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+  }
+
+  func normalizedRect(fromInputRect rect: CGRect) -> CGRect {
+    guard inputSize.width > 0, inputSize.height > 0 else { return rect }
+    return CGRect(
+      x: rect.minX / inputSize.width,
+      y: rect.minY / inputSize.height,
+      width: rect.width / inputSize.width,
+      height: rect.height / inputSize.height)
+  }
+
+  func inputPoint(fromModelPoint point: CGPoint) -> CGPoint {
+    guard let transform = letterboxTransform() else { return point }
+    let x = (point.x - transform.padX) / transform.gain
+    let y = (point.y - transform.padY) / transform.gain
+    return CGPoint(
+      x: min(max(x, 0), inputSize.width),
+      y: min(max(y, 0), inputSize.height))
+  }
+
+  func normalizedPoint(fromInputPoint point: CGPoint) -> CGPoint {
+    guard inputSize.width > 0, inputSize.height > 0 else { return point }
+    return CGPoint(x: point.x / inputSize.width, y: point.y / inputSize.height)
+  }
+
+  func inputOBB(fromModelOBB box: OBB) -> OBB {
+    guard let transform = letterboxTransform(), inputSize.width > 0, inputSize.height > 0 else {
+      return box
+    }
+    let modelWidth = CGFloat(modelInputSize.width)
+    let modelHeight = CGFloat(modelInputSize.height)
+    let centerX = (CGFloat(box.cx) * modelWidth - transform.padX) / transform.gain
+    let centerY = (CGFloat(box.cy) * modelHeight - transform.padY) / transform.gain
+    let width = CGFloat(box.w) * modelWidth / transform.gain
+    let height = CGFloat(box.h) * modelHeight / transform.gain
+    return OBB(
+      cx: Float(centerX / inputSize.width),
+      cy: Float(centerY / inputSize.height),
+      w: Float(width / inputSize.width),
+      h: Float(height / inputSize.height),
+      angle: box.angle)
   }
 
   /// Convert CVPixelBuffer to JPEG data for streaming

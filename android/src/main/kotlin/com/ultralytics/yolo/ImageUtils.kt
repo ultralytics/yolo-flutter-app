@@ -6,11 +6,13 @@ import android.graphics.*
 import androidx.camera.core.ImageProxy
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 object ImageUtils {
+    // Shared read-only paint for frame preprocessing.
+    private val filterPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
 
     /**
      * Sample to convert ImageProxy to NV21 (BYTE array), then [YuvImage] -> [Bitmap]
@@ -20,67 +22,6 @@ object ImageUtils {
         val nv21 = yuv420888ToNv21(imageProxy)
         val yuvImage = YuvImage(nv21, ImageFormat.NV21, imageProxy.width, imageProxy.height, null)
         return yuvImageToBitmap(yuvImage)
-    }
-
-    /**
-     * Returns a transformation matrix from one reference frame into another. Handles cropping (if
-     * maintaining aspect ratio is desired) and rotation.
-     *
-     * @param srcWidth            Width of source frame.
-     * @param srcHeight           Height of source frame.
-     * @param dstWidth            Width of destination frame.
-     * @param dstHeight           Height of destination frame.
-     * @param applyRotation       Amount of rotation to apply from one frame to another. Must be a multiple
-     *                            of 90.
-     * @param maintainAspectRatio If true, will ensure that scaling in x and y remains constant,
-     *                            cropping the image if necessary.
-     * @return The transformation fulfilling the desired requirements.
-     */
-    @JvmStatic
-    fun getTransformationMatrix(
-        srcWidth: Int,
-        srcHeight: Int,
-        dstWidth: Int,
-        dstHeight: Int,
-        applyRotation: Int,
-        maintainAspectRatio: Boolean
-    ): Matrix {
-        val matrix = Matrix()
-
-        // Translate so center of image is at origin.
-        matrix.postTranslate(-srcWidth / 2.0f, -srcHeight / 2.0f)
-
-        // Rotate around origin.
-        matrix.postRotate(applyRotation.toFloat())
-
-        // Check if we need to swap width/height (e.g., for 90 or 270 degrees rotation)
-        val transpose = (abs(applyRotation) + 90) % 180 == 0
-
-        val inWidth = if (transpose) srcHeight else srcWidth
-        val inHeight = if (transpose) srcWidth else srcHeight
-
-        // Apply scaling if necessary.
-        if (inWidth != dstWidth || inHeight != dstHeight) {
-            val scaleFactorX = dstWidth.toFloat() / inWidth
-            val scaleFactorY = dstHeight.toFloat() / inHeight
-
-            if (maintainAspectRatio) {
-                // Scale by min factor so that dst is filled completely while
-                // maintaining the aspect ratio (some image may fall off the edge).
-                val scaleFactor = max(scaleFactorX, scaleFactorY)
-                matrix.postScale(scaleFactor, scaleFactor)
-            } else {
-                // Scale exactly to fill dst from src.
-                matrix.postScale(scaleFactorX, scaleFactorY)
-            }
-        }
-
-        if (applyRotation != 0) {
-            // Translate back from origin-centered reference to destination frame.
-            matrix.postTranslate(dstWidth / 2.0f, dstHeight / 2.0f)
-        }
-
-        return matrix
     }
 
     private fun yuvImageToBitmap(yuvImage: YuvImage): Bitmap? {
@@ -174,6 +115,75 @@ object ImageUtils {
         }
     }
 
+    @JvmStatic
+    fun prepareBitmapForModel(
+        bitmap: Bitmap,
+        targetBitmap: Bitmap,
+        rotateForCamera: Boolean,
+        isLandscape: Boolean,
+        isFrontCamera: Boolean,
+        rotationDegrees: Int? = null,
+        centerCrop: Boolean = false
+    ): Bitmap {
+        val degrees = cameraRotationDegrees(rotateForCamera, isLandscape, isFrontCamera, rotationDegrees)
+        val isRotated = degrees % 180 != 0
+        val orientedWidth = if (isRotated) bitmap.height else bitmap.width
+        val orientedHeight = if (isRotated) bitmap.width else bitmap.height
+        val targetWidth = targetBitmap.width
+        val targetHeight = targetBitmap.height
+        val scaleX = targetWidth.toFloat() / orientedWidth
+        val scaleY = targetHeight.toFloat() / orientedHeight
+        val scale = if (centerCrop) max(scaleX, scaleY) else min(scaleX, scaleY)
+        val scaledWidth = (orientedWidth * scale).roundToInt()
+        val scaledHeight = (orientedHeight * scale).roundToInt()
+        val left = (targetWidth - scaledWidth) / 2
+        val top = (targetHeight - scaledHeight) / 2
+
+        Canvas(targetBitmap).apply {
+            drawColor(Color.BLACK)
+            save()
+            translate(left + scaledWidth / 2f, top + scaledHeight / 2f)
+            rotate(degrees.toFloat())
+            scale(scale, scale)
+            drawBitmap(bitmap, -bitmap.width / 2f, -bitmap.height / 2f, filterPaint)
+            restore()
+        }
+        return targetBitmap
+    }
+
+    private fun cameraRotationDegrees(
+        rotateForCamera: Boolean,
+        isLandscape: Boolean,
+        isFrontCamera: Boolean,
+        rotationDegrees: Int?
+    ): Int {
+        if (!rotateForCamera) return 0
+
+        val fallbackDegrees = if (isLandscape) 0 else if (isFrontCamera) 90 else 270
+        return (rotationDegrees ?: fallbackDegrees).floorMod(360)
+    }
+
+    private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other
+
+    @JvmStatic
+    fun copyRgbBitmapToFloatBuffer(
+        bitmap: Bitmap,
+        byteBuffer: ByteBuffer,
+        pixels: IntArray,
+        inputMean: Float = 0f,
+        inputStd: Float = 255f
+    ) {
+        byteBuffer.clear()
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+
+        for (pixel in pixels) {
+            byteBuffer.putFloat((((pixel shr 16) and 0xFF) - inputMean) / inputStd)
+            byteBuffer.putFloat((((pixel shr 8) and 0xFF) - inputMean) / inputStd)
+            byteBuffer.putFloat(((pixel and 0xFF) - inputMean) / inputStd)
+        }
+        byteBuffer.rewind()
+    }
+
     /**
      * Process grayscale image for 1-channel classification models
      * Optimized for handwriting recognition (EMNIST-like models)
@@ -181,6 +191,8 @@ object ImageUtils {
      * @param bitmap Input bitmap to process
      * @param targetWidth Target width for the model
      * @param targetHeight Target height for the model  
+     * @param outputBuffer Reusable buffer for 1-channel float32 data
+     * @param pixels Reusable pixel scratch array
      * @param enableColorInversion Whether to invert colors (white-on-black → black-on-white)
      * @param enableMaxNormalization Whether to use 0-1 normalization instead of mean/std
      * @param inputMean Mean value for normalization
@@ -192,23 +204,34 @@ object ImageUtils {
         bitmap: Bitmap,
         targetWidth: Int,
         targetHeight: Int,
+        outputBuffer: ByteBuffer,
+        pixels: IntArray,
         enableColorInversion: Boolean = false,
         enableMaxNormalization: Boolean = false,
         inputMean: Float = 0f,
         inputStd: Float = 255f
     ): ByteBuffer {
-        // Scale bitmap to target size
-        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
+        val scaledBitmap = if (bitmap.width == targetWidth && bitmap.height == targetHeight) {
+            bitmap
+        } else {
+            val targetBitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
+            prepareBitmapForModel(
+                bitmap = bitmap,
+                targetBitmap = targetBitmap,
+                rotateForCamera = false,
+                isLandscape = false,
+                isFrontCamera = false,
+                centerCrop = true
+            )
+        }
         
-        // Allocate ByteBuffer for 1-channel float32 data
-        val byteBuffer = ByteBuffer.allocateDirect(targetWidth * targetHeight * 4) // 4 bytes per float
-        byteBuffer.order(ByteOrder.nativeOrder())
+        outputBuffer.clear()
         
         // Process each pixel
-        val pixels = IntArray(targetWidth * targetHeight)
         scaledBitmap.getPixels(pixels, 0, targetWidth, 0, 0, targetWidth, targetHeight)
         
-        for (pixel in pixels) {
+        for (i in 0 until targetWidth * targetHeight) {
+            val pixel = pixels[i]
             // Extract RGB components
             val r = (pixel shr 16) and 0xFF
             val g = (pixel shr 8) and 0xFF  
@@ -231,16 +254,16 @@ object ImageUtils {
                 (gray - inputMean) / inputStd
             }
             
-            byteBuffer.putFloat(normalizedValue)
+            outputBuffer.putFloat(normalizedValue)
         }
         
         // Clean up scaled bitmap if it's different from input
-        if (scaledBitmap != bitmap) {
+        if (scaledBitmap !== bitmap) {
             scaledBitmap.recycle()
         }
         
-        byteBuffer.rewind()
-        return byteBuffer
+        outputBuffer.rewind()
+        return outputBuffer
     }
 
 

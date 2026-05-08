@@ -160,7 +160,9 @@ Detection models for iOS must be exported with `nms=True`:
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="coreml", nms=True, imgsz=640)
+# Square [640, 640] works best when one model must run in both portrait and landscape.
+# Ultralytics imgsz order is [height, width]; use [640, 384] for portrait-only or [384, 640] for landscape-only.
+YOLO("yolo26n.pt").export(format="coreml", nms=True, imgsz=[640, 640])
 ```
 
 Other tasks can use the default export behavior:
@@ -168,10 +170,14 @@ Other tasks can use the default export behavior:
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n-seg.pt").export(format="coreml", imgsz=640)
-YOLO("yolo26n-cls.pt").export(format="coreml", imgsz=640)
-YOLO("yolo26n-pose.pt").export(format="coreml", imgsz=640)
-YOLO("yolo26n-obb.pt").export(format="coreml", imgsz=640)
+# Use [640, 640] for mixed portrait/landscape; [640, 384] for portrait-only; [384, 640] for landscape-only.
+YOLO("yolo26n-seg.pt").export(format="coreml", imgsz=[640, 640])
+# Classification usually remains square because it uses center-crop preprocessing.
+YOLO("yolo26n-cls.pt").export(format="coreml", imgsz=[224, 224])
+# Use [640, 640] for mixed portrait/landscape; [640, 384] for portrait-only; [384, 640] for landscape-only.
+YOLO("yolo26n-pose.pt").export(format="coreml", imgsz=[640, 640])
+# OBB uses a larger square input by default; use [1024, 576] for portrait-only or [576, 1024] for landscape-only.
+YOLO("yolo26n-obb.pt").export(format="coreml", imgsz=[1024, 1024])
 ```
 
 ### TFLite Export
@@ -179,7 +185,9 @@ YOLO("yolo26n-obb.pt").export(format="coreml", imgsz=640)
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="tflite", imgsz=640)
+# Square [640, 640] works best when one model must run in both portrait and landscape.
+# Ultralytics imgsz order is [height, width]; use [640, 384] for portrait-only or [384, 640] for landscape-only.
+YOLO("yolo26n.pt").export(format="tflite", imgsz=[640, 640])
 ```
 
 Quantized exports also work:
@@ -187,8 +195,9 @@ Quantized exports also work:
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="tflite", imgsz=640, int8=True)
-YOLO("yolo26n.pt").export(format="tflite", imgsz=640, half=True)
+# Use the same square-orientation guidance for quantized exports.
+YOLO("yolo26n.pt").export(format="tflite", imgsz=[640, 640], int8=True)
+YOLO("yolo26n.pt").export(format="tflite", imgsz=[640, 640], half=True)
 ```
 
 ## 🔄 Switching Models

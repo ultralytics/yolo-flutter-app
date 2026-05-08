@@ -19,22 +19,50 @@ Ultralytics YOLO Flutter is the official plugin for running YOLO models in Flutt
 
 The main goal is simple integration: use an official model ID, or drop in your own exported model and let the plugin resolve task metadata for you.
 
+<div align="center">
+  <br>
+  <a href="https://apps.apple.com/us/app/idetection/id1452689527" target="_blank"><img width="100%" src="https://github.com/user-attachments/assets/d5dab2e7-f473-47ce-bc63-69bef89ba52a" alt="Ultralytics YOLO iOS App previews"></a>
+  <br>
+  <br>
+  <a href="https://github.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-github.png" width="3%" alt="Ultralytics GitHub"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.linkedin.com/company/ultralytics/"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-linkedin.png" width="3%" alt="Ultralytics LinkedIn"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://twitter.com/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-twitter.png" width="3%" alt="Ultralytics Twitter"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.youtube.com/ultralytics?sub_confirmation=1"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-youtube.png" width="3%" alt="Ultralytics YouTube"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://www.tiktok.com/@ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-tiktok.png" width="3%" alt="Ultralytics TikTok"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://ultralytics.com/bilibili"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-bilibili.png" width="3%" alt="Ultralytics BiliBili"></a>
+  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="3%" alt="space">
+  <a href="https://discord.com/invite/ultralytics"><img src="https://github.com/ultralytics/assets/raw/main/social/logo-social-discord.png" width="3%" alt="Ultralytics Discord"></a>
+  <br>
+  <br>
+  <a href="https://apps.apple.com/us/app/idetection/id1452689527" style="text-decoration:none;">
+    <img src="https://raw.githubusercontent.com/ultralytics/assets/main/app/app-store.svg" width="15%" alt="Apple App store"></a>
+</div>
+
 ## ✨ Why This Plugin
 
-| Feature         | Android | iOS |
-| --------------- | ------- | --- |
-| Detection       | ✅      | ✅  |
-| Classification  | ✅      | ✅  |
-| Segmentation    | ✅      | ✅  |
-| Pose Estimation | ✅      | ✅  |
-| OBB Detection   | ✅      | ✅  |
-
-- Official Ultralytics plugin
-- One Flutter API for both Android and iOS
-- Metadata-first model loading
-- Official model download and caching built in
+- Official Ultralytics plugin for Flutter
+- One Dart API for Android and iOS
+- Metadata-first model loading with official model download and caching
 - Real-time camera inference and single-image inference
 - Production-ready controls for thresholds, GPU use, and streaming
+- YOLO26 and YOLO11 model families supported
+
+| Feature                               | Android | iOS | Details                                                 |
+| ------------------------------------- | ------- | --- | ------------------------------------------------------- |
+| Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores           |
+| Image Classification                  | ✅      | ✅  | Top class predictions and scores                        |
+| Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                   |
+| Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores              |
+| Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                       |
+| Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                    |
+| Single-Image Inference                | ✅      | ✅  | `YOLO` for image bytes                                  |
+| Official Models                       | ✅      | ✅  | Discovery, download, and caching for packaged model IDs |
+| Custom Models                         | ✅      | ✅  | TFLite on Android, Core ML on iOS, metadata-first tasks |
 
 ## ⚡ Quick Start
 
@@ -44,7 +72,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.3.3
+  ultralytics_yolo: ^0.3.4
 ```
 
 ```bash
@@ -147,10 +175,12 @@ Detection models exported to Core ML must use `nms=True`:
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="coreml", nms=True)
+# Square [640, 640] works best when one model must run in both portrait and landscape.
+# Ultralytics imgsz order is [height, width]; use [640, 384] for portrait-only or [384, 640] for landscape-only.
+YOLO("yolo26n.pt").export(format="coreml", nms=True, imgsz=[640, 640])
 ```
 
-Other tasks can use the default export settings.
+Other tasks can use the default export settings, with the same square-orientation guidance for `imgsz`.
 
 ## 🎯 Choose The Right API
 
@@ -216,7 +246,7 @@ Ultralytics thrives on community collaboration, and we deeply value your contrib
 
 Ultralytics offers two licensing options to accommodate diverse needs:
 
-- **AGPL-3.0 License**: Ideal for students, researchers, and enthusiasts passionate about open-source collaboration. This [OSI-approved](https://opensource.org/license/agpl-3.0) license promotes knowledge sharing and open contribution. See the [LICENSE](https://github.com/ultralytics/ultralytics/blob/main/LICENSE) file for details.
+- **AGPL-3.0 License**: Ideal for students, researchers, and enthusiasts passionate about open-source collaboration. This [OSI-approved](https://opensource.org/license/agpl-3.0) license promotes knowledge sharing and open contribution. See the [LICENSE](https://github.com/ultralytics/yolo-flutter-app/blob/main/LICENSE) file for details.
 - **Enterprise License**: Designed for commercial applications, this license permits seamless integration of Ultralytics software and AI models into commercial products and services, bypassing the open-source requirements of AGPL-3.0. For commercial use cases, please inquire about an [Enterprise License](https://www.ultralytics.com/license).
 
 ## 🔗 Related Resources
@@ -225,7 +255,7 @@ Ultralytics offers two licensing options to accommodate diverse needs:
 
 If you're interested in using YOLO models directly in iOS applications with Swift (without Flutter), check out our dedicated iOS repository:
 
-👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - A native iOS application demonstrating real-time object detection, segmentation, classification, and pose estimation using Ultralytics YOLO models.
+👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - A native iOS application for real-time detection, segmentation, classification, pose estimation, and OBB detection with Ultralytics YOLO models.
 
 This repository provides:
 
