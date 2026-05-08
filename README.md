@@ -21,20 +21,24 @@ The main goal is simple integration: use an official model ID, or drop in your o
 
 ## ✨ Why This Plugin
 
-| Feature         | Android | iOS |
-| --------------- | ------- | --- |
-| Detection       | ✅      | ✅  |
-| Classification  | ✅      | ✅  |
-| Segmentation    | ✅      | ✅  |
-| Pose Estimation | ✅      | ✅  |
-| OBB Detection   | ✅      | ✅  |
-
-- Official Ultralytics plugin
-- One Flutter API for both Android and iOS
-- Metadata-first model loading
-- Official model download and caching built in
+- Official Ultralytics plugin for Flutter
+- One Dart API for Android and iOS
+- Metadata-first model loading with official model download and caching
 - Real-time camera inference and single-image inference
 - Production-ready controls for thresholds, GPU use, and streaming
+- YOLO26 and YOLO11 model families supported
+
+| Feature                               | Android | iOS | Details                                                 |
+| ------------------------------------- | ------- | --- | ------------------------------------------------------- |
+| Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores           |
+| Image Classification                  | ✅      | ✅  | Top class predictions and scores                        |
+| Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                   |
+| Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores              |
+| Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                       |
+| Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                    |
+| Single-Image Inference                | ✅      | ✅  | `YOLO` for image bytes                                  |
+| Official Models                       | ✅      | ✅  | Discovery, download, and caching for packaged model IDs |
+| Custom Models                         | ✅      | ✅  | TFLite on Android, Core ML on iOS, metadata-first tasks |
 
 ## ⚡ Quick Start
 
