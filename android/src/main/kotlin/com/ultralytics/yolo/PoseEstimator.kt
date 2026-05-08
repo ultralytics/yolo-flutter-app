@@ -5,26 +5,14 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.*
 import android.util.Log
-import android.util.Size
-import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.gpu.GpuDelegate
-import org.tensorflow.lite.support.common.FileUtil
-import org.tensorflow.lite.support.common.ops.CastOp
-import org.tensorflow.lite.support.common.ops.NormalizeOp
-import org.tensorflow.lite.support.image.ImageProcessor
-import org.tensorflow.lite.support.image.TensorImage
-import org.tensorflow.lite.support.image.ops.ResizeOp
-import org.tensorflow.lite.support.image.ops.Rot90Op
 import org.tensorflow.lite.support.metadata.MetadataExtractor
-import org.tensorflow.lite.support.metadata.schema.ModelMetadata
 import org.yaml.snakeyaml.Yaml
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import kotlin.math.max
 import kotlin.math.min
-import androidx.collection.ArrayMap
 
 class PoseEstimator(
     context: Context,
@@ -46,49 +34,6 @@ class PoseEstimator(
         // xywh(4) + conf(1) + keypoints(17*3=51) = 56
         private const val OUTPUT_FEATURES = 56
         private const val KEYPOINTS_COUNT = 17
-        private const val KEYPOINTS_FEATURES = KEYPOINTS_COUNT * 3 // x, y, conf per keypoint
-        private const val MAX_POOL_SIZE = 100 
-        
-        private const val INPUT_SIZE = 640
-    }
-    
-//    private var numItemsThreshold = 30
-    
-    private val boxPool = ObjectPool<Box>(MAX_POOL_SIZE) { Box(0, "", 0f, RectF(), RectF()) }
-    private val keypointsPool = ObjectPool<Keypoints>(MAX_POOL_SIZE) {
-        Keypoints(
-            List(KEYPOINTS_COUNT) { 0f to 0f },
-            List(KEYPOINTS_COUNT) { 0f to 0f },
-            List(KEYPOINTS_COUNT) { 0f }
-        )
-    }
-    
-    private class ObjectPool<T>(
-        private val maxSize: Int,
-        private val factory: () -> T
-    ) {
-        private val pool = ArrayList<T>(maxSize)
-        
-        @Synchronized
-        fun acquire(): T {
-            return if (pool.isEmpty()) {
-                factory()
-            } else {
-                pool.removeAt(pool.size - 1)
-            }
-        }
-        
-        @Synchronized
-        fun release(obj: T) {
-            if (pool.size < maxSize) {
-                pool.add(obj)
-            }
-        }
-        
-        @Synchronized
-        fun clear() {
-            pool.clear()
-        }
     }
 
     private val interpreterOptions = (customOptions ?: Interpreter.Options()).apply {
@@ -106,13 +51,10 @@ class PoseEstimator(
         }
     }
 
-    private lateinit var imageProcessorCameraPortrait: ImageProcessor
-    private lateinit var imageProcessorCameraPortraitFront: ImageProcessor
-    private lateinit var imageProcessorCameraLandscape: ImageProcessor
-    private lateinit var imageProcessorSingleImage: ImageProcessor
-    
     // Reuse ByteBuffer for input to reduce allocations
     private lateinit var inputBuffer: ByteBuffer
+    private lateinit var inputBitmap: Bitmap
+    private lateinit var intValues: IntArray
     
     // Reuse output arrays to reduce allocations
     private lateinit var outputArray: Array<Array<FloatArray>>
@@ -191,64 +133,21 @@ class PoseEstimator(
         inputBuffer = ByteBuffer.allocateDirect(inputBytes).apply {
             order(java.nio.ByteOrder.nativeOrder())
         }
-        
-        // For camera feed in portrait mode (with rotation)
-        imageProcessorCameraPortrait = ImageProcessor.Builder()
-            .add(Rot90Op(3))  // 270-degree rotation for back camera
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-            
-        // For front camera in portrait mode (90-degree rotation to the right)
-        imageProcessorCameraPortraitFront = ImageProcessor.Builder()
-            .add(Rot90Op(1))  // 90-degree rotation to the right for front camera
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-            
-        // For camera feed in landscape mode (no rotation)
-        imageProcessorCameraLandscape = ImageProcessor.Builder()
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-            
-        // For single images (no rotation needed)
-        imageProcessorSingleImage = ImageProcessor.Builder()
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
+        inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
+        intValues = IntArray(inWidth * inHeight)
     }
 
     override fun predict(bitmap: Bitmap, origWidth: Int, origHeight: Int, rotateForCamera: Boolean, isLandscape: Boolean): YOLOResult {
         t0 = System.nanoTime()
-        val tensorImage = TensorImage(DataType.FLOAT32)
-        tensorImage.load(bitmap)
-        
-        // Choose the appropriate processor based on input source and orientation
-        val processedImage = if (rotateForCamera) {
-            // Apply appropriate rotation based on device orientation
-            if (isLandscape) {
-                imageProcessorCameraLandscape.process(tensorImage)
-            } else {
-                // Use different rotation for front vs back camera
-                if (isFrontCamera) {
-                    imageProcessorCameraPortraitFront.process(tensorImage)
-                } else {
-                    imageProcessorCameraPortrait.process(tensorImage)
-                }
-            }
-        } else {
-            // No rotation for single image
-            imageProcessorSingleImage.process(tensorImage)
-        }
-        
-        inputBuffer.clear()
-        inputBuffer.put(processedImage.buffer)
-        inputBuffer.rewind()
+        ImageUtils.prepareBitmapForModel(
+            bitmap = bitmap,
+            targetBitmap = inputBitmap,
+            rotateForCamera = rotateForCamera,
+            isLandscape = isLandscape,
+            isFrontCamera = isFrontCamera,
+            rotationDegrees = cameraRotationDegrees
+        )
+        ImageUtils.copyRgbBitmapToFloatBuffer(inputBitmap, inputBuffer, intValues)
 
         interpreter.run(inputBuffer, outputArray)
         // Update processing time measurement
@@ -269,15 +168,12 @@ class PoseEstimator(
         val boxes = limitedDetections.map { it.box }
         val keypointsList = limitedDetections.map { it.keypoints }
 
-//        val annotatedImage = drawPoseOnBitmap(bitmap, keypointsList, boxes)
-
         val fpsDouble: Double = if (t4 > 0) (1.0 / t4) else 0.0
         // Pack into YOLOResult and return
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
             keypointsList = keypointsList,
-//            annotatedImage = annotatedImage,
             speed = t2,   // Measurement values in milliseconds etc. depend on BasePredictor implementation
             fps = fpsDouble,
             names = labels
@@ -295,11 +191,6 @@ class PoseEstimator(
 
         val detections = mutableListOf<PoseDetection>()
 
-        // Assume modelInputSize = (640, 640) for example
-        val (modelW, modelH) = modelInputSize
-        val scaleX = origWidth.toFloat() / modelW
-        val scaleY = origHeight.toFloat() / modelH
-
         for (j in 0 until numAnchors) {
             val rawX = featureValue(features, 0, j)
             val rawY = featureValue(features, 1, j)
@@ -309,25 +200,14 @@ class PoseEstimator(
 
             if (conf < confidenceThreshold) continue
 
-            val xScaled = rawX * modelW
-            val yScaled = rawY * modelH
-            val wScaled = rawW * modelW
-            val hScaled = rawH * modelH
-
-            val left   = xScaled - wScaled / 2f
-            val top    = yScaled - hScaled / 2f
-            val right  = xScaled + wScaled / 2f
-            val bottom = yScaled + hScaled / 2f
-
-            // RectF in modelInputSize scale
-            val normBox = RectF(left / modelW, top / modelH, right / modelW, bottom / modelH)
-
-            val rectF = RectF(
-                left   * scaleX,
-                top    * scaleY,
-                right  * scaleX,
-                bottom * scaleY
+            val outputRect = RectF(
+                rawX - rawW / 2f,
+                rawY - rawH / 2f,
+                rawX + rawW / 2f,
+                rawY + rawH / 2f
             )
+            val rectF = inputRectFromOutputRect(outputRect, origWidth, origHeight) ?: continue
+            val normBox = normalizedRectFromInputRect(rectF, origWidth, origHeight)
 
             val kpArray = mutableListOf<Pair<Float, Float>>()
             val kpConfArray = mutableListOf<Float>()
@@ -336,37 +216,16 @@ class PoseEstimator(
                 val rawKy = featureValue(features, 5 + k * 3 + 1, j)
                 val kpC   = featureValue(features, 5 + k * 3 + 2, j)
 
-                val isNormalized = rawKx <= 1.0f && rawKy <= 1.0f
-                
-                val finalKx: Float
-                val finalKy: Float
-                
-                if (isNormalized) {
-                    val kxScaled = rawKx * modelW
-                    val kyScaled = rawKy * modelH
-                    finalKx = kxScaled * scaleX
-                    finalKy = kyScaled * scaleY
-                } else {
-                    finalKx = rawKx * scaleX
-                    finalKy = rawKy * scaleY
-                }
+                val (finalKx, finalKy) = inputPointFromOutputPoint(rawKx, rawKy, origWidth, origHeight)
 
                 kpArray.add(finalKx to finalKy)
                 kpConfArray.add(kpC)
             }
 
-            val boxObj = boxPool.acquire()
-            val keypointsObj = keypointsPool.acquire()
-            
             val xynList = kpArray.map { (fx, fy) ->
                 (fx / origWidth) to (fy / origHeight)
             }
-            
-            boxObj.index = 0
-            boxObj.cls = "person"
-            boxObj.conf = conf
-            boxObj.xywh.set(rectF)
-            boxObj.xywhn.set(normBox)
+            val boxObj = Box(0, "person", conf, rectF, normBox)
             
             val keypoints = Keypoints(
                 xyn = xynList,
@@ -380,8 +239,6 @@ class PoseEstimator(
                     keypoints = keypoints
                 )
             )
-            
-            keypointsPool.release(keypointsObj)
         }
 
         val finalDetections = nmsPoseDetections(detections, iouThreshold)
@@ -444,37 +301,6 @@ class PoseEstimator(
         return if (unionArea <= 0f) 0f else (interArea / unionArea)
     }
 
-
-    private fun drawPoseOnBitmap(
-        bitmap: Bitmap,
-        keypointsList: List<Keypoints>,
-        boxes: List<Box>
-    ): Bitmap {
-        val output = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-        val canvas = Canvas(output)
-        val paint = Paint().apply {
-            style = Paint.Style.FILL
-            color = Color.GREEN
-            strokeWidth = 5f
-        }
-        val boxPaint = Paint().apply {
-            style = Paint.Style.STROKE
-            color = Color.RED
-            strokeWidth = 3f
-        }
-
-        for ((index, person) in keypointsList.withIndex()) {
-            val boxRect = boxes[index].xywh
-            canvas.drawRect(boxRect, boxPaint)
-
-            for ((i, kp) in person.xy.withIndex()) {
-                if (person.conf[i] > 0.25f) {
-                    canvas.drawCircle(kp.first, kp.second, 8f, paint)
-                }
-            }
-        }
-        return output
-    }
 
     override fun setConfidenceThreshold(conf: Double) {
         confidenceThreshold = conf.toFloat()

@@ -3,8 +3,12 @@
 package com.ultralytics.yolo
 
 import android.graphics.Bitmap
+import android.graphics.RectF
 import org.tensorflow.lite.Interpreter
-import android.graphics.Matrix;
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 interface Predictor {
     /**
@@ -44,9 +48,8 @@ abstract class BasePredictor : Predictor {
 
     var CONFIDENCE_THRESHOLD:Float = 0.25f
     var IOU_THRESHOLD:Float = 0.7f
-    var transformationMatrix: Matrix? = null
-    var pendingBitmapFrame: Bitmap? = null
     var isFrontCamera: Boolean = false
+    var cameraRotationDegrees: Int? = null
 
     fun close() {
         if (isInterpreterInitialized()) {
@@ -79,5 +82,100 @@ abstract class BasePredictor : Predictor {
     
     override fun getIouThreshold(): Double {
         return IOU_THRESHOLD.toDouble()
+    }
+
+    protected fun inputRectFromOutputRect(outputRect: RectF, origWidth: Int, origHeight: Int): RectF? {
+        val modelRect = modelRectFromOutputRect(outputRect)
+        return inputRectFromModelRect(modelRect, origWidth, origHeight)
+    }
+
+    protected fun normalizedRectFromInputRect(rect: RectF, origWidth: Int, origHeight: Int): RectF {
+        return RectF(
+            rect.left / origWidth,
+            rect.top / origHeight,
+            rect.right / origWidth,
+            rect.bottom / origHeight
+        )
+    }
+
+    protected fun inputPointFromOutputPoint(
+        x: Float,
+        y: Float,
+        origWidth: Int,
+        origHeight: Int
+    ): Pair<Float, Float> {
+        val modelX = modelCoordinate(x, modelInputSize.first)
+        val modelY = modelCoordinate(y, modelInputSize.second)
+        val transform = letterboxTransform(origWidth, origHeight) ?: return x to y
+        return (
+            ((modelX - transform.padX) / transform.gain).coerceIn(0f, origWidth.toFloat())
+        ) to (
+            ((modelY - transform.padY) / transform.gain).coerceIn(0f, origHeight.toFloat())
+        )
+    }
+
+    protected fun inputOBBFromModelOBB(obb: OBB, origWidth: Int, origHeight: Int): OBB {
+        val transform = letterboxTransform(origWidth, origHeight) ?: return obb
+        val modelWidth = modelInputSize.first
+        val modelHeight = modelInputSize.second
+        val cx = modelCoordinate(obb.cx, modelWidth)
+        val cy = modelCoordinate(obb.cy, modelHeight)
+        val w = modelCoordinate(obb.w, modelWidth)
+        val h = modelCoordinate(obb.h, modelHeight)
+
+        return OBB(
+            cx = ((cx - transform.padX) / transform.gain) / origWidth,
+            cy = ((cy - transform.padY) / transform.gain) / origHeight,
+            w = (w / transform.gain) / origWidth,
+            h = (h / transform.gain) / origHeight,
+            angle = obb.angle
+        )
+    }
+
+    private data class LetterboxTransform(val gain: Float, val padX: Float, val padY: Float)
+
+    private fun letterboxTransform(origWidth: Int, origHeight: Int): LetterboxTransform? {
+        val modelWidth = modelInputSize.first.toFloat()
+        val modelHeight = modelInputSize.second.toFloat()
+        if (modelWidth <= 0f || modelHeight <= 0f || origWidth <= 0 || origHeight <= 0) return null
+
+        val gain = min(modelWidth / origWidth, modelHeight / origHeight)
+        if (gain <= 0f) return null
+        val resizedWidth = (origWidth * gain).roundToInt()
+        val resizedHeight = (origHeight * gain).roundToInt()
+        val padX = ((modelWidth - resizedWidth) / 2f - 0.1f).roundToInt().toFloat()
+        val padY = ((modelHeight - resizedHeight) / 2f - 0.1f).roundToInt().toFloat()
+        return LetterboxTransform(gain, padX, padY)
+    }
+
+    private fun inputRectFromModelRect(modelRect: RectF, origWidth: Int, origHeight: Int): RectF? {
+        val transform = letterboxTransform(origWidth, origHeight) ?: return modelRect
+        val left = ((modelRect.left - transform.padX) / transform.gain).coerceIn(0f, origWidth.toFloat())
+        val top = ((modelRect.top - transform.padY) / transform.gain).coerceIn(0f, origHeight.toFloat())
+        val right = ((modelRect.right - transform.padX) / transform.gain).coerceIn(0f, origWidth.toFloat())
+        val bottom = ((modelRect.bottom - transform.padY) / transform.gain).coerceIn(0f, origHeight.toFloat())
+        val rect = RectF(min(left, right), min(top, bottom), max(left, right), max(top, bottom))
+        return rect.takeIf { it.width() > 0f && it.height() > 0f }
+    }
+
+    private fun modelRectFromOutputRect(rect: RectF): RectF {
+        val maxCoordinate = max(
+            max(abs(rect.left), abs(rect.top)),
+            max(abs(rect.right), abs(rect.bottom))
+        )
+        return if (maxCoordinate <= 2f) {
+            RectF(
+                rect.left * modelInputSize.first,
+                rect.top * modelInputSize.second,
+                rect.right * modelInputSize.first,
+                rect.bottom * modelInputSize.second
+            )
+        } else {
+            rect
+        }
+    }
+
+    private fun modelCoordinate(value: Float, axisSize: Int): Float {
+        return if (abs(value) <= 2f) value * axisSize else value
     }
 }

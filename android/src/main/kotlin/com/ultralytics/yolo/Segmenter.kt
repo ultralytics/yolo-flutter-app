@@ -5,19 +5,9 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.*
 import android.util.Log
-import android.util.Size
-import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.gpu.GpuDelegate
-import org.tensorflow.lite.support.common.FileUtil
-import org.tensorflow.lite.support.common.ops.CastOp
-import org.tensorflow.lite.support.common.ops.NormalizeOp
-import org.tensorflow.lite.support.image.ImageProcessor
-import org.tensorflow.lite.support.image.TensorImage
-import org.tensorflow.lite.support.image.ops.ResizeOp
-import org.tensorflow.lite.support.image.ops.Rot90Op
 import org.tensorflow.lite.support.metadata.MetadataExtractor
-import org.tensorflow.lite.support.metadata.schema.ModelMetadata
 import org.yaml.snakeyaml.Yaml
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -42,7 +32,6 @@ class Segmenter(
     private var maskH = 0
     private var maskW = 0
     private var maskC = 0
-//    private var numItemsThreshold = 30
 
     // TFLite Interpreter options
     private val interpreterOptions = (customOptions ?: Interpreter.Options()).apply {
@@ -60,14 +49,10 @@ class Segmenter(
         }
     }
 
-    /** ImageProcessor for image preprocessing - separate ones for camera portrait/landscape and single images */
-    private lateinit var imageProcessorCameraPortrait: ImageProcessor
-    private lateinit var imageProcessorCameraPortraitFront: ImageProcessor
-    private lateinit var imageProcessorCameraLandscape: ImageProcessor
-    private lateinit var imageProcessorSingleImage: ImageProcessor
-
     // Reuse ByteBuffer for input to reduce allocations
     private lateinit var inputBuffer: ByteBuffer
+    private lateinit var inputBitmap: Bitmap
+    private lateinit var intValues: IntArray
 
     // Reuse output arrays to reduce allocations
     private lateinit var output0: Array<Array<FloatArray>>
@@ -143,38 +128,8 @@ class Segmenter(
         inputBuffer = ByteBuffer.allocateDirect(inputBytes).apply {
             order(ByteOrder.nativeOrder())
         }
-
-        // Initialize ImageProcessor - separate ones for camera portrait/landscape and single images
-
-        // 1. For camera feed in portrait mode (with rotation)
-        imageProcessorCameraPortrait = ImageProcessor.Builder()
-            .add(Rot90Op(3)) // 270-degree rotation for back camera
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-
-        // 2. For front camera in portrait mode (90-degree rotation)
-        imageProcessorCameraPortraitFront = ImageProcessor.Builder()
-            .add(Rot90Op(1)) // 90-degree rotation for front camera
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-
-        // 3. For camera feed in landscape mode (no rotation)
-        imageProcessorCameraLandscape = ImageProcessor.Builder()
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
-
-        // 4. For single images (no rotation)
-        imageProcessorSingleImage = ImageProcessor.Builder()
-            .add(ResizeOp(inHeight, inWidth, ResizeOp.ResizeMethod.BILINEAR))
-            .add(NormalizeOp(0f, 255f))
-            .add(CastOp(DataType.FLOAT32))
-            .build()
+        inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
+        intValues = IntArray(inWidth * inHeight)
     }
 
     override fun setNumItemsThreshold(n: Int) {
@@ -191,32 +146,15 @@ class Segmenter(
     ): YOLOResult {
         t0 = System.nanoTime()
 
-        // (1) Preprocess with TensorImage
-        val tensorImage = TensorImage(DataType.FLOAT32)
-        tensorImage.load(bitmap)
-
-        // Choose appropriate processor based on input source and orientation
-        val processedImage = if (rotateForCamera) {
-            // Use appropriate camera processor based on device orientation
-            if (isLandscape) {
-                imageProcessorCameraLandscape.process(tensorImage)
-            } else {
-                // Use different rotation for front vs back camera
-                if (isFrontCamera) {
-                    imageProcessorCameraPortraitFront.process(tensorImage)
-                } else {
-                    imageProcessorCameraPortrait.process(tensorImage)
-                }
-            }
-        } else {
-            // Use single image processor (no rotation) for regular images
-            imageProcessorSingleImage.process(tensorImage)
-        }
-
-        // Reuse the pre-allocated input buffer
-        inputBuffer.clear()
-        inputBuffer.put(processedImage.buffer)
-        inputBuffer.rewind()
+        ImageUtils.prepareBitmapForModel(
+            bitmap = bitmap,
+            targetBitmap = inputBitmap,
+            rotateForCamera = rotateForCamera,
+            isLandscape = isLandscape,
+            isFrontCamera = isFrontCamera,
+            rotationDegrees = cameraRotationDegrees
+        )
+        ImageUtils.copyRgbBitmapToFloatBuffer(inputBitmap, inputBuffer, intValues)
 
         // (2) Output buffer already allocated during initialization
         numClasses = out0NumFeatures - boxFeatureLength - maskConfidenceLength
@@ -250,19 +188,10 @@ class Segmenter(
         val limitedDetections = rawDetections.take(numItemsThreshold)
 
         val boxes = mutableListOf<Box>()
-        for ((normRect, cls, score, maskCoeffs) in limitedDetections) {
-            // normRect already contains normalized coordinates (0-1)
-
-            // Convert to absolute pixel coordinates for xywh
-            val rectF = RectF(
-                normRect.left * origWidth,
-                normRect.top * origHeight,
-                normRect.right * origWidth,
-                normRect.bottom * origHeight
-            )
-
+        for ((boxRect, cls, score, _) in limitedDetections) {
+            val rectF = inputRectFromOutputRect(boxRect, origWidth, origHeight) ?: continue
+            val normRect = normalizedRectFromInputRect(rectF, origWidth, origHeight)
             val label = labels.getOrElse(cls) { "Unknown" }
-            // Use normRect for xywhn (normalized 0-1 coordinates) and rectF for xywh (pixel coordinates)
             boxes.add(Box(cls, label, score, rectF, normRect))
         }
 

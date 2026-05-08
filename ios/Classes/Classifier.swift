@@ -20,6 +20,8 @@ import Vision
 /// Specialized predictor for YOLO classification models that identify the subject of an image.
 class Classifier: BasePredictor {
 
+  override var imageCropAndScaleOption: VNImageCropAndScaleOption { .centerCrop }
+
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
     detector.featureProvider = ThresholdProvider(

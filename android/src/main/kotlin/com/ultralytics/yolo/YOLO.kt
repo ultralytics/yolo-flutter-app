@@ -107,10 +107,21 @@ class YOLO(
      */
     fun predict(imageProxy: ImageProxy): YOLOResult? {
         val bitmap = ImageUtils.toBitmap(imageProxy) ?: return null
-        val result = predictor.predict(bitmap, imageProxy.width, imageProxy.height, rotateForCamera = true, isLandscape = false)
+        val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+        val isRotated = rotationDegrees % 180 != 0
+        val orientedWidth = if (isRotated) imageProxy.height else imageProxy.width
+        val orientedHeight = if (isRotated) imageProxy.width else imageProxy.height
+        (predictor as? BasePredictor)?.cameraRotationDegrees = rotationDegrees
+        val result = predictor.predict(
+            bitmap,
+            orientedWidth,
+            orientedHeight,
+            rotateForCamera = true,
+            isLandscape = false
+        )
         return result.copy(
             originalImage = bitmap,
-            annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = true)
+            annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = true, rotationDegrees)
         )
     }
 
@@ -210,7 +221,12 @@ class YOLO(
      * @param result YOLOResult containing detection results
      * @param rotateForCamera If true, rotate the image 90 degrees (for camera feed), otherwise don't rotate
      */
-    private fun drawAnnotations(bitmap: Bitmap, result: YOLOResult, rotateForCamera: Boolean = true): Bitmap {
+    private fun drawAnnotations(
+        bitmap: Bitmap,
+        result: YOLOResult,
+        rotateForCamera: Boolean = true,
+        rotationDegrees: Int? = null
+    ): Bitmap {
         // If the result already contains an annotated image, return it
         if (result.annotatedImage != null) {
             return result.annotatedImage
@@ -220,10 +236,9 @@ class YOLO(
         val canvas: Canvas
 
         if (rotateForCamera) {
-            // Camera feed: rotate 90 degrees as before
+            val degrees = rotationDegrees ?: 90
             val matrix = Matrix().apply {
-                // Rotate 90 degrees clockwise
-                postRotate(90f)
+                postRotate(degrees.toFloat())
             }
             val rotatedBitmap = Bitmap.createBitmap(
                 bitmap,
@@ -382,9 +397,9 @@ class YOLO(
                     val maskToUse: Bitmap
                     
                     if (rotateForCamera) {
-                        // Mask also needs to be rotated (camera feed)
+                        val degrees = rotationDegrees ?: 90
                         val maskMatrix = Matrix().apply {
-                            postRotate(90f)
+                            postRotate(degrees.toFloat())
                         }
                         maskToUse = Bitmap.createBitmap(
                             mask,

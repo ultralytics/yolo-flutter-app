@@ -186,7 +186,7 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
     results.reserveCapacity(keep.count)
     for idx in keep {
       let d = detections[idx]
-      results.append((d.obb, d.score, d.cls))
+      results.append((inputOBB(fromModelOBB: d.obb), d.score, d.cls))
     }
     return results
   }

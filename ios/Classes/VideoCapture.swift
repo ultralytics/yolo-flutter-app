@@ -15,7 +15,6 @@
 import AVFoundation
 import CoreVideo
 import UIKit
-import Vision
 
 /// Protocol for receiving video capture frame processing results.
 @MainActor
@@ -63,12 +62,12 @@ class VideoCapture: NSObject, @unchecked Sendable {
   func setUp(
     sessionPreset: AVCaptureSession.Preset = .hd1280x720,
     position: AVCaptureDevice.Position,
-    orientation: UIDeviceOrientation,
+    videoOrientation: AVCaptureVideoOrientation,
     completion: @escaping (Bool) -> Void
   ) {
     cameraQueue.async {
       let success = self.setUpCamera(
-        sessionPreset: sessionPreset, position: position, orientation: orientation)
+        sessionPreset: sessionPreset, position: position, videoOrientation: videoOrientation)
       DispatchQueue.main.async {
         completion(success)
       }
@@ -77,7 +76,7 @@ class VideoCapture: NSObject, @unchecked Sendable {
 
   func setUpCamera(
     sessionPreset: AVCaptureSession.Preset, position: AVCaptureDevice.Position,
-    orientation: UIDeviceOrientation
+    videoOrientation: AVCaptureVideoOrientation
   ) -> Bool {
 
     let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
@@ -124,20 +123,9 @@ class VideoCapture: NSObject, @unchecked Sendable {
       captureSession.commitConfiguration()
       return false
     }
-    var videoOrientaion = AVCaptureVideoOrientation.portrait
-    switch orientation {
-    case .portrait:
-      videoOrientaion = .portrait
-    case .landscapeLeft:
-      videoOrientaion = .landscapeRight
-    case .landscapeRight:
-      videoOrientaion = .landscapeLeft
-    default:
-      videoOrientaion = .portrait
-    }
     let previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
     previewLayer.videoGravity = AVLayerVideoGravity.resizeAspectFill
-    previewLayer.connection?.videoOrientation = videoOrientaion
+    previewLayer.connection?.videoOrientation = videoOrientation
     self.previewLayer = previewLayer
 
     let settings: [String: Any] = [
@@ -156,11 +144,8 @@ class VideoCapture: NSObject, @unchecked Sendable {
       //            photoOutput.isLivePhotoCaptureEnabled = photoOutput.isLivePhotoCaptureSupported
     }
 
-    // We want the buffers to be in portrait orientation otherwise they are
-    // rotated by 90 degrees. Need to set this _after_ addOutput()!
-    // let curDeviceOrientation = UIDevice.current.orientation
     let connection = videoOutput.connection(with: AVMediaType.video)
-    connection?.videoOrientation = videoOrientaion
+    connection?.videoOrientation = videoOrientation
     if position == .front {
       connection?.isVideoMirrored = true
     }
@@ -239,26 +224,6 @@ class VideoCapture: NSObject, @unchecked Sendable {
         frameSizeCaptured = true
       }
 
-      /// - Tag: MappingOrientation
-      // The frame is always oriented based on the camera sensor,
-      // so in most cases Vision needs to rotate it for the model to work as expected.
-      var imageOrientation: CGImagePropertyOrientation = .up
-      //            switch UIDevice.current.orientation {
-      //            case .portrait:
-      //                imageOrientation = .up
-      //            case .portraitUpsideDown:
-      //                imageOrientation = .down
-      //            case .landscapeLeft:
-      //                imageOrientation = .up
-      //            case .landscapeRight:
-      //                imageOrientation = .up
-      //            case .unknown:
-      //                imageOrientation = .up
-      //
-      //            default:
-      //                imageOrientation = .up
-      //            }
-
       predictor.predict(sampleBuffer: sampleBuffer, onResultsListener: self, onInferenceTime: self)
       currentBuffer = nil
     }
@@ -274,8 +239,8 @@ class VideoCapture: NSObject, @unchecked Sendable {
     } else {
       connection.isVideoMirrored = false
     }
-    let o = connection.videoOrientation
     self.previewLayer?.connection?.videoOrientation = connection.videoOrientation
+    frameSizeCaptured = false
   }
 
   deinit {

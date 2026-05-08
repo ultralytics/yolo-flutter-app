@@ -63,13 +63,11 @@ class Segmenter: BasePredictor, @unchecked Sendable {
 
       for p in limitedDetections {
         let box = p.0
-        let rect = CGRect(
-          x: box.minX / 640, y: box.minY / 640, width: box.width / 640, height: box.height / 640)
         let confidence = p.2
         let bestClass = p.1
         let label = self.labelName(for: bestClass)
-        let xywh = VNImageRectForNormalizedRect(
-          rect, Int(self.inputSize.width), Int(self.inputSize.height))
+        let xywh = inputRect(fromModelRect: box)
+        let rect = normalizedRect(fromInputRect: xywh)
 
         let boxResult = Box(index: bestClass, cls: label, conf: confidence, xywh: xywh, xywhn: rect)
         let alpha = CGFloat((confidence - 0.2) / (1.0 - 0.2) * 0.9)
@@ -154,12 +152,11 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         var alphas = [CGFloat]()
         for p in detectedObjects {
           let box = p.0
-          let rect = CGRect(
-            x: box.minX / 640, y: box.minY / 640, width: box.width / 640, height: box.height / 640)
           let confidence = p.2
           let bestClass = p.1
           let label = labelName(for: bestClass)
-          let xywh = VNImageRectForNormalizedRect(rect, Int(inputSize.width), Int(inputSize.height))
+          let xywh = inputRect(fromModelRect: box)
+          let rect = normalizedRect(fromInputRect: xywh)
 
           let boxResult = Box(
             index: bestClass, cls: label, conf: confidence, xywh: xywh, xywhn: rect)
@@ -304,14 +301,6 @@ class Segmenter: BasePredictor, @unchecked Sendable {
     }
 
     return selectedBoxesAndFeatures
-  }
-
-  func adjustBox(_ box: CGRect, toFitIn containerSize: CGSize) -> CGRect {
-    let xScale = containerSize.width / 640.0
-    let yScale = containerSize.height / 640.0
-    return CGRect(
-      x: box.origin.x * xScale, y: box.origin.y * yScale, width: box.size.width * xScale,
-      height: box.size.height * yScale)
   }
 
   func checkShapeDimensions(of multiArray: MLMultiArray) -> Int {

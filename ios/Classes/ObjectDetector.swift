@@ -74,14 +74,25 @@ class ObjectDetector: BasePredictor {
         let invertedBox = CGRect(
           x: prediction.boundingBox.minX, y: 1 - prediction.boundingBox.maxY,
           width: prediction.boundingBox.width, height: prediction.boundingBox.height)
-        let imageRect = VNImageRectForNormalizedRect(
-          invertedBox, Int(inputSize.width), Int(inputSize.height))
+        let imageRect: CGRect
+        if modelInputSize.width > 0, modelInputSize.height > 0 {
+          let modelRect = CGRect(
+            x: invertedBox.minX * CGFloat(modelInputSize.width),
+            y: invertedBox.minY * CGFloat(modelInputSize.height),
+            width: invertedBox.width * CGFloat(modelInputSize.width),
+            height: invertedBox.height * CGFloat(modelInputSize.height))
+          imageRect = inputRect(fromModelRect: modelRect)
+        } else {
+          imageRect = VNImageRectForNormalizedRect(
+            invertedBox, Int(inputSize.width), Int(inputSize.height))
+        }
+        let normalizedBox = normalizedRect(fromInputRect: imageRect)
 
         let label = topLabel.identifier
         let index = self.labels.firstIndex(of: label) ?? 0
         let confidence = topLabel.confidence
         let box = Box(
-          index: index, cls: label, conf: confidence, xywh: imageRect, xywhn: invertedBox)
+          index: index, cls: label, conf: confidence, xywh: imageRect, xywhn: normalizedBox)
         boxes.append(box)
       }
 
@@ -132,14 +143,25 @@ class ObjectDetector: BasePredictor {
           let invertedBox = CGRect(
             x: prediction.boundingBox.minX, y: 1 - prediction.boundingBox.maxY,
             width: prediction.boundingBox.width, height: prediction.boundingBox.height)
-          let imageRect = VNImageRectForNormalizedRect(
-            invertedBox, Int(inputSize.width), Int(inputSize.height))
+          let imageRect: CGRect
+          if modelInputSize.width > 0, modelInputSize.height > 0 {
+            let modelRect = CGRect(
+              x: invertedBox.minX * CGFloat(modelInputSize.width),
+              y: invertedBox.minY * CGFloat(modelInputSize.height),
+              width: invertedBox.width * CGFloat(modelInputSize.width),
+              height: invertedBox.height * CGFloat(modelInputSize.height))
+            imageRect = inputRect(fromModelRect: modelRect)
+          } else {
+            imageRect = VNImageRectForNormalizedRect(
+              invertedBox, Int(inputSize.width), Int(inputSize.height))
+          }
+          let normalizedBox = normalizedRect(fromInputRect: imageRect)
 
           let label = topLabel.identifier
           let index = self.labels.firstIndex(of: label) ?? 0
           let confidence = topLabel.confidence
           let box = Box(
-            index: index, cls: label, conf: confidence, xywh: imageRect, xywhn: invertedBox)
+            index: index, cls: label, conf: confidence, xywh: imageRect, xywhn: normalizedBox)
           boxes.append(box)
         }
       }
