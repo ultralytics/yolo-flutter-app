@@ -151,7 +151,9 @@ class ObbDetector(
         // Apply numItemsThreshold limit
         val limitedDetections = obbDetections.take(numItemsThreshold)
 
-        val annotatedImage = drawOBBsOnBitmap(bitmap, limitedDetections)
+        val annotatedImage = if (rotateForCamera) null else {
+            drawOBBsOnBitmap(bitmap, limitedDetections, origWidth, origHeight)
+        }
 
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
@@ -221,7 +223,12 @@ class ObbDetector(
 
     data class Detection(val obb: OBB, val score: Float, val cls: Int)
 
-    private fun drawOBBsOnBitmap(bitmap: Bitmap, obbDetections: List<OBBResult>): Bitmap {
+    private fun drawOBBsOnBitmap(
+        bitmap: Bitmap,
+        obbDetections: List<OBBResult>,
+        origWidth: Int,
+        origHeight: Int
+    ): Bitmap {
         val output = bitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(output)
         val paint = Paint().apply {
@@ -231,7 +238,7 @@ class ObbDetector(
         for (detection in obbDetections) {
             paint.color = ultralyticsColors[detection.index % ultralyticsColors.size]
 
-            val poly = detection.box.toPolygon().map {
+            val poly = detection.box.toPolygon(origWidth.toFloat(), origHeight.toFloat()).map {
                 PointF(it.x * bitmap.width, it.y * bitmap.height)
             }
             if (poly.size >= 4) {

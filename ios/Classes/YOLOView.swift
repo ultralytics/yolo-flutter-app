@@ -1700,7 +1700,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
           detection["className"] = obbResult.cls
           detection["confidence"] = Double(obbResult.confidence)
 
-          let polygon = obbResult.box.toPolygon()
+          let polygon = obbResult.box.toPolygon(in: result.orig_shape)
           let points = polygon.map { point in
             [
               "x": Double(point.x),
@@ -1815,7 +1815,7 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
           let obbBox = obbResult.box
 
           // Convert OBB to 4 corner points
-          let polygon = obbBox.toPolygon()
+          let polygon = obbBox.toPolygon(in: result.orig_shape)
           let points = polygon.map { point in
             [
               "x": Double(point.x),

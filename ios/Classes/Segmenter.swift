@@ -82,7 +82,8 @@ class Segmenter: BasePredictor, @unchecked Sendable {
             protos: masks,
             inputWidth: self.modelInputSize.width,
             inputHeight: self.modelInputSize.height,
-            threshold: 0.5
+            threshold: 0.5,
+            originalImageSize: self.inputSize
 
           ) as? (CGImage?, [[[Float]]])
         else {
@@ -171,7 +172,8 @@ class Segmenter: BasePredictor, @unchecked Sendable {
             protos: masks,
             inputWidth: self.modelInputSize.width,
             inputHeight: self.modelInputSize.height,
-            threshold: 0.5
+            threshold: 0.5,
+            originalImageSize: self.inputSize
 
           ) as? (CGImage?, [[[Float]]])
         else {

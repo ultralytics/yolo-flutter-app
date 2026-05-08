@@ -242,6 +242,22 @@ extension OBB {
     return worldCorners
   }
 
+  public func toPolygon(in imageSize: CGSize) -> Polygon {
+    guard imageSize.width > 0, imageSize.height > 0 else { return toPolygon() }
+    let imageWidth = Float(imageSize.width)
+    let imageHeight = Float(imageSize.height)
+    // Rotate in pixel space so normalized x/y axes do not skew non-square images.
+    return OBB(
+      cx: cx * imageWidth,
+      cy: cy * imageHeight,
+      w: w * imageWidth,
+      h: h * imageHeight,
+      angle: angle
+    ).toPolygon().map { point in
+      CGPoint(x: point.x / imageSize.width, y: point.y / imageSize.height)
+    }
+  }
+
   /// Calculates the area of the oriented bounding box.
   ///
   /// The area of an oriented bounding box is simply the product of its width and height,

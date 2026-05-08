@@ -188,13 +188,57 @@ public func drawYOLODetections(on ciImage: CIImage, result: YOLOResult) -> UIIma
   return drawnImage
 }
 
+private func maskContentRect(
+  maskWidth: Int,
+  maskHeight: Int,
+  inputWidth: Int,
+  inputHeight: Int,
+  originalImageSize: CGSize
+) -> CGRect? {
+  // Remove prototype-space letterbox padding before masks are scaled to the original image.
+  let modelWidth = CGFloat(inputWidth)
+  let modelHeight = CGFloat(inputHeight)
+  let originalWidth = originalImageSize.width
+  let originalHeight = originalImageSize.height
+  guard
+    maskWidth > 0,
+    maskHeight > 0,
+    modelWidth > 0,
+    modelHeight > 0,
+    originalWidth > 0,
+    originalHeight > 0
+  else {
+    return nil
+  }
+
+  let gain = min(modelWidth / originalWidth, modelHeight / originalHeight)
+  guard gain > 0 else { return nil }
+  let resizedWidth = (originalWidth * gain).rounded()
+  let resizedHeight = (originalHeight * gain).rounded()
+  // Match Ultralytics LetterBox leading-pad rounding: round(d - 0.1).
+  let padX = ((modelWidth - resizedWidth) / 2 - 0.1).rounded()
+  let padY = ((modelHeight - resizedHeight) / 2 - 0.1).rounded()
+  let scaleX = CGFloat(maskWidth) / modelWidth
+  let scaleY = CGFloat(maskHeight) / modelHeight
+  let left = min(max(Int((padX * scaleX).rounded()), 0), maskWidth - 1)
+  let top = min(max(Int((padY * scaleY).rounded()), 0), maskHeight - 1)
+  let right = min(max(Int(((padX + resizedWidth) * scaleX).rounded()), left + 1), maskWidth)
+  let bottom = min(max(Int(((padY + resizedHeight) * scaleY).rounded()), top + 1), maskHeight)
+  return CGRect(
+    x: CGFloat(left),
+    y: CGFloat(top),
+    width: CGFloat(right - left),
+    height: CGFloat(bottom - top))
+}
+
 func generateCombinedMaskImage(
   detectedObjects: [(CGRect, Int, Float, MLMultiArray)],
   protos: MLMultiArray,  // shape: [1, C, H, W]
   inputWidth: Int,
   inputHeight: Int,
   threshold: Float = 0.5,
-  returnIndividualMasks: Bool = true
+  returnIndividualMasks: Bool = true,
+  originalImageSize: CGSize? = nil
 ) -> (CGImage?, [[[Float]]]?)? {
   // 1) Check protos shape
   let maskHeight = protos.shape[2].intValue  // example: 160
@@ -347,7 +391,34 @@ func generateCombinedMaskImage(
     return nil
   }
 
-  return (mergedCGImage, probabilityMasks)
+  var outputImage = mergedCGImage
+  var outputProbabilityMasks = probabilityMasks
+  if
+    let originalImageSize,
+    let rect = maskContentRect(
+      maskWidth: maskWidth,
+      maskHeight: maskHeight,
+      inputWidth: inputWidth,
+      inputHeight: inputHeight,
+      originalImageSize: originalImageSize),
+    rect != CGRect(x: 0, y: 0, width: CGFloat(maskWidth), height: CGFloat(maskHeight)),
+    let croppedImage = mergedCGImage.cropping(to: rect)
+  {
+    outputImage = croppedImage
+    if let masksArray = outputProbabilityMasks {
+      let left = Int(rect.minX)
+      let top = Int(rect.minY)
+      let right = Int(rect.maxX)
+      let bottom = Int(rect.maxY)
+      outputProbabilityMasks = masksArray.map { mask in
+        (top..<bottom).map { row in
+          Array(mask[row][left..<right])
+        }
+      }
+    }
+  }
+
+  return (outputImage, outputProbabilityMasks)
 }
 
 func composeImageWithMask(
@@ -754,7 +825,7 @@ class OBBRenderer {
       let index = detection.index % ultralyticsColors.count
       let color = ultralyticsColors[index]
 
-      let corners = detection.box.toPolygon()
+      let corners = detection.box.toPolygon(in: originalImageSize)
       let path = UIBezierPath()
       for (i, corner) in corners.enumerated() {
         let px = corner.x * scaleX
@@ -847,7 +918,7 @@ func drawOBBsOnCIImage(
     let color = ultralyticsColors[colorIndex]
     cgContext.setStrokeColor(color.cgColor)
 
-    let corners = detection.box.toPolygon()
+    let corners = detection.box.toPolygon(in: CGSize(width: extent.width, height: extent.height))
 
     cgContext.beginPath()
     for (i, corner) in corners.enumerated() {

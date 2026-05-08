@@ -14,6 +14,7 @@ import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 class Segmenter(
     context: Context,
@@ -200,6 +201,8 @@ class Segmenter(
             protos = output1[0],
             maskW = maskW,
             maskH = maskH,
+            origWidth = origWidth,
+            origHeight = origHeight,
             threshold = 0.5f
         )
         val masks = Masks(probMasks ?: emptyList(), combinedMask)
@@ -308,12 +311,15 @@ class Segmenter(
         protos: Array<Array<FloatArray>>,
         maskW: Int,
         maskH: Int,
+        origWidth: Int,
+        origHeight: Int,
         threshold: Float
     ): Pair<Bitmap?, List<List<List<Float>>>?> {
         if (detections.isEmpty()) return Pair(null, null)
+        val contentRect = maskContentRect(maskW, maskH, origWidth, origHeight)
         val combinedPixels = IntArray(maskW * maskH) { Color.TRANSPARENT }
         val probabilityMasks = mutableListOf<List<List<Float>>>()
-        detections.forEachIndexed { detIndex, det ->
+        detections.forEach { det ->
             val color = ultralyticsColors[det.cls % ultralyticsColors.size]
             val pm = Array(maskH) { FloatArray(maskW) }
             for (y in 0 until maskH) {
@@ -332,11 +338,53 @@ class Segmenter(
                     }
                 }
             }
-            probabilityMasks.add(pm.map { it.toList() })
+            probabilityMasks.add((contentRect.top until contentRect.bottom).map { y ->
+                pm[y].copyOfRange(contentRect.left, contentRect.right).toList()
+            })
         }
         val bmp = Bitmap.createBitmap(maskW, maskH, Bitmap.Config.ARGB_8888)
         bmp.setPixels(combinedPixels, 0, maskW, 0, 0, maskW, maskH)
-        return Pair(bmp, probabilityMasks)
+        val croppedBmp = if (
+            contentRect.left == 0 &&
+            contentRect.top == 0 &&
+            contentRect.right == maskW &&
+            contentRect.bottom == maskH
+        ) {
+            bmp
+        } else {
+            Bitmap.createBitmap(
+                bmp,
+                contentRect.left,
+                contentRect.top,
+                contentRect.width(),
+                contentRect.height()
+            ).also { bmp.recycle() }
+        }
+        return Pair(croppedBmp, probabilityMasks)
+    }
+
+    private fun maskContentRect(maskW: Int, maskH: Int, origWidth: Int, origHeight: Int): Rect {
+        // Remove prototype-space letterbox padding before masks are scaled to the original image.
+        val modelWidth = modelInputSize.first.toFloat()
+        val modelHeight = modelInputSize.second.toFloat()
+        if (modelWidth <= 0f || modelHeight <= 0f || origWidth <= 0 || origHeight <= 0) {
+            return Rect(0, 0, maskW, maskH)
+        }
+
+        val gain = min(modelWidth / origWidth, modelHeight / origHeight)
+        if (gain <= 0f) return Rect(0, 0, maskW, maskH)
+        val resizedWidth = (origWidth * gain).roundToInt()
+        val resizedHeight = (origHeight * gain).roundToInt()
+        // Match Ultralytics LetterBox leading-pad rounding: round(d - 0.1).
+        val padX = ((modelWidth - resizedWidth) / 2f - 0.1f).roundToInt()
+        val padY = ((modelHeight - resizedHeight) / 2f - 0.1f).roundToInt()
+        val scaleX = maskW / modelWidth
+        val scaleY = maskH / modelHeight
+        val left = (padX * scaleX).roundToInt().coerceIn(0, maskW - 1)
+        val top = (padY * scaleY).roundToInt().coerceIn(0, maskH - 1)
+        val right = ((padX + resizedWidth) * scaleX).roundToInt().coerceIn(left + 1, maskW)
+        val bottom = ((padY + resizedHeight) * scaleY).roundToInt().coerceIn(top + 1, maskH)
+        return Rect(left, top, right, bottom)
     }
 
     data class Detection(

@@ -344,7 +344,10 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                 // Include oriented bounding boxes if available
                 if (yoloResult.obb.isNotEmpty()) {
                   response["obb"] = yoloResult.obb.map { obb ->
-                    val poly = obb.box.toPolygon()
+                    val poly = obb.box.toPolygon(
+                      yoloResult.origShape.width.toFloat(),
+                      yoloResult.origShape.height.toFloat()
+                    )
                     mapOf(
                       "points" to poly.map { mapOf("x" to it.x, "y" to it.y) },
                       "angle" to obb.box.angle,

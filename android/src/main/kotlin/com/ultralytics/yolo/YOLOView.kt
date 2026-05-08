@@ -1258,7 +1258,7 @@ class YOLOView @JvmOverloads constructor(
                         paint.strokeWidth = BOX_LINE_WIDTH
 
                         // Draw rotated rectangle (polygon) using path
-                        val polygon = obbRes.box.toPolygon().map { pt ->
+                        val polygon = obbRes.box.toPolygon(iw, ih).map { pt ->
                             var x = pt.x * scaledW + dx
                             val y = pt.y * scaledH + dy
                             
@@ -1633,9 +1633,9 @@ class YOLOView @JvmOverloads constructor(
                 detection["confidence"] = obbRes.confidence.toDouble()
                 
                 // Get OBB polygon points (4 corners of rotated rectangle)
-                val polygon = obbRes.box.toPolygon()
                 val imgWidth = result.origShape.width.toFloat()
                 val imgHeight = result.origShape.height.toFloat()
+                val polygon = obbRes.box.toPolygon(imgWidth, imgHeight)
                 
                 // Convert polygon points to pixel coordinates  
                 val polygonPixels = polygon.map { point ->
