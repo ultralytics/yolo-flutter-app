@@ -393,8 +393,7 @@ func generateCombinedMaskImage(
 
   var outputImage = mergedCGImage
   var outputProbabilityMasks = probabilityMasks
-  if
-    let originalImageSize,
+  if let originalImageSize,
     let rect = maskContentRect(
       maskWidth: maskWidth,
       maskHeight: maskHeight,
