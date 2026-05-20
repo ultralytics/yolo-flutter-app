@@ -79,6 +79,20 @@ for (final box in results['boxes'] ?? <dynamic>[]) {
 }
 ```
 
+### Semantic Segmentation
+
+```dart
+final segmenter = YOLO(
+  modelPath: 'yolo26n-sem',
+  task: YOLOTask.semantic,
+);
+await segmenter.loadModel();
+
+final results = await segmenter.predict(imageBytes);
+final semanticMask = results['semanticMask'] as Map?;
+print('Mask: ${semanticMask?['width']}x${semanticMask?['height']}');
+```
+
 ### Classification
 
 ```dart

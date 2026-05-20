@@ -46,7 +46,7 @@ class YOLOStreamingConfig {
   /// Default is true to maintain compatibility with existing apps.
   final bool includeFps;
 
-  /// Whether to include segmentation masks in the results.
+  /// Whether to include instance and semantic segmentation masks in the results.
   ///
   /// Only relevant for segmentation tasks. Masks can be memory-intensive
   /// and may impact performance on lower-end devices.

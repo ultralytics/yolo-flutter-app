@@ -360,6 +360,14 @@ class YOLOInstanceManager {
       }
     }
 
+    if let semanticMask = result.semanticMask {
+      resultDict["semanticMask"] = [
+        "classMap": semanticMask.classMap,
+        "width": semanticMask.width,
+        "height": semanticMask.height,
+      ]
+    }
+
     // OBB - oriented bounding boxes
     if !result.obb.isEmpty {
       var obbArray: [[String: Any]] = []

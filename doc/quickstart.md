@@ -35,7 +35,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.3.4
+  ultralytics_yolo: ^0.3.5
   image_picker: ^1.2.1 # For image selection
 ```
 

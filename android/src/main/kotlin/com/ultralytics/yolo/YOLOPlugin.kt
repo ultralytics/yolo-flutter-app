@@ -279,6 +279,15 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                   }
                 }
               }
+              YOLOTask.SEMANTIC -> {
+                yoloResult.semanticMask?.let { semanticMask ->
+                  response["semanticMask"] = mapOf(
+                    "classMap" to semanticMask.classMap,
+                    "width" to semanticMask.width,
+                    "height" to semanticMask.height
+                  )
+                }
+              }
               YOLOTask.CLASSIFY -> {
                 yoloResult.probs?.let { probs ->
                   val top5Count = minOf(

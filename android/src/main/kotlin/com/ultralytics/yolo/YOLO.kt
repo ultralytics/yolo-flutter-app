@@ -57,6 +57,7 @@ class YOLO(
         when (task) {
             YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
             YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
+            YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels, useGpu, customOptions = options)
             YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu, options, classifierOptions)
             YOLOTask.POSE -> PoseEstimator(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
             YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
@@ -396,6 +397,16 @@ class YOLO(
                     paint.style = Paint.Style.FILL
                     paint.alpha = 128
                     canvas.drawBitmap(maskScaled, 0f, 0f, paint)
+                    if (maskScaled !== mask) maskScaled.recycle()
+                }
+            }
+            YOLOTask.SEMANTIC -> {
+                result.semanticMask?.maskImage?.let { mask ->
+                    val maskScaled = Bitmap.createScaledBitmap(mask, output.width, output.height, true)
+                    paint.style = Paint.Style.FILL
+                    paint.alpha = 128
+                    canvas.drawBitmap(maskScaled, 0f, 0f, paint)
+                    paint.alpha = 255
                     if (maskScaled !== mask) maskScaled.recycle()
                 }
             }

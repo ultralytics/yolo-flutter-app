@@ -218,8 +218,10 @@ class YOLOResult {
   }
 }
 
-/// Complete output from a YOLO inference: detections, optional annotated
-/// image, and processing time in milliseconds.
+/// Complete output from a YOLO inference.
+///
+/// Includes detections, optional task-level outputs such as semantic masks,
+/// an optional annotated image, and processing time in milliseconds.
 class YOLODetectionResults {
   /// List of all objects detected in the image.
   ///
@@ -234,6 +236,9 @@ class YOLODetectionResults {
   /// (masks for segmentation, keypoints for pose estimation).
   final Uint8List? annotatedImage;
 
+  /// Dense class map for semantic segmentation tasks.
+  final YOLOSemanticMask? semanticMask;
+
   /// The time taken to process the image in milliseconds.
   ///
   /// This includes model inference time and post-processing,
@@ -243,6 +248,7 @@ class YOLODetectionResults {
   YOLODetectionResults({
     required this.detections,
     this.annotatedImage,
+    this.semanticMask,
     required this.processingTimeMs,
   });
 
@@ -252,6 +258,7 @@ class YOLODetectionResults {
   /// the platform channel. The map should contain:
   /// - 'detections': List of detection maps
   /// - 'annotatedImage': (optional) Uint8List of image data
+  /// - 'semanticMask': (optional) semantic class map data
   /// - 'processingTimeMs': double representing processing time
   factory YOLODetectionResults.fromMap(Map<dynamic, dynamic> map) {
     final detectionsData = map['detections'] as List<dynamic>?;
@@ -262,6 +269,10 @@ class YOLODetectionResults {
         : <YOLOResult>[];
 
     final annotatedImage = MapConverter.safeGetUint8List(map, 'annotatedImage');
+    final semanticMaskRaw = map['semanticMask'];
+    final semanticMask = semanticMaskRaw is Map
+        ? YOLOSemanticMask.fromMap(semanticMaskRaw)
+        : null;
 
     final processingTimeMs = MapConverter.safeGetDouble(
       map,
@@ -271,6 +282,7 @@ class YOLODetectionResults {
     return YOLODetectionResults(
       detections: detections,
       annotatedImage: annotatedImage,
+      semanticMask: semanticMask,
       processingTimeMs: processingTimeMs,
     );
   }
@@ -279,9 +291,46 @@ class YOLODetectionResults {
     return {
       'detections': detections.map((detection) => detection.toMap()).toList(),
       'annotatedImage': annotatedImage,
+      'semanticMask': semanticMask?.toMap(),
       'processingTimeMs': processingTimeMs,
     };
   }
+}
+
+/// Dense full-image semantic segmentation result.
+class YOLOSemanticMask {
+  /// Row-major class index for each mask pixel.
+  final List<int> classMap;
+
+  /// Mask width in pixels.
+  final int width;
+
+  /// Mask height in pixels.
+  final int height;
+
+  YOLOSemanticMask({
+    required this.classMap,
+    required this.width,
+    required this.height,
+  });
+
+  factory YOLOSemanticMask.fromMap(Map<dynamic, dynamic> map) {
+    final classMapRaw = map['classMap'] as List<dynamic>? ?? const [];
+    return YOLOSemanticMask(
+      classMap: classMapRaw
+          .whereType<num>()
+          .map((value) => value.toInt())
+          .toList(),
+      width: MapConverter.safeGetInt(map, 'width'),
+      height: MapConverter.safeGetInt(map, 'height'),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'classMap': classMap,
+    'width': width,
+    'height': height,
+  };
 }
 
 /// A 2D point in image/pixel space.

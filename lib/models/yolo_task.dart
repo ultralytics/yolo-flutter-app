@@ -13,6 +13,9 @@ enum YOLOTask {
   /// Instance segmentation - provides pixel-level masks for detected objects
   segment,
 
+  /// Semantic segmentation - assigns a class label to each image pixel
+  semantic,
+
   /// Image classification - categorizes the main subject of an image
   classify,
 

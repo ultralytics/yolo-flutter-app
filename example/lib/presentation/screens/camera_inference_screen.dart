@@ -12,7 +12,7 @@ import '../widgets/threshold_slider.dart';
 ///
 /// This screen provides:
 /// - Live camera feed with YOLO object detection
-/// - Model selection (detect, segment, classify, pose, obb)
+/// - Model selection (detect, segment, semantic, classify, pose, obb)
 /// - Adjustable thresholds (confidence, IoU, max detections)
 /// - Camera controls (flip, zoom)
 /// - Performance metrics (FPS)

@@ -424,7 +424,9 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     return (0, 0)
   }
 
-  private func letterboxTransform() -> (gain: CGFloat, padX: CGFloat, padY: CGFloat)? {
+  private func letterboxTransform() -> (
+    gain: CGFloat, padX: CGFloat, padY: CGFloat, padRight: CGFloat, padBottom: CGFloat
+  )? {
     let modelWidth = CGFloat(modelInputSize.width)
     let modelHeight = CGFloat(modelInputSize.height)
     let inputWidth = inputSize.width
@@ -436,9 +438,29 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     let resizedWidth = (inputWidth * gain).rounded()
     let resizedHeight = (inputHeight * gain).rounded()
     // Match Ultralytics LetterBox leading-pad rounding: round(d - 0.1).
-    let padX = ((modelWidth - resizedWidth) / 2 - 0.1).rounded()
-    let padY = ((modelHeight - resizedHeight) / 2 - 0.1).rounded()
-    return (gain, padX, padY)
+    let padWidth = modelWidth - resizedWidth
+    let padHeight = modelHeight - resizedHeight
+    let padX = (padWidth / 2 - 0.1).rounded()
+    let padY = (padHeight / 2 - 0.1).rounded()
+    let padRight = (padWidth / 2 + 0.1).rounded()
+    let padBottom = (padHeight / 2 + 0.1).rounded()
+    return (gain, padX, padY, padRight, padBottom)
+  }
+
+  func modelMaskCropRect(maskWidth: Int, maskHeight: Int) -> CGRect? {
+    guard let transform = letterboxTransform() else { return nil }
+    let modelWidth = CGFloat(modelInputSize.width)
+    let modelHeight = CGFloat(modelInputSize.height)
+    let width = CGFloat(maskWidth)
+    let height = CGFloat(maskHeight)
+    let left = (transform.padX / modelWidth * width).rounded()
+    let top = (transform.padY / modelHeight * height).rounded()
+    let right = width - (transform.padRight / modelWidth * width).rounded()
+    let bottom = height - (transform.padBottom / modelHeight * height).rounded()
+    let rect = CGRect(x: left, y: top, width: right - left, height: bottom - top)
+      .intersection(CGRect(x: 0, y: 0, width: width, height: height))
+    guard rect.width > 0, rect.height > 0 else { return nil }
+    return rect == CGRect(x: 0, y: 0, width: width, height: height) ? nil : rect
   }
 
   func inputRect(fromModelRect rect: CGRect) -> CGRect {

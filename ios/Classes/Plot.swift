@@ -968,3 +968,28 @@ func drawOBBsOnCIImage(
 
   return drawnImage
 }
+
+func drawYOLOSemanticSegmentation(
+  ciImage: CIImage,
+  semanticMask: CGImage?
+) -> UIImage? {
+  let context = CIContext(options: nil)
+  guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+    return nil
+  }
+  let size = CGSize(width: cgImage.width, height: cgImage.height)
+  UIGraphicsBeginImageContextWithOptions(size, false, 1.0)
+  defer { UIGraphicsEndImageContext() }
+  guard let cgContext = UIGraphicsGetCurrentContext() else { return nil }
+
+  cgContext.saveGState()
+  cgContext.translateBy(x: 0, y: size.height)
+  cgContext.scaleBy(x: 1, y: -1)
+  cgContext.draw(cgImage, in: CGRect(origin: .zero, size: size))
+  if let semanticMask {
+    cgContext.setAlpha(0.5)
+    cgContext.draw(semanticMask, in: CGRect(origin: .zero, size: size))
+  }
+  cgContext.restoreGState()
+  return UIGraphicsGetImageFromCurrentImageContext()
+}

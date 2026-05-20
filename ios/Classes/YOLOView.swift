@@ -58,9 +58,11 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
     }
 
-    if task == .segment {
+    if task == .segment || task == .semantic {
       DispatchQueue.main.async {
-        if let maskImage = result.masks?.combinedMask {
+        let maskImage =
+          self.task == .segment ? result.masks?.combinedMask : result.semanticMask?.maskImage
+        if let maskImage {
 
           guard let maskLayer = self.maskLayer else { return }
 
@@ -332,6 +334,19 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         }
       }
 
+    case .semantic:
+      SemanticSegmenter.create(
+        unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu
+      ) {
+        [weak self] result in
+        switch result {
+        case .success(let predictor):
+          handleSuccess(predictor: predictor)
+        case .failure(let error):
+          handleFailure(error)
+        }
+      }
+
     case .pose:
       PoseEstimater.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
         [weak self] result in
@@ -511,7 +526,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     resetLayers()
 
     switch task {
-    case .segment:
+    case .segment, .semantic:
       setupMaskLayerIfNeeded()
     case .pose:
       setupPoseLayerIfNeeded()
@@ -1844,6 +1859,14 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
         detections.append(detection)
       }
       map["detections"] = detections
+    }
+
+    if config.includeMasks, let semanticMask = result.semanticMask {
+      map["semanticMask"] = [
+        "classMap": semanticMask.classMap,
+        "width": semanticMask.width,
+        "height": semanticMask.height,
+      ]
     }
 
     // Add classification results (if available and enabled for CLASSIFY task)

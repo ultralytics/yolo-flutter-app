@@ -214,6 +214,18 @@ public class YOLO {
         }
       }
 
+    case .semantic:
+      SemanticSegmenter.create(
+        unwrappedModelURL: unwrappedModelURL, useGpu: useGpu, numItemsThreshold: numItemsThreshold
+      ) { result in
+        switch result {
+        case .success(let predictor):
+          handleSuccess(predictor: predictor)
+        case .failure(let error):
+          handleFailure(error)
+        }
+      }
+
     case .pose:
       PoseEstimater.create(
         unwrappedModelURL: unwrappedModelURL, useGpu: useGpu, numItemsThreshold: numItemsThreshold

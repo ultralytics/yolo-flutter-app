@@ -25,6 +25,7 @@ The plugin is built around one model-loading flow:
 | ----------------------- | ------- | --- |
 | Object Detection        | ✅      | ✅  |
 | Instance Segmentation   | ✅      | ✅  |
+| Semantic Segmentation   | ✅      | ✅  |
 | Image Classification    | ✅      | ✅  |
 | Pose Estimation         | ✅      | ✅  |
 | Oriented Bounding Boxes | ✅      | ✅  |

@@ -25,6 +25,11 @@ flutter run
 - metadata-based task resolution
 - camera inference and single-image inference in one simple app
 
+Example assets come from canonical release locations:
+
+- Android TFLite: [yolo-flutter-app `v0.2.0`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0)
+- iOS Core ML: [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)
+
 ## 🧠 Why The Example Is Small
 
 The example is intentionally thin.

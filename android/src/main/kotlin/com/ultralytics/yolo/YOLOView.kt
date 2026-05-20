@@ -409,6 +409,7 @@ class YOLOView @JvmOverloads constructor(
                 val newPredictor = when (task) {
                     YOLOTask.DETECT -> ObjectDetector(context = context, modelPath = modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
+                    YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.POSE -> PoseEstimator(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
                     YOLOTask.OBB -> ObbDetector(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
@@ -1036,6 +1037,27 @@ class YOLOView @JvmOverloads constructor(
                             // For front camera, flip the mask horizontally
                             canvas.save()
                             // Translate to center, flip horizontally, translate back
+                            canvas.translate(vw / 2f, 0f)
+                            canvas.scale(-1f, 1f)
+                            canvas.translate(-vw / 2f, 0f)
+                            canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                            canvas.restore()
+                        } else {
+                            canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                        }
+                    }
+                }
+                // ----------------------------------------
+                // SEMANTIC
+                // ----------------------------------------
+                YOLOTask.SEMANTIC -> {
+                    result.semanticMask?.maskImage?.let { maskBitmap ->
+                        val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
+                        val dst = RectF(dx, dy, dx + scaledW, dy + scaledH)
+                        val maskPaint = Paint().apply { alpha = 128 }
+
+                        if (isFrontCamera) {
+                            canvas.save()
                             canvas.translate(vw / 2f, 0f)
                             canvas.scale(-1f, 1f)
                             canvas.translate(-vw / 2f, 0f)
@@ -1707,6 +1729,16 @@ class YOLOView @JvmOverloads constructor(
             }
             
             map["detections"] = detections
+        }
+
+        if (config.includeMasks) {
+            result.semanticMask?.let { semanticMask ->
+                map["semanticMask"] = mapOf(
+                    "classMap" to semanticMask.classMap,
+                    "width" to semanticMask.width,
+                    "height" to semanticMask.height
+                )
+            }
         }
 
         // Add classification results (if available and enabled for CLASSIFY task)
