@@ -298,7 +298,7 @@ class YOLOInstanceManager {
       for keypoints in result.keypointsList {
         var coordinates: [[String: Any]] = []
 
-        for (index, (x, y)) in keypoints.xy.enumerated() {
+        for (index, (x, y)) in keypoints.xyn.enumerated() {
           if index < keypoints.conf.count {
             coordinates.append([
               "x": x,
