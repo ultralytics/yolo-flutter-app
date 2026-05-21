@@ -38,7 +38,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       return
     }
 
-    showBoxes(predictions: result)
+    task == .obb ? showOBBs(predictions: result) : showBoxes(predictions: result)
     onDetection?(result)
 
     // Streaming callback (with output throttling)
@@ -91,17 +91,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       drawKeypoints(
         keypointsList: keypointList, confsList: confsList, boundingBoxes: result.boxes,
         on: poseLayer, imageViewSize: overlayLayer.frame.size, originalImageSize: result.orig_shape)
-    } else if task == .obb {
-      //            self.setupObbLayerIfNeeded()
-      guard let obbLayer = self.obbLayer else { return }
-      let obbDetections = result.obb
-      self.obbRenderer.drawObbDetectionsWithReuse(
-        obbDetections: obbDetections,
-        on: obbLayer,
-        imageViewSize: self.overlayLayer.frame.size,
-        originalImageSize: result.orig_shape,  // example
-        lineWidth: 3
-      )
     }
   }
 
@@ -156,7 +145,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   private var overlayLayer = CALayer()
   private var maskLayer: CALayer?
   private var poseLayer: CALayer?
-  private var obbLayer: CALayer?
 
   // Flag to control UI visibility (sliders, buttons, etc.)
   private var _showUIControls: Bool = false
@@ -180,8 +168,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       _showOverlays = newValue
     }
   }
-
-  let obbRenderer = OBBRenderer()
 
   private let minimumZoom: CGFloat = 1.0
   private let maximumZoom: CGFloat = 10.0
@@ -363,8 +349,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         [weak self] result in
         switch result {
         case .success(let predictor):
-          self?.obbLayer?.isHidden = false
-
           handleSuccess(predictor: predictor)
         case .failure(let error):
           handleFailure(error)
@@ -500,16 +484,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
-  func setupObbLayerIfNeeded() {
-    if obbLayer == nil {
-      let layer = CALayer()
-      layer.frame = self.overlayLayer.bounds
-      layer.opacity = 0.5
-      self.overlayLayer.addSublayer(layer)
-      self.obbLayer = layer
-    }
-  }
-
   public func resetLayers() {
     removeAllSubLayers(parentLayer: maskLayer)
     removeAllSubLayers(parentLayer: poseLayer)
@@ -517,7 +491,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     maskLayer = nil
     poseLayer = nil
-    obbLayer?.isHidden = true
   }
 
   func setupSublayers() {
@@ -528,10 +501,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       setupMaskLayerIfNeeded()
     case .pose:
       setupPoseLayerIfNeeded()
-    case .obb:
-      setupObbLayerIfNeeded()
-      overlayLayer.addSublayer(obbLayer!)
-      obbLayer?.isHidden = false
     default: break
     }
   }
@@ -591,18 +560,17 @@ public class YOLOView: UIView, VideoCaptureDelegate {
             confidence = CGFloat(prediction.conf)
             let colorIndex = prediction.index % ultralyticsColors.count
             boxColor = ultralyticsColors[colorIndex]
-            label = String(format: "%@ %.1f", bestClass, confidence * 100)
-            alpha = CGFloat((confidence - 0.2) / (1.0 - 0.2) * 0.9)
+            label = DetectionLabelStyle.text(className: bestClass, confidence: confidence)
+            alpha = DetectionLabelStyle.alpha(confidence: confidence)
           default:
             let prediction = predictions.boxes[i]
-            let clsIndex = prediction.index
             rect = prediction.xywhn
             bestClass = prediction.cls
             confidence = CGFloat(prediction.conf)
-            label = String(format: "%@ %.1f", bestClass, confidence * 100)
+            label = DetectionLabelStyle.text(className: bestClass, confidence: confidence)
             let colorIndex = prediction.index % ultralyticsColors.count
             boxColor = ultralyticsColors[colorIndex]
-            alpha = CGFloat((confidence - 0.2) / (1.0 - 0.2) * 0.9)
+            alpha = DetectionLabelStyle.alpha(confidence: confidence)
 
           }
           var displayRect = rect
@@ -726,8 +694,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
           let colorIndex = predictions.boxes[i].index % ultralyticsColors.count
           boxColor = ultralyticsColors[colorIndex]
-          label = String(format: "%@ %.1f", bestClass, confidence * 100)
-          alpha = CGFloat((confidence - 0.2) / (1.0 - 0.2) * 0.9)
+          label = DetectionLabelStyle.text(className: bestClass, confidence: confidence)
+          alpha = DetectionLabelStyle.alpha(confidence: confidence)
 
           rect.origin.x = rect.origin.x * videoCapture.longSide * scaleX - offsetX
           rect.origin.y =
@@ -751,6 +719,43 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         } else {
           boundingBoxViews[i].hide()
         }
+      }
+    }
+  }
+
+  func showOBBs(predictions: YOLOResult) {
+    let resultCount = predictions.obb.count
+    if showUIControls {
+      self.labelSliderNumItems.text =
+        String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
+    }
+
+    let overlayFrame = overlayLayer.frame
+    for i in 0..<boundingBoxViews.count {
+      guard i < resultCount && i < 50 else {
+        boundingBoxViews[i].hide()
+        continue
+      }
+
+      let detection = predictions.obb[i]
+      let box = detection.box
+      let confidence = CGFloat(detection.confidence)
+      let rect = CGRect(
+        x: overlayFrame.minX + CGFloat(box.cx - box.w / 2) * overlayFrame.width,
+        y: overlayFrame.minY + CGFloat(box.cy - box.h / 2) * overlayFrame.height,
+        width: CGFloat(box.w) * overlayFrame.width,
+        height: CGFloat(box.h) * overlayFrame.height
+      )
+      if _showOverlays {
+        boundingBoxViews[i].show(
+          frame: rect,
+          label: DetectionLabelStyle.text(className: detection.cls, confidence: confidence),
+          color: ultralyticsColors[detection.index % ultralyticsColors.count],
+          alpha: DetectionLabelStyle.alpha(confidence: confidence),
+          angle: CGFloat(box.angle)
+        )
+      } else {
+        boundingBoxViews[i].hide()
       }
     }
   }
@@ -1458,52 +1463,6 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
         tempPoseLayer = tempLayer
       }
 
-      // Add OBB layer if present (for OBB task)
-      var tempObbLayer: CALayer?
-      if let obbLayer = self.obbLayer, !obbLayer.isHidden {
-        // Create a temporary copy of the OBB layer including all sublayers
-        let tempLayer = CALayer()
-        let overlayFrame = self.overlayLayer.frame
-
-        tempLayer.frame = CGRect(
-          x: overlayFrame.origin.x,
-          y: overlayFrame.origin.y,
-          width: overlayFrame.width,
-          height: overlayFrame.height
-        )
-        tempLayer.opacity = obbLayer.opacity
-
-        // Copy all sublayers
-        if let sublayers = obbLayer.sublayers {
-          for sublayer in sublayers {
-            if let shapeLayer = sublayer as? CAShapeLayer {
-              let copyShapeLayer = CAShapeLayer()
-              copyShapeLayer.frame = shapeLayer.frame
-              copyShapeLayer.path = shapeLayer.path
-              copyShapeLayer.strokeColor = shapeLayer.strokeColor
-              copyShapeLayer.lineWidth = shapeLayer.lineWidth
-              copyShapeLayer.fillColor = shapeLayer.fillColor
-              copyShapeLayer.opacity = shapeLayer.opacity
-              tempLayer.addSublayer(copyShapeLayer)
-            } else if let textLayer = sublayer as? CATextLayer {
-              let copyTextLayer = CATextLayer()
-              copyTextLayer.frame = textLayer.frame
-              copyTextLayer.string = textLayer.string
-              copyTextLayer.font = textLayer.font
-              copyTextLayer.fontSize = textLayer.fontSize
-              copyTextLayer.foregroundColor = textLayer.foregroundColor
-              copyTextLayer.backgroundColor = textLayer.backgroundColor
-              copyTextLayer.alignmentMode = textLayer.alignmentMode
-              copyTextLayer.opacity = textLayer.opacity
-              tempLayer.addSublayer(copyTextLayer)
-            }
-          }
-        }
-
-        self.layer.insertSublayer(tempLayer, above: imageLayer)
-        tempObbLayer = tempLayer
-      }
-
       var tempViews = [UIView]()
       let boundingBoxInfos = makeBoundingBoxInfos(from: boundingBoxViews)
       for info in boundingBoxInfos where !info.isHidden {
@@ -1523,7 +1482,6 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
       imageLayer.removeFromSuperlayer()
       tempMaskLayer?.removeFromSuperlayer()
       tempPoseLayer?.removeFromSuperlayer()
-      tempObbLayer?.removeFromSuperlayer()
       for v in tempViews {
         v.removeFromSuperview()
       }

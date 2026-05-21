@@ -235,6 +235,11 @@ class ObbDetector(
             style = Paint.Style.STROKE
             strokeWidth = 3f
         }
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 40f
+        }
+        val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         for (detection in obbDetections) {
             paint.color = ultralyticsColors[detection.index % ultralyticsColors.size]
 
@@ -251,15 +256,19 @@ class ObbDetector(
                 }
                 canvas.drawPath(path, paint)
 
-                paint.style = Paint.Style.FILL
-                paint.textSize = 40f
-                canvas.drawText(
-                    "${detection.cls} ${"%.2f".format(detection.confidence * 100)}%",
-                    poly[0].x,
-                    poly[0].y - 10,
-                    paint
+                val label = "${detection.cls} ${"%.1f".format(detection.confidence * 100)}"
+                val labelWidth = textPaint.measureText(label) + 12f
+                val labelHeight = textPaint.textSize
+                val labelRect = RectF(
+                    poly[0].x - 2f,
+                    poly[0].y - labelHeight - 2f,
+                    poly[0].x - 2f + labelWidth,
+                    poly[0].y - 2f
                 )
-                paint.style = Paint.Style.STROKE
+                labelPaint.color = paint.color
+                labelPaint.alpha = 153
+                canvas.drawRoundRect(labelRect, 3f, 3f, labelPaint)
+                canvas.drawText(label, labelRect.left + 6f, labelRect.bottom - 8f, textPaint)
             }
         }
         return output
