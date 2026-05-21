@@ -42,10 +42,9 @@ class SemanticSegmenter(
     private lateinit var outputShape: IntArray
     private lateinit var inputDataType: DataType
     private lateinit var outputDataType: DataType
+    private var colorCache = IntArray(0)
     private var inputScale = 0f
     private var inputZeroPoint = 0
-    private var outputScale = 0f
-    private var outputZeroPoint = 0
 
     init {
         val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
@@ -71,10 +70,6 @@ class SemanticSegmenter(
         val outputTensor = interpreter.getOutputTensor(0)
         outputShape = outputTensor.shape()
         outputDataType = outputTensor.dataType()
-        outputTensor.quantizationParams().let {
-            outputScale = it.scale
-            outputZeroPoint = it.zeroPoint
-        }
         require(outputShape.size == 4 && outputShape[0] == 1) {
             "Semantic output tensor shape not supported: ${outputShape.joinToString()}"
         }
@@ -196,10 +191,7 @@ class SemanticSegmenter(
 
         val classMap = IntArray(width * height)
         val pixels = IntArray(width * height)
-        val colors = IntArray(classCount) { classIndex ->
-            val color = ultralyticsColors[classIndex % ultralyticsColors.size]
-            Color.argb(255, Color.red(color), Color.green(color), Color.blue(color))
-        }
+        val colors = semanticColors(classCount)
         for (y in 0 until height) {
             val sourceY = y + top
             for (x in 0 until width) {
@@ -223,35 +215,71 @@ class SemanticSegmenter(
         isNCHW: Boolean
     ): Int {
         if (classCount == 1) return 0
-        var bestIndex = 0
-        var bestScore = -Float.MAX_VALUE
-        for (classIndex in 0 until classCount) {
-            val score = outputValue(classIndex, x, y, isNCHW)
-            if (score > bestScore) {
-                bestScore = score
-                bestIndex = classIndex
-            }
-        }
-        return bestIndex
-    }
 
-    private fun outputValue(classIndex: Int, x: Int, y: Int, isNCHW: Boolean): Float {
-        return if (isNCHW) outputValue(classIndex, y, x) else outputValue(y, x, classIndex)
-    }
-
-    private fun outputValue(first: Int, second: Int, third: Int): Float {
         return when (outputDataType) {
-            DataType.FLOAT32 -> outputFloat[0][first][second][third]
+            DataType.FLOAT32 -> {
+                var bestIndex = 0
+                var bestScore = -Float.MAX_VALUE
+                for (classIndex in 0 until classCount) {
+                    val score = if (isNCHW) {
+                        outputFloat[0][classIndex][y][x]
+                    } else {
+                        outputFloat[0][y][x][classIndex]
+                    }
+                    if (score > bestScore) {
+                        bestScore = score
+                        bestIndex = classIndex
+                    }
+                }
+                bestIndex
+            }
+
             DataType.UINT8 -> {
-                val scale = outputScale.takeIf { it > 0f } ?: 1f
-                ((outputByte[0][first][second][third].toInt() and 0xFF) - outputZeroPoint) * scale
+                var bestIndex = 0
+                var bestScore = Int.MIN_VALUE
+                for (classIndex in 0 until classCount) {
+                    val score = if (isNCHW) {
+                        outputByte[0][classIndex][y][x].toInt() and 0xFF
+                    } else {
+                        outputByte[0][y][x][classIndex].toInt() and 0xFF
+                    }
+                    if (score > bestScore) {
+                        bestScore = score
+                        bestIndex = classIndex
+                    }
+                }
+                bestIndex
             }
+
             DataType.INT8 -> {
-                val scale = outputScale.takeIf { it > 0f } ?: 1f
-                (outputByte[0][first][second][third].toInt() - outputZeroPoint) * scale
+                var bestIndex = 0
+                var bestScore = Int.MIN_VALUE
+                for (classIndex in 0 until classCount) {
+                    val score = if (isNCHW) {
+                        outputByte[0][classIndex][y][x].toInt()
+                    } else {
+                        outputByte[0][y][x][classIndex].toInt()
+                    }
+                    if (score > bestScore) {
+                        bestScore = score
+                        bestIndex = classIndex
+                    }
+                }
+                bestIndex
             }
+
             else -> throw IllegalArgumentException("Semantic output type not supported: $outputDataType")
         }
+    }
+
+    private fun semanticColors(classCount: Int): IntArray {
+        if (colorCache.size == classCount) return colorCache
+
+        colorCache = IntArray(classCount) { classIndex ->
+            val color = ultralyticsColors[classIndex % ultralyticsColors.size]
+            Color.argb(255, Color.red(color), Color.green(color), Color.blue(color))
+        }
+        return colorCache
     }
 
     private fun drawSemanticOverlay(bitmap: Bitmap, semanticMask: SemanticMask?): Bitmap {
