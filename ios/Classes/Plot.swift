@@ -481,32 +481,33 @@ public func drawYOLOClassifications(on ciImage: CIImage, result: YOLOResult) -> 
       colorIndex = index % ultralyticsColors.count
     }
     let color = ultralyticsColors[colorIndex]
-    let lineWidth = CGFloat(width) * 0.01
-    drawContext.setStrokeColor(color.cgColor)
-    drawContext.setLineWidth(lineWidth)
-    let confidencePercent = round(result.probs!.top5Confs[i] * 1000) / 10
-    let labelText = " \(candidate) \(confidencePercent)% "
     let fontSize = CGFloat(width) * 0.03
-    let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
+    let labelText = DetectionLabelStyle.text(
+      className: candidate,
+      confidence: CGFloat(result.probs!.top5Confs[i])
+    )
     let attrs: [NSAttributedString.Key: Any] = [
-      .font: font,
+      .font: DetectionLabelStyle.font(size: fontSize),
       .foregroundColor: UIColor.white,
     ]
-    let textSize = labelText.size(withAttributes: attrs)
-    let labelWidth = textSize.width + 10
-    let labelHeight = textSize.height + 4
-    var labelRect = CGRect(
+    let labelSize = DetectionLabelStyle.size(for: labelText, fontSize: fontSize)
+    let labelRect = CGRect(
       x: fontSize,
       y: fontSize + (fontSize * 1.5 * CGFloat(i)),
-      width: labelWidth,
-      height: labelHeight
+      width: labelSize.width,
+      height: labelSize.height
     )
 
     drawContext.setFillColor(color.cgColor)
-    drawContext.fill(labelRect)
+    let labelPath = UIBezierPath(
+      roundedRect: labelRect,
+      cornerRadius: DetectionLabelStyle.cornerRadius
+    )
+    drawContext.addPath(labelPath.cgPath)
+    drawContext.fillPath()
     let textPoint = CGPoint(
-      x: labelRect.origin.x + 5,
-      y: labelRect.origin.y + (labelHeight - textSize.height) / 2
+      x: labelRect.origin.x + DetectionLabelStyle.horizontalPadding / 2,
+      y: labelRect.origin.y
     )
     labelText.draw(at: textPoint, withAttributes: attrs)
   }
