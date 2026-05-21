@@ -62,6 +62,7 @@ class PoseEstimator(
     // Output dimensions
     private var batchSize = 0
     private var numAnchors = 0
+    private var isEndToEnd = false
     private lateinit var outputLayout: OutputLayout
 
     init {
@@ -102,11 +103,12 @@ class PoseEstimator(
         
         val outputShape = interpreter.getOutputTensor(0).shape()
         batchSize = outputShape[0]
+        isEndToEnd = outputShape[2] < outputShape[1] && outputShape[2] >= 6
         outputLayout = when {
             outputShape[1] == OUTPUT_FEATURES -> OutputLayout.FEATURES_FIRST
-            outputShape[2] == OUTPUT_FEATURES -> OutputLayout.ANCHORS_FIRST
+            outputShape[2] == OUTPUT_FEATURES || isEndToEnd -> OutputLayout.ANCHORS_FIRST
             else -> throw IllegalArgumentException(
-                "Unexpected output feature size. Expected $OUTPUT_FEATURES in one output axis, Actual=${outputShape.contentToString()}"
+                "Unexpected output feature size. Expected $OUTPUT_FEATURES or end-to-end rows, Actual=${outputShape.contentToString()}"
             )
         }
 
@@ -188,6 +190,9 @@ class PoseEstimator(
         origWidth: Int,
         origHeight: Int
     ): List<PoseDetection> {
+        if (isEndToEnd) {
+            return postProcessEndToEndPose(features, confidenceThreshold, origWidth, origHeight)
+        }
 
         val detections = mutableListOf<PoseDetection>()
 
@@ -255,6 +260,68 @@ class PoseEstimator(
 
         val finalDetections = nmsPoseDetections(detections, iouThreshold)
         return finalDetections
+    }
+
+    private fun postProcessEndToEndPose(
+        features: Array<FloatArray>,
+        confidenceThreshold: Float,
+        origWidth: Int,
+        origHeight: Int
+    ): List<PoseDetection> {
+        val detections = mutableListOf<PoseDetection>()
+        val fieldCount = if (features.isNotEmpty()) features[0].size else 0
+        val keypointStart = if ((fieldCount - 6) % 3 == 0) 6 else 5
+        val keypointCount = (fieldCount - keypointStart) / 3
+
+        for (j in 0 until numAnchors) {
+            val conf = featureValue(features, 4, j)
+            if (conf < confidenceThreshold) continue
+
+            val outputRect = RectF(
+                featureValue(features, 0, j),
+                featureValue(features, 1, j),
+                featureValue(features, 2, j),
+                featureValue(features, 3, j)
+            )
+            val outputIsNormalized = outputCoordinatesAreNormalized(outputRect)
+            val rectF = inputRectFromOutputRect(
+                outputRect,
+                origWidth,
+                origHeight,
+                outputIsNormalized
+            ) ?: continue
+            val normBox = normalizedRectFromInputRect(rectF, origWidth, origHeight)
+
+            val kpArray = mutableListOf<Pair<Float, Float>>()
+            val kpConfArray = mutableListOf<Float>()
+            for (k in 0 until keypointCount) {
+                val rawKx = featureValue(features, keypointStart + k * 3, j)
+                val rawKy = featureValue(features, keypointStart + k * 3 + 1, j)
+                val kpC = featureValue(features, keypointStart + k * 3 + 2, j)
+                kpArray.add(
+                    inputPointFromOutputPoint(
+                        rawKx,
+                        rawKy,
+                        origWidth,
+                        origHeight,
+                        outputIsNormalized
+                    )
+                )
+                kpConfArray.add(kpC)
+            }
+
+            detections.add(
+                PoseDetection(
+                    box = Box(0, "person", conf, rectF, normBox),
+                    keypoints = Keypoints(
+                        xyn = kpArray.map { (fx, fy) -> (fx / origWidth) to (fy / origHeight) },
+                        xy = kpArray,
+                        conf = kpConfArray
+                    )
+                )
+            )
+        }
+        return detections
     }
 
     private fun featureValue(

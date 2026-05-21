@@ -209,15 +209,19 @@ class ObjectDetector(
         val outHeight = rawOutput[0].size      // out1
         val outWidth = rawOutput[0][0].size      // out2
 
-        val resultBoxes = postprocess(
-            rawOutput[0],
-            w = outWidth,   // width is out2
-            h = outHeight,  // height is out1
-            confidenceThreshold = confidenceThreshold,
-            iouThreshold = iouThreshold,
-            numItemsThreshold = numItemsThreshold,
-            numClasses = labels.size
-        )
+        val resultBoxes = if (outWidth < outHeight && outWidth >= 6) {
+            postprocessEndToEnd(rawOutput[0])
+        } else {
+            postprocess(
+                rawOutput[0],
+                w = outWidth,   // width is out2
+                h = outHeight,  // height is out1
+                confidenceThreshold = confidenceThreshold,
+                iouThreshold = iouThreshold,
+                numItemsThreshold = numItemsThreshold,
+                numClasses = labels.size
+            )
+        }
         // Convert to Box list
         val boxes = mutableListOf<Box>()
         for (boxArray in resultBoxes) {
@@ -287,6 +291,30 @@ class ObjectDetector(
         numItemsThreshold: Int,
         numClasses: Int
     ): Array<FloatArray>
+
+    private fun postprocessEndToEnd(predictions: Array<FloatArray>): Array<FloatArray> {
+        val boxes = mutableListOf<FloatArray>()
+        for (row in predictions) {
+            val confidence = row[4]
+            if (confidence <= confidenceThreshold) continue
+            val x1 = row[0]
+            val y1 = row[1]
+            val x2 = row[2]
+            val y2 = row[3]
+            boxes.add(
+                floatArrayOf(
+                    x1,
+                    y1,
+                    x2 - x1,
+                    y2 - y1,
+                    confidence,
+                    row[5]
+                )
+            )
+            if (boxes.size >= numItemsThreshold) break
+        }
+        return boxes.toTypedArray()
+    }
 
     companion object {
         private const val TAG = "ObjectDetector"

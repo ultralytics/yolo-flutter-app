@@ -57,29 +57,24 @@ class SemanticSegmenter: BasePredictor, @unchecked Sendable {
     guard classCount > 0, maskWidth > 0, maskHeight > 0 else { return nil }
 
     let bounds = CGRect(x: 0, y: 0, width: maskWidth, height: maskHeight)
-    let sampleRect = (modelMaskCropRect(maskWidth: maskWidth, maskHeight: maskHeight) ?? bounds)
+    let outputRect = (modelMaskCropRect(maskWidth: maskWidth, maskHeight: maskHeight) ?? bounds)
       .intersection(bounds).integral
-    let outputWidth = max(
-      Int((sampleRect.width / CGFloat(maskWidth) * CGFloat(modelInputSize.width)).rounded()), 1)
-    let outputHeight = max(
-      Int((sampleRect.height / CGFloat(maskHeight) * CGFloat(modelInputSize.height)).rounded()), 1)
+    let outputX = Int(outputRect.minX)
+    let outputY = Int(outputRect.minY)
+    let outputWidth = Int(outputRect.width)
+    let outputHeight = Int(outputRect.height)
     guard outputWidth > 0, outputHeight > 0 else { return nil }
 
     var classMap = [Int](repeating: 0, count: outputWidth * outputHeight)
     var pixels = [UInt8](repeating: 0, count: outputWidth * outputHeight * 4)
     let colors = semanticColors(classCount: classCount)
-    let scaleX = Float(sampleRect.width) / Float(outputWidth)
-    let scaleY = Float(sampleRect.height) / Float(outputHeight)
-    let originX = Float(sampleRect.minX)
-    let originY = Float(sampleRect.minY)
 
     for y in 0..<outputHeight {
-      let sourceY = originY + (Float(y) + 0.5) * scaleY - 0.5
+      let sourceY = y + outputY
       for x in 0..<outputWidth {
-        let sourceX = originX + (Float(x) + 0.5) * scaleX - 0.5
+        let sourceX = x + outputX
         let classIndex = bestClass(
           logits: logits, strides: strides, classCount: classCount,
-          maskWidth: maskWidth, maskHeight: maskHeight,
           x: sourceX, y: sourceY, isNCHW: isNCHW)
         let outputIndex = y * outputWidth + x
         classMap[outputIndex] = classIndex
@@ -98,10 +93,8 @@ class SemanticSegmenter: BasePredictor, @unchecked Sendable {
     logits: MLMultiArray,
     strides: [Int],
     classCount: Int,
-    maskWidth: Int,
-    maskHeight: Int,
-    x: Float,
-    y: Float,
+    x: Int,
+    y: Int,
     isNCHW: Bool
   ) -> Int {
     if classCount == 1 { return 0 }
@@ -109,44 +102,14 @@ class SemanticSegmenter: BasePredictor, @unchecked Sendable {
     var bestIndex = 0
     var bestScore = -Float.greatestFiniteMagnitude
     for classIndex in 0..<classCount {
-      let score = bilinearValue(
-        in: logits, strides: strides, classIndex: classIndex,
-        maskWidth: maskWidth, maskHeight: maskHeight, x: x, y: y, isNCHW: isNCHW)
+      let score = value(
+        in: logits, strides: strides, classIndex: classIndex, x: x, y: y, isNCHW: isNCHW)
       if score > bestScore {
         bestScore = score
         bestIndex = classIndex
       }
     }
     return bestIndex
-  }
-
-  private func bilinearValue(
-    in logits: MLMultiArray,
-    strides: [Int],
-    classIndex: Int,
-    maskWidth: Int,
-    maskHeight: Int,
-    x: Float,
-    y: Float,
-    isNCHW: Bool
-  ) -> Float {
-    let x0 = min(max(Int(floor(x)), 0), maskWidth - 1)
-    let y0 = min(max(Int(floor(y)), 0), maskHeight - 1)
-    let x1 = min(x0 + 1, maskWidth - 1)
-    let y1 = min(y0 + 1, maskHeight - 1)
-    let wx = min(max(x - Float(x0), 0), 1)
-    let wy = min(max(y - Float(y0), 0), 1)
-    let top =
-      value(in: logits, strides: strides, classIndex: classIndex, x: x0, y: y0, isNCHW: isNCHW)
-      * (1 - wx)
-      + value(in: logits, strides: strides, classIndex: classIndex, x: x1, y: y0, isNCHW: isNCHW)
-      * wx
-    let bottom =
-      value(in: logits, strides: strides, classIndex: classIndex, x: x0, y: y1, isNCHW: isNCHW)
-      * (1 - wx)
-      + value(in: logits, strides: strides, classIndex: classIndex, x: x1, y: y1, isNCHW: isNCHW)
-      * wx
-    return top * (1 - wy) + bottom * wy
   }
 
   private func value(

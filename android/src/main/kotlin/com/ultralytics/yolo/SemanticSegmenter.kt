@@ -12,7 +12,6 @@ import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.gpu.GpuDelegate
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.floor
 import kotlin.math.roundToInt
 
 class SemanticSegmenter(
@@ -187,12 +186,12 @@ class SemanticSegmenter(
         if (classCount <= 0 || maskWidth <= 0 || maskHeight <= 0) return null
 
         val crop = modelMaskCropRect(maskWidth, maskHeight, origWidth, origHeight)
-        val left = crop?.left?.toFloat() ?: 0f
-        val top = crop?.top?.toFloat() ?: 0f
-        val right = crop?.right?.toFloat() ?: maskWidth.toFloat()
-        val bottom = crop?.bottom?.toFloat() ?: maskHeight.toFloat()
-        val width = (((right - left) / maskWidth) * modelInputSize.first).roundToInt().coerceAtLeast(1)
-        val height = (((bottom - top) / maskHeight) * modelInputSize.second).roundToInt().coerceAtLeast(1)
+        val left = crop?.left ?: 0
+        val top = crop?.top ?: 0
+        val right = crop?.right ?: maskWidth
+        val bottom = crop?.bottom ?: maskHeight
+        val width = right - left
+        val height = bottom - top
         if (width <= 0 || height <= 0) return null
 
         val classMap = IntArray(width * height)
@@ -201,13 +200,11 @@ class SemanticSegmenter(
             val color = ultralyticsColors[classIndex % ultralyticsColors.size]
             Color.argb(255, Color.red(color), Color.green(color), Color.blue(color))
         }
-        val scaleX = (right - left) / width
-        val scaleY = (bottom - top) / height
         for (y in 0 until height) {
-            val sourceY = top + (y + 0.5f) * scaleY - 0.5f
+            val sourceY = y + top
             for (x in 0 until width) {
-                val sourceX = left + (x + 0.5f) * scaleX - 0.5f
-                val classIndex = bestClass(classCount, maskWidth, maskHeight, sourceX, sourceY, isNCHW)
+                val sourceX = x + left
+                val classIndex = bestClass(classCount, sourceX, sourceY, isNCHW)
                 val outputIndex = y * width + x
                 classMap[outputIndex] = classIndex
                 pixels[outputIndex] = colors[classIndex]
@@ -221,44 +218,21 @@ class SemanticSegmenter(
 
     private fun bestClass(
         classCount: Int,
-        maskWidth: Int,
-        maskHeight: Int,
-        x: Float,
-        y: Float,
+        x: Int,
+        y: Int,
         isNCHW: Boolean
     ): Int {
         if (classCount == 1) return 0
         var bestIndex = 0
         var bestScore = -Float.MAX_VALUE
         for (classIndex in 0 until classCount) {
-            val score = bilinearOutputValue(classIndex, maskWidth, maskHeight, x, y, isNCHW)
+            val score = outputValue(classIndex, x, y, isNCHW)
             if (score > bestScore) {
                 bestScore = score
                 bestIndex = classIndex
             }
         }
         return bestIndex
-    }
-
-    private fun bilinearOutputValue(
-        classIndex: Int,
-        maskWidth: Int,
-        maskHeight: Int,
-        x: Float,
-        y: Float,
-        isNCHW: Boolean
-    ): Float {
-        val x0 = floor(x).toInt().coerceIn(0, maskWidth - 1)
-        val y0 = floor(y).toInt().coerceIn(0, maskHeight - 1)
-        val x1 = (x0 + 1).coerceAtMost(maskWidth - 1)
-        val y1 = (y0 + 1).coerceAtMost(maskHeight - 1)
-        val wx = (x - x0).coerceIn(0f, 1f)
-        val wy = (y - y0).coerceIn(0f, 1f)
-        val top = outputValue(classIndex, x0, y0, isNCHW) * (1f - wx) +
-            outputValue(classIndex, x1, y0, isNCHW) * wx
-        val bottom = outputValue(classIndex, x0, y1, isNCHW) * (1f - wx) +
-            outputValue(classIndex, x1, y1, isNCHW) * wx
-        return top * (1f - wy) + bottom * wy
     }
 
     private fun outputValue(classIndex: Int, x: Int, y: Int, isNCHW: Boolean): Float {
