@@ -781,7 +781,7 @@ class YOLOView @JvmOverloads constructor(
             "$name ${"%.1f".format(confidence * 100)}"
 
         private fun colorFor(index: Int, confidence: Float): Int {
-            val alpha = (confidence * 255).toInt().coerceIn(0, 255)
+            val alpha = (confidence * 255).toInt().coerceIn((0.35f * 255).toInt(), 255)
             val baseColor = ultralyticsColors[index % ultralyticsColors.size]
             return Color.argb(
                 alpha,
@@ -799,7 +799,8 @@ class YOLOView @JvmOverloads constructor(
             anchorTop: Float,
             anchorRight: Float,
             viewWidth: Float,
-            viewHeight: Float
+            viewHeight: Float,
+            centered: Boolean = false
         ) {
             paint.textSize = 40f
             val fm = paint.fontMetrics
@@ -808,10 +809,10 @@ class YOLOView @JvmOverloads constructor(
             val pad = 8f
             val labelWidth = textWidth + 2 * pad
             val labelHeight = textHeight + 2 * pad
-            var labelLeft = anchorLeft
-            var labelTop = anchorTop - labelHeight
+            var labelLeft = if (centered) (viewWidth - labelWidth) / 2 else anchorLeft
+            var labelTop = if (centered) (viewHeight - labelHeight) / 2 else anchorTop - labelHeight
             var labelRight = labelLeft + labelWidth
-            var labelBottom = anchorTop
+            var labelBottom = labelTop + labelHeight
 
             if (labelTop < 0) {
                 labelTop = anchorTop
@@ -1048,7 +1049,8 @@ class YOLOView @JvmOverloads constructor(
                             16f,
                             16f,
                             vw,
-                            vh
+                            vh,
+                            centered = true
                         )
                     }
                 }
