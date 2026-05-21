@@ -134,7 +134,8 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
     let shape = prediction.shape.map { $0.intValue }
     guard shape.count == 3 else { return [] }
     if shape[2] < shape[1] {
-      return postProcessEndToEndPose(prediction, shape: shape, confidenceThreshold: confidenceThreshold)
+      return postProcessEndToEndPose(
+        prediction, shape: shape, confidenceThreshold: confidenceThreshold)
     }
 
     let numAnchors = prediction.shape[2].intValue
