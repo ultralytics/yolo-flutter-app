@@ -64,6 +64,7 @@ class YOLOResult {
   /// The detected keypoints for pose estimation tasks.
   ///
   /// Only available when using pose models (YOLOTask.pose).
+  /// Coordinates are in image pixel space.
   /// Common keypoints include body joints like shoulders, elbows, knees, etc.
   final List<Point>? keypoints;
 
@@ -105,7 +106,7 @@ class YOLOResult {
   /// - 'boundingBox': Map with 'left', 'top', 'right', 'bottom'
   /// - 'normalizedBox': Map with 'left', 'top', 'right', 'bottom'
   /// - 'mask': (optional) List of List of double
-  /// - 'keypoints': (optional) List of double in x,y,confidence triplets
+  /// - 'keypoints': (optional) List of double in pixel x,y,confidence triplets
   factory YOLOResult.fromMap(Map<dynamic, dynamic> map) {
     final classIndex = MapConverter.safeGetInt(map, 'classIndex');
     final className = MapConverter.safeGetString(map, 'className');

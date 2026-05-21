@@ -342,7 +342,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                 if (yoloResult.keypointsList.isNotEmpty()) {
                   response["keypoints"] = yoloResult.keypointsList.map { keypoints ->
                     mapOf(
-                      "coordinates" to keypoints.xyn.mapIndexed { i, (x, y) ->
+                      "coordinates" to keypoints.xy.mapIndexed { i, (x, y) ->
                         mapOf("x" to x, "y" to y, "confidence" to keypoints.conf[i])
                       }
                     )
