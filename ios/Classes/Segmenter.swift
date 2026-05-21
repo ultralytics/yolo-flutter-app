@@ -14,6 +14,7 @@
 //  The results include both bounding boxes and pixel-level masks that can be overlaid on images.
 
 import Accelerate
+import CoreML
 import Foundation
 import UIKit
 import Vision
@@ -213,6 +214,12 @@ class Segmenter: BasePredictor, @unchecked Sendable {
     confidenceThreshold: Float,
     iouThreshold: Float
   ) -> [(CGRect, Int, Float, MLMultiArray)] {
+    let shape = feature.shape.map { $0.intValue }
+    guard shape.count == 3 else { return [] }
+    if shape[2] < shape[1] {
+      return postProcessEndToEndSegment(
+        feature: feature, shape: shape, confidenceThreshold: confidenceThreshold)
+    }
 
     let numAnchors = feature.shape[2].intValue
     let numFeatures = feature.shape[1].intValue
@@ -303,6 +310,49 @@ class Segmenter: BasePredictor, @unchecked Sendable {
     }
 
     return selectedBoxesAndFeatures
+  }
+
+  private nonisolated func postProcessEndToEndSegment(
+    feature: MLMultiArray,
+    shape: [Int],
+    confidenceThreshold: Float
+  ) -> [(CGRect, Int, Float, MLMultiArray)] {
+    let maskConfidenceLength = 32
+    let strides = feature.strides.map { $0.intValue }
+    let pointer = feature.dataPointer.assumingMemoryBound(to: Float.self)
+    let detStride = strides[1]
+    let fieldStride = strides[2]
+    let maskStart = shape[2] > 5 ? 6 : 5
+    var results = [(CGRect, Int, Float, MLMultiArray)]()
+
+    for i in 0..<shape[1] {
+      let base = i * detStride
+      let confidence = pointer[base + 4 * fieldStride]
+      guard confidence > confidenceThreshold else { continue }
+
+      let x1 = CGFloat(pointer[base])
+      let y1 = CGFloat(pointer[base + fieldStride])
+      let x2 = CGFloat(pointer[base + 2 * fieldStride])
+      let y2 = CGFloat(pointer[base + 3 * fieldStride])
+      let classIndex = shape[2] > 5 ? Int(pointer[base + 5 * fieldStride]) : 0
+      guard
+        let maskProbs = try? MLMultiArray(
+          shape: [NSNumber(value: maskConfidenceLength)], dataType: .float32)
+      else { continue }
+
+      let maskPointer = maskProbs.dataPointer.assumingMemoryBound(to: Float.self)
+      for m in 0..<min(maskConfidenceLength, shape[2] - maskStart) {
+        maskPointer[m] = pointer[base + (maskStart + m) * fieldStride]
+      }
+
+      results.append(
+        (
+          CGRect(x: x1, y: y1, width: x2 - x1, height: y2 - y1), classIndex, confidence,
+          maskProbs
+        ))
+    }
+
+    return results
   }
 
   func checkShapeDimensions(of multiArray: MLMultiArray) -> Int {

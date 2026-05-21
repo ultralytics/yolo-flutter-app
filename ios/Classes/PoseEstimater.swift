@@ -14,6 +14,7 @@
 //  on the source image to show the detected pose skeleton.
 
 import Accelerate
+import CoreML
 import Foundation
 import UIKit
 import Vision
@@ -130,6 +131,13 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
   )
     -> [(box: Box, keypoints: Keypoints)]
   {
+    let shape = prediction.shape.map { $0.intValue }
+    guard shape.count == 3 else { return [] }
+    if shape[2] < shape[1] {
+      return postProcessEndToEndPose(
+        prediction, shape: shape, confidenceThreshold: confidenceThreshold)
+    }
+
     let numAnchors = prediction.shape[2].intValue
     let featureCount = prediction.shape[1].intValue - 5
 
@@ -207,6 +215,57 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
 
       let keypoints = Keypoints(xyn: xynArray, xy: xyArray, conf: confArray)
       return (boxResult, keypoints)
+    }
+
+    return results
+  }
+
+  private func postProcessEndToEndPose(
+    _ prediction: MLMultiArray,
+    shape: [Int],
+    confidenceThreshold: Float
+  ) -> [(box: Box, keypoints: Keypoints)] {
+    let strides = prediction.strides.map { $0.intValue }
+    let pointer = prediction.dataPointer.assumingMemoryBound(to: Float.self)
+    let detStride = strides[1]
+    let fieldStride = strides[2]
+    let keypointStart = (shape[2] - 6) % 3 == 0 ? 6 : 5
+    let keypointCount = (shape[2] - keypointStart) / 3
+    var results = [(box: Box, keypoints: Keypoints)]()
+
+    for i in 0..<shape[1] {
+      let base = i * detStride
+      let confidence = pointer[base + 4 * fieldStride]
+      guard confidence > confidenceThreshold else { continue }
+
+      let x1 = CGFloat(pointer[base])
+      let y1 = CGFloat(pointer[base + fieldStride])
+      let x2 = CGFloat(pointer[base + 2 * fieldStride])
+      let y2 = CGFloat(pointer[base + 3 * fieldStride])
+      let imageSizeBox = inputRect(
+        fromModelRect: CGRect(x: x1, y: y1, width: x2 - x1, height: y2 - y1))
+      let boxResult = Box(
+        index: 0, cls: "person", conf: confidence, xywh: imageSizeBox,
+        xywhn: normalizedRect(fromInputRect: imageSizeBox))
+
+      var xynArray = [(x: Float, y: Float)]()
+      var xyArray = [(x: Float, y: Float)]()
+      var confArray = [Float]()
+
+      for k in 0..<keypointCount {
+        let keypointBase = base + (keypointStart + 3 * k) * fieldStride
+        let imagePoint = inputPoint(
+          fromModelPoint: CGPoint(
+            x: CGFloat(pointer[keypointBase]),
+            y: CGFloat(pointer[keypointBase + fieldStride])))
+        let pointNorm = normalizedPoint(fromInputPoint: imagePoint)
+        xynArray.append((x: Float(pointNorm.x), y: Float(pointNorm.y)))
+        xyArray.append((x: Float(imagePoint.x), y: Float(imagePoint.y)))
+        confArray.append(pointer[keypointBase + 2 * fieldStride])
+      }
+
+      results.append((boxResult, Keypoints(xyn: xynArray, xy: xyArray, conf: confArray)))
+      if results.count >= numItemsThreshold { break }
     }
 
     return results

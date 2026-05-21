@@ -74,6 +74,10 @@ void main() {
         everyElement(endsWith('-seg')),
       );
       expect(
+        YOLO.officialModels(task: YOLOTask.semantic),
+        everyElement(endsWith('-sem')),
+      );
+      expect(
         YOLO.officialModels(task: YOLOTask.classify),
         everyElement(endsWith('-cls')),
       );
@@ -92,6 +96,17 @@ void main() {
         YOLO.defaultOfficialModel(task: YOLOTask.detect),
         YOLO.officialModels(task: YOLOTask.detect).first,
       );
+    });
+
+    test('task order follows Ultralytics docs navigation', () {
+      expect(YOLOTask.values, [
+        YOLOTask.detect,
+        YOLOTask.segment,
+        YOLOTask.semantic,
+        YOLOTask.classify,
+        YOLOTask.pose,
+        YOLOTask.obb,
+      ]);
     });
 
     test('task can be inferred from model metadata', () async {

@@ -36,8 +36,10 @@ class YOLOResolvedModel {
 }
 
 class YOLOModelResolver {
-  static const String _latestReleaseBaseUrl =
-      'https://github.com/ultralytics/yolo-flutter-app/releases/latest/download';
+  static const String _androidModelReleaseBaseUrl =
+      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0';
+  static const String _iosModelReleaseBaseUrl =
+      'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
 
   static const List<_OfficialModelArtifact> _officialModels = [
@@ -71,6 +73,32 @@ class YOLOModelResolver {
       id: 'yolo26n-seg',
       task: YOLOTask.segment,
       androidAssetName: 'yolo26n-seg_int8.tflite',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26n-sem',
+      task: YOLOTask.semantic,
+      androidAssetName: 'yolo26n-sem_int8.tflite',
+      iosArchiveName: 'yolo26n-sem.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26s-sem',
+      task: YOLOTask.semantic,
+      iosArchiveName: 'yolo26s-sem.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26m-sem',
+      task: YOLOTask.semantic,
+      iosArchiveName: 'yolo26m-sem.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26l-sem',
+      task: YOLOTask.semantic,
+      iosArchiveName: 'yolo26l-sem.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26x-sem',
+      task: YOLOTask.semantic,
+      iosArchiveName: 'yolo26x-sem.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26n-cls',
@@ -266,7 +294,7 @@ class YOLOModelResolver {
       return modelFile.path;
     }
 
-    await _downloadToFile('$_latestReleaseBaseUrl/$filename', modelFile);
+    await _downloadToFile('$_androidModelReleaseBaseUrl/$filename', modelFile);
     return modelFile.path;
   }
 
@@ -294,19 +322,8 @@ class YOLOModelResolver {
     }
 
     final archiveFile = File('${directory.path}/$archiveName');
-    await _downloadToFile('$_latestReleaseBaseUrl/$archiveName', archiveFile);
-    try {
-      final bytes = archiveFile.readAsBytesSync();
-      final extractedPath = await _extractMlPackageZip(bytes, modelDir);
-      if (extractedPath == null) {
-        throw ModelLoadingException('Failed to extract $archiveName.');
-      }
-      return extractedPath;
-    } finally {
-      if (archiveFile.existsSync()) {
-        archiveFile.deleteSync();
-      }
-    }
+    await _downloadToFile('$_iosModelReleaseBaseUrl/$archiveName', archiveFile);
+    return _extractMlPackageArchiveFile(archiveFile, archiveName, modelDir);
   }
 
   static Future<String> _downloadRemoteModel(Uri uri) async {
@@ -319,18 +336,7 @@ class YOLOModelResolver {
       if (await _hasValidMlPackage(targetDir)) return targetDir.path;
       final archiveFile = File('${documents.path}/$fileName');
       await _downloadToFile(uri.toString(), archiveFile);
-      try {
-        final bytes = archiveFile.readAsBytesSync();
-        final extractedPath = await _extractMlPackageZip(bytes, targetDir);
-        if (extractedPath == null) {
-          throw ModelLoadingException('Failed to extract $fileName.');
-        }
-        return extractedPath;
-      } finally {
-        if (archiveFile.existsSync()) {
-          archiveFile.deleteSync();
-        }
-      }
+      return _extractMlPackageArchiveFile(archiveFile, fileName, targetDir);
     }
 
     final file = File('${documents.path}/$fileName');
@@ -435,6 +441,27 @@ class YOLOModelResolver {
   static Future<bool> _hasValidMlPackage(Directory modelDir) async {
     return modelDir.existsSync() &&
         File('${modelDir.path}/Manifest.json').existsSync();
+  }
+
+  static Future<String> _extractMlPackageArchiveFile(
+    File archiveFile,
+    String displayName,
+    Directory targetDir,
+  ) async {
+    try {
+      final extractedPath = await _extractMlPackageZip(
+        archiveFile.readAsBytesSync(),
+        targetDir,
+      );
+      if (extractedPath == null) {
+        throw ModelLoadingException('Failed to extract $displayName.');
+      }
+      return extractedPath;
+    } finally {
+      if (archiveFile.existsSync()) {
+        archiveFile.deleteSync();
+      }
+    }
   }
 
   static Future<String?> _extractMlPackageZip(

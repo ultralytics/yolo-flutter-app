@@ -36,7 +36,12 @@ final models = YOLO.officialModels();
 print(models);
 ```
 
-`YOLO.officialModels()` only returns real downloadable artifacts for the running platform.
+`YOLO.officialModels()` only returns real downloadable artifacts for the running platform. Official Android TFLite assets are downloaded from the canonical Flutter `v0.2.0` release, and official iOS Core ML assets are downloaded from the canonical YOLO iOS `v8.3.0` release, so model URLs stay stable across package releases.
+
+Example assets come from the same canonical locations:
+
+- Android TFLite: [yolo-flutter-app `v0.2.0`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0)
+- iOS Core ML: [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)
 
 If you want the simplest “start from the default Ultralytics model” entry
 point, prefer `YOLO.defaultOfficialModel()`.
@@ -172,6 +177,7 @@ from ultralytics import YOLO
 
 # Use [640, 640] for mixed portrait/landscape; [640, 384] for portrait-only; [384, 640] for landscape-only.
 YOLO("yolo26n-seg.pt").export(format="coreml", imgsz=[640, 640])
+YOLO("yolo26n-sem.pt").export(format="coreml", imgsz=[640, 640])
 # Classification usually remains square because it uses center-crop preprocessing.
 YOLO("yolo26n-cls.pt").export(format="coreml", imgsz=[224, 224])
 # Use [640, 640] for mixed portrait/landscape; [640, 384] for portrait-only; [384, 640] for landscape-only.
@@ -197,6 +203,7 @@ from ultralytics import YOLO
 
 # Use the same square-orientation guidance for quantized exports.
 YOLO("yolo26n.pt").export(format="tflite", imgsz=[640, 640], int8=True)
+YOLO("yolo26n-sem.pt").export(format="tflite", imgsz=[640, 640], int8=True)
 YOLO("yolo26n.pt").export(format="tflite", imgsz=[640, 640], half=True)
 ```
 

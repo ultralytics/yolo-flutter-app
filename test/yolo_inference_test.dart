@@ -167,6 +167,7 @@ void main() {
       final tasks = [
         YOLOTask.detect,
         YOLOTask.segment,
+        YOLOTask.semantic,
         YOLOTask.classify,
         YOLOTask.pose,
         YOLOTask.obb,

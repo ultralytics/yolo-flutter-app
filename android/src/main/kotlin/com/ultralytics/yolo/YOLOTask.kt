@@ -3,5 +3,5 @@
 package com.ultralytics.yolo
 
 enum class YOLOTask {
-    DETECT, SEGMENT, CLASSIFY, POSE, OBB
+    DETECT, SEGMENT, SEMANTIC, CLASSIFY, POSE, OBB
 }

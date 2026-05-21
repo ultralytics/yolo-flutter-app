@@ -95,7 +95,42 @@ class YOLODetectionPainter extends CustomPainter {
       detection.boundingBox.bottom,
     );
 
-    canvas.drawRect(rect, paint);
+    final points = detection.obbPoints;
+    if (points != null && points.length >= 4) {
+      final path = Path();
+      for (var i = 0; i < points.length; i++) {
+        final point = Offset(
+          (points[i]['x'] ?? 0).toDouble(),
+          (points[i]['y'] ?? 0).toDouble(),
+        );
+        i == 0
+            ? path.moveTo(point.dx, point.dy)
+            : path.lineTo(point.dx, point.dy);
+      }
+      path.close();
+      canvas.drawPath(path, paint);
+      return;
+    }
+
+    final angle = detection.angle;
+    if (angle == null) {
+      canvas.drawRect(rect, paint);
+      return;
+    }
+
+    canvas
+      ..save()
+      ..translate(rect.center.dx, rect.center.dy)
+      ..rotate(angle)
+      ..drawRect(
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: rect.width,
+          height: rect.height,
+        ),
+        paint,
+      )
+      ..restore();
   }
 
   void _drawLabel(Canvas canvas, YOLOResult detection) {
@@ -122,7 +157,10 @@ class YOLODetectionPainter extends CustomPainter {
 
     // Draw background
     final backgroundPaint = Paint()..color = theme.labelBackgroundColor;
-    canvas.drawRect(labelRect, backgroundPaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(labelRect, const Radius.circular(3)),
+      backgroundPaint,
+    );
 
     // Draw text
     textPainter.paint(

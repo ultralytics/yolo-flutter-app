@@ -481,32 +481,33 @@ public func drawYOLOClassifications(on ciImage: CIImage, result: YOLOResult) -> 
       colorIndex = index % ultralyticsColors.count
     }
     let color = ultralyticsColors[colorIndex]
-    let lineWidth = CGFloat(width) * 0.01
-    drawContext.setStrokeColor(color.cgColor)
-    drawContext.setLineWidth(lineWidth)
-    let confidencePercent = round(result.probs!.top5Confs[i] * 1000) / 10
-    let labelText = " \(candidate) \(confidencePercent)% "
     let fontSize = CGFloat(width) * 0.03
-    let font = UIFont.systemFont(ofSize: fontSize, weight: .semibold)
+    let labelText = DetectionLabelStyle.text(
+      className: candidate,
+      confidence: CGFloat(result.probs!.top5Confs[i])
+    )
     let attrs: [NSAttributedString.Key: Any] = [
-      .font: font,
+      .font: DetectionLabelStyle.font(size: fontSize),
       .foregroundColor: UIColor.white,
     ]
-    let textSize = labelText.size(withAttributes: attrs)
-    let labelWidth = textSize.width + 10
-    let labelHeight = textSize.height + 4
-    var labelRect = CGRect(
+    let labelSize = DetectionLabelStyle.size(for: labelText, fontSize: fontSize)
+    let labelRect = CGRect(
       x: fontSize,
       y: fontSize + (fontSize * 1.5 * CGFloat(i)),
-      width: labelWidth,
-      height: labelHeight
+      width: labelSize.width,
+      height: labelSize.height
     )
 
     drawContext.setFillColor(color.cgColor)
-    drawContext.fill(labelRect)
+    let labelPath = UIBezierPath(
+      roundedRect: labelRect,
+      cornerRadius: DetectionLabelStyle.cornerRadius
+    )
+    drawContext.addPath(labelPath.cgPath)
+    drawContext.fillPath()
     let textPoint = CGPoint(
-      x: labelRect.origin.x + 5,
-      y: labelRect.origin.y + (labelHeight - textSize.height) / 2
+      x: labelRect.origin.x + DetectionLabelStyle.horizontalPadding / 2,
+      y: labelRect.origin.y
     )
     labelText.draw(at: textPoint, withAttributes: attrs)
   }
@@ -750,142 +751,6 @@ func drawPoseOnCIImage(
   return finalImage
 }
 
-class OBBShapeLayerBundle {
-  let shapeLayer = CAShapeLayer()
-  let textLayer = CATextLayer()
-
-  init() {
-    shapeLayer.strokeColor = UIColor.red.cgColor
-    shapeLayer.fillColor = UIColor.clear.cgColor
-
-    textLayer.fontSize = 14
-    textLayer.alignmentMode = .left
-    textLayer.foregroundColor = UIColor.white.cgColor
-    textLayer.cornerRadius = 3
-    textLayer.masksToBounds = true
-    textLayer.actions = [
-      "contents": NSNull(),
-      "string": NSNull(),
-      "position": NSNull(),
-      "bounds": NSNull(),
-    ]
-
-    shapeLayer.actions = [
-      "strokeColor": NSNull(),
-      "fillColor": NSNull(),
-      "path": NSNull(),
-      "position": NSNull(),
-      "bounds": NSNull(),
-    ]
-  }
-}
-
-class OBBRenderer {
-
-  private var layerPool: [OBBShapeLayerBundle] = []
-  private var usedLayerCount = 0
-
-  private func getLayerBundle(for parentLayer: CALayer) -> OBBShapeLayerBundle {
-    if usedLayerCount < layerPool.count {
-      let bundle = layerPool[usedLayerCount]
-      bundle.shapeLayer.isHidden = false
-      bundle.textLayer.isHidden = false
-      usedLayerCount += 1
-      return bundle
-    } else {
-      let newBundle = OBBShapeLayerBundle()
-      layerPool.append(newBundle)
-      usedLayerCount += 1
-
-      parentLayer.addSublayer(newBundle.shapeLayer)
-      parentLayer.addSublayer(newBundle.textLayer)
-      return newBundle
-    }
-  }
-
-  @MainActor func drawObbDetectionsWithReuse(
-    obbDetections: [OBBResult],
-    on layer: CALayer,
-    imageViewSize: CGSize,
-    originalImageSize: CGSize,
-    lineWidth: CGFloat = 2.0
-  ) {
-    usedLayerCount = 0
-
-    let scaleX = imageViewSize.width
-    let scaleY = imageViewSize.height
-
-    for detection in obbDetections {
-      let bundle = getLayerBundle(for: layer)
-
-      let shapeLayer = bundle.shapeLayer
-
-      let textLayer = bundle.textLayer
-      let index = detection.index % ultralyticsColors.count
-      let color = ultralyticsColors[index]
-
-      let corners = detection.box.toPolygon(in: originalImageSize)
-      let path = UIBezierPath()
-      for (i, corner) in corners.enumerated() {
-        let px = corner.x * scaleX
-        let py = corner.y * scaleY
-        if i == 0 {
-          path.move(to: CGPoint(x: px, y: py))
-        } else {
-          path.addLine(to: CGPoint(x: px, y: py))
-        }
-      }
-      path.close()
-
-      shapeLayer.path = path.cgPath
-      shapeLayer.strokeColor = color.cgColor
-      shapeLayer.fillColor = UIColor.clear.cgColor
-      shapeLayer.lineWidth = lineWidth
-      shapeLayer.isHidden = false
-
-      let text = detection.cls + String(format: " %.2f", detection.confidence)
-      let font = UIFont.systemFont(ofSize: textLayer.fontSize)
-
-      let attributes: [NSAttributedString.Key: Any] = [
-        .font: font
-      ]
-      let textSize = (text as NSString).size(withAttributes: attributes)
-
-      textLayer.font = CGFont(font.fontName as CFString)
-      textLayer.contentsScale = UIScreen.main.scale
-      textLayer.string = text
-
-      textLayer.backgroundColor = color.withAlphaComponent(0.6).cgColor
-      textLayer.isHidden = false
-
-      let horizontalPadding: CGFloat = 10
-      let verticalPadding: CGFloat = 4
-
-      if !corners.isEmpty {
-        // Find bounding box of the OBB polygon
-        let minX = corners.map { $0.x * scaleX }.min() ?? 0
-        let maxX = corners.map { $0.x * scaleX }.max() ?? 0
-        let minY = corners.map { $0.y * scaleY }.min() ?? 0
-        let maxY = corners.map { $0.y * scaleY }.max() ?? 0
-        let obbBounds = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-
-        let labelSize = CGSize(
-          width: textSize.width + horizontalPadding, height: textSize.height + verticalPadding)
-        let labelRect = calculateSmartLabelRect(
-          boxRect: obbBounds, labelSize: labelSize, screenSize: imageViewSize)
-
-        textLayer.frame = labelRect
-      }
-    }
-
-    for i in usedLayerCount..<layerPool.count {
-      let bundle = layerPool[i]
-      bundle.shapeLayer.isHidden = true
-      bundle.textLayer.isHidden = true
-    }
-  }
-}
-
 func drawOBBsOnCIImage(
   ciImage: CIImage,
   obbDetections: [OBBResult],
@@ -932,7 +797,10 @@ func drawOBBsOnCIImage(
     cgContext.closePath()
     cgContext.strokePath()
 
-    let labelText = "\(detection.cls) \(String(format: "%.2f", detection.confidence))%"
+    let labelText = DetectionLabelStyle.text(
+      className: detection.cls,
+      confidence: CGFloat(detection.confidence)
+    )
     let attrs: [NSAttributedString.Key: Any] = [
       .font: UIFont.systemFont(ofSize: fontSize),
       .foregroundColor: UIColor.white,
@@ -955,7 +823,12 @@ func drawOBBsOnCIImage(
 
     // Draw label background
     cgContext.setFillColor(color.withAlphaComponent(0.7).cgColor)
-    cgContext.fill(labelRect)
+    let labelPath = UIBezierPath(
+      roundedRect: labelRect,
+      cornerRadius: DetectionLabelStyle.cornerRadius
+    )
+    cgContext.addPath(labelPath.cgPath)
+    cgContext.fillPath()
 
     // Draw label text
     let textPoint = CGPoint(
@@ -967,4 +840,29 @@ func drawOBBsOnCIImage(
   UIGraphicsEndImageContext()
 
   return drawnImage
+}
+
+func drawYOLOSemanticSegmentation(
+  ciImage: CIImage,
+  semanticMask: CGImage?
+) -> UIImage? {
+  let context = CIContext(options: nil)
+  guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+    return nil
+  }
+  let size = CGSize(width: cgImage.width, height: cgImage.height)
+  UIGraphicsBeginImageContextWithOptions(size, false, 1.0)
+  defer { UIGraphicsEndImageContext() }
+  guard let cgContext = UIGraphicsGetCurrentContext() else { return nil }
+
+  cgContext.saveGState()
+  cgContext.translateBy(x: 0, y: size.height)
+  cgContext.scaleBy(x: 1, y: -1)
+  cgContext.draw(cgImage, in: CGRect(origin: .zero, size: size))
+  if let semanticMask {
+    cgContext.setAlpha(0.5)
+    cgContext.draw(semanticMask, in: CGRect(origin: .zero, size: size))
+  }
+  cgContext.restoreGState()
+  return UIGraphicsGetImageFromCurrentImageContext()
 }

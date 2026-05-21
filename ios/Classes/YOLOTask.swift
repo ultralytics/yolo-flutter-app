@@ -7,8 +7,8 @@
 //
 //  The YOLOTask enum defines the different types of computer vision tasks that the YOLO models can perform.
 //  Each task represents a distinct type of machine learning capability, from basic object detection to
-//  more advanced tasks like instance segmentation, pose estimation, oriented bounding box detection,
-//  and image classification. This enum is used throughout the application to configure the model loading
+//  more advanced tasks like instance segmentation, semantic segmentation, image classification,
+//  pose estimation, and oriented bounding box detection. This enum is used throughout the application to configure the model loading
 //  and inference pipeline for the specific task selected by the user.
 
 import Foundation
@@ -32,6 +32,15 @@ public enum YOLOTask {
   /// providing more detailed boundaries than rectangular bounding boxes.
   case segment
 
+  /// Semantic segmentation task that assigns a class label to each image pixel.
+  case semantic
+
+  /// Image classification task that identifies the primary subject of an image.
+  ///
+  /// Classification models predict what an image contains without localizing objects,
+  /// returning class labels and confidence scores for the entire image.
+  case classify
+
   /// Human pose estimation task that identifies key points of human figures.
   ///
   /// Pose estimation models detect human figures and identify the positions of key body
@@ -44,17 +53,13 @@ public enum YOLOTask {
   /// boundaries for objects that are not aligned with the image axes.
   case obb
 
-  /// Image classification task that identifies the primary subject of an image.
-  ///
-  /// Classification models predict what an image contains without localizing objects,
-  /// returning class labels and confidence scores for the entire image.
-  case classify
-
   /// A static function to parse from a string
   public static func fromString(_ s: String) -> YOLOTask {
     switch s.lowercased() {
     case "segment":
       return .segment
+    case "semantic":
+      return .semantic
     case "classify":
       return .classify
     case "pose":

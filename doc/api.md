@@ -210,6 +210,7 @@ Defines the type of YOLO task to perform.
 enum YOLOTask {
   detect,      // Object detection
   segment,     // Instance segmentation
+  semantic,    // Semantic segmentation
   classify,    // Image classification
   pose,        // Pose estimation
   obb,         // Oriented bounding boxes
@@ -510,7 +511,8 @@ if (imageData != null) {
 
 - Camera frame
 - Detection bounding boxes with labels
-- Segmentation masks (for segment task)
+- Instance segmentation masks (for segment task)
+- Semantic segmentation masks (for semantic task)
 - Pose keypoints and skeleton (for pose task)
 - OBB rotated boxes (for OBB task)
 - Classification results (for classify task)
@@ -536,16 +538,21 @@ class YOLOResult {
 
 #### Properties
 
-| Property        | Type                  | Description                                |
-| --------------- | --------------------- | ------------------------------------------ |
-| `classIndex`    | `int`                 | Class index in the model                   |
-| `className`     | `String`              | Human-readable class name                  |
-| `confidence`    | `double`              | Detection confidence (0.0-1.0)             |
-| `boundingBox`   | `Rect`                | Bounding box in pixel coordinates          |
-| `normalizedBox` | `Rect`                | Normalized bounding box (0.0-1.0)          |
-| `mask`          | `List<List<double>>?` | Segmentation mask data (segment task only) |
-| `keypoints`     | `List<Point>?`        | Pose keypoints (pose task only)            |
-| `angle`         | `double?`             | OBB rotation angle in radians (OBB only)   |
+| Property        | Type                  | Description                              |
+| --------------- | --------------------- | ---------------------------------------- |
+| `classIndex`    | `int`                 | Class index in the model                 |
+| `className`     | `String`              | Human-readable class name                |
+| `confidence`    | `double`              | Detection confidence (0.0-1.0)           |
+| `boundingBox`   | `Rect`                | Bounding box in pixel coordinates        |
+| `normalizedBox` | `Rect`                | Normalized bounding box (0.0-1.0)        |
+| `mask`          | `List<List<double>>?` | Instance mask data (segment task only)   |
+| `keypoints`     | `List<Point>?`        | Pose keypoints (pose task only)          |
+| `angle`         | `double?`             | OBB rotation angle in radians (OBB only) |
+
+---
+
+Single-image semantic segmentation returns `YOLODetectionResults.semanticMask`
+with a row-major `classMap`, `width`, and `height`.
 
 ---
 

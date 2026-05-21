@@ -10,6 +10,7 @@ data class YOLOResult(
     val origShape: Size,
     val boxes: List<Box> = emptyList(),
     val masks: Masks? = null,
+    val semanticMask: SemanticMask? = null,
     val probs: Probs? = null,
     val keypointsList: List<Keypoints> = emptyList(),
     val obb: List<OBBResult> = emptyList(),
@@ -31,6 +32,13 @@ data class Box(
 data class Masks(
     val masks: List<List<List<Float>>>, // Individual probability maps (matrix list)
     val combinedMask: Bitmap?           // Combined mask image
+)
+
+data class SemanticMask(
+    val classMap: List<Int>,
+    val width: Int,
+    val height: Int,
+    val maskImage: Bitmap?
 )
 
 data class Probs(

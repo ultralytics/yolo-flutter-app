@@ -367,11 +367,17 @@ void main() {
       final results = YOLODetectionResults(
         detections: detections,
         annotatedImage: imageBytes,
+        semanticMask: YOLOSemanticMask(
+          classMap: const [0, 1, 1, 0],
+          width: 2,
+          height: 2,
+        ),
         processingTimeMs: 50.0,
       );
 
       expect(results.detections, detections);
       expect(results.annotatedImage, imageBytes);
+      expect(results.semanticMask?.classMap, [0, 1, 1, 0]);
       expect(results.processingTimeMs, 50.0);
     });
 
@@ -397,6 +403,11 @@ void main() {
           },
         ],
         'annotatedImage': Uint8List.fromList([1, 2, 3, 4]),
+        'semanticMask': {
+          'classMap': [0, 1, 2, 1],
+          'width': 2,
+          'height': 2,
+        },
         'processingTimeMs': 50.0,
       };
 
@@ -404,6 +415,9 @@ void main() {
 
       expect(results.detections.length, 1);
       expect(results.detections.first.className, 'person');
+      expect(results.semanticMask?.classMap, [0, 1, 2, 1]);
+      expect(results.semanticMask?.width, 2);
+      expect(results.semanticMask?.height, 2);
       expect(results.processingTimeMs, 50.0);
       expect(results.annotatedImage, isNotNull);
     });
@@ -423,6 +437,11 @@ void main() {
       final results = YOLODetectionResults(
         detections: detections,
         annotatedImage: imageBytes,
+        semanticMask: YOLOSemanticMask(
+          classMap: const [2, 2, 1, 0],
+          width: 2,
+          height: 2,
+        ),
         processingTimeMs: 50.0,
       );
 
@@ -431,6 +450,7 @@ void main() {
       expect(map['detections'], isA<List>());
       expect(map['detections'].length, 1);
       expect(map['annotatedImage'], imageBytes);
+      expect(map['semanticMask']['classMap'], [2, 2, 1, 0]);
       expect(map['processingTimeMs'], 50.0);
     });
   });

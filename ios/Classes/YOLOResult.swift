@@ -7,8 +7,8 @@
 //
 //  The YOLOResult and related structures define the data models for storing and processing
 //  the output from YOLO model inference. This includes bounding boxes for object detection,
-//  masks for segmentation, probability distributions for classification, keypoints for pose estimation,
-//  and oriented bounding boxes for rotated object detection. These structures maintain the
+//  masks for instance segmentation, dense masks for semantic segmentation, probability distributions
+//  for classification, keypoints for pose estimation, and oriented bounding boxes for rotated object detection. These structures maintain the
 //  results in a consistent format across different tasks, making it easier to process and
 //  visualize the information in the application's UI components.
 
@@ -19,8 +19,8 @@ import UIKit
 /// Represents the complete results from a YOLO model inference, containing task-specific outputs.
 ///
 /// This structure consolidates all outputs from YOLO model inference across different task types.
-/// It can store bounding boxes for object detection, masks for segmentation, probability
-/// distributions for classification, keypoints for pose estimation, and oriented
+/// It can store bounding boxes for object detection, masks for instance segmentation,
+/// dense masks for semantic segmentation, probability distributions for classification, keypoints for pose estimation, and oriented
 /// bounding boxes for rotated object detection. The structure also maintains performance
 /// metrics and visualization data.
 ///
@@ -37,6 +37,9 @@ public struct YOLOResult: @unchecked Sendable {
 
   /// Optional segmentation masks for instance segmentation results.
   public var masks: Masks?
+
+  /// Optional dense class map for semantic segmentation results.
+  public var semanticMask: SemanticMask?
 
   /// Optional probability distribution for classification results.
   public var probs: Probs?
@@ -100,6 +103,21 @@ public struct Masks: @unchecked Sendable {
 
   /// Pre-rendered combined mask image for visualization.
   public let combinedMask: CGImage?
+}
+
+/// Represents semantic segmentation mask data from a YOLO semantic model.
+public struct SemanticMask: @unchecked Sendable {
+  /// Dense class IDs in row-major order with `width * height` elements.
+  public let classMap: [Int]
+
+  /// Width of the dense class map.
+  public let width: Int
+
+  /// Height of the dense class map.
+  public let height: Int
+
+  /// Pre-rendered color overlay image for visualization.
+  public let maskImage: CGImage?
 }
 
 /// Represents classification probability results from a YOLO classification model.

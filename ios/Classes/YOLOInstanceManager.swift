@@ -298,7 +298,7 @@ class YOLOInstanceManager {
       for keypoints in result.keypointsList {
         var coordinates: [[String: Any]] = []
 
-        for (index, (x, y)) in keypoints.xyn.enumerated() {
+        for (index, (x, y)) in keypoints.xy.enumerated() {
           if index < keypoints.conf.count {
             coordinates.append([
               "x": x,
@@ -358,6 +358,14 @@ class YOLOInstanceManager {
           }
         }
       }
+    }
+
+    if let semanticMask = result.semanticMask {
+      resultDict["semanticMask"] = [
+        "classMap": semanticMask.classMap,
+        "width": semanticMask.width,
+        "height": semanticMask.height,
+      ]
     }
 
     // OBB - oriented bounding boxes

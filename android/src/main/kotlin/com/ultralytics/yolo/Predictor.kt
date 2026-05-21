@@ -3,6 +3,7 @@
 package com.ultralytics.yolo
 
 import android.graphics.Bitmap
+import android.graphics.Rect
 import android.graphics.RectF
 import org.tensorflow.lite.Interpreter
 import kotlin.math.abs
@@ -148,7 +149,13 @@ abstract class BasePredictor : Predictor {
         )
     }
 
-    private data class LetterboxTransform(val gain: Float, val padX: Float, val padY: Float)
+    private data class LetterboxTransform(
+        val gain: Float,
+        val padX: Float,
+        val padY: Float,
+        val padRight: Float,
+        val padBottom: Float
+    )
 
     private fun letterboxTransform(origWidth: Int, origHeight: Int): LetterboxTransform? {
         val modelWidth = modelInputSize.first.toFloat()
@@ -159,10 +166,33 @@ abstract class BasePredictor : Predictor {
         if (gain <= 0f) return null
         val resizedWidth = (origWidth * gain).roundToInt()
         val resizedHeight = (origHeight * gain).roundToInt()
+        val padWidth = modelWidth - resizedWidth
+        val padHeight = modelHeight - resizedHeight
         // Match Ultralytics LetterBox leading-pad rounding: round(d - 0.1).
-        val padX = ((modelWidth - resizedWidth) / 2f - 0.1f).roundToInt().toFloat()
-        val padY = ((modelHeight - resizedHeight) / 2f - 0.1f).roundToInt().toFloat()
-        return LetterboxTransform(gain, padX, padY)
+        val padX = (padWidth / 2f - 0.1f).roundToInt().toFloat()
+        val padY = (padHeight / 2f - 0.1f).roundToInt().toFloat()
+        val padRight = (padWidth / 2f + 0.1f).roundToInt().toFloat()
+        val padBottom = (padHeight / 2f + 0.1f).roundToInt().toFloat()
+        return LetterboxTransform(gain, padX, padY, padRight, padBottom)
+    }
+
+    protected fun modelMaskCropRect(maskWidth: Int, maskHeight: Int, origWidth: Int, origHeight: Int): Rect? {
+        val transform = letterboxTransform(origWidth, origHeight) ?: return null
+        val modelWidth = modelInputSize.first.toFloat()
+        val modelHeight = modelInputSize.second.toFloat()
+        val left = (transform.padX / modelWidth * maskWidth).roundToInt()
+        val top = (transform.padY / modelHeight * maskHeight).roundToInt()
+        val right = maskWidth - (transform.padRight / modelWidth * maskWidth).roundToInt()
+        val bottom = maskHeight - (transform.padBottom / modelHeight * maskHeight).roundToInt()
+        val crop = Rect(
+            left.coerceIn(0, maskWidth),
+            top.coerceIn(0, maskHeight),
+            right.coerceIn(0, maskWidth),
+            bottom.coerceIn(0, maskHeight)
+        )
+        if (crop.left >= crop.right || crop.top >= crop.bottom) return null
+        if (crop.left == 0 && crop.top == 0 && crop.right == maskWidth && crop.bottom == maskHeight) return null
+        return crop
     }
 
     private fun inputRectFromModelRect(modelRect: RectF, origWidth: Int, origHeight: Int): RectF? {

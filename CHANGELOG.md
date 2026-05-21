@@ -1,3 +1,10 @@
+## 0.3.5
+
+- **Feature**: Add YOLO26 semantic segmentation support on Android and iOS with official `yolo26*-sem` model IDs.
+- **Bug Fix**: Return single-image pose keypoints in pixel coordinates to match `YOLOView` streaming and Python `Results.keypoints.xy`.
+- **Enhancement**: Pin official model downloads to canonical release assets: Android TFLite from Flutter `v0.2.0` and iOS Core ML from YOLO iOS `v8.3.0`.
+- **Documentation**: Update task lists, model guidance, and examples for the official Detect, Segment, Semantic, Classify, Pose, OBB order.
+
 ## 0.3.4
 
 - **Bug Fix**: Preserve YOLO input aspect ratio on Android and iOS with letterbox preprocessing for detection-style tasks, center-crop classification preprocessing, and rotation-aware result remapping.

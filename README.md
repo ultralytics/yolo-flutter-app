@@ -12,7 +12,7 @@
 [![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
 [![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://www.reddit.com/r/ultralytics/)
 
-Ultralytics YOLO Flutter is the official plugin for running YOLO models in Flutter apps on iOS and Android. It supports [detection](https://docs.ultralytics.com/tasks/detect/), [segmentation](https://docs.ultralytics.com/tasks/segment/), [classification](https://docs.ultralytics.com/tasks/classify/), [pose](https://docs.ultralytics.com/tasks/pose/), and [OBB](https://docs.ultralytics.com/tasks/obb/) with two simple entry points:
+Ultralytics YOLO Flutter is the official plugin for running YOLO models in Flutter apps on iOS and Android. It supports [detection](https://docs.ultralytics.com/tasks/detect/), [instance segmentation](https://docs.ultralytics.com/tasks/segment/), [semantic segmentation](https://docs.ultralytics.com/tasks/semantic/), [classification](https://docs.ultralytics.com/tasks/classify/), [pose](https://docs.ultralytics.com/tasks/pose/), and [OBB](https://docs.ultralytics.com/tasks/obb/) with two simple entry points:
 
 - `YOLO` for single-image inference
 - `YOLOView` for real-time camera inference
@@ -55,8 +55,9 @@ The main goal is simple integration: use an official model ID, or drop in your o
 | Feature                               | Android | iOS | Details                                                 |
 | ------------------------------------- | ------- | --- | ------------------------------------------------------- |
 | Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores           |
-| Image Classification                  | ✅      | ✅  | Top class predictions and scores                        |
 | Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                   |
+| Semantic Segmentation                 | ✅      | ✅  | Dense class masks for every pixel                       |
+| Image Classification                  | ✅      | ✅  | Top class predictions and scores                        |
 | Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores              |
 | Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                       |
 | Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                    |
@@ -72,7 +73,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.3.4
+  ultralytics_yolo: ^0.3.5
 ```
 
 ```bash
@@ -120,7 +121,14 @@ final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 ```
 
 Call `YOLO.officialModels()` to see which official IDs are available on the
-current platform.
+current platform. Official assets are downloaded from the canonical `v0.2.0`
+Flutter release on Android and the canonical YOLO iOS `v8.3.0` Core ML release
+on iOS, so package releases do not move model URLs.
+
+Example assets come from the same canonical locations:
+
+- Android TFLite: [yolo-flutter-app `v0.2.0`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0)
+- iOS Core ML: [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)
 
 ### 2. Your own exported model
 
@@ -255,7 +263,7 @@ Ultralytics offers two licensing options to accommodate diverse needs:
 
 If you're interested in using YOLO models directly in iOS applications with Swift (without Flutter), check out our dedicated iOS repository:
 
-👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - A native iOS application for real-time detection, segmentation, classification, pose estimation, and OBB detection with Ultralytics YOLO models.
+👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - A native iOS application for real-time detection, instance segmentation, semantic segmentation, classification, pose estimation, and OBB detection with Ultralytics YOLO models.
 
 This repository provides:
 

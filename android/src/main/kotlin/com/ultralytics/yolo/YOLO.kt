@@ -57,6 +57,7 @@ class YOLO(
         when (task) {
             YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
             YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
+            YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels, useGpu, customOptions = options)
             YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu, options, classifierOptions)
             YOLOTask.POSE -> PoseEstimator(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
             YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
@@ -395,38 +396,44 @@ class YOLO(
                     )
                     paint.style = Paint.Style.FILL
                     paint.alpha = 128
+                    paint.isFilterBitmap = true
                     canvas.drawBitmap(maskScaled, 0f, 0f, paint)
                     if (maskScaled !== mask) maskScaled.recycle()
                 }
             }
-            YOLOTask.CLASSIFY -> {
-                // Draw classification result at the top
-                result.probs?.let { probs ->
+            YOLOTask.SEMANTIC -> {
+                result.semanticMask?.maskImage?.let { mask ->
+                    val maskScaled = Bitmap.createScaledBitmap(mask, output.width, output.height, true)
                     paint.style = Paint.Style.FILL
-                    paint.color = Color.WHITE
-                    paint.alpha = 180
-                    canvas.drawRect(0f, 0f, output.width.toFloat(), 160f, paint)
-
+                    paint.alpha = 128
+                    paint.isFilterBitmap = true
+                    canvas.drawBitmap(maskScaled, 0f, 0f, paint)
                     paint.alpha = 255
-                    paint.color = Color.BLACK
-                    paint.textSize = 60f
-                    canvas.drawText(
-                        "${probs.top1Label} ${"%.2f".format(probs.top1Conf * 100)}%",
-                        20f,
-                        80f,
-                        paint
-                    )
-
-                    // Draw top-5 classes
-                    paint.textSize = 30f
+                    if (maskScaled !== mask) maskScaled.recycle()
+                }
+            }
+            YOLOTask.CLASSIFY -> {
+                result.probs?.let { probs ->
+                    paint.textSize = 40f
+                    val labelPadding = 8f
+                    var labelTop = 20f
                     for ((i, cls) in probs.top5Labels.withIndex()) {
-                        if (i == 0) continue // Skip top-1 which is already shown
-                        canvas.drawText(
-                            "$cls ${"%.2f".format(probs.top5Confs[i] * 100)}%",
+                        val labelText = "$cls ${"%.1f".format(probs.top5Confs[i] * 100)}"
+                        val colorIndex = probs.top5Indices.getOrNull(i) ?: probs.top1Index
+                        paint.color = ultralyticsColors[colorIndex % ultralyticsColors.size]
+                        val textBounds = Rect()
+                        paint.getTextBounds(labelText, 0, labelText.length, textBounds)
+                        val labelRect = RectF(
                             20f,
-                            120f + i * 40f,
-                            paint
+                            labelTop,
+                            20f + textBounds.width() + labelPadding * 2,
+                            labelTop + textBounds.height() + labelPadding * 2
                         )
+                        paint.style = Paint.Style.FILL
+                        canvas.drawRoundRect(labelRect, 12f, 12f, paint)
+                        paint.color = Color.WHITE
+                        canvas.drawText(labelText, labelRect.left + labelPadding, labelRect.bottom - labelPadding, paint)
+                        labelTop = labelRect.bottom + 10f
                     }
                 }
             }

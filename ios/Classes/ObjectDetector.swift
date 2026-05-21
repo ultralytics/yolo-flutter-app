@@ -13,6 +13,7 @@
 //  for inference time and frame rate, and offers runtime adjustable parameters such as confidence
 //  threshold and IoU threshold for non-maximum suppression.
 
+import CoreML
 import Foundation
 import UIKit
 import Vision
@@ -62,41 +63,16 @@ class ObjectDetector: BasePredictor {
   ///   - request: The completed Vision request containing object detection results.
   ///   - error: Any error that occurred during the Vision request.
   override func processObservations(for request: VNRequest, error: Error?) {
-    if let results = request.results as? [VNRecognizedObjectObservation] {
-      var boxes = [Box]()
+    let boxes = decodeBoxes(from: request)
+    let timing = updateTiming()
+    var result = YOLOResult(
+      orig_shape: inputSize, boxes: boxes, speed: timing.speed, fps: timing.fps, names: labels)
 
-      // Limit the number of detections based on numItemsThreshold
-      let maxDetections = min(results.count, self.numItemsThreshold)
-
-      for i in 0..<maxDetections {
-        let prediction = results[i]
-        guard let topLabel = prediction.labels.first else { continue }
-        let invertedBox = CGRect(
-          x: prediction.boundingBox.minX, y: 1 - prediction.boundingBox.maxY,
-          width: prediction.boundingBox.width, height: prediction.boundingBox.height)
-        let imageRect = VNImageRectForNormalizedRect(
-          invertedBox, Int(inputSize.width), Int(inputSize.height))
-
-        let label = topLabel.identifier
-        let index = self.labels.firstIndex(of: label) ?? 0
-        let confidence = topLabel.confidence
-        let box = Box(
-          index: index, cls: label, conf: confidence, xywh: imageRect, xywhn: invertedBox)
-        boxes.append(box)
-      }
-
-      let timing = updateTiming()
-      var result = YOLOResult(
-        orig_shape: inputSize, boxes: boxes, speed: timing.speed, fps: timing.fps, names: labels)
-
-      if let originalImageData = self.originalImageData {
-        result.originalImage = UIImage(data: originalImageData)
-
-      }
-
-      self.currentOnResultsListener?.on(result: result)
-
+    if let originalImageData = self.originalImageData {
+      result.originalImage = UIImage(data: originalImageData)
     }
+
+    self.currentOnResultsListener?.on(result: result)
   }
 
   /// Processes a static image and returns object detection results.
@@ -122,35 +98,79 @@ class ObjectDetector: BasePredictor {
 
     do {
       try requestHandler.perform([request])
-      if let results = request.results as? [VNRecognizedObjectObservation] {
-        // Limit the number of detections based on numItemsThreshold
-        let maxDetections = min(results.count, self.numItemsThreshold)
-
-        for i in 0..<maxDetections {
-          let prediction = results[i]
-          guard let topLabel = prediction.labels.first else { continue }
-          let invertedBox = CGRect(
-            x: prediction.boundingBox.minX, y: 1 - prediction.boundingBox.maxY,
-            width: prediction.boundingBox.width, height: prediction.boundingBox.height)
-          let imageRect = VNImageRectForNormalizedRect(
-            invertedBox, Int(inputSize.width), Int(inputSize.height))
-
-          let label = topLabel.identifier
-          let index = self.labels.firstIndex(of: label) ?? 0
-          let confidence = topLabel.confidence
-          let box = Box(
-            index: index, cls: label, conf: confidence, xywh: imageRect, xywhn: invertedBox)
-          boxes.append(box)
-        }
-      }
+      boxes = decodeBoxes(from: request)
     } catch {
       NSLog("YOLO ObjectDetector error: %@", String(describing: error))
     }
     let speed = Date().timeIntervalSince(start)
-    var result = YOLOResult(orig_shape: inputSize, boxes: boxes, speed: t1, names: labels)
+    var result = YOLOResult(orig_shape: inputSize, boxes: boxes, speed: speed, names: labels)
     let annotatedImage = drawYOLODetections(on: image, result: result)
     result.annotatedImage = annotatedImage
 
     return result
+  }
+
+  private func decodeBoxes(from request: VNRequest) -> [Box] {
+    if let results = request.results as? [VNRecognizedObjectObservation] {
+      return decodeRecognizedBoxes(results)
+    }
+    if let results = request.results as? [VNCoreMLFeatureValueObservation],
+      let prediction = results.first?.featureValue.multiArrayValue
+    {
+      return decodeEndToEndBoxes(prediction)
+    }
+    return []
+  }
+
+  private func decodeRecognizedBoxes(_ results: [VNRecognizedObjectObservation]) -> [Box] {
+    var boxes = [Box]()
+    boxes.reserveCapacity(min(results.count, numItemsThreshold))
+    for prediction in results.prefix(numItemsThreshold) {
+      guard let topLabel = prediction.labels.first else { continue }
+      let invertedBox = CGRect(
+        x: prediction.boundingBox.minX, y: 1 - prediction.boundingBox.maxY,
+        width: prediction.boundingBox.width, height: prediction.boundingBox.height)
+      let imageRect = VNImageRectForNormalizedRect(
+        invertedBox, Int(inputSize.width), Int(inputSize.height))
+      let label = topLabel.identifier
+      boxes.append(
+        Box(
+          index: labels.firstIndex(of: label) ?? 0, cls: label, conf: topLabel.confidence,
+          xywh: imageRect, xywhn: invertedBox))
+    }
+    return boxes
+  }
+
+  private func decodeEndToEndBoxes(_ prediction: MLMultiArray) -> [Box] {
+    let shape = prediction.shape.map { $0.intValue }
+    guard shape.count == 3, shape[2] < shape[1], shape[2] >= 6 else { return [] }
+
+    let strides = prediction.strides.map { $0.intValue }
+    let pointer = prediction.dataPointer.assumingMemoryBound(to: Float.self)
+    let detStride = strides[1]
+    let fieldStride = strides[2]
+    var boxes = [Box]()
+
+    for i in 0..<shape[1] {
+      let base = i * detStride
+      let confidence = pointer[base + 4 * fieldStride]
+      guard confidence > Float(confidenceThreshold) else { continue }
+
+      let x1 = CGFloat(pointer[base])
+      let y1 = CGFloat(pointer[base + fieldStride])
+      let x2 = CGFloat(pointer[base + 2 * fieldStride])
+      let y2 = CGFloat(pointer[base + 3 * fieldStride])
+      let classIndex = Int(pointer[base + 5 * fieldStride])
+      let imageRect = inputRect(
+        fromModelRect: CGRect(x: x1, y: y1, width: x2 - x1, height: y2 - y1))
+      let label = labelName(for: classIndex)
+
+      boxes.append(
+        Box(
+          index: classIndex, cls: label, conf: confidence, xywh: imageRect,
+          xywhn: normalizedRect(fromInputRect: imageRect)))
+      if boxes.count >= numItemsThreshold { break }
+    }
+    return boxes
   }
 }

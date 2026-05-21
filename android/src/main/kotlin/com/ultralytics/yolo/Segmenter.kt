@@ -33,6 +33,7 @@ class Segmenter(
     private var maskH = 0
     private var maskW = 0
     private var maskC = 0
+    private var isEndToEnd = false
 
     // TFLite Interpreter options
     private val interpreterOptions = (customOptions ?: Interpreter.Options()).apply {
@@ -111,11 +112,18 @@ class Segmenter(
         val out0Shape = interpreter.getOutputTensor(0).shape()
         val out1Shape = interpreter.getOutputTensor(1).shape()
 
-        // Initialize output0 buffer (example: [1,116,2100])
+        // Initialize output0 buffer (traditional [1,116,2100] or end-to-end [1,300,38])
         val batch0 = out0Shape[0]
-        out0NumFeatures = out0Shape[1]
-        out0NumAnchors = out0Shape[2]
-        output0 = Array(batch0) { Array(out0NumFeatures) { FloatArray(out0NumAnchors) } }
+        isEndToEnd = out0Shape[2] < out0Shape[1] && out0Shape[2] >= 6
+        if (isEndToEnd) {
+            out0NumAnchors = out0Shape[1]
+            out0NumFeatures = out0Shape[2]
+            output0 = Array(batch0) { Array(out0NumAnchors) { FloatArray(out0NumFeatures) } }
+        } else {
+            out0NumFeatures = out0Shape[1]
+            out0NumAnchors = out0Shape[2]
+            output0 = Array(batch0) { Array(out0NumFeatures) { FloatArray(out0NumAnchors) } }
+        }
 
         // Initialize output1 buffer (example: [1,80,80,32])
         val batch1 = out1Shape[0]
@@ -226,6 +234,10 @@ class Segmenter(
         confidenceThreshold: Float,
         iouThreshold: Float
     ): List<Detection> {
+        if (isEndToEnd) {
+            return postProcessEndToEndSegment(feature, confidenceThreshold)
+        }
+
         // Add performance measurement
         val startTime = android.os.SystemClock.elapsedRealtimeNanos()
 
@@ -295,6 +307,34 @@ class Segmenter(
             finalDetections.addAll(picked)
         }
         return finalDetections
+    }
+
+    private fun postProcessEndToEndSegment(
+        feature: Array<FloatArray>,
+        confidenceThreshold: Float
+    ): List<Detection> {
+        val detections = mutableListOf<Detection>()
+        val fieldCount = if (feature.isNotEmpty()) feature[0].size else 0
+        val maskStart = if (fieldCount > 5) 6 else 5
+
+        for (j in 0 until out0NumAnchors) {
+            val confidence = feature[j][4]
+            if (confidence < confidenceThreshold) continue
+
+            val maskCoeffs = FloatArray(maskConfidenceLength)
+            for (m in 0 until min(maskConfidenceLength, fieldCount - maskStart)) {
+                maskCoeffs[m] = feature[j][maskStart + m]
+            }
+            detections.add(
+                Detection(
+                    RectF(feature[j][0], feature[j][1], feature[j][2], feature[j][3]),
+                    if (fieldCount > 5) feature[j][5].toInt() else 0,
+                    confidence,
+                    maskCoeffs
+                )
+            )
+        }
+        return detections
     }
 
     private fun iou(a: RectF, b: RectF): Float {
