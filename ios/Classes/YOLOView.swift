@@ -792,7 +792,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     let labelText = DetectionLabelStyle.text(className: top1, confidence: confidence)
 
     let textLayer = CATextLayer()
-    let fontSize: CGFloat = 14
+    let fontSize: CGFloat = 18
     DetectionLabelStyle.configure(textLayer, fontSize: fontSize)
     textLayer.string = labelText
     let alpha = DetectionLabelStyle.alpha(confidence: confidence)

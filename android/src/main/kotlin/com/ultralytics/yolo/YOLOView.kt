@@ -781,7 +781,7 @@ class YOLOView @JvmOverloads constructor(
             "$name ${"%.1f".format(confidence * 100)}"
 
         private fun colorFor(index: Int, confidence: Float): Int {
-            val alpha = (confidence * 255).toInt().coerceIn((0.35f * 255).toInt(), 255)
+            val alpha = (confidence * 255).toInt().coerceIn((0.6f * 255).toInt(), 255)
             val baseColor = ultralyticsColors[index % ultralyticsColors.size]
             return Color.argb(
                 alpha,
