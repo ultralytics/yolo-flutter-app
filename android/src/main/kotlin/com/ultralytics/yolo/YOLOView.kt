@@ -1031,7 +1031,10 @@ class YOLOView @JvmOverloads constructor(
                     result.masks?.combinedMask?.let { maskBitmap ->
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
                         val dst = RectF(dx, dy, dx + scaledW, dy + scaledH)
-                        val maskPaint = Paint().apply { alpha = 128 }
+                        val maskPaint = Paint().apply {
+                            alpha = 128
+                            isFilterBitmap = true
+                        }
                         
                         if (isFrontCamera) {
                             // For front camera, flip the mask horizontally
@@ -1054,7 +1057,10 @@ class YOLOView @JvmOverloads constructor(
                     result.semanticMask?.maskImage?.let { maskBitmap ->
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
                         val dst = RectF(dx, dy, dx + scaledW, dy + scaledH)
-                        val maskPaint = Paint().apply { alpha = 128 }
+                        val maskPaint = Paint().apply {
+                            alpha = 128
+                            isFilterBitmap = true
+                        }
 
                         if (isFrontCamera) {
                             canvas.save()

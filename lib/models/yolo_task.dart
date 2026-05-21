@@ -27,6 +27,23 @@ enum YOLOTask {
 }
 
 extension YOLOTaskParsing on YOLOTask {
+  String get displayName {
+    switch (this) {
+      case YOLOTask.detect:
+        return 'Detect';
+      case YOLOTask.segment:
+        return 'Segment';
+      case YOLOTask.semantic:
+        return 'Semantic';
+      case YOLOTask.classify:
+        return 'Classify';
+      case YOLOTask.pose:
+        return 'Pose';
+      case YOLOTask.obb:
+        return 'OBB';
+    }
+  }
+
   static YOLOTask? tryParse(String? value) {
     if (value == null) return null;
     for (final task in YOLOTask.values) {

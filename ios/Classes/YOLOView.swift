@@ -482,10 +482,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       layer.frame = self.overlayLayer.bounds
       layer.opacity = 0.5
       layer.name = "maskLayer"
-      // Don't set contentsGravity - use default (matches yolo-ios-app)
-      // layer.contentsGravity = .resize
-      // layer.masksToBounds = true
-      // layer.backgroundColor = UIColor.clear.cgColor
+      layer.magnificationFilter = .linear
+      layer.minificationFilter = .linear
 
       self.overlayLayer.addSublayer(layer)
       self.maskLayer = layer

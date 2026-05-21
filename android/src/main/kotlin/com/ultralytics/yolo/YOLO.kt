@@ -396,6 +396,7 @@ class YOLO(
                     )
                     paint.style = Paint.Style.FILL
                     paint.alpha = 128
+                    paint.isFilterBitmap = true
                     canvas.drawBitmap(maskScaled, 0f, 0f, paint)
                     if (maskScaled !== mask) maskScaled.recycle()
                 }
@@ -405,6 +406,7 @@ class YOLO(
                     val maskScaled = Bitmap.createScaledBitmap(mask, output.width, output.height, true)
                     paint.style = Paint.Style.FILL
                     paint.alpha = 128
+                    paint.isFilterBitmap = true
                     canvas.drawBitmap(maskScaled, 0f, 0f, paint)
                     paint.alpha = 255
                     if (maskScaled !== mask) maskScaled.recycle()

@@ -294,7 +294,10 @@ class SemanticSegmenter(
             scaledMask,
             0f,
             0f,
-            android.graphics.Paint().apply { alpha = 128 }
+            android.graphics.Paint().apply {
+                alpha = 128
+                isFilterBitmap = true
+            }
         )
         if (scaledMask !== mask) scaledMask.recycle()
         return output

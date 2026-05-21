@@ -104,7 +104,7 @@ class ModelSelector extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  task.name.toUpperCase(),
+                  task.displayName,
                   style: TextStyle(
                     color: isSelected ? Colors.black : Colors.white,
                     fontSize: 12,
