@@ -151,8 +151,8 @@ class YOLOViewController {
 
   /// Captures a still photo from the live preview.
   ///
-  /// When [withOverlays] is `true`, the returned JPEG includes the rendered
-  /// bounding-box overlays composited over the camera frame.
+  /// When [withOverlays] is `true`, the returned JPEG includes the rendered bounding-box overlays composited over the
+  /// camera frame.
   Future<Uint8List?> capturePhoto({bool withOverlays = true}) =>
       _invoke<Uint8List>('capturePhoto', {'withOverlays': withOverlays});
 
@@ -188,21 +188,20 @@ class YOLOViewController {
 
   Future<void> restartCamera() => _invoke('restartCamera');
 
-  /// Pause the preview. On iOS this snapshots the next frame into the native
-  /// share-image cache before stopping the session (so [capturePhoto] after
-  /// pause returns the frozen frame); on Android it's a `stop()` alias.
+  /// Pause the preview. On iOS this snapshots the next frame into the native share-image cache before stopping the
+  /// session (so [capturePhoto] after pause returns the frozen frame); on Android it's a `stop()` alias.
   Future<void> pause() => _invoke('pause');
 
-  /// Resume after [pause]. iOS clears the cached share frame and restarts the
-  /// session; Android aliases to `restartCamera()`.
+  /// Resume after [pause]. iOS clears the cached share frame and restarts the session; Android aliases to
+  /// `restartCamera()`.
   Future<void> resume() => _invoke('resume');
 
   Future<Uint8List?> captureFrame() => _invoke<Uint8List>('captureFrame');
 
   /// Routes a typed native event (`zoom`/`lens`/`focus`) to the matching stream.
   ///
-  /// Called by `YOLOView` from its event-channel listener; safe to invoke from
-  /// other native bridges that surface the same typed events.
+  /// Called by `YOLOView` from its event-channel listener; safe to invoke from other native bridges that surface the
+  /// same typed events.
   void onNativeEvent(Map<dynamic, dynamic> event) {
     final type = event['type'];
     if (type is! String) return;

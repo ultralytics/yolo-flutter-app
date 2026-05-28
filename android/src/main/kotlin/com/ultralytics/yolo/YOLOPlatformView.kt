@@ -176,8 +176,8 @@ class YOLOPlatformView(
             sendStreamDataWithRetry(streamData)
         }
 
-        // Forward typed events (zoom/lens/focus) onto the same event sink so the Dart
-        // controller can route them via the existing event channel.
+        // Forward typed events (zoom/lens/focus) onto the same event sink so the Dart controller can route them via the
+        // existing event channel.
         yoloView.setEventCallback { event ->
             sendEventOnMain(event)
         }
@@ -440,9 +440,8 @@ class YOLOPlatformView(
                     yoloView.startCamera()
                     result.success(null)
                 }
-                // pause/resume mirror the iOS paused-frame semantics. Android
-                // doesn't snapshot a share frame on pause (capturePhoto uses
-                // the live preview snapshot), so this is a stop/start alias.
+                // pause/resume mirror the iOS paused-frame semantics. Android doesn't snapshot a share frame on pause
+                // (capturePhoto uses the live preview snapshot), so this is a stop/start alias.
                 "pause" -> {
                     yoloView.stop()
                     result.success(null)

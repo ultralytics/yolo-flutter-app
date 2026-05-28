@@ -97,9 +97,8 @@ class _YOLOViewState extends State<YOLOView> {
   }
 
   void _subscribeToResults() {
-    // Subscribe unconditionally — the controller's zoom/lens/focus streams ride
-    // the same event channel as detection results, so consumers that only
-    // listen via the controller still need an active subscription.
+    // Subscribe unconditionally — the controller's zoom/lens/focus streams ride the same event channel as detection
+    // results, so consumers that only listen via the controller still need an active subscription.
     _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
       _handleEvent,
       onError: (error, stackTrace) {
@@ -124,9 +123,8 @@ class _YOLOViewState extends State<YOLOView> {
   void _handleEvent(dynamic event) {
     if (event is! Map) return;
 
-    // Typed native events (`zoom`, `lens`, `focus`) coexist with detection
-    // payloads on the same channel; dispatch them to the controller's streams
-    // before falling through to detection/performance handling.
+    // Typed native events (`zoom`, `lens`, `focus`) coexist with detection payloads on the same channel; dispatch them
+    // to the controller's streams before falling through to detection/performance handling.
     if (event['type'] is String) {
       _effectiveController.onNativeEvent(event);
       return;

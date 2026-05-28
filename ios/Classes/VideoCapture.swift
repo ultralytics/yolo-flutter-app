@@ -56,10 +56,9 @@ class VideoCapture: NSObject, @unchecked Sendable {
   var frameSizeCaptured = false
 
   private var currentBuffer: CVPixelBuffer?
-  // Called with the very next sample buffer rendered through the video output;
-  // matches upstream YOLO iOS `captureNextFrame`. Used by `capturePhoto` so
-  // the share-sheet image is a freshly composited live frame (not a separate
-  // AVCapturePhotoOutput still that would be off-axis from the preview).
+  // Called with the very next sample buffer rendered through the video output; matches upstream YOLO iOS
+  // `captureNextFrame`. Used by `capturePhoto` so the share-sheet image is a freshly composited live frame (not a
+  // separate AVCapturePhotoOutput still that would be off-axis from the preview).
   private var frameCaptureCompletion: ((UIImage?) -> Void)?
   private let imageContext = CIContext()
 
@@ -263,10 +262,9 @@ class VideoCapture: NSObject, @unchecked Sendable {
 }
 
 extension VideoCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
-  /// Request a UIImage of the very next sample buffer rendered through the
-  /// video output, matching upstream YOLO iOS `captureNextFrame`. Completion
-  /// runs on the main queue. Returns `nil` if the session is stopped or a
-  /// capture is already pending.
+  /// Request a UIImage of the very next sample buffer rendered through the video output, matching upstream YOLO iOS
+  /// `captureNextFrame`. Completion runs on the main queue. Returns `nil` if the session is stopped or a capture is
+  /// already pending.
   func captureNextFrame(completion: @escaping (UIImage?) -> Void) {
     cameraQueue.async { [weak self] in
       guard let self else { return }

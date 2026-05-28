@@ -2,12 +2,10 @@
 
 import 'package:flutter/material.dart';
 
-/// One labeled slider row — the prefix (`0.25 Confidence Threshold`) shows
-/// the live value with the label baked in.
+/// One labeled slider row — the prefix (`0.25 Confidence Threshold`) shows the live value with the label baked in.
 ///
-/// Style mirrors the iOS showcase: white track + thumb, faded gray inactive
-/// track. `isInt` formats the prefix as a whole number (numItems) rather than
-/// a two-decimal float.
+/// Style mirrors the iOS showcase: white track + thumb, faded gray inactive track. `isInt` formats the prefix as a
+/// whole number (numItems) rather than a two-decimal float.
 class ThresholdSliderRow extends StatelessWidget {
   /// Slider label suffix (e.g. `Confidence Threshold`).
   final String label;

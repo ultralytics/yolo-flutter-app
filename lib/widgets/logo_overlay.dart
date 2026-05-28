@@ -2,8 +2,8 @@
 
 import 'package:flutter/material.dart';
 
-/// Watermark Ultralytics logotype. Bundled inside the plugin so consumers
-/// don't have to copy the asset into their own app.
+/// Watermark Ultralytics logotype. Bundled inside the plugin so consumers don't have to copy the asset into their own
+/// app.
 class LogoOverlay extends StatelessWidget {
   /// Logical-pixel width; the asset preserves aspect ratio at any size.
   final double width;

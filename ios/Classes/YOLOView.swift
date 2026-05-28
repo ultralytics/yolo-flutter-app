@@ -172,9 +172,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   private let minimumZoom: CGFloat = 1.0
   private let maximumZoom: CGFloat = 10.0
   private var lastZoomFactor: CGFloat = 1.0
-  /// Cached frame captured at pause so `capturePhoto` after `pause()` returns
-  /// the paused frame instead of asking a stopped session for a new buffer.
-  /// Matches upstream YOLO iOS pause/share semantics.
+  /// Cached frame captured at pause so `capturePhoto` after `pause()` returns the paused frame instead of asking a
+  /// stopped session for a new buffer. Matches upstream YOLO iOS pause/share semantics.
   private var pausedShareImage: UIImage?
 
   /// Callback for zoom level changes
@@ -439,9 +438,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     videoCapture.predictor = nil
   }
 
-  /// Pause the camera session, first snapshotting the next frame into
-  /// `pausedShareImage` so `capturePhoto` can return it without re-running
-  /// the session. Mirrors upstream YOLO iOS `pauseTapped`.
+  /// Pause the camera session, first snapshotting the next frame into `pausedShareImage` so `capturePhoto` can return
+  /// it without re-running the session. Mirrors upstream YOLO iOS `pauseTapped`.
   public func pause(completion: ((Void) -> Void)? = nil) {
     videoCapture.captureNextFrame { [weak self] image in
       self?.pausedShareImage = image
@@ -450,9 +448,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
-  /// Resume after `pause()`; clears the cached share frame and restarts the
-  /// session. Use this instead of `restartCamera()` when the session was
-  /// paused via `pause()`.
+  /// Resume after `pause()`; clears the cached share frame and restarts the session. Use this instead of
+  /// `restartCamera()` when the session was paused via `pause()`.
   public func resume() {
     pausedShareImage = nil
     videoCapture.start()
@@ -1239,15 +1236,13 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   // MARK: - Multi-lens support
   //
-  // Port of the lens enumeration + lens-snap math from
-  // `yolo-ios-app/Sources/YOLO/YOLOView.swift:1157-1185` and the device
-  // discovery in `VideoCapture.swift:32-45`. Setters only — Dart owns
-  // gestures; this class never attaches a pinch/tap recognizer.
+  // Port of the lens enumeration + lens-snap math from `yolo-ios-app/Sources/YOLO/YOLOView.swift:1157-1185` and the
+  // device discovery in `VideoCapture.swift:32-45`. Setters only — Dart owns gestures; this class never attaches a
+  // pinch/tap recognizer.
 
-  /// Returns the physical lens devices available for the active camera
-  /// position (back: ultra-wide / wide / telephoto, front: a single device).
-  /// Each entry pairs the canonical user-facing label with the raw zoom
-  /// factor on the currently active (virtual) device.
+  /// Returns the physical lens devices available for the active camera position (back: ultra-wide / wide / telephoto,
+  /// front: a single device). Each entry pairs the canonical user-facing label with the raw zoom factor on the
+  /// currently active (virtual) device.
   public func availableLenses() -> [(zoomFactor: CGFloat, label: String)] {
     let position = videoCapture.captureDevice?.position ?? .back
     let activeDevice = videoCapture.captureDevice
@@ -1270,11 +1265,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
-  /// Switch to the physical lens whose zoom factor most closely matches
-  /// `zoomFactor` (e.g. 0.5 / 1 / 2). Bypasses the 1.0 minimum used by
-  /// `setZoomLevel` so the ultra-wide (0.5x) is reachable. Updates the
-  /// zoom label, fires `onZoomChanged`, and emits a `lens` event so the
-  /// Dart lens picker can sync.
+  /// Switch to the physical lens whose zoom factor most closely matches `zoomFactor` (e.g. 0.5 / 1 / 2). Bypasses the
+  /// 1.0 minimum used by `setZoomLevel` so the ultra-wide (0.5x) is reachable. Updates the zoom label, fires
+  /// `onZoomChanged`, and emits a `lens` event so the Dart lens picker can sync.
   public func setLens(zoomFactor desired: CGFloat) {
     let lenses = availableLenses()
     guard !lenses.isEmpty else { return }
@@ -1306,24 +1299,21 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     onLensChanged?(target.label)
   }
 
-  /// Set focus + exposure at a normalized 0..1 view-relative coordinate.
-  /// Dart-side gesture handlers call this; no native recognizer is attached
-  /// to the view.
+  /// Set focus + exposure at a normalized 0..1 view-relative coordinate. Dart-side gesture handlers call this; no
+  /// native recognizer is attached to the view.
   ///
-  /// `focusPointOfInterest`/`exposurePointOfInterest` live in the capture
-  /// device's coordinate space (aspect-fill cropped, orientation-baked).
-  /// View-relative input must therefore be routed through the preview
-  /// layer's `captureDevicePointConverted(fromLayerPoint:)` — without that
-  /// hop a portrait device focuses well off the tap location.
+  /// `focusPointOfInterest`/`exposurePointOfInterest` live in the capture device's coordinate space (aspect-fill
+  /// cropped, orientation-baked). View-relative input must therefore be routed through the preview layer's
+  /// `captureDevicePointConverted(fromLayerPoint:)` — without that hop a portrait device focuses well off the tap
+  /// location.
   public func tapToFocus(x: CGFloat, y: CGFloat) {
     guard let device = videoCapture.captureDevice else { return }
     let viewX = max(0, min(1, x))
     let viewY = max(0, min(1, y))
 
-    // Map 0..1 view coords → preview layer point → capture device point.
-    // Falls back to the raw view-relative point if the preview layer is not
-    // attached yet (early-frame race), which is the same behavior as iOS
-    // before iOS 11 introduced the converter.
+    // Map 0..1 view coords → preview layer point → capture device point. Falls back to the raw view-relative point if
+    // the preview layer is not attached yet (early-frame race), which is the same behavior as iOS before iOS 11
+    // introduced the converter.
     let devicePoint: CGPoint
     if let preview = videoCapture.previewLayer, preview.bounds.width > 0, preview.bounds.height > 0
     {
@@ -1351,27 +1341,24 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         device.exposurePointOfInterest = devicePoint
         device.exposureMode = .autoExpose
       }
-      // Notify Dart with the original view-relative coords so the
-      // FocusReticle pulses where the user actually tapped.
+      // Notify Dart with the original view-relative coords so the FocusReticle pulses where the user actually tapped.
       onFocusTapped?(viewX, viewY)
     } catch {
       NSLog("YOLOView: tapToFocus failed: %@", error.localizedDescription)
     }
   }
 
-  /// Returns the user-facing label of the currently selected lens for the
-  /// active camera position. Useful for callers that want to seed Dart
-  /// state on first frame.
+  /// Returns the user-facing label of the currently selected lens for the active camera position. Useful for callers
+  /// that want to seed Dart state on first frame.
   public func currentLens() -> String {
     if !currentLensLabel.isEmpty { return currentLensLabel }
     guard let device = videoCapture.captureDevice else { return "" }
     return lensLabel(for: device)
   }
 
-  /// Port of `YOLOView.updateSelectedLens` (yolo-ios-app:1157-1185). Picks
-  /// the largest-zoom physical lens whose threshold is <= `rawZoomFactor`,
-  /// falling back to the smallest available lens. Emits `onLensChanged`
-  /// when the label transitions to a new value.
+  /// Port of `YOLOView.updateSelectedLens` (yolo-ios-app:1157-1185). Picks the largest-zoom physical lens whose
+  /// threshold is <= `rawZoomFactor`, falling back to the smallest available lens. Emits `onLensChanged` when the
+  /// label transitions to a new value.
   private func updateSelectedLensLabel(rawZoomFactor: CGFloat, device: AVCaptureDevice) {
     guard device.position == .back else {
       // Front camera: a single device.
@@ -1429,9 +1416,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
-  /// Per-lens fallback zoom factor when the active device is not a virtual
-  /// multi-lens device (matches the upstream `fallbackLensTitle` numeric
-  /// values: 0.5 / 1 / 2).
+  /// Per-lens fallback zoom factor when the active device is not a virtual multi-lens device (matches the upstream
+  /// `fallbackLensTitle` numeric values: 0.5 / 1 / 2).
   private func fallbackZoomFactor(for device: AVCaptureDevice) -> CGFloat {
     switch device.deviceType {
     case .builtInUltraWideCamera: return 0.5
@@ -1441,9 +1427,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
-  /// Port of upstream `VideoCapture.swift:62-84` — computes the raw zoom
-  /// factor on `virtualDevice` that selects the constituent lens
-  /// `lensDevice`.
+  /// Port of upstream `VideoCapture.swift:62-84` — computes the raw zoom factor on `virtualDevice` that selects the
+  /// constituent lens `lensDevice`.
   private func zoomFactor(
     for lensDevice: AVCaptureDevice, on virtualDevice: AVCaptureDevice?
   ) -> CGFloat? {
@@ -1472,9 +1457,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   // MARK: - Camera-flip blur transition
   //
-  // Ported from `yolo-ios-app/Sources/YOLO/YOLOView.swift:1036-1069`.
-  // Adds a snapshot + UIVisualEffectView over the preview while the camera
-  // session reconfigures, then fades it out.
+  // Ported from `yolo-ios-app/Sources/YOLO/YOLOView.swift:1036-1069`. Adds a snapshot + UIVisualEffectView over the
+  // preview while the camera session reconfigures, then fades it out.
 
   private func showCameraTransition() {
     cameraTransitionView?.removeFromSuperview()
@@ -1609,12 +1593,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     hideCameraTransition()
   }
 
-  /// Capture a share image. When `withOverlays` is true the next live frame
-  /// (or the paused-share frame when the session is stopped) is composited
-  /// with the current bounding-box / mask / pose layers via
-  /// `renderShareImage`. When false the raw oriented camera frame is
-  /// returned so callers can do their own annotation. Matches upstream YOLO
-  /// iOS `capturePhoto` and the Android `capturePhoto(withOverlays)` contract.
+  /// Capture a share image. When `withOverlays` is true the next live frame (or the paused-share frame when the
+  /// session is stopped) is composited with the current bounding-box / mask / pose layers via `renderShareImage`. When
+  /// false the raw oriented camera frame is returned so callers can do their own annotation. Matches upstream YOLO iOS
+  /// `capturePhoto` and the Android `capturePhoto(withOverlays)` contract.
   public func capturePhoto(withOverlays: Bool, completion: @escaping (UIImage?) -> Void) {
     if let pausedShareImage, !videoCapture.captureSession.isRunning {
       completion(withOverlays ? renderShareImage(pausedShareImage) : pausedShareImage)
@@ -1656,9 +1638,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 }
 
 extension YOLOView {
-  /// Composites bounding boxes (and mask/pose overlays when present) on top
-  /// of a freshly captured frame via `drawHierarchy`. Mirrors upstream YOLO
-  /// iOS `renderShareImage`. Mutates the layer hierarchy transiently and
+  /// Composites bounding boxes (and mask/pose overlays when present) on top of a freshly captured frame via
+  /// `drawHierarchy`. Mirrors upstream YOLO iOS `renderShareImage`. Mutates the layer hierarchy transiently and
   /// restores it before returning.
   fileprivate func renderShareImage(_ image: UIImage) -> UIImage? {
     var isCameraFront = false
@@ -1757,9 +1738,8 @@ extension YOLOView {
       tempViews.append(boxView)
     }
 
-    // Snapshot the YOLOView's own bounds — UIScreen.main.bounds would crop
-    // the wrong rect under split view, embedded layouts, or any non-fullscreen
-    // host and would misalign overlays in the shared image.
+    // Snapshot the YOLOView's own bounds — UIScreen.main.bounds would crop the wrong rect under split view, embedded
+    // layouts, or any non-fullscreen host and would misalign overlays in the shared image.
     let bounds = self.bounds
     UIGraphicsBeginImageContextWithOptions(bounds.size, true, 0.0)
     drawHierarchy(in: bounds, afterScreenUpdates: true)

@@ -44,9 +44,8 @@ class YOLOModelResolver {
       'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
 
-  // Canonical YOLO26 task × size matrix (mirrors RemoteModels.swift:21-22).
-  // Every cell is enumerated so chip availability is driven by the matrix, not
-  // by per-task special-casing; assets that don't exist at the release tag
+  // Canonical YOLO26 task × size matrix (mirrors RemoteModels.swift:21-22). Every cell is enumerated so chip
+  // availability is driven by the matrix, not by per-task special-casing; assets that don't exist at the release tag
   // simply fail at download time and surface as a UI-level "missing" state.
   static const List<_OfficialModelArtifact> _officialModels = [
     // Detect
@@ -531,9 +530,8 @@ class YOLOModelResolver {
         );
       }
 
-      // Stream bytes to disk so we can tally `received / contentLength` and
-      // surface progress through `YOLOModelManager.emitProgress`. `pipe`
-      // would block progress reporting until completion.
+      // Stream bytes to disk so we can tally `received / contentLength` and surface progress through
+      // `YOLOModelManager.emitProgress`. `pipe` would block progress reporting until completion.
       final totalBytes = response.contentLength;
       var receivedBytes = 0;
       double lastFraction = -1;

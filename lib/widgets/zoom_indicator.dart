@@ -2,9 +2,8 @@
 
 import 'package:flutter/material.dart';
 
-/// Two-line zoom HUD: numeric zoom factor on top, human-readable lens label
-/// below (e.g. `Wide camera`, `Ultra wide camera`). Sits above the lens
-/// picker in [YOLOShowcase].
+/// Two-line zoom HUD: numeric zoom factor on top, human-readable lens label below (e.g. `Wide camera`, `Ultra wide
+/// camera`). Sits above the lens picker in [YOLOShowcase].
 class ZoomIndicator extends StatelessWidget {
   /// Current native zoom factor, e.g. `0.5` or `2.34`.
   final double currentZoom;

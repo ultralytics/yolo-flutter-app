@@ -36,8 +36,8 @@ import java.util.concurrent.TimeUnit
 import android.content.res.Configuration
 
 /**
- * Describes a back-camera lens with its equivalent zoom factor relative to the main
- * wide-angle lens (1.0x). Used by `getAvailableLenses` to populate the Dart lens picker.
+ * Describes a back-camera lens with its equivalent zoom factor relative to the main wide-angle lens (1.0x). Used by
+ * `getAvailableLenses` to populate the Dart lens picker.
  */
 data class LensInfo(
     val zoomFactor: Double,
@@ -185,8 +185,8 @@ class YOLOView @JvmOverloads constructor(
         this.streamCallback = callback
     }
 
-    // Generic event callback used to forward {type:"zoom"|"lens"|"focus", ...} maps
-    // to the Flutter event sink without coupling YOLOView to a Flutter type.
+    // Generic event callback used to forward {type:"zoom"|"lens"|"focus", ...} maps to the Flutter event sink without
+    // coupling YOLOView to a Flutter type.
     private var eventCallback: ((Map<String, Any>) -> Unit)? = null
 
     /** Set a callback that receives typed events (zoom/lens/focus) for the Flutter event sink. */
@@ -362,8 +362,8 @@ class YOLOView @JvmOverloads constructor(
         }
         addView(confidenceLabel)
         confidenceLabel.elevation = 1000f
-        // Dart owns gestures (pinch + tap) via Flutter GestureDetector in YOLOShowcase;
-        // native is setter-only. Do not attach ScaleGestureDetector here.
+        // Dart owns gestures (pinch + tap) via Flutter GestureDetector in YOLOShowcase; native is setter-only. Do not
+        // attach ScaleGestureDetector here.
     }
 
     // region threshold setters
@@ -427,8 +427,7 @@ class YOLOView @JvmOverloads constructor(
             // Notify zoom change (legacy callback uses physical ratio).
             onZoomChanged?.invoke(physical)
 
-            // Dart-side ZoomIndicator consumes effective zoom so the value is
-            // consistent across lens switches.
+            // Dart-side ZoomIndicator consumes effective zoom so the value is consistent across lens switches.
             emitEvent(mapOf("type" to "zoom", "value" to effective))
         }
     }
@@ -631,11 +630,9 @@ class YOLOView @JvmOverloads constructor(
                         // Refresh lens enumeration once we have a camera provider.
                         cachedLenses = computeLensInfos(cameraProvider)
 
-                        // Preferred path: bind Preview + ImageAnalysis + ImageCapture so
-                        // capturePhoto() can grab a full-resolution still. Some low-tier
-                        // devices cannot bind three use-cases simultaneously; in that
-                        // case fall back to Preview + ImageAnalysis only and rely on
-                        // captureFrame() for snapshots.
+                        // Preferred path: bind Preview + ImageAnalysis + ImageCapture so capturePhoto() can grab a
+                        // full-resolution still. Some low-tier devices cannot bind three use-cases simultaneously; in
+                        // that case fall back to Preview + ImageAnalysis only and rely on captureFrame() for snapshots.
                         imageCaptureUseCase = ImageCapture.Builder()
                             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                             .setTargetAspectRatio(AspectRatio.RATIO_4_3)
@@ -675,8 +672,8 @@ class YOLOView @JvmOverloads constructor(
 
                             // Sync the lens tracking state with whatever lens we actually bound to so the first pinch
                             // on the wide lens doesn't think it needs to rebind. Default the selectedLensZoomFactor to
-                            // 1.0 (the wide reference) when we can't identify the bound camera in `cachedLenses`
-                            // (e.g. front-camera path).
+                            // 1.0 (the wide reference) when we can't identify the bound camera in `cachedLenses` (e.g.
+                            // front-camera path).
                             val bound = cachedLenses.firstOrNull { it.cameraInfo == cameraInfo }
                             if (bound != null) {
                                 selectedLensCameraInfo = bound.cameraInfo
@@ -825,8 +822,8 @@ class YOLOView @JvmOverloads constructor(
         }
 
         // Convert each lens's focal length to a 35mm-equivalent by scaling against the full-frame sensor width (36mm).
-        // When sensor width is unavailable we fall back to a synthetic equivalent based on raw focal length × a typical
-        // smartphone crop factor (~7.0). Phone lens equivalents land roughly:
+        // When sensor width is unavailable we fall back to a synthetic equivalent based on raw focal length × a
+        // typical smartphone crop factor (~7.0). Phone lens equivalents land roughly:
         //   ultra-wide: 13-20mm   wide: 22-32mm   telephoto: 50mm+
         fun equiv(raw: Raw): Float {
             val sensorWidth = raw.sensorWidth
@@ -888,10 +885,9 @@ class YOLOView @JvmOverloads constructor(
     }
 
     /**
-     * Tap-to-focus. [x] and [y] are normalized view-relative coordinates in 0..1.
-     * Builds a FocusMeteringAction via the PreviewView's MeteringPointFactory and
-     * triggers AF/AE. Emits `{type:"focus",x,y}` when the future completes successfully
-     * so the Dart `FocusReticle` can animate.
+     * Tap-to-focus. [x] and [y] are normalized view-relative coordinates in 0..1. Builds a FocusMeteringAction via the
+     * PreviewView's MeteringPointFactory and triggers AF/AE. Emits `{type:"focus",x,y}` when the future completes
+     * successfully so the Dart `FocusReticle` can animate.
      */
     fun tapToFocus(x: Double, y: Double) {
         val cam = camera ?: return
@@ -925,11 +921,10 @@ class YOLOView @JvmOverloads constructor(
     }
 
     /**
-     * Capture a still photo. Preferred path uses the bound ImageCapture use-case so we
-     * get a full-resolution JPEG; if [withOverlays] is true the current overlay bitmap
-     * is composited on top of the still before re-encoding. If ImageCapture binding
-     * isn't available (e.g. three-use-case bind failed), falls back to [captureFrame]
-     * which snapshots the preview + overlay composite.
+     * Capture a still photo. Preferred path uses the bound ImageCapture use-case so we get a full-resolution JPEG; if
+     * [withOverlays] is true the current overlay bitmap is composited on top of the still before re-encoding. If
+     * ImageCapture binding isn't available (e.g. three-use-case bind failed), falls back to [captureFrame] which
+     * snapshots the preview + overlay composite.
      */
     fun capturePhoto(withOverlays: Boolean = true, callback: (ByteArray?) -> Unit) {
         val ic = imageCaptureUseCase
@@ -945,8 +940,8 @@ class YOLOView @JvmOverloads constructor(
                 object : ImageCapture.OnImageCapturedCallback() {
                     override fun onCaptureSuccess(image: ImageProxy) {
                         try {
-                            // Carry the capture rotation + mirroring forward; ImageCapture hands us a JPEG that is
-                            // not yet rotated for portrait sensors, and on the front camera we also need to flip
+                            // Carry the capture rotation + mirroring forward; ImageCapture hands us a JPEG that is not
+                            // yet rotated for portrait sensors, and on the front camera we also need to flip
                             // horizontally before re-encoding. Without this every portrait share ends up sideways.
                             val rotationDegrees = image.imageInfo.rotationDegrees
                             val isFront = lensFacing == CameraSelector.LENS_FACING_FRONT
@@ -1008,8 +1003,8 @@ class YOLOView @JvmOverloads constructor(
         return try {
             val decoded = BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size) ?: return null
             // Apply the capture orientation (and mirror for the front camera) BEFORE compositing — the overlay is
-            // drawn in display coordinates, so the still bitmap has to be in the same upright orientation or boxes
-            // land at the wrong positions and the shared JPEG ends up sideways.
+            // drawn in display coordinates, so the still bitmap has to be in the same upright orientation or boxes land
+            // at the wrong positions and the shared JPEG ends up sideways.
             val still = applyOrientation(decoded, rotationDegrees, isFront)
             if (still !== decoded) decoded.recycle()
             // Render overlay onto a bitmap sized to match the upright still.
@@ -2025,11 +2020,9 @@ class YOLOView @JvmOverloads constructor(
     // endregion
     
     /**
-     * Capture current camera frame. When [withOverlays] is true the overlay
-     * bitmap (bounding boxes / mask / pose) is composited on top of the
-     * preview snapshot before encoding. Used as the fallback path when
-     * [capturePhoto]'s preferred ImageCapture binding is unavailable.
-     * Returns the captured image as a ByteArray (JPEG format).
+     * Capture current camera frame. When [withOverlays] is true the overlay bitmap (bounding boxes / mask / pose) is
+     * composited on top of the preview snapshot before encoding. Used as the fallback path when [capturePhoto]'s
+     * preferred ImageCapture binding is unavailable. Returns the captured image as a ByteArray (JPEG format).
      */
     fun captureFrame(withOverlays: Boolean = true): ByteArray? {
         try {
@@ -2078,9 +2071,8 @@ class YOLOView @JvmOverloads constructor(
                 }
             }
             
-            // Conditionally draw the overlay on top — callers asking for a
-            // raw photo (e.g. capturePhoto(withOverlays=false) hitting the
-            // fallback path) get the unannotated preview snapshot.
+            // Conditionally draw the overlay on top — callers asking for a raw photo (e.g.
+            // capturePhoto(withOverlays=false) hitting the fallback path) get the unannotated preview snapshot.
             if (withOverlays) {
                 overlayView.draw(canvas)
             }

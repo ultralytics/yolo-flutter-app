@@ -13,8 +13,8 @@ class TaskSegmentedControl extends StatelessWidget {
   /// Invoked with the user's selection.
   final ValueChanged<YOLOTask> onTaskChanged;
 
-  /// When `false`, the `Semantic` segment is hidden (used on builds where
-  /// no semantic models exist yet for the chosen size).
+  /// When `false`, the `Semantic` segment is hidden (used on builds where no semantic models exist yet for the chosen
+  /// size).
   final bool showSemanticTask;
 
   const TaskSegmentedControl({

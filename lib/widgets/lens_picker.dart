@@ -5,12 +5,11 @@ import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 
 /// Material 3 [SegmentedButton] over the device's available lenses.
 ///
-/// Labels render as `0.5`, `1`, `2`, `4` (sub-1× lenses use one decimal). The
-/// chip whose zoom factor is closest to [currentZoomFactor] is selected, so
-/// a pinch-zoom past a lens threshold visually snaps the picker.
+/// Labels render as `0.5`, `1`, `2`, `4` (sub-1× lenses use one decimal). The chip whose zoom factor is closest to
+/// [currentZoomFactor] is selected, so a pinch-zoom past a lens threshold visually snaps the picker.
 class LensPicker extends StatelessWidget {
-  /// Lenses the active camera exposes (back lens cluster on iOS, focal-length
-  /// enumeration on Android). Empty for single-lens devices.
+  /// Lenses the active camera exposes (back lens cluster on iOS, focal-length enumeration on Android). Empty for
+  /// single-lens devices.
   final List<LensInfo> lenses;
 
   /// Current native zoom factor; drives selection.
@@ -58,8 +57,8 @@ class LensPicker extends StatelessWidget {
   }
 
   static String _formatZoom(LensInfo lens) {
-    // Sub-1× lenses (e.g. 0.5×) need one decimal so users can distinguish
-    // ultra-wide from wide; 1×/2×/4× read cleaner as whole numbers.
+    // Sub-1× lenses (e.g. 0.5×) need one decimal so users can distinguish ultra-wide from wide; 1×/2×/4× read cleaner
+    // as whole numbers.
     return lens.zoomFactor < 1
         ? lens.zoomFactor.toStringAsFixed(1)
         : lens.zoomFactor.toStringAsFixed(0);

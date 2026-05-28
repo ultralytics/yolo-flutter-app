@@ -2,9 +2,8 @@
 
 import 'package:flutter/material.dart';
 
-/// Bottom action toolbar (play/pause, switch camera, share). Implemented as a
-/// row of `IconButton.filledTonal` inside a translucent pill — the M3 stand-in
-/// for the iOS `UIToolbar` blur bar.
+/// Bottom action toolbar (play/pause, switch camera, share). Implemented as a row of `IconButton.filledTonal` inside a
+/// translucent pill — the M3 stand-in for the iOS `UIToolbar` blur bar.
 class CameraToolbar extends StatelessWidget {
   /// Inference paused state; controls the play/pause icon.
   final bool isPaused;

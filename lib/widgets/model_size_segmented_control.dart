@@ -4,28 +4,25 @@ import 'package:flutter/material.dart';
 
 /// Material 3 [SegmentedButton] over the five YOLO26 model sizes.
 ///
-/// Downloaded chips read `YOLO26<size>`; missing chips are prefixed `⤓ ` to
-/// signal a download-on-tap. When [downloadingSize] matches a chip a thin
-/// [LinearProgressIndicator] tracks [downloadFraction] under the label.
+/// Downloaded chips read `YOLO26<size>`; missing chips are prefixed `⤓ ` to signal a download-on-tap. When
+/// [downloadingSize] matches a chip a thin [LinearProgressIndicator] tracks [downloadFraction] under the label.
 class ModelSizeSegmentedControl extends StatelessWidget {
   /// Currently-selected size (one of `n s m l x`).
   final String currentSize;
 
-  /// Sizes already present on-disk; missing sizes still appear with the `⤓`
-  /// prefix so the user can tap to start a download.
+  /// Sizes already present on-disk; missing sizes still appear with the `⤓` prefix so the user can tap to start a
+  /// download.
   final Set<String> availableSizes;
 
-  /// Sizes the resolver can fetch on the current platform. Sizes outside this
-  /// set are hidden from the segmented control so users can't tap a chip
-  /// that has no asset to download. Defaults to all five.
+  /// Sizes the resolver can fetch on the current platform. Sizes outside this set are hidden from the segmented control
+  /// so users can't tap a chip that has no asset to download. Defaults to all five.
   final Set<String> supportedSizes;
 
-  /// Invoked with the tapped size. Tapping a missing size is treated as a
-  /// download request — the parent kicks off the resolver.
+  /// Invoked with the tapped size. Tapping a missing size is treated as a download request — the parent kicks off the
+  /// resolver.
   final ValueChanged<String> onSizeChanged;
 
-  /// Size currently being downloaded (renders a progress indicator on that
-  /// chip). `null` when no download is in-flight.
+  /// Size currently being downloaded (renders a progress indicator on that chip). `null` when no download is in-flight.
   final String? downloadingSize;
 
   /// Fraction in `[0,1]` for the active download. `null` while indeterminate.
@@ -61,10 +58,9 @@ class ModelSizeSegmentedControl extends StatelessWidget {
       ],
       selected: {currentSize},
       showSelectedIcon: false,
-      // SegmentedButton clears the selection if the user re-taps the active
-      // segment; preserve `currentSize` so a re-tap on the same chip still
-      // routes (and so missing-chip taps that fail to switch don't unselect
-      // the previously-active chip).
+      // SegmentedButton clears the selection if the user re-taps the active segment; preserve `currentSize` so a re-tap
+      // on the same chip still routes (and so missing-chip taps that fail to switch don't unselect the previously
+      // active chip).
       onSelectionChanged: (selection) {
         final next = selection.isEmpty ? currentSize : selection.first;
         onSizeChanged(next);

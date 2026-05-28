@@ -104,9 +104,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       // Setup method channel handler
       setupMethodChannel()
 
-      // Setup zoom callback — keep the legacy method-channel invocation for
-      // existing consumers and also push a typed event on the event channel
-      // so the new Dart-side ZoomIndicator (PR 3) can subscribe.
+      // Setup zoom callback — keep the legacy method-channel invocation for existing consumers and also push a typed
+      // event on the event channel so the new Dart-side ZoomIndicator (PR 3) can subscribe.
       yoloView?.onZoomChanged = { [weak self] zoomLevel in
         guard let self = self else { return }
         self.methodChannel.invokeMethod("onZoomChanged", arguments: Double(zoomLevel))
@@ -395,9 +394,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         }
 
       case "capturePhoto":
-        // Canonical capture endpoint. Honors `withOverlays` (default true):
-        // false returns the raw oriented camera frame for callers that want
-        // to do their own annotation. Behavior matches the Android handler.
+        // Canonical capture endpoint. Honors `withOverlays` (default true): false returns the raw oriented camera frame
+        // for callers that want to do their own annotation. Behavior matches the Android handler.
         let withOverlays = (call.arguments as? [String: Any])?["withOverlays"] as? Bool ?? true
         self.yoloView?.capturePhoto(withOverlays: withOverlays) { image in
           if let image, let data = image.jpegData(compressionQuality: 0.9) {
@@ -426,8 +424,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         result(lenses)
 
       case "setLens":
-        // Switch to the lens whose zoom factor most closely matches the
-        // requested value, then emit a `lens` event.
+        // Switch to the lens whose zoom factor most closely matches the requested value, then emit a `lens` event.
         if let args = call.arguments as? [String: Any],
           let zoomFactor = args["zoomFactor"] as? Double
         {
@@ -440,9 +437,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         }
 
       case "tapToFocus":
-        // x, y are normalized 0..1 view-relative coordinates; native sets
-        // focusPointOfInterest + exposurePointOfInterest and emits a
-        // `focus` event so the Dart FocusReticle can animate.
+        // x, y are normalized 0..1 view-relative coordinates; native sets focusPointOfInterest +
+        // exposurePointOfInterest and emits a `focus` event so the Dart FocusReticle can animate.
         if let args = call.arguments as? [String: Any],
           let x = args["x"] as? Double,
           let y = args["y"] as? Double

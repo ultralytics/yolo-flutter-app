@@ -6,9 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
-/// Mirrors the iOS `YOLOSingleImageUIKit` example: pick a gallery image, run
-/// `yolo26n` detection, and list the resulting labels + confidences over the
-/// annotated image returned by the native side.
+/// Mirrors the iOS `YOLOSingleImageUIKit` example: pick a gallery image, run `yolo26n` detection, and list the
+/// resulting labels + confidences over the annotated image returned by the native side.
 class SingleImageScreen extends StatefulWidget {
   const SingleImageScreen({super.key});
 

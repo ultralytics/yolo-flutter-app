@@ -21,19 +21,17 @@ import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-/// One-import camera UI matching the iOS showcase layout. Composes every
-/// widget under `lib/widgets/`, owns gestures (pinch + tap-to-focus), drives
-/// the controller, and persists the last task/size across launches.
+/// One-import camera UI matching the iOS showcase layout. Composes every widget under `lib/widgets/`, owns gestures
+/// (pinch + tap-to-focus), drives the controller, and persists the last task/size across launches.
 class YOLOShowcase extends StatefulWidget {
   /// Task to load on first launch (overridden by stored preference).
   final YOLOTask initialTask;
 
-  /// Model size (`n/s/m/l/x`) to load on first launch (overridden by
-  /// stored preference).
+  /// Model size (`n/s/m/l/x`) to load on first launch (overridden by stored preference).
   final String initialModelSize;
 
-  /// When `false`, the Semantic task chip is hidden — useful while semantic
-  /// models for the current release are still missing.
+  /// When `false`, the Semantic task chip is hidden — useful while semantic models for the current release are still
+  /// missing.
   final bool showSemanticTask;
 
   /// Invoked with a composited JPEG when the user taps the share button.
@@ -45,9 +43,8 @@ class YOLOShowcase extends StatefulWidget {
   /// Optional theme override; defaults to dark Material 3.
   final ThemeData? theme;
 
-  /// Optional app version label shown in the bottom-left. Hidden when null.
-  /// Pass the consuming app's `package_info_plus` version, e.g.
-  /// `'v${info.version}'`.
+  /// Optional app version label shown in the bottom-left. Hidden when null. Pass the consuming app's
+  /// `package_info_plus` version, e.g. `'v${info.version}'`.
   final String? versionLabel;
 
   const YOLOShowcase({
@@ -118,8 +115,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       if (mounted) setState(() => _currentLensLabel = label);
     });
     _focusSub = _controller.focusEvents.listen((offset) {
-      // Native-side focus events fire view-relative 0..1 coords; translate to
-      // pixels using the most recent LayoutBuilder size tracked in build().
+      // Native-side focus events fire view-relative 0..1 coords; translate to pixels using the most recent
+      // LayoutBuilder size tracked in build().
       if (!mounted || _viewSize == Size.zero) return;
       setState(() {
         _focusPosition = Offset(
@@ -167,10 +164,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   Future<void> _refreshLenses() async {
-    // Wait for the platform view (and its native YOLOView) to come up before
-    // enumerating lenses. Model download/compile on cold launch can push view
-    // creation well past a few hundred ms; cap at ~30s but keep the body
-    // cheap so the cost of waiting is negligible.
+    // Wait for the platform view (and its native YOLOView) to come up before enumerating lenses. Model download/compile
+    // on cold launch can push view creation well past a few hundred ms; cap at ~30s but keep the body cheap so the cost
+    // of waiting is negligible.
     const deadline = Duration(seconds: 30);
     final sw = Stopwatch()..start();
     while (sw.elapsed < deadline) {
@@ -217,8 +213,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     return 'yolo26$size${suffixes[task] ?? ''}';
   }
 
-  /// Maps `yolo26<size><suffix>` back to its size letter — used to route
-  /// download-progress events to the matching chip.
+  /// Maps `yolo26<size><suffix>` back to its size letter — used to route download-progress events to the matching
+  /// chip.
   static String? _sizeForModelId(String id, YOLOTask task) {
     final expectedSuffix = _composeModelId(task: task, size: '').substring(6);
     for (final size in _allSizes) {
@@ -227,9 +223,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     return null;
   }
 
-  /// Sizes the resolver can fetch for `task` on the current platform. Drives
-  /// chip visibility — sizes outside this set are hidden so the user can't
-  /// tap a chip that would 404 at download time.
+  /// Sizes the resolver can fetch for `task` on the current platform. Drives chip visibility — sizes outside this set
+  /// are hidden so the user can't tap a chip that would 404 at download time.
   Set<String> _supportedSizesForTask(YOLOTask task) {
     final declared = YOLO.officialModels(task: task);
     final sizes = <String>{};
@@ -241,9 +236,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     return sizes;
   }
 
-  /// Probes each declared `yolo26<size><suffix>` for the active task to
-  /// decide which chips are "downloaded" vs need a `⤓` glyph. Only models the
-  /// resolver declares (`YOLO.officialModels`) are probed.
+  /// Probes each declared `yolo26<size><suffix>` for the active task to decide which chips are "downloaded" vs need a
+  /// `⤓` glyph. Only models the resolver declares (`YOLO.officialModels`) are probed.
   Future<Set<String>> _scanAvailableSizes(YOLOTask task) async {
     final supported = _supportedSizesForTask(task);
     final present = <String>{};
@@ -296,9 +290,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _onPlayPause() {
     setState(() => _isPaused = !_isPaused);
-    // iOS `pause` snapshots the next frame into the native share cache before
-    // stopping; sharing while paused returns that frame. Android aliases to
-    // stop/start. resume() clears the cached frame and restarts.
+    // iOS `pause` snapshots the next frame into the native share cache before stopping; sharing while paused returns
+    // that frame. Android aliases to stop/start. resume() clears the cached frame and restarts.
     if (_isPaused) {
       unawaited(_controller.pause());
     } else {
@@ -347,8 +340,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final viewSize = Size(constraints.maxWidth, constraints.maxHeight);
-            // Cache for the focus-stream listener (registered in initState,
-            // fires later — needs a synchronous view-size lookup).
+            // Cache for the focus-stream listener (registered in initState, fires later — needs a synchronous view-size
+            // lookup).
             _viewSize = viewSize;
             return Stack(
               fit: StackFit.expand,
@@ -359,8 +352,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   controller: _controller,
                   onPerformanceMetrics: _onPerformanceMetrics,
                 ),
-                // Gesture layer above YOLOView but behind controls so taps on
-                // segmented buttons / sliders still reach those widgets first.
+                // Gesture layer above YOLOView but behind controls so taps on segmented buttons / sliders still reach
+                // those widgets first.
                 Positioned.fill(
                   child: GestureDetector(
                     behavior: HitTestBehavior.translucent,

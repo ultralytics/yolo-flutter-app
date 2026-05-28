@@ -8,8 +8,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
-/// Real-time YOLO camera inference. Thin shell over [YOLOShowcase] that wires
-/// the capture callback to the platform share sheet via `share_plus`.
+/// Real-time YOLO camera inference. Thin shell over [YOLOShowcase] that wires the capture callback to the platform
+/// share sheet via `share_plus`.
 class CameraInferenceScreen extends StatelessWidget {
   const CameraInferenceScreen({super.key});
 

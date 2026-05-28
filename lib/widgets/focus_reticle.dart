@@ -2,9 +2,8 @@
 
 import 'package:flutter/material.dart';
 
-/// Animated tap-to-focus reticle. Sits in the parent `Stack`; whenever
-/// [position] flips to a new non-null offset it fades in (100 ms) then back
-/// out (300 ms). Renders the plugin's `assets/focus_reticle.png`.
+/// Animated tap-to-focus reticle. Sits in the parent `Stack`; whenever [position] flips to a new non-null offset it
+/// fades in (100 ms) then back out (300 ms). Renders the plugin's `assets/focus_reticle.png`.
 class FocusReticle extends StatefulWidget {
   /// View-relative pixel coordinate to render the reticle at. `null` hides it.
   final Offset? position;
@@ -25,8 +24,8 @@ class _FocusReticleState extends State<FocusReticle> {
   @override
   void didUpdateWidget(FocusReticle oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Only pulse on a *new* position — re-renders with the same offset (e.g.
-    // parent setState during the fade) must not retrigger the animation.
+    // Only pulse on a *new* position — re-renders with the same offset (e.g. parent setState during the fade) must not
+    // retrigger the animation.
     final next = widget.position;
     if (next != null && next != _lastPosition) {
       _lastPosition = next;
@@ -36,8 +35,8 @@ class _FocusReticleState extends State<FocusReticle> {
 
   Future<void> _pulse() async {
     setState(() => _opacity = 1);
-    // Wait for the fade-in (100 ms) before kicking off the fade-out so the
-    // user actually sees the reticle peak before it disappears.
+    // Wait for the fade-in (100 ms) before kicking off the fade-out so the user actually sees the reticle peak before
+    // it disappears.
     await Future<void>.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
     setState(() => _opacity = 0);

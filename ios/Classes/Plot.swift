@@ -162,10 +162,10 @@ private func renderWithBackground(
 
 /// Draws a filled rounded-rect label background with centered text using `DetectionLabelStyle`.
 ///
-/// When `imageSize` is provided the label rect is clamped to `[0, 0, imageSize.width, imageSize.height]` so boxes near the
-/// top/left edge don't end up with the badge cropped off the canvas (the upstream `DetectionLabelStyle.frame` always places
-/// the badge above/left of the anchor and is unaware of image bounds). Live overlays pass `nil` and rely on the
-/// platform-view's own clipping.
+/// When `imageSize` is provided the label rect is clamped to `[0, 0, imageSize.width, imageSize.height]` so boxes near
+/// the top/left edge don't end up with the badge cropped off the canvas (the upstream `DetectionLabelStyle.frame`
+/// always places the badge above/left of the anchor and is unaware of image bounds). Live overlays pass `nil` and rely
+/// on the platform-view's own clipping.
 private func drawDetectionLabel(
   _ labelText: String,
   in ctx: CGContext,
