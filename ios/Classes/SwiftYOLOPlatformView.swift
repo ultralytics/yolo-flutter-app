@@ -113,9 +113,35 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       // Setup method channel handler
       setupMethodChannel()
 
-      // Setup zoom callback
+      // Setup zoom callback — keep the legacy method-channel invocation for
+      // existing consumers and also push a typed event on the event channel
+      // so the new Dart-side ZoomIndicator (PR 3) can subscribe.
       yoloView?.onZoomChanged = { [weak self] zoomLevel in
-        self?.methodChannel.invokeMethod("onZoomChanged", arguments: Double(zoomLevel))
+        guard let self = self else { return }
+        self.methodChannel.invokeMethod("onZoomChanged", arguments: Double(zoomLevel))
+        self.sendStreamDataToFlutter([
+          "type": "zoom",
+          "value": Double(zoomLevel),
+        ])
+      }
+
+      // Lens-change callback — emitted by YOLOView either when setLens is
+      // called or when zoom crosses a lens boundary.
+      yoloView?.onLensChanged = { [weak self] label in
+        self?.sendStreamDataToFlutter([
+          "type": "lens",
+          "label": label,
+        ])
+      }
+
+      // Tap-to-focus callback — fired after the native focus/exposure
+      // configuration succeeds so the Dart FocusReticle can animate.
+      yoloView?.onFocusTapped = { [weak self] x, y in
+        self?.sendStreamDataToFlutter([
+          "type": "focus",
+          "x": Double(x),
+          "y": Double(y),
+        ])
       }
 
       // Register this view with the factory
@@ -410,6 +436,72 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           }
         }
 
+      case "capturePhoto":
+        // New canonical name for capture-with-overlays. `withOverlays` is
+        // accepted for forward-compat with the planned Dart controller
+        // signature; the plugin's existing capturePhoto already composites
+        // the bounding-box hierarchy so the flag is currently advisory.
+        // When `withOverlays == false` we still return the composite (a
+        // future refactor can branch here to capture without boxes).
+        let _ = (call.arguments as? [String: Any])?["withOverlays"] as? Bool ?? true
+        self.yoloView?.capturePhoto { image in
+          if let image = image, let data = image.jpegData(compressionQuality: 0.9) {
+            result(FlutterStandardTypedData(bytes: data))
+          } else {
+            result(
+              FlutterError(
+                code: "capture_failed",
+                message: "Failed to capture photo from camera",
+                details: nil
+              )
+            )
+          }
+        }
+
+      case "getAvailableLenses":
+        // Enumerate physical lenses for the current camera position.
+        guard let yoloView = self.yoloView else {
+          result([] as [Any])
+          return
+        }
+        let lenses = yoloView.availableLenses().map { lens -> [String: Any] in
+          return [
+            "zoomFactor": Double(lens.zoomFactor),
+            "label": lens.label,
+          ]
+        }
+        result(lenses)
+
+      case "setLens":
+        // Switch to the lens whose zoom factor most closely matches the
+        // requested value, then emit a `lens` event.
+        if let args = call.arguments as? [String: Any],
+          let zoomFactor = args["zoomFactor"] as? Double
+        {
+          self.yoloView?.setLens(zoomFactor: CGFloat(zoomFactor))
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for setLens", details: nil))
+        }
+
+      case "tapToFocus":
+        // x, y are normalized 0..1 view-relative coordinates; native sets
+        // focusPointOfInterest + exposurePointOfInterest and emits a
+        // `focus` event so the Dart FocusReticle can animate.
+        if let args = call.arguments as? [String: Any],
+          let x = args["x"] as? Double,
+          let y = args["y"] as? Double
+        {
+          self.yoloView?.tapToFocus(x: CGFloat(x), y: CGFloat(y))
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for tapToFocus", details: nil))
+        }
+
       // Additional methods can be added here in the future
 
       default:
@@ -484,6 +576,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Clear callbacks to prevent retain cycles
     yoloView?.onDetection = nil
     yoloView?.onZoomChanged = nil
+    yoloView?.onLensChanged = nil
+    yoloView?.onFocusTapped = nil
     yoloView?.setStreamCallback(nil)
 
     // Remove from factory registry
@@ -512,6 +606,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       // Clear callbacks to prevent retain cycles
       yoloViewToClean?.onDetection = nil
       yoloViewToClean?.onZoomChanged = nil
+      yoloViewToClean?.onLensChanged = nil
+      yoloViewToClean?.onFocusTapped = nil
       yoloViewToClean?.setStreamCallback(nil)
 
       // Remove from factory registry

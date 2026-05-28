@@ -19,6 +19,8 @@ import androidx.camera.core.*
 import androidx.camera.core.Camera
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import android.util.SizeF
+import kotlin.math.abs
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -33,6 +35,16 @@ import android.view.Gravity
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
 import android.content.res.Configuration
+
+/**
+ * Describes a back-camera lens with its equivalent zoom factor relative to the main
+ * wide-angle lens (1.0x). Used by `getAvailableLenses` to populate the Dart lens picker.
+ */
+data class LensInfo(
+    val zoomFactor: Double,
+    val label: String,
+    val cameraInfo: CameraInfo? = null
+)
 
 class YOLOView @JvmOverloads constructor(
     context: Context,
@@ -174,6 +186,23 @@ class YOLOView @JvmOverloads constructor(
         this.streamCallback = callback
     }
 
+    // Generic event callback used to forward {type:"zoom"|"lens"|"focus", ...} maps
+    // to the Flutter event sink without coupling YOLOView to a Flutter type.
+    private var eventCallback: ((Map<String, Any>) -> Unit)? = null
+
+    /** Set a callback that receives typed events (zoom/lens/focus) for the Flutter event sink. */
+    fun setEventCallback(callback: ((Map<String, Any>) -> Unit)?) {
+        this.eventCallback = callback
+    }
+
+    private fun emitEvent(event: Map<String, Any>) {
+        try {
+            eventCallback?.invoke(event)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error emitting event", e)
+        }
+    }
+
     // Callback to notify model load completion
     private var modelLoadCallback: ((Boolean) -> Unit)? = null
 
@@ -217,6 +246,15 @@ class YOLOView @JvmOverloads constructor(
     private var maxZoomRatio = 10.0f
     private lateinit var scaleGestureDetector: ScaleGestureDetector
     var onZoomChanged: ((Float) -> Unit)? = null
+
+    // Multi-lens enumeration / selection
+    private var cachedLenses: List<LensInfo> = emptyList()
+    private var selectedLensZoomFactor: Double? = null
+    private var selectedLensCameraInfo: CameraInfo? = null
+    private var selectedLensLabel: String? = null
+
+    // Optional ImageCapture use-case (bound alongside Preview+Analysis when supported)
+    private var imageCaptureUseCase: ImageCapture? = null
 
     // detection thresholds (can be changed externally via setters)
     private var confidenceThreshold = 0.25  // initial value
@@ -382,12 +420,44 @@ class YOLOView @JvmOverloads constructor(
         camera?.let { cam: Camera ->
             // Clamp zoom level between min and max
             val clampedZoomRatio = zoomLevel.coerceIn(minZoomRatio, cam.cameraInfo.zoomState.value?.maxZoomRatio ?: maxZoomRatio)
-            
+
             cam.cameraControl.setZoomRatio(clampedZoomRatio)
             currentZoomRatio = clampedZoomRatio
-            
+
             // Notify zoom change
             onZoomChanged?.invoke(currentZoomRatio)
+
+            // Emit zoom event so Dart-side ZoomIndicator stays in sync.
+            emitEvent(mapOf("type" to "zoom", "value" to clampedZoomRatio.toDouble()))
+
+            // Mirror iOS upstream updateSelectedLens: if the new zoom crosses a lens
+            // boundary, swap CameraSelector to the matching physical lens.
+            maybeSnapLensForZoom(clampedZoomRatio.toDouble())
+        }
+    }
+
+    /**
+     * If the requested zoom factor maps onto a different physical back-camera lens than
+     * the currently selected one, switch CameraSelector and emit a `lens` event. Same
+     * thresholds as iOS upstream `updateSelectedLens` (largest lens whose zoomFactor is
+     * <= requested wins; ties broken by the smallest lens).
+     */
+    private fun maybeSnapLensForZoom(zoomFactor: Double) {
+        if (lensFacing != CameraSelector.LENS_FACING_BACK) return
+        val lenses = cachedLenses.filter { it.cameraInfo != null }
+        if (lenses.size < 2) return
+
+        val sorted = lenses.sortedBy { it.zoomFactor }
+        val target = sorted.lastOrNull { zoomFactor >= it.zoomFactor - 0.01 } ?: sorted.first()
+
+        val currentLens = selectedLensCameraInfo
+        if (currentLens == target.cameraInfo) return
+
+        try {
+            switchToLens(target)
+            emitEvent(mapOf("type" to "lens", "label" to target.label))
+        } catch (e: Exception) {
+            Log.w(TAG, "Lens snap to ${target.label} failed", e)
         }
     }
 
@@ -552,12 +622,37 @@ class YOLOView @JvmOverloads constructor(
                             return@addListener
                         }
 
-                        camera = cameraProvider.bindToLifecycle(
-                            owner,
-                            cameraSelector,
-                            previewUseCase,
-                            imageAnalysisUseCase  // the field, not a local val
-                        )
+                        // Refresh lens enumeration once we have a camera provider.
+                        cachedLenses = computeLensInfos(cameraProvider)
+
+                        // Preferred path: bind Preview + ImageAnalysis + ImageCapture so
+                        // capturePhoto() can grab a full-resolution still. Some low-tier
+                        // devices cannot bind three use-cases simultaneously; in that
+                        // case fall back to Preview + ImageAnalysis only and rely on
+                        // captureFrame() for snapshots.
+                        imageCaptureUseCase = ImageCapture.Builder()
+                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                            .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                            .build()
+
+                        camera = try {
+                            cameraProvider.bindToLifecycle(
+                                owner,
+                                cameraSelector,
+                                previewUseCase,
+                                imageAnalysisUseCase,
+                                imageCaptureUseCase
+                            )
+                        } catch (e: IllegalArgumentException) {
+                            Log.w(TAG, "Three-use-case binding failed, falling back without ImageCapture", e)
+                            imageCaptureUseCase = null
+                            cameraProvider.bindToLifecycle(
+                                owner,
+                                cameraSelector,
+                                previewUseCase,
+                                imageAnalysisUseCase
+                            )
+                        }
 
                         // Reset zoom to 1.0x when camera starts
                         currentZoomRatio = 1.0f
@@ -585,6 +680,17 @@ class YOLOView @JvmOverloads constructor(
     }
 
     private fun buildCameraSelector(cameraProvider: ProcessCameraProvider): CameraSelector {
+        // If the caller explicitly picked a lens via setLens(), honor it (back-camera only).
+        if (lensFacing == CameraSelector.LENS_FACING_BACK) {
+            selectedLensCameraInfo?.let { target ->
+                if (cameraProvider.availableCameraInfos.contains(target)) {
+                    return CameraSelector.Builder()
+                        .addCameraFilter { infos -> infos.filter { it == target } }
+                        .build()
+                }
+            }
+        }
+
         if (lensFacing != CameraSelector.LENS_FACING_BACK || !preferWideBackCamera) {
             return CameraSelector.Builder()
                 .requireLensFacing(lensFacing)
@@ -632,12 +738,257 @@ class YOLOView @JvmOverloads constructor(
 
     fun switchCamera() {
         preferWideBackCamera = false
+        // Clear any sticky lens selection when the user explicitly flips cameras.
+        selectedLensCameraInfo = null
+        selectedLensZoomFactor = null
+        selectedLensLabel = null
         lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
             CameraSelector.LENS_FACING_FRONT
         } else {
             CameraSelector.LENS_FACING_BACK
         }
         startCamera()
+    }
+
+    // endregion
+
+    // region multi-lens / focus / capture (Dart-driven setters)
+
+    /**
+     * Enumerate back-facing physical lenses with an equivalent zoom factor relative to
+     * the main wide-angle (1.0x). Mirrors the iOS app's `AVCaptureDevice.DiscoverySession`
+     * output. If the device exposes only one back camera, returns a single "Default" entry.
+     */
+    fun enumerateLenses(): List<LensInfo> {
+        if (cachedLenses.isNotEmpty()) return cachedLenses
+        return try {
+            val provider = ProcessCameraProvider.getInstance(context).get(1, TimeUnit.SECONDS)
+            computeLensInfos(provider).also { cachedLenses = it }
+        } catch (e: Exception) {
+            Log.w(TAG, "enumerateLenses: cameraProvider unavailable", e)
+            emptyList()
+        }
+    }
+
+    private fun computeLensInfos(cameraProvider: ProcessCameraProvider): List<LensInfo> {
+        // Read focal lengths for each back-facing camera and compute an equivalent zoom
+        // factor relative to the widest standard lens (which we treat as the 1.0x
+        // reference, matching how iOS scales relative to the main wide-angle).
+        // SENSOR_INFO_PHYSICAL_SIZE is also queried so we degrade gracefully on devices
+        // that omit one or the other characteristic.
+        data class Raw(val info: CameraInfo, val focalLength: Float, val sensorWidth: Float)
+
+        val raws = cameraProvider.availableCameraInfos.mapNotNull { info ->
+            try {
+                val c2 = Camera2CameraInfo.from(info)
+                val facing = c2.getCameraCharacteristic(CameraCharacteristics.LENS_FACING)
+                if (facing != CameraCharacteristics.LENS_FACING_BACK) return@mapNotNull null
+                val focal = c2.getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+                    ?.minOrNull() ?: return@mapNotNull null
+                val sensor: SizeF? = c2.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
+                Raw(info, focal, sensor?.width ?: 0f)
+            } catch (e: Exception) {
+                Log.w(TAG, "computeLensInfos: skipping camera with unreadable metadata", e)
+                null
+            }
+        }
+
+        if (raws.isEmpty()) return emptyList()
+        if (raws.size == 1) {
+            return listOf(LensInfo(zoomFactor = 1.0, label = "Default", cameraInfo = raws[0].info))
+        }
+
+        // The "main" lens is the widest non-ultrawide lens. Heuristic: among lenses whose
+        // 35mm-equivalent focal length is around 24-35mm, pick the one with the smallest
+        // focal-length value that is NOT classified as ultra-wide. Practically we treat
+        // the lens with the median focal length as main; lenses with shorter focal length
+        // are ultra-wide (~0.5x), longer focal length lenses are telephoto.
+        val sorted = raws.sortedBy { it.focalLength }
+        val mainIdx = if (sorted.size >= 3) 1 else 0  // ultrawide, wide, tele -> pick wide
+        val mainFocal = sorted[mainIdx].focalLength
+
+        return sorted.map { raw ->
+            val zoom: Double
+            val label: String
+            when {
+                raw.focalLength < mainFocal - 0.01f -> {
+                    // Ultra-wide: iOS exposes these as 0.5x relative to the main lens.
+                    zoom = (raw.focalLength.toDouble() / mainFocal.toDouble()).coerceAtLeast(0.1)
+                    // Snap to 0.5x if the math lands close (Android focal-length ratios
+                    // typically come out near 0.5 for true ultra-wide modules).
+                    val rounded = if (abs(zoom - 0.5) < 0.15) 0.5 else zoom
+                    label = "Ultra wide camera"
+                    LensInfo(zoomFactor = rounded, label = label, cameraInfo = raw.info)
+                }
+                raw.focalLength > mainFocal + 0.01f -> {
+                    zoom = raw.focalLength.toDouble() / mainFocal.toDouble()
+                    label = "Telephoto camera"
+                    LensInfo(zoomFactor = zoom, label = label, cameraInfo = raw.info)
+                }
+                else -> {
+                    LensInfo(zoomFactor = 1.0, label = "Wide camera", cameraInfo = raw.info)
+                }
+            }
+        }
+    }
+
+    /**
+     * Switch the active back-camera lens to the one whose computed zoom factor is closest
+     * to [zoomFactor]. Emits a `{type:"lens",label}` event on the existing event sink.
+     */
+    fun setLens(zoomFactor: Double) {
+        val lenses = if (cachedLenses.isEmpty()) enumerateLenses() else cachedLenses
+        if (lenses.isEmpty()) return
+        val target = lenses.minByOrNull { abs(it.zoomFactor - zoomFactor) } ?: return
+        switchToLens(target)
+        emitEvent(mapOf("type" to "lens", "label" to target.label))
+    }
+
+    private fun switchToLens(target: LensInfo) {
+        selectedLensCameraInfo = target.cameraInfo
+        selectedLensZoomFactor = target.zoomFactor
+        selectedLensLabel = target.label
+        // Switching lenses always means we're staying on the back side.
+        lensFacing = CameraSelector.LENS_FACING_BACK
+        preferWideBackCamera = false
+        // Rebind so the new CameraSelector is honored.
+        startCamera()
+    }
+
+    /**
+     * Tap-to-focus. [x] and [y] are normalized view-relative coordinates in 0..1.
+     * Builds a FocusMeteringAction via the PreviewView's MeteringPointFactory and
+     * triggers AF/AE. Emits `{type:"focus",x,y}` when the future completes successfully
+     * so the Dart `FocusReticle` can animate.
+     */
+    fun tapToFocus(x: Double, y: Double) {
+        val cam = camera ?: return
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        val nx = x.toFloat().coerceIn(0f, 1f)
+        val ny = y.toFloat().coerceIn(0f, 1f)
+        try {
+            val factory = previewView.meteringPointFactory
+            val point = factory.createPoint(nx * w, ny * h)
+            val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+                .setAutoCancelDuration(3, TimeUnit.SECONDS)
+                .build()
+            val future = cam.cameraControl.startFocusAndMetering(action)
+            future.addListener({
+                try {
+                    val result = future.get()
+                    if (result.isFocusSuccessful) {
+                        post {
+                            emitEvent(mapOf("type" to "focus", "x" to nx.toDouble(), "y" to ny.toDouble()))
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "tapToFocus: focus future failed", e)
+                }
+            }, ContextCompat.getMainExecutor(context))
+        } catch (e: Exception) {
+            Log.e(TAG, "tapToFocus failed", e)
+        }
+    }
+
+    /**
+     * Capture a still photo. Preferred path uses the bound ImageCapture use-case so we
+     * get a full-resolution JPEG; if [withOverlays] is true the current overlay bitmap
+     * is composited on top of the still before re-encoding. If ImageCapture binding
+     * isn't available (e.g. three-use-case bind failed), falls back to [captureFrame]
+     * which snapshots the preview + overlay composite.
+     */
+    fun capturePhoto(withOverlays: Boolean = true, callback: (ByteArray?) -> Unit) {
+        val ic = imageCaptureUseCase
+        if (ic == null) {
+            callback(captureFrame())
+            return
+        }
+        try {
+            ic.takePicture(
+                ContextCompat.getMainExecutor(context),
+                object : ImageCapture.OnImageCapturedCallback() {
+                    override fun onCaptureSuccess(image: ImageProxy) {
+                        try {
+                            val jpegBytes = imageProxyToJpegBytes(image)
+                            if (jpegBytes == null) {
+                                callback(captureFrame())
+                                return
+                            }
+                            if (!withOverlays) {
+                                callback(jpegBytes)
+                                return
+                            }
+                            // Composite the current overlay bitmap on top of the still.
+                            val composed = compositeOverlayOnJpeg(jpegBytes)
+                            callback(composed ?: jpegBytes)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "capturePhoto: error processing capture", e)
+                            callback(captureFrame())
+                        } finally {
+                            image.close()
+                        }
+                    }
+
+                    override fun onError(exception: ImageCaptureException) {
+                        Log.w(TAG, "capturePhoto: ImageCapture failed, falling back to captureFrame", exception)
+                        callback(captureFrame())
+                    }
+                }
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "capturePhoto: takePicture threw, falling back", e)
+            callback(captureFrame())
+        }
+    }
+
+    private fun imageProxyToJpegBytes(image: ImageProxy): ByteArray? {
+        return try {
+            val plane = image.planes[0]
+            val buffer = plane.buffer
+            val bytes = ByteArray(buffer.remaining())
+            buffer.get(bytes)
+            // ImageCapture (JPEG format) hands us a JPEG buffer directly.
+            if (image.format == ImageFormat.JPEG || image.format == 256 /* JPEG */) {
+                bytes
+            } else {
+                // Fallback: convert via Bitmap (rare path).
+                val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+                val out = java.io.ByteArrayOutputStream()
+                bmp.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                out.toByteArray()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "imageProxyToJpegBytes failed", e)
+            null
+        }
+    }
+
+    private fun compositeOverlayOnJpeg(jpegBytes: ByteArray): ByteArray? {
+        return try {
+            val still = BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size) ?: return null
+            // Render overlay onto a bitmap sized to match the still.
+            val composite = Bitmap.createBitmap(still.width, still.height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(composite)
+            canvas.drawBitmap(still, 0f, 0f, null)
+            // Capture the overlay at its current view size and scale it to the still.
+            val overlayBitmap = Bitmap.createBitmap(overlayView.width.coerceAtLeast(1), overlayView.height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+            overlayView.draw(Canvas(overlayBitmap))
+            val matrix = Matrix().apply {
+                setScale(still.width.toFloat() / overlayBitmap.width, still.height.toFloat() / overlayBitmap.height)
+            }
+            canvas.drawBitmap(overlayBitmap, matrix, null)
+            val out = java.io.ByteArrayOutputStream()
+            composite.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            still.recycle()
+            overlayBitmap.recycle()
+            composite.recycle()
+            out.toByteArray()
+        } catch (e: Exception) {
+            Log.e(TAG, "compositeOverlayOnJpeg failed", e)
+            null
+        }
     }
 
     // endregion
@@ -1726,6 +2077,7 @@ class YOLOView @JvmOverloads constructor(
             }
 
             imageAnalysisUseCase = null
+            imageCaptureUseCase = null
 
             previewUseCase?.setSurfaceProvider(null)
             previewUseCase = null

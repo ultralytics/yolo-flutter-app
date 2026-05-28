@@ -176,8 +176,26 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   /// Callback for zoom level changes
   public var onZoomChanged: ((CGFloat) -> Void)?
 
+  /// Callback for lens changes (emitted when the active lens label changes
+  /// either via `setLens` or because zoom crossed a lens boundary).
+  public var onLensChanged: ((String) -> Void)?
+
+  /// Callback for tap-to-focus events (normalized 0..1 view-relative coords).
+  public var onFocusTapped: ((CGFloat, CGFloat) -> Void)?
+
   public var capturedImage: UIImage?
   private var photoCaptureCompletion: ((UIImage?) -> Void)?
+
+  // Lens-snap state (ported from yolo-ios-app YOLOView.swift:1157-1185).
+  private let physicalLensTypes: [AVCaptureDevice.DeviceType] = [
+    .builtInUltraWideCamera,
+    .builtInWideAngleCamera,
+    .builtInTelephotoCamera,
+  ]
+  private var currentLensLabel: String = ""
+
+  // Camera-flip blur transition (ported from yolo-ios-app YOLOView.swift:1036-1060).
+  private weak var cameraTransitionView: UIView?
 
   public init(
     frame: CGRect,
@@ -1230,8 +1248,270 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
       // Notify zoom change
       onZoomChanged?(newZoomFactor)
+
+      // Emit a lens-change event if the active lens (per the lens-snap math)
+      // changed as a result of this zoom step.
+      updateSelectedLensLabel(rawZoomFactor: newZoomFactor, device: device)
     } catch {
       NSLog("YOLOView: Failed to set zoom level: %@", error.localizedDescription)
+    }
+  }
+
+  // MARK: - Multi-lens support
+  //
+  // Port of the lens enumeration + lens-snap math from
+  // `yolo-ios-app/Sources/YOLO/YOLOView.swift:1157-1185` and the device
+  // discovery in `VideoCapture.swift:32-45`. Setters only — Dart owns
+  // gestures; this class never attaches a pinch/tap recognizer.
+
+  /// Returns the physical lens devices available for the active camera
+  /// position (back: ultra-wide / wide / telephoto, front: a single device).
+  /// Each entry pairs the canonical user-facing label with the raw zoom
+  /// factor on the currently active (virtual) device.
+  public func availableLenses() -> [(zoomFactor: CGFloat, label: String)] {
+    let position = videoCapture.captureDevice?.position ?? .back
+    let activeDevice = videoCapture.captureDevice
+
+    if position == .front {
+      guard let device = activeDevice else { return [] }
+      return [(1.0, lensLabel(for: device))]
+    }
+
+    let discovery = AVCaptureDevice.DiscoverySession(
+      deviceTypes: physicalLensTypes,
+      mediaType: .video,
+      position: position
+    )
+
+    let devices = discovery.devices.sorted { lensSortOrder($0) < lensSortOrder($1) }
+    return devices.map { lens -> (zoomFactor: CGFloat, label: String) in
+      let zoom = zoomFactor(for: lens, on: activeDevice) ?? fallbackZoomFactor(for: lens)
+      return (zoom, lensLabel(for: lens))
+    }
+  }
+
+  /// Switch to the physical lens whose zoom factor most closely matches
+  /// `zoomFactor` (e.g. 0.5 / 1 / 2). Bypasses the 1.0 minimum used by
+  /// `setZoomLevel` so the ultra-wide (0.5x) is reachable. Updates the
+  /// zoom label, fires `onZoomChanged`, and emits a `lens` event so the
+  /// Dart lens picker can sync.
+  public func setLens(zoomFactor desired: CGFloat) {
+    let lenses = availableLenses()
+    guard !lenses.isEmpty else { return }
+
+    // Snap to the lens with the smallest |zoomFactor - desired|.
+    let best = lenses.min(by: { abs($0.zoomFactor - desired) < abs($1.zoomFactor - desired) })
+    guard let target = best, let device = videoCapture.captureDevice else { return }
+
+    let clamped = min(
+      max(target.zoomFactor, device.minAvailableVideoZoomFactor),
+      device.maxAvailableVideoZoomFactor
+    )
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+      device.videoZoomFactor = clamped
+      lastZoomFactor = clamped
+      self.labelZoom.text = String(format: "%.1fx", clamped)
+      onZoomChanged?(clamped)
+    } catch {
+      NSLog("YOLOView: setLens failed: %@", error.localizedDescription)
+      return
+    }
+
+    // Always emit `lens` for an explicit setLens call so the Dart UI can
+    // confirm selection — even when the lens didn't actually change.
+    currentLensLabel = target.label
+    onLensChanged?(target.label)
+  }
+
+  /// Set focus + exposure at a normalized 0..1 view-relative coordinate.
+  /// Dart-side gesture handlers call this; no native recognizer is attached
+  /// to the view.
+  public func tapToFocus(x: CGFloat, y: CGFloat) {
+    guard let device = videoCapture.captureDevice else { return }
+    let point = CGPoint(x: max(0, min(1, x)), y: max(0, min(1, y)))
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      if device.isFocusPointOfInterestSupported,
+        device.isFocusModeSupported(.autoFocus)
+      {
+        device.focusPointOfInterest = point
+        device.focusMode = .autoFocus
+      }
+      if device.isExposurePointOfInterestSupported,
+        device.isExposureModeSupported(.autoExpose)
+      {
+        device.exposurePointOfInterest = point
+        device.exposureMode = .autoExpose
+      }
+      // Notify Dart so the FocusReticle can animate at the tap location.
+      onFocusTapped?(point.x, point.y)
+    } catch {
+      NSLog("YOLOView: tapToFocus failed: %@", error.localizedDescription)
+    }
+  }
+
+  /// Returns the user-facing label of the currently selected lens for the
+  /// active camera position. Useful for callers that want to seed Dart
+  /// state on first frame.
+  public func currentLens() -> String {
+    if !currentLensLabel.isEmpty { return currentLensLabel }
+    guard let device = videoCapture.captureDevice else { return "" }
+    return lensLabel(for: device)
+  }
+
+  /// Port of `YOLOView.updateSelectedLens` (yolo-ios-app:1157-1185). Picks
+  /// the largest-zoom physical lens whose threshold is <= `rawZoomFactor`,
+  /// falling back to the smallest available lens. Emits `onLensChanged`
+  /// when the label transitions to a new value.
+  private func updateSelectedLensLabel(rawZoomFactor: CGFloat, device: AVCaptureDevice) {
+    guard device.position == .back else {
+      // Front camera: a single device.
+      let label = lensLabel(for: device)
+      if label != currentLensLabel {
+        currentLensLabel = label
+        onLensChanged?(label)
+      }
+      return
+    }
+
+    let discovery = AVCaptureDevice.DiscoverySession(
+      deviceTypes: physicalLensTypes,
+      mediaType: .video,
+      position: .back
+    )
+
+    let lensZooms = discovery.devices.compactMap {
+      (lens: AVCaptureDevice) -> (device: AVCaptureDevice, zoom: CGFloat)? in
+      guard physicalLensTypes.contains(lens.deviceType) else { return nil }
+      let zoom = zoomFactor(for: lens, on: device) ?? fallbackZoomFactor(for: lens)
+      return (lens, zoom)
+    }.sorted { $0.zoom < $1.zoom }
+
+    guard !lensZooms.isEmpty else { return }
+    let selected = lensZooms.last(where: { rawZoomFactor >= $0.zoom - 0.01 })?.device
+      ?? lensZooms.first?.device
+    guard let selected else { return }
+
+    let label = lensLabel(for: selected)
+    if label != currentLensLabel {
+      currentLensLabel = label
+      onLensChanged?(label)
+    }
+  }
+
+  /// Lens-label mapping mirroring upstream `lensCaption`.
+  private func lensLabel(for device: AVCaptureDevice) -> String {
+    if device.position == .front { return "Front camera" }
+    switch device.deviceType {
+    case .builtInUltraWideCamera: return "Ultra wide camera"
+    case .builtInWideAngleCamera: return "Wide camera"
+    case .builtInTelephotoCamera: return "Telephoto camera"
+    default: return device.localizedName
+    }
+  }
+
+  private func lensSortOrder(_ device: AVCaptureDevice) -> Int {
+    switch device.deviceType {
+    case .builtInUltraWideCamera: return 0
+    case .builtInWideAngleCamera: return 1
+    case .builtInTelephotoCamera: return 2
+    default: return 3
+    }
+  }
+
+  /// Per-lens fallback zoom factor when the active device is not a virtual
+  /// multi-lens device (matches the upstream `fallbackLensTitle` numeric
+  /// values: 0.5 / 1 / 2).
+  private func fallbackZoomFactor(for device: AVCaptureDevice) -> CGFloat {
+    switch device.deviceType {
+    case .builtInUltraWideCamera: return 0.5
+    case .builtInWideAngleCamera: return 1.0
+    case .builtInTelephotoCamera: return 2.0
+    default: return 1.0
+    }
+  }
+
+  /// Port of upstream `VideoCapture.swift:62-84` — computes the raw zoom
+  /// factor on `virtualDevice` that selects the constituent lens
+  /// `lensDevice`.
+  private func zoomFactor(
+    for lensDevice: AVCaptureDevice, on virtualDevice: AVCaptureDevice?
+  ) -> CGFloat? {
+    guard let virtualDevice, lensDevice.position == virtualDevice.position else { return nil }
+    let constituent = virtualDevice.constituentDevices
+      .filter { physicalLensTypes.contains($0.deviceType) }
+      .sorted { lensSortOrder($0) < lensSortOrder($1) }
+    guard constituent.count > 1 else { return nil }
+
+    let lensIndex =
+      constituent.firstIndex { $0.uniqueID == lensDevice.uniqueID }
+      ?? constituent.firstIndex { $0.deviceType == lensDevice.deviceType }
+    guard let lensIndex else { return nil }
+
+    let switchOverZoomFactors = virtualDevice.virtualDeviceSwitchOverVideoZoomFactors.map {
+      CGFloat(truncating: $0)
+    }
+    let zoomFactors = [virtualDevice.minAvailableVideoZoomFactor] + switchOverZoomFactors
+    guard lensIndex < zoomFactors.count else { return nil }
+
+    return min(
+      max(zoomFactors[lensIndex], virtualDevice.minAvailableVideoZoomFactor),
+      virtualDevice.maxAvailableVideoZoomFactor
+    )
+  }
+
+  // MARK: - Camera-flip blur transition
+  //
+  // Ported from `yolo-ios-app/Sources/YOLO/YOLOView.swift:1036-1069`.
+  // Adds a snapshot + UIVisualEffectView over the preview while the camera
+  // session reconfigures, then fades it out.
+
+  private func showCameraTransition() {
+    cameraTransitionView?.removeFromSuperview()
+
+    let transitionView = UIView(frame: bounds)
+    transitionView.isUserInteractionEnabled = false
+    transitionView.backgroundColor = .black
+    transitionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+    if let snapshot = snapshotView(afterScreenUpdates: false) {
+      snapshot.frame = transitionView.bounds
+      snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+      transitionView.addSubview(snapshot)
+    }
+
+    let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+    blurView.frame = transitionView.bounds
+    blurView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    transitionView.addSubview(blurView)
+
+    // Insert below the top-bar label so any Flutter-side overlays still feel
+    // pinned, but above the preview + bounding boxes.
+    if labelName.superview === self {
+      insertSubview(transitionView, belowSubview: labelName)
+    } else {
+      addSubview(transitionView)
+    }
+    cameraTransitionView = transitionView
+  }
+
+  private func hideCameraTransition() {
+    guard let transitionView = cameraTransitionView else { return }
+    cameraTransitionView = nil
+    UIView.animate(
+      withDuration: 0.18,
+      delay: 0.06,
+      options: [.beginFromCurrentState, .curveEaseOut]
+    ) {
+      transitionView.alpha = 0
+    } completion: { _ in
+      transitionView.removeFromSuperview()
     }
   }
 
@@ -1276,11 +1556,16 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       return
     }
 
+    // Visual polish: snapshot+blur the preview while the session
+    // reconfigures (port of yolo-ios-app YOLOView.swift:1036-1060).
+    showCameraTransition()
+
     self.videoCapture.captureSession.beginConfiguration()
     guard let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput
     else {
       NSLog("YOLOView: No current camera input to remove")
       self.videoCapture.captureSession.commitConfiguration()
+      hideCameraTransition()
       return
     }
 
@@ -1295,19 +1580,29 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         "YOLOView: No camera device available for position: %@",
         String(describing: nextCameraPosition))
       self.videoCapture.captureSession.commitConfiguration()
+      hideCameraTransition()
       return
     }
 
     guard let videoInput1 = try? AVCaptureDeviceInput(device: newCameraDevice) else {
       NSLog("YOLOView: Failed to create AVCaptureDeviceInput for camera switch")
       self.videoCapture.captureSession.commitConfiguration()
+      hideCameraTransition()
       return
     }
 
     self.videoCapture.captureSession.addInput(videoInput1)
+    self.videoCapture.captureDevice = newCameraDevice
     self.videoCapture.updateVideoOrientation(orientation: currentVideoOrientation())
 
     self.videoCapture.captureSession.commitConfiguration()
+
+    // Reset lens label cache so the next zoom step (or a getAvailableLenses
+    // poll from Dart) reports the new position's lens.
+    currentLensLabel = ""
+    lastZoomFactor = 1.0
+
+    hideCameraTransition()
   }
 
   public func capturePhoto(completion: @escaping (UIImage?) -> Void) {
@@ -1337,6 +1632,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     onDetection = nil
     onStream = nil
     onZoomChanged = nil
+    onLensChanged = nil
+    onFocusTapped = nil
 
     // Remove notification observers
     NotificationCenter.default.removeObserver(self)

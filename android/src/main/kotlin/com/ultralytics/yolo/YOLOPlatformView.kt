@@ -172,10 +172,35 @@ class YOLOPlatformView(
         }
         
         yoloView.setStreamConfig(streamConfig)
-        
+
         // Set up streaming callback with resilience
         yoloView.setStreamCallback { streamData ->
             sendStreamDataWithRetry(streamData)
+        }
+
+        // Forward typed events (zoom/lens/focus) onto the same event sink so the Dart
+        // controller can route them via the existing event channel.
+        yoloView.setEventCallback { event ->
+            sendEventOnMain(event)
+        }
+    }
+
+    /**
+     * Posts an event to the main thread and forwards it to the Flutter event sink.
+     * Used for typed `{type:"zoom"|"lens"|"focus", ...}` events.
+     */
+    private fun sendEventOnMain(event: Map<String, Any>) {
+        val send = Runnable {
+            try {
+                streamHandler.sink?.success(event)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending typed event", e)
+            }
+        }
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            send.run()
+        } else {
+            retryHandler.post(send)
         }
     }
     
@@ -444,6 +469,45 @@ class YOLOPlatformView(
                     yoloView.setShowUIControls(show)
                     result.success(null)
                 }
+                "getAvailableLenses" -> {
+                    val lenses = yoloView.enumerateLenses()
+                    val payload = lenses.map { lens ->
+                        mapOf<String, Any>(
+                            "zoomFactor" to lens.zoomFactor,
+                            "label" to lens.label
+                        )
+                    }
+                    result.success(payload)
+                }
+                "setLens" -> {
+                    val zoomFactor = call.argument<Double>("zoomFactor")
+                    if (zoomFactor == null) {
+                        result.error("invalid_args", "zoomFactor is required", null)
+                    } else {
+                        yoloView.setLens(zoomFactor)
+                        result.success(null)
+                    }
+                }
+                "tapToFocus" -> {
+                    val x = call.argument<Double>("x")
+                    val y = call.argument<Double>("y")
+                    if (x == null || y == null) {
+                        result.error("invalid_args", "x and y are required", null)
+                    } else {
+                        yoloView.tapToFocus(x, y)
+                        result.success(null)
+                    }
+                }
+                "capturePhoto" -> {
+                    val withOverlays = call.argument<Boolean>("withOverlays") ?: true
+                    yoloView.capturePhoto(withOverlays) { bytes ->
+                        if (bytes != null) {
+                            result.success(bytes)
+                        } else {
+                            result.error("capture_failed", "Failed to capture photo", null)
+                        }
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -467,6 +531,7 @@ class YOLOPlatformView(
             yoloView.setStreamCallback { }
             yoloView.setOnInferenceCallback { }
             yoloView.setOnModelLoadCallback { }
+            yoloView.setEventCallback(null)
         } catch (e: Exception) {
             Log.e(TAG, "Error during disposal", e)
         }
