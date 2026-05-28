@@ -32,7 +32,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   private var currentConfidenceThreshold: Double = 0.25
   private var currentIouThreshold: Double = 0.7
   private var currentNumItemsThreshold: Int = 30
-  private var currentShowOverlays: Bool = true
 
   init(
     frame: CGRect,
@@ -76,7 +75,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       let iouThreshold = dict["iouThreshold"] as? Double ?? 0.7
       let numItemsThreshold = dict["numItemsThreshold"] as? Int ?? 30
       let useGpu = dict["useGpu"] as? Bool ?? true
-      let showOverlays = dict["showOverlays"] as? Bool ?? true
 
       // Get lensFacing parameter
       let lensFacingParam = dict["lensFacing"] as? String ?? "back"
@@ -87,7 +85,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       self.currentConfidenceThreshold = confidenceThreshold
       self.currentIouThreshold = iouThreshold
       self.currentNumItemsThreshold = numItemsThreshold
-      self.currentShowOverlays = showOverlays
 
       // Create YOLOView
       yoloView = YOLOView(
@@ -97,12 +94,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         useGpu: useGpu,
         cameraPosition: cameraPosition
       )
-
-      // Hide native UI controls by default
-      yoloView?.showUIControls = false
-
-      // Set overlay visibility
-      yoloView?.showOverlays = showOverlays
 
       // Configure YOLOView streaming functionality
       setupYOLOViewStreaming(args: dict)
@@ -289,36 +280,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
           result(
             FlutterError(
               code: "invalid_args", message: "Invalid arguments for setThresholds", details: nil))
-        }
-
-      case "setShowUIControls":
-        // Method to toggle native UI controls visibility
-        if let args = call.arguments as? [String: Any],
-          let show = args["show"] as? Bool
-        {
-
-          yoloView?.showUIControls = show
-          result(nil)  // Success
-        } else {
-          result(
-            FlutterError(
-              code: "invalid_args", message: "Invalid arguments for setShowUIControls", details: nil
-            ))
-        }
-
-      case "setShowOverlays":
-        // Method to toggle bounding box overlay visibility
-        if let args = call.arguments as? [String: Any],
-          let show = args["show"] as? Bool
-        {
-          self.currentShowOverlays = show
-          yoloView?.showOverlays = show
-          result(nil)  // Success
-        } else {
-          result(
-            FlutterError(
-              code: "invalid_args", message: "Invalid arguments for setShowOverlays", details: nil
-            ))
         }
 
       case "switchCamera":

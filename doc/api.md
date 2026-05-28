@@ -241,14 +241,11 @@ class YOLOView extends StatefulWidget {
     this.onResult,
     this.onPerformanceMetrics,
     this.onStreamingData,
-    this.showNativeUI = false,
     this.onZoomChanged,
     this.streamingConfig,
     this.confidenceThreshold = 0.25,
     this.iouThreshold = 0.7,
     this.useGpu = true,
-    this.showOverlays = true,
-    this.overlayTheme = const YOLOOverlayTheme(),
     this.lensFacing = LensFacing.back,
   }) : super(key: key);
 }
@@ -265,14 +262,11 @@ class YOLOView extends StatefulWidget {
 | `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`                     | Detection results callback                        |
 | `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`                     | Performance metrics callback                      |
 | `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`                     | Comprehensive streaming callback                  |
-| `showNativeUI`         | `bool`                              | ❌       | `false`                    | Show native camera controls                       |
 | `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`                     | Zoom level change callback                        |
 | `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`                     | Streaming configuration                           |
 | `confidenceThreshold`  | `double`                            | ❌       | `0.25`                     | Initial confidence threshold for YOLOView         |
 | `iouThreshold`         | `double`                            | ❌       | `0.7`                      | Initial IoU threshold for YOLOView                |
 | `useGpu`               | `bool`                              | ❌       | `true`                     | Enable GPU acceleration for camera inference      |
-| `showOverlays`         | `bool`                              | ❌       | `true`                     | Draw Flutter-side detection overlays              |
-| `overlayTheme`         | `YOLOOverlayTheme`                  | ❌       | `const YOLOOverlayTheme()` | Customize Flutter overlay styling                 |
 | `lensFacing`           | `LensFacing`                        | ❌       | `LensFacing.back`          | Initial camera lens selection                     |
 
 `LensFacing.backWide` prefers the shortest-focal-length rear camera on Android
@@ -449,22 +443,6 @@ Restart the camera session after stopping it.
 
 ```dart
 Future<void> restartCamera()
-```
-
-##### `setShowUIControls()`
-
-Show or hide the native camera controls.
-
-```dart
-Future<void> setShowUIControls(bool show)
-```
-
-##### `setShowOverlays()`
-
-Show or hide Flutter-side detection overlays.
-
-```dart
-Future<void> setShowOverlays(bool show)
 ```
 
 ##### `setStreamingConfig()`
