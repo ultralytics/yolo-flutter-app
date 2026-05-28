@@ -121,7 +121,8 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         let timing = self.updateTiming()
 
         var result = YOLOResult(
-          orig_shape: self.inputSize, boxes: boxesBox.value, masks: maskResults, speed: timing.speed,
+          orig_shape: self.inputSize, boxes: boxesBox.value, masks: maskResults,
+          speed: timing.speed,
           fps: timing.fps, names: self.labels)
 
         if let originalImageData = self.originalImageData {
