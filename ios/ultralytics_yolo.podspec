@@ -13,7 +13,9 @@ Flutter plugin for YOLO (You Only Look Once) models, supporting object detection
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'Ultralytics' => 'info@ultralytics.com' }
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
+  # Restrict to Swift/Obj-C sources — globbing `**/*` was sweeping in `Classes/README.md` and triggering a
+  # `no rule to process file ... net.daringfireball.markdown` warning on every Xcode build.
+  s.source_files = 'Classes/**/*.{swift,h,m}'
   s.dependency 'Flutter'
   s.platform = :ios, '13.0'
 

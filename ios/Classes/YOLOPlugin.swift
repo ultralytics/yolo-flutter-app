@@ -47,8 +47,6 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
       "location": "unknown",
     ]
 
-    let lowercasedPath = modelPath.lowercased()
-
     if modelPath.hasPrefix("/") {
       if fileManager.fileExists(atPath: modelPath) {
         resultMap["exists"] = true
@@ -388,16 +386,24 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           return
         }
 
-        do {
-          result(try inspectModel(modelPath: modelPath))
-        } catch {
-          result(
-            FlutterError(
-              code: "MODEL_INSPECTION_FAILED",
-              message: error.localizedDescription,
-              details: nil
-            )
-          )
+        // MLModel.compileModel / MLModel(contentsOf:) read from disk and load the model into the ANE/GPU; running
+        // them on the main thread stalls the UI long enough that iOS prints "This method should not be called on
+        // the main thread as it may lead to UI unresponsiveness." Hop off-main, hop back to deliver the result.
+        DispatchQueue.global(qos: .userInitiated).async {
+          do {
+            let info = try self.inspectModel(modelPath: modelPath)
+            DispatchQueue.main.async { result(info) }
+          } catch {
+            DispatchQueue.main.async {
+              result(
+                FlutterError(
+                  code: "MODEL_INSPECTION_FAILED",
+                  message: error.localizedDescription,
+                  details: nil
+                )
+              )
+            }
+          }
         }
 
       case "setModel":

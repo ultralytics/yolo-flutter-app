@@ -320,7 +320,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     switch task {
     case .classify:
       Classifier.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        [weak self] result in
+        result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -331,7 +331,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     case .segment:
       Segmenter.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        [weak self] result in
+        result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -344,7 +344,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       SemanticSegmenter.create(
         unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu
       ) {
-        [weak self] result in
+        result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -355,7 +355,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     case .pose:
       PoseEstimater.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        [weak self] result in
+        result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -366,7 +366,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     case .obb:
       ObbDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        [weak self] result in
+        result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -378,7 +378,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     default:
       ObjectDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu)
       {
-        [weak self] result in
+        result in
         switch result {
         case .success(let predictor):
           handleSuccess(predictor: predictor)
@@ -1874,7 +1874,7 @@ extension YOLOView {
       var detections: [[String: Any]] = []
 
       if config.includePoses && !result.keypointsList.isEmpty && result.boxes.isEmpty {
-        for (poseIndex, keypoints) in result.keypointsList.enumerated() {
+        for (_, keypoints) in result.keypointsList.enumerated() {
           var detection: [String: Any] = [:]
           detection["classIndex"] = 0
           detection["className"] = "person"

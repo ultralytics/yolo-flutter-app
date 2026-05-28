@@ -85,7 +85,7 @@ class Classifier: BasePredictor {
       var top5: [String] = []
       var top5Confs: [Float] = []
 
-      var candidateNumber = min(5, observations.count)
+      let candidateNumber = min(5, observations.count)
       if let topObservation = observations.first {
         top1 = topObservation.identifier
         top1Conf = Float(topObservation.confidence)
@@ -128,7 +128,7 @@ class Classifier: BasePredictor {
     do {
       try requestHandler.perform([request])
       if let observation = request.results as? [VNCoreMLFeatureValueObservation] {
-        var recognitions: [[String: Any]] = []
+        _ = [[String: Any]]()
 
         let multiArray = observation.first?.featureValue.multiArrayValue
 

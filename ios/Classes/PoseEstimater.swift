@@ -76,12 +76,12 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
       let emptyResult = YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
       return emptyResult
     }
-    var boxes = [Box]()
+    var _: [Box] = []
 
     let imageWidth = image.extent.width
     let imageHeight = image.extent.height
     self.inputSize = CGSize(width: imageWidth, height: imageHeight)
-    var result = YOLOResult(orig_shape: .zero, boxes: [], speed: 0, names: labels)
+    let result = YOLOResult(orig_shape: .zero, boxes: [], speed: 0, names: labels)
 
     do {
       try requestHandler.perform([request])

@@ -3,11 +3,14 @@
 import Flutter
 import UIKit
 
-/// iOS 26+ requires a UISceneDelegate. Subclasses Flutter's own delegate (so its plugin lifecycle is preserved), then
-/// instantiates the storyboard's initial FlutterViewController and attaches it to the windowScene — Flutter's stock
-/// `FlutterSceneDelegate` doesn't load the storyboard root on its own, which leaves the app on a white screen.
-/// Mirrors the migration pattern from https://flutter.dev/to/uiscene-migration.
+/// iOS 26+ requires a UISceneDelegate. We create the FlutterEngine here (instead of letting the storyboard implicitly
+/// spin up a fresh one) and register the GeneratedPluginRegistrant against it — without this every plugin call lands
+/// on an engine with no plugins and Dart sees `MissingPluginException` / `channel-error` for everything (wakelock_plus,
+/// shared_preferences, ultralytics_yolo, ...). Subclassing Flutter's own delegate keeps its scene-lifecycle plumbing.
+/// See https://flutter.dev/to/uiscene-migration.
 @objc class SceneDelegate: FlutterSceneDelegate {
+  var flutterEngine: FlutterEngine?
+
   override func scene(
     _ scene: UIScene,
     willConnectTo session: UISceneSession,
@@ -17,11 +20,18 @@ import UIKit
       super.scene(scene, willConnectTo: session, options: connectionOptions)
       return
     }
+
+    let engine = FlutterEngine(name: "io.ultralytics.yoloExample")
+    engine.run()
+    GeneratedPluginRegistrant.register(with: engine)
+    self.flutterEngine = engine
+
+    let viewController = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
     let window = UIWindow(windowScene: windowScene)
-    let storyboard = UIStoryboard(name: "Main", bundle: nil)
-    window.rootViewController = storyboard.instantiateInitialViewController()
+    window.rootViewController = viewController
     self.window = window
     window.makeKeyAndVisible()
+
     super.scene(scene, willConnectTo: session, options: connectionOptions)
   }
 }

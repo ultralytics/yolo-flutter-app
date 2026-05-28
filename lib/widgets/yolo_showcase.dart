@@ -260,7 +260,27 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   Future<void> _switchToCurrentModel() async {
-    await _controller.switchModel(_currentModelId, _currentTask);
+    try {
+      await _controller.switchModel(_currentModelId, _currentTask);
+    } catch (error, stack) {
+      // Surface the failure to consumers via Flutter's error reporter and keep the UI usable instead of letting the
+      // exception escape into the framework. Common cases here: the requested model isn't published at the release
+      // tag yet, or the device is offline mid-download.
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'ultralytics_yolo',
+          context: ErrorDescription('switching to model $_currentModelId'),
+        ),
+      );
+      if (mounted) {
+        setState(() {
+          _downloadingSize = null;
+          _downloadFraction = null;
+        });
+      }
+    }
   }
 
   void _onTaskChanged(YOLOTask task) {
