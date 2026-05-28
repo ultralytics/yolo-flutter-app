@@ -16,7 +16,10 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   image_picker: ^1.2.1
   path_provider: ^2.1.5
-  share_plus: ^13.1.0
+  # Pinned to ^12.x: share_plus 13.x ships a Swift Package umbrella that fails framework module verification under
+  # Xcode 26.5 ("'Flutter/Flutter.h' file not found", "double-quoted include in framework header"). Revisit once the
+  # upstream package re-publishes with a compatible module map.
+  share_plus: ^12.0.0
   ultralytics_yolo:
     path: ../
 
