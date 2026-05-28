@@ -24,7 +24,7 @@ final class SendableBox<T>: @unchecked Sendable {
 // the inspectModel background dispatch — all instance methods invoked there (`checkModelExists`, `inspectModel`,
 // `parseLabels`) are pure helpers that read no mutable instance state.
 public final class YOLOPlugin: NSObject, FlutterPlugin, @unchecked Sendable {
-  // Statics here are only ever read/written from the `Task { @MainActor in ... }` body of `handle`, so we mark them
+  // Statistics here are only ever read/written from the `Task { @MainActor in ... }` body of `handle`, so we mark them
   // `nonisolated(unsafe)` to silence the Swift 6 "global mutable state" warning without paying for an actor hop on
   // every plugin call.
   nonisolated(unsafe) private static var instanceChannels: [String: FlutterMethodChannel] = [:]
