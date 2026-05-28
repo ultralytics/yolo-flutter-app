@@ -202,7 +202,10 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   String get _currentModelId =>
       _composeModelId(task: _currentTask, size: _currentSize);
 
-  static String _composeModelId({required YOLOTask task, required String size}) {
+  static String _composeModelId({
+    required YOLOTask task,
+    required String size,
+  }) {
     const suffixes = {
       YOLOTask.detect: '',
       YOLOTask.segment: '-seg',
@@ -450,8 +453,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                 Text(
                   widget.versionLabel!,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
                 )
               else
                 const SizedBox.shrink(),

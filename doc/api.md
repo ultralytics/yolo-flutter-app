@@ -253,21 +253,21 @@ class YOLOView extends StatefulWidget {
 
 #### Constructor Parameters
 
-| Parameter              | Type                                | Required | Default                    | Description                                       |
-| ---------------------- | ----------------------------------- | -------- | -------------------------- | ------------------------------------------------- |
-| `modelPath`            | `String`                            | ✅       | -                          | Official model ID, local path, asset path, or URL |
-| `task`                 | `YOLOTask?`                         | ❌       | `null`                     | YOLO task type when metadata is missing           |
-| `controller`           | `YOLOViewController?`               | ❌       | `null`                     | Custom view controller                            |
-| `cameraResolution`     | `String`                            | ❌       | `"720p"`                   | Camera resolution                                 |
-| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`                     | Detection results callback                        |
-| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`                     | Performance metrics callback                      |
-| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`                     | Comprehensive streaming callback                  |
-| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`                     | Zoom level change callback                        |
-| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`                     | Streaming configuration                           |
-| `confidenceThreshold`  | `double`                            | ❌       | `0.25`                     | Initial confidence threshold for YOLOView         |
-| `iouThreshold`         | `double`                            | ❌       | `0.7`                      | Initial IoU threshold for YOLOView                |
-| `useGpu`               | `bool`                              | ❌       | `true`                     | Enable GPU acceleration for camera inference      |
-| `lensFacing`           | `LensFacing`                        | ❌       | `LensFacing.back`          | Initial camera lens selection                     |
+| Parameter              | Type                                | Required | Default           | Description                                       |
+| ---------------------- | ----------------------------------- | -------- | ----------------- | ------------------------------------------------- |
+| `modelPath`            | `String`                            | ✅       | -                 | Official model ID, local path, asset path, or URL |
+| `task`                 | `YOLOTask?`                         | ❌       | `null`            | YOLO task type when metadata is missing           |
+| `controller`           | `YOLOViewController?`               | ❌       | `null`            | Custom view controller                            |
+| `cameraResolution`     | `String`                            | ❌       | `"720p"`          | Camera resolution                                 |
+| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`            | Detection results callback                        |
+| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`            | Performance metrics callback                      |
+| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`            | Comprehensive streaming callback                  |
+| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`            | Zoom level change callback                        |
+| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`            | Streaming configuration                           |
+| `confidenceThreshold`  | `double`                            | ❌       | `0.25`            | Initial confidence threshold for YOLOView         |
+| `iouThreshold`         | `double`                            | ❌       | `0.7`             | Initial IoU threshold for YOLOView                |
+| `useGpu`               | `bool`                              | ❌       | `true`            | Enable GPU acceleration for camera inference      |
+| `lensFacing`           | `LensFacing`                        | ❌       | `LensFacing.back` | Initial camera lens selection                     |
 
 `LensFacing.backWide` prefers the shortest-focal-length rear camera on Android
 and falls back to the default back camera when the device does not expose a

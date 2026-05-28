@@ -44,10 +44,7 @@ class YOLOModelManager {
   static void emitProgress(String modelId, double fraction) {
     if (_downloadProgressController.isClosed) return;
     _downloadProgressController.add(
-      DownloadProgress(
-        modelId: modelId,
-        fraction: fraction.clamp(0.0, 1.0),
-      ),
+      DownloadProgress(modelId: modelId, fraction: fraction.clamp(0.0, 1.0)),
     );
   }
 
