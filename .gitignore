@@ -93,3 +93,6 @@ threshold_test_sample/
 
 # FVM Version Cache
 .fvm/
+
+# Dev-only widget previews (per-developer scratch)
+example/lib/widget_previews.dart
