@@ -381,54 +381,33 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         }
 
       case "captureFrame":
-        // Method to capture current camera frame with detection overlays
-
-        self.yoloView?.capturePhoto { [weak self] image in
-          if let image = image {
-            // Convert UIImage to byte array (JPEG format)
-            if let imageData = image.jpegData(compressionQuality: 0.9) {
-              // Convert to FlutterStandardTypedData for efficient transfer
-              let flutterData = FlutterStandardTypedData(bytes: imageData)
-              result(flutterData)
-            } else {
-              result(
-                FlutterError(
-                  code: "conversion_failed",
-                  message: "Failed to convert captured image to JPEG data",
-                  details: nil
-                )
-              )
-            }
-          } else {
-            result(
-              FlutterError(
-                code: "capture_failed",
-                message: "Failed to capture photo from camera",
-                details: nil
-              )
-            )
-          }
-        }
-
-      case "capturePhoto":
-        // New canonical name for capture-with-overlays. `withOverlays` is
-        // accepted for forward-compat with the planned Dart controller
-        // signature; the plugin's existing capturePhoto already composites
-        // the bounding-box hierarchy so the flag is currently advisory.
-        // When `withOverlays == false` we still return the composite (a
-        // future refactor can branch here to capture without boxes).
-        let _ = (call.arguments as? [String: Any])?["withOverlays"] as? Bool ?? true
-        self.yoloView?.capturePhoto { image in
-          if let image = image, let data = image.jpegData(compressionQuality: 0.9) {
+        // Legacy alias — always returns the composited share image.
+        self.yoloView?.capturePhoto(withOverlays: true) { image in
+          if let image, let data = image.jpegData(compressionQuality: 0.9) {
             result(FlutterStandardTypedData(bytes: data))
           } else {
             result(
               FlutterError(
                 code: "capture_failed",
                 message: "Failed to capture photo from camera",
-                details: nil
-              )
-            )
+                details: nil))
+          }
+        }
+
+      case "capturePhoto":
+        // Canonical capture endpoint. Honors `withOverlays` (default true):
+        // false returns the raw oriented camera frame for callers that want
+        // to do their own annotation. Behavior matches the Android handler.
+        let withOverlays = (call.arguments as? [String: Any])?["withOverlays"] as? Bool ?? true
+        self.yoloView?.capturePhoto(withOverlays: withOverlays) { image in
+          if let image, let data = image.jpegData(compressionQuality: 0.9) {
+            result(FlutterStandardTypedData(bytes: data))
+          } else {
+            result(
+              FlutterError(
+                code: "capture_failed",
+                message: "Failed to capture photo from camera",
+                details: nil))
           }
         }
 

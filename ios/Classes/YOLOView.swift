@@ -1309,9 +1309,30 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   /// Set focus + exposure at a normalized 0..1 view-relative coordinate.
   /// Dart-side gesture handlers call this; no native recognizer is attached
   /// to the view.
+  ///
+  /// `focusPointOfInterest`/`exposurePointOfInterest` live in the capture
+  /// device's coordinate space (aspect-fill cropped, orientation-baked).
+  /// View-relative input must therefore be routed through the preview
+  /// layer's `captureDevicePointConverted(fromLayerPoint:)` — without that
+  /// hop a portrait device focuses well off the tap location.
   public func tapToFocus(x: CGFloat, y: CGFloat) {
     guard let device = videoCapture.captureDevice else { return }
-    let point = CGPoint(x: max(0, min(1, x)), y: max(0, min(1, y)))
+    let viewX = max(0, min(1, x))
+    let viewY = max(0, min(1, y))
+
+    // Map 0..1 view coords → preview layer point → capture device point.
+    // Falls back to the raw view-relative point if the preview layer is not
+    // attached yet (early-frame race), which is the same behaviour as iOS
+    // before iOS 11 introduced the converter.
+    let devicePoint: CGPoint
+    if let preview = videoCapture.previewLayer, preview.bounds.width > 0, preview.bounds.height > 0 {
+      let layerPoint = CGPoint(
+        x: viewX * preview.bounds.width,
+        y: viewY * preview.bounds.height)
+      devicePoint = preview.captureDevicePointConverted(fromLayerPoint: layerPoint)
+    } else {
+      devicePoint = CGPoint(x: viewX, y: viewY)
+    }
 
     do {
       try device.lockForConfiguration()
@@ -1320,17 +1341,18 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       if device.isFocusPointOfInterestSupported,
         device.isFocusModeSupported(.autoFocus)
       {
-        device.focusPointOfInterest = point
+        device.focusPointOfInterest = devicePoint
         device.focusMode = .autoFocus
       }
       if device.isExposurePointOfInterestSupported,
         device.isExposureModeSupported(.autoExpose)
       {
-        device.exposurePointOfInterest = point
+        device.exposurePointOfInterest = devicePoint
         device.exposureMode = .autoExpose
       }
-      // Notify Dart so the FocusReticle can animate at the tap location.
-      onFocusTapped?(point.x, point.y)
+      // Notify Dart with the original view-relative coords so the
+      // FocusReticle pulses where the user actually tapped.
+      onFocusTapped?(viewX, viewY)
     } catch {
       NSLog("YOLOView: tapToFocus failed: %@", error.localizedDescription)
     }
@@ -1585,14 +1607,15 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     hideCameraTransition()
   }
 
-  /// Capture a composited share image (camera frame + bounding boxes + masks
-  /// + pose layer). Matches upstream YOLO iOS `capturePhoto`: prefers the
-  /// paused-share frame when the session is stopped, otherwise pulls the
-  /// next live sample buffer via `VideoCapture.captureNextFrame`. No
-  /// `AVCapturePhotoOutput` — the share image must match what's visible.
-  public func capturePhoto(completion: @escaping (UIImage?) -> Void) {
+  /// Capture a share image. When `withOverlays` is true the next live frame
+  /// (or the paused-share frame when the session is stopped) is composited
+  /// with the current bounding-box / mask / pose layers via
+  /// `renderShareImage`. When false the raw oriented camera frame is
+  /// returned so callers can do their own annotation. Matches upstream YOLO
+  /// iOS `capturePhoto` and the Android `capturePhoto(withOverlays)` contract.
+  public func capturePhoto(withOverlays: Bool, completion: @escaping (UIImage?) -> Void) {
     if let pausedShareImage, !videoCapture.captureSession.isRunning {
-      completion(renderShareImage(pausedShareImage))
+      completion(withOverlays ? renderShareImage(pausedShareImage) : pausedShareImage)
       return
     }
     videoCapture.captureNextFrame { [weak self] image in
@@ -1600,7 +1623,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         completion(nil)
         return
       }
-      completion(self.renderShareImage(image))
+      completion(withOverlays ? self.renderShareImage(image) : image)
     }
   }
 
@@ -1732,7 +1755,10 @@ extension YOLOView {
       tempViews.append(boxView)
     }
 
-    let bounds = UIScreen.main.bounds
+    // Snapshot the YOLOView's own bounds — UIScreen.main.bounds would crop
+    // the wrong rect under split view, embedded layouts, or any non-fullscreen
+    // host and would misalign overlays in the shared image.
+    let bounds = self.bounds
     UIGraphicsBeginImageContextWithOptions(bounds.size, true, 0.0)
     drawHierarchy(in: bounds, afterScreenUpdates: true)
     let snapshot = UIGraphicsGetImageFromCurrentImageContext()

@@ -250,6 +250,9 @@ class YOLOView @JvmOverloads constructor(
     private var selectedLensZoomFactor: Double? = null
     private var selectedLensCameraInfo: CameraInfo? = null
     private var selectedLensLabel: String? = null
+    // Zoom factor requested by setLens() that should be re-applied after the
+    // next `startCamera()` rebind (which otherwise resets zoom to 1.0x).
+    private var pendingZoomAfterRebind: Float? = null
 
     // Optional ImageCapture use-case (bound alongside Preview+Analysis when supported)
     private var imageCaptureUseCase: ImageCapture? = null
@@ -647,6 +650,18 @@ class YOLOView @JvmOverloads constructor(
                             minZoomRatio = cameraInfo.zoomState.value?.minZoomRatio ?: 1.0f
                             maxZoomRatio = cameraInfo.zoomState.value?.maxZoomRatio ?: 1.0f
                             currentZoomRatio = cameraInfo.zoomState.value?.zoomRatio ?: 1.0f
+
+                            // If setLens() requested a specific zoom for the new
+                            // physical lens, apply it now and emit a matching zoom
+                            // event so Dart's ZoomIndicator stays in sync.
+                            pendingZoomAfterRebind?.let { requested ->
+                                pendingZoomAfterRebind = null
+                                val clamped = requested.coerceIn(minZoomRatio, maxZoomRatio)
+                                cam.cameraControl.setZoomRatio(clamped)
+                                currentZoomRatio = clamped
+                                onZoomChanged?.invoke(clamped)
+                                emitEvent(mapOf("type" to "zoom", "value" to clamped.toDouble()))
+                            }
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Use case binding failed", e)
@@ -821,6 +836,11 @@ class YOLOView @JvmOverloads constructor(
         val lenses = if (cachedLenses.isEmpty()) enumerateLenses() else cachedLenses
         if (lenses.isEmpty()) return
         val target = lenses.minByOrNull { abs(it.zoomFactor - zoomFactor) } ?: return
+        // Stash the requested zoom so `startCamera()` (which resets zoom to
+        // 1.0x on every rebind) can re-apply it once binding completes. Without
+        // this, tapping 0.5x or 2x would leave Dart's ZoomIndicator/LensPicker
+        // snapping back to 1x even though the physical lens did switch.
+        pendingZoomAfterRebind = target.zoomFactor.toFloat()
         switchToLens(target)
         emitEvent(mapOf("type" to "lens", "label" to target.label))
     }
@@ -883,7 +903,10 @@ class YOLOView @JvmOverloads constructor(
     fun capturePhoto(withOverlays: Boolean = true, callback: (ByteArray?) -> Unit) {
         val ic = imageCaptureUseCase
         if (ic == null) {
-            callback(captureFrame())
+            // Three-use-case bind failed at startup; honor withOverlays via
+            // captureFrame's matching flag so callers asking for a raw photo
+            // don't silently get an annotated one.
+            callback(captureFrame(withOverlays))
             return
         }
         try {
@@ -894,7 +917,7 @@ class YOLOView @JvmOverloads constructor(
                         try {
                             val jpegBytes = imageProxyToJpegBytes(image)
                             if (jpegBytes == null) {
-                                callback(captureFrame())
+                                callback(captureFrame(withOverlays))
                                 return
                             }
                             if (!withOverlays) {
@@ -906,7 +929,7 @@ class YOLOView @JvmOverloads constructor(
                             callback(composed ?: jpegBytes)
                         } catch (e: Exception) {
                             Log.e(TAG, "capturePhoto: error processing capture", e)
-                            callback(captureFrame())
+                            callback(captureFrame(withOverlays))
                         } finally {
                             image.close()
                         }
@@ -914,13 +937,13 @@ class YOLOView @JvmOverloads constructor(
 
                     override fun onError(exception: ImageCaptureException) {
                         Log.w(TAG, "capturePhoto: ImageCapture failed, falling back to captureFrame", exception)
-                        callback(captureFrame())
+                        callback(captureFrame(withOverlays))
                     }
                 }
             )
         } catch (e: Exception) {
             Log.e(TAG, "capturePhoto: takePicture threw, falling back", e)
-            callback(captureFrame())
+            callback(captureFrame(withOverlays))
         }
     }
 
@@ -1927,10 +1950,13 @@ class YOLOView @JvmOverloads constructor(
     // endregion
     
     /**
-     * Capture current camera frame with detection overlays
-     * Returns the captured image as a ByteArray (JPEG format)
+     * Capture current camera frame. When [withOverlays] is true the overlay
+     * bitmap (bounding boxes / mask / pose) is composited on top of the
+     * preview snapshot before encoding. Used as the fallback path when
+     * [capturePhoto]'s preferred ImageCapture binding is unavailable.
+     * Returns the captured image as a ByteArray (JPEG format).
      */
-    fun captureFrame(): ByteArray? {
+    fun captureFrame(withOverlays: Boolean = true): ByteArray? {
         try {
             // Create bitmap to hold the captured frame
             val width = width
@@ -1977,8 +2003,12 @@ class YOLOView @JvmOverloads constructor(
                 }
             }
             
-            // Always draw the overlay on top
-            overlayView.draw(canvas)
+            // Conditionally draw the overlay on top — callers asking for a
+            // raw photo (e.g. capturePhoto(withOverlays=false) hitting the
+            // fallback path) get the unannotated preview snapshot.
+            if (withOverlays) {
+                overlayView.draw(canvas)
+            }
             
             // Convert bitmap to JPEG byte array
             val outputStream = java.io.ByteArrayOutputStream()
