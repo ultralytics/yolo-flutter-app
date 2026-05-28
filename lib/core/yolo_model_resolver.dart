@@ -1,11 +1,13 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
+import 'package:ultralytics_yolo/core/yolo_model_manager.dart';
 import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 
@@ -42,7 +44,12 @@ class YOLOModelResolver {
       'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
 
+  // Canonical YOLO26 task × size matrix (mirrors RemoteModels.swift:21-22).
+  // Every cell is enumerated so chip availability is driven by the matrix, not
+  // by per-task special-casing; assets that don't exist at the release tag
+  // simply fail at download time and surface as a UI-level "missing" state.
   static const List<_OfficialModelArtifact> _officialModels = [
+    // Detect
     _OfficialModelArtifact(
       id: 'yolo26n',
       task: YOLOTask.detect,
@@ -52,28 +59,59 @@ class YOLOModelResolver {
     _OfficialModelArtifact(
       id: 'yolo26s',
       task: YOLOTask.detect,
+      androidAssetName: 'yolo26s_int8.tflite',
       iosArchiveName: 'yolo26s.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26m',
       task: YOLOTask.detect,
+      androidAssetName: 'yolo26m_int8.tflite',
       iosArchiveName: 'yolo26m.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26l',
       task: YOLOTask.detect,
+      androidAssetName: 'yolo26l_int8.tflite',
       iosArchiveName: 'yolo26l.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26x',
       task: YOLOTask.detect,
+      androidAssetName: 'yolo26x_int8.tflite',
       iosArchiveName: 'yolo26x.mlpackage.zip',
     ),
+    // Segment
     _OfficialModelArtifact(
       id: 'yolo26n-seg',
       task: YOLOTask.segment,
       androidAssetName: 'yolo26n-seg_int8.tflite',
+      iosArchiveName: 'yolo26n-seg.mlpackage.zip',
     ),
+    _OfficialModelArtifact(
+      id: 'yolo26s-seg',
+      task: YOLOTask.segment,
+      androidAssetName: 'yolo26s-seg_int8.tflite',
+      iosArchiveName: 'yolo26s-seg.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26m-seg',
+      task: YOLOTask.segment,
+      androidAssetName: 'yolo26m-seg_int8.tflite',
+      iosArchiveName: 'yolo26m-seg.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26l-seg',
+      task: YOLOTask.segment,
+      androidAssetName: 'yolo26l-seg_int8.tflite',
+      iosArchiveName: 'yolo26l-seg.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26x-seg',
+      task: YOLOTask.segment,
+      androidAssetName: 'yolo26x-seg_int8.tflite',
+      iosArchiveName: 'yolo26x-seg.mlpackage.zip',
+    ),
+    // Semantic
     _OfficialModelArtifact(
       id: 'yolo26n-sem',
       task: YOLOTask.semantic,
@@ -83,37 +121,119 @@ class YOLOModelResolver {
     _OfficialModelArtifact(
       id: 'yolo26s-sem',
       task: YOLOTask.semantic,
+      androidAssetName: 'yolo26s-sem_int8.tflite',
       iosArchiveName: 'yolo26s-sem.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26m-sem',
       task: YOLOTask.semantic,
+      androidAssetName: 'yolo26m-sem_int8.tflite',
       iosArchiveName: 'yolo26m-sem.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26l-sem',
       task: YOLOTask.semantic,
+      androidAssetName: 'yolo26l-sem_int8.tflite',
       iosArchiveName: 'yolo26l-sem.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26x-sem',
       task: YOLOTask.semantic,
+      androidAssetName: 'yolo26x-sem_int8.tflite',
       iosArchiveName: 'yolo26x-sem.mlpackage.zip',
     ),
+    // Classify
     _OfficialModelArtifact(
       id: 'yolo26n-cls',
       task: YOLOTask.classify,
       androidAssetName: 'yolo26n-cls_int8.tflite',
+      iosArchiveName: 'yolo26n-cls.mlpackage.zip',
     ),
+    _OfficialModelArtifact(
+      id: 'yolo26s-cls',
+      task: YOLOTask.classify,
+      androidAssetName: 'yolo26s-cls_int8.tflite',
+      iosArchiveName: 'yolo26s-cls.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26m-cls',
+      task: YOLOTask.classify,
+      androidAssetName: 'yolo26m-cls_int8.tflite',
+      iosArchiveName: 'yolo26m-cls.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26l-cls',
+      task: YOLOTask.classify,
+      androidAssetName: 'yolo26l-cls_int8.tflite',
+      iosArchiveName: 'yolo26l-cls.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26x-cls',
+      task: YOLOTask.classify,
+      androidAssetName: 'yolo26x-cls_int8.tflite',
+      iosArchiveName: 'yolo26x-cls.mlpackage.zip',
+    ),
+    // Pose
     _OfficialModelArtifact(
       id: 'yolo26n-pose',
       task: YOLOTask.pose,
       androidAssetName: 'yolo26n-pose_int8.tflite',
+      iosArchiveName: 'yolo26n-pose.mlpackage.zip',
     ),
+    _OfficialModelArtifact(
+      id: 'yolo26s-pose',
+      task: YOLOTask.pose,
+      androidAssetName: 'yolo26s-pose_int8.tflite',
+      iosArchiveName: 'yolo26s-pose.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26m-pose',
+      task: YOLOTask.pose,
+      androidAssetName: 'yolo26m-pose_int8.tflite',
+      iosArchiveName: 'yolo26m-pose.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26l-pose',
+      task: YOLOTask.pose,
+      androidAssetName: 'yolo26l-pose_int8.tflite',
+      iosArchiveName: 'yolo26l-pose.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26x-pose',
+      task: YOLOTask.pose,
+      androidAssetName: 'yolo26x-pose_int8.tflite',
+      iosArchiveName: 'yolo26x-pose.mlpackage.zip',
+    ),
+    // OBB
     _OfficialModelArtifact(
       id: 'yolo26n-obb',
       task: YOLOTask.obb,
       androidAssetName: 'yolo26n-obb_int8.tflite',
+      iosArchiveName: 'yolo26n-obb.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26s-obb',
+      task: YOLOTask.obb,
+      androidAssetName: 'yolo26s-obb_int8.tflite',
+      iosArchiveName: 'yolo26s-obb.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26m-obb',
+      task: YOLOTask.obb,
+      androidAssetName: 'yolo26m-obb_int8.tflite',
+      iosArchiveName: 'yolo26m-obb.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26l-obb',
+      task: YOLOTask.obb,
+      androidAssetName: 'yolo26l-obb_int8.tflite',
+      iosArchiveName: 'yolo26l-obb.mlpackage.zip',
+    ),
+    _OfficialModelArtifact(
+      id: 'yolo26x-obb',
+      task: YOLOTask.obb,
+      androidAssetName: 'yolo26x-obb_int8.tflite',
+      iosArchiveName: 'yolo26x-obb.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo11n',
@@ -294,7 +414,11 @@ class YOLOModelResolver {
       return modelFile.path;
     }
 
-    await _downloadToFile('$_androidModelReleaseBaseUrl/$filename', modelFile);
+    await _downloadToFile(
+      '$_androidModelReleaseBaseUrl/$filename',
+      modelFile,
+      progressId: artifact.id,
+    );
     return modelFile.path;
   }
 
@@ -322,7 +446,11 @@ class YOLOModelResolver {
     }
 
     final archiveFile = File('${directory.path}/$archiveName');
-    await _downloadToFile('$_iosModelReleaseBaseUrl/$archiveName', archiveFile);
+    await _downloadToFile(
+      '$_iosModelReleaseBaseUrl/$archiveName',
+      archiveFile,
+      progressId: artifact.id,
+    );
     return _extractMlPackageArchiveFile(archiveFile, archiveName, modelDir);
   }
 
@@ -335,13 +463,21 @@ class YOLOModelResolver {
       final targetDir = Directory('${documents.path}/$modelName.mlpackage');
       if (await _hasValidMlPackage(targetDir)) return targetDir.path;
       final archiveFile = File('${documents.path}/$fileName');
-      await _downloadToFile(uri.toString(), archiveFile);
+      await _downloadToFile(
+        uri.toString(),
+        archiveFile,
+        progressId: modelName,
+      );
       return _extractMlPackageArchiveFile(archiveFile, fileName, targetDir);
     }
 
     final file = File('${documents.path}/$fileName');
     if (file.existsSync()) return file.path;
-    await _downloadToFile(uri.toString(), file);
+    await _downloadToFile(
+      uri.toString(),
+      file,
+      progressId: _normalizeOfficialModelId(fileName),
+    );
     return file.path;
   }
 
@@ -403,7 +539,11 @@ class YOLOModelResolver {
     }
   }
 
-  static Future<void> _downloadToFile(String url, File targetFile) async {
+  static Future<void> _downloadToFile(
+    String url,
+    File targetFile, {
+    String? progressId,
+  }) async {
     targetFile.parent.createSync(recursive: true);
     final client = HttpClient();
     final temporaryFile = File('${targetFile.path}.download');
@@ -418,12 +558,39 @@ class YOLOModelResolver {
           'Failed to download model from $url (HTTP ${response.statusCode}).',
         );
       }
+
+      // Stream bytes to disk so we can tally `received / contentLength` and
+      // surface progress through `YOLOModelManager.emitProgress`. `pipe`
+      // would block progress reporting until completion.
+      final totalBytes = response.contentLength;
+      var receivedBytes = 0;
+      double lastFraction = -1;
+
+      if (progressId != null) {
+        YOLOModelManager.emitProgress(progressId, 0);
+      }
+
       final sink = temporaryFile.openWrite();
       try {
-        await response.pipe(sink);
+        await response.forEach((chunk) {
+          sink.add(chunk);
+          if (progressId == null || totalBytes <= 0) return;
+          receivedBytes += chunk.length;
+          final fraction = (receivedBytes / totalBytes).clamp(0.0, 1.0);
+          // Throttle to ~1% steps to avoid flooding the stream on fast links.
+          if (fraction - lastFraction >= 0.01 || fraction >= 1.0) {
+            lastFraction = fraction;
+            YOLOModelManager.emitProgress(progressId, fraction);
+          }
+        });
       } finally {
         await sink.close();
       }
+
+      if (progressId != null) {
+        YOLOModelManager.emitProgress(progressId, 1);
+      }
+
       if (targetFile.existsSync()) {
         targetFile.deleteSync();
       }

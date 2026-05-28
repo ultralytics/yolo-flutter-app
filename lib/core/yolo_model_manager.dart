@@ -1,5 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
@@ -7,7 +9,48 @@ import 'package:ultralytics_yolo/utils/error_handler.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
 
+/// Progress snapshot for an in-flight model download.
+class DownloadProgress {
+  const DownloadProgress({required this.modelId, required this.fraction});
+
+  /// Official model id (e.g. `yolo26n`, `yolo26s-seg`) being downloaded.
+  final String modelId;
+
+  /// Completion fraction in `[0, 1]`. Reaches `1.0` on completion; emits `0.0`
+  /// at download start when the remote `Content-Length` is unknown.
+  final double fraction;
+
+  @override
+  String toString() =>
+      'DownloadProgress(modelId: $modelId, fraction: ${fraction.toStringAsFixed(2)})';
+}
+
 class YOLOModelManager {
+  // Broadcast sink for in-progress model downloads. Fed by the resolver's
+  // download path; consumers (e.g. YoloShowcase) subscribe to surface a
+  // `LinearProgressIndicator` overlay on the active model chip. Kept as a
+  // singleton because downloads are global (one URL, one filesystem path)
+  // and the resolver is also stateless.
+  static final StreamController<DownloadProgress> _downloadProgressController =
+      StreamController<DownloadProgress>.broadcast();
+
+  /// Stream of in-flight model-download progress events.
+  static Stream<DownloadProgress> get downloadProgress =>
+      _downloadProgressController.stream;
+
+  /// Emits a [DownloadProgress] event. Called by the model resolver during
+  /// streaming downloads; safe to call from any isolate that runs the
+  /// resolver (Flutter UI isolate in practice).
+  static void emitProgress(String modelId, double fraction) {
+    if (_downloadProgressController.isClosed) return;
+    _downloadProgressController.add(
+      DownloadProgress(
+        modelId: modelId,
+        fraction: fraction.clamp(0.0, 1.0),
+      ),
+    );
+  }
+
   final MethodChannel _channel;
   final String _instanceId;
   final String _modelPath;
