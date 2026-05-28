@@ -68,12 +68,35 @@ class VideoCapture: NSObject, @unchecked Sendable {
     videoOrientation: AVCaptureVideoOrientation,
     completion: @escaping (Bool) -> Void
   ) {
-    cameraQueue.async {
-      let success = self.setUpCamera(
-        sessionPreset: sessionPreset, position: position, videoOrientation: videoOrientation)
-      DispatchQueue.main.async {
-        completion(success)
+    // The Flutter plugin doesn't have a host UIViewController that can present a permission prompt, so we trigger the
+    // iOS camera-permission dialog here on the first launch. Without this `setUpCamera` would bail with
+    // `notDetermined` and the live preview would silently never come up. NSCameraUsageDescription must be set in the
+    // host app's Info.plist (it is in the example).
+    let proceed: () -> Void = { [self] in
+      cameraQueue.async {
+        let success = self.setUpCamera(
+          sessionPreset: sessionPreset, position: position, videoOrientation: videoOrientation)
+        DispatchQueue.main.async {
+          completion(success)
+        }
       }
+    }
+    switch AVCaptureDevice.authorizationStatus(for: .video) {
+    case .authorized:
+      proceed()
+    case .notDetermined:
+      AVCaptureDevice.requestAccess(for: .video) { granted in
+        if granted {
+          proceed()
+        } else {
+          DispatchQueue.main.async { completion(false) }
+        }
+      }
+    case .denied, .restricted:
+      NSLog("YOLO VideoCapture: Camera permission denied or restricted. Cannot initialize camera.")
+      DispatchQueue.main.async { completion(false) }
+    @unknown default:
+      DispatchQueue.main.async { completion(false) }
     }
   }
 
