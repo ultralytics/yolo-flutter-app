@@ -48,7 +48,10 @@ class LensPicker extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
         onValueChanged: (zoom) {
           if (zoom == null) return;
-          final picked = lenses.firstWhere((l) => l.zoomFactor == zoom, orElse: () => selected);
+          final picked = lenses.firstWhere(
+            (l) => l.zoomFactor == zoom,
+            orElse: () => selected,
+          );
           onLensSelected(picked);
         },
         children: {
@@ -59,9 +62,13 @@ class LensPicker extends StatelessWidget {
                 _formatZoom(lens),
                 style: TextStyle(
                   // systemYellow when selected; white otherwise — matches the iOS reference exactly.
-                  color: lens.zoomFactor == selected.zoomFactor ? CupertinoColors.systemYellow : Colors.white,
+                  color: lens.zoomFactor == selected.zoomFactor
+                      ? CupertinoColors.systemYellow
+                      : Colors.white,
                   fontSize: 13,
-                  fontWeight: lens.zoomFactor == selected.zoomFactor ? FontWeight.w700 : FontWeight.w600,
+                  fontWeight: lens.zoomFactor == selected.zoomFactor
+                      ? FontWeight.w700
+                      : FontWeight.w600,
                 ),
               ),
             ),
@@ -71,7 +78,9 @@ class LensPicker extends StatelessWidget {
   }
 
   static String _formatZoom(LensInfo lens) {
-    return lens.zoomFactor < 1 ? lens.zoomFactor.toStringAsFixed(1) : lens.zoomFactor.toStringAsFixed(0);
+    return lens.zoomFactor < 1
+        ? lens.zoomFactor.toStringAsFixed(1)
+        : lens.zoomFactor.toStringAsFixed(0);
   }
 
   /// Mirrors `yolo-ios-app/Sources/YOLO/YOLOView.swift#updateSelectedLens` (line 1181): pick the largest-zoom lens
@@ -79,7 +88,8 @@ class LensPicker extends StatelessWidget {
   /// previous "closest absolute delta" heuristic switched the yellow selection too early around midpoints (a 1.5x
   /// zoom on a 1×/2× picker would jump to 2x before the camera actually rebound).
   static LensInfo _closestLens(List<LensInfo> lenses, double zoom) {
-    final sorted = [...lenses]..sort((a, b) => a.zoomFactor.compareTo(b.zoomFactor));
+    final sorted = [...lenses]
+      ..sort((a, b) => a.zoomFactor.compareTo(b.zoomFactor));
     LensInfo? best;
     for (final lens in sorted) {
       if (zoom + 0.01 >= lens.zoomFactor) best = lens;
