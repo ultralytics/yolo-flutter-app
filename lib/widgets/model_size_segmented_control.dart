@@ -15,6 +15,11 @@ class ModelSizeSegmentedControl extends StatelessWidget {
   /// prefix so the user can tap to start a download.
   final Set<String> availableSizes;
 
+  /// Sizes the resolver can fetch on the current platform. Sizes outside this
+  /// set are hidden from the segmented control so users can't tap a chip
+  /// that has no asset to download. Defaults to all five.
+  final Set<String> supportedSizes;
+
   /// Invoked with the tapped size. Tapping a missing size is treated as a
   /// download request — the parent kicks off the resolver.
   final ValueChanged<String> onSizeChanged;
@@ -33,6 +38,7 @@ class ModelSizeSegmentedControl extends StatelessWidget {
     required this.onSizeChanged,
     this.downloadingSize,
     this.downloadFraction,
+    this.supportedSizes = const {'n', 's', 'm', 'l', 'x'},
   });
 
   static const List<String> _sizes = ['n', 's', 'm', 'l', 'x'];
@@ -42,6 +48,7 @@ class ModelSizeSegmentedControl extends StatelessWidget {
     return SegmentedButton<String>(
       segments: [
         for (final size in _sizes)
+          if (supportedSizes.contains(size))
           ButtonSegment<String>(value: size, label: _SegmentLabel(
             size: size,
             isAvailable: availableSizes.contains(size),

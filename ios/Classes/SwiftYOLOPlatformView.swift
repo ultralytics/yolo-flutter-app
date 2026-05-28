@@ -330,9 +330,22 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
 
       case "stop":
         // Method to stop camera and inference
-
         self.stopCamera()
         result(nil)  // Success
+
+      case "pause":
+        // Captures the next frame into the cached share image, then stops
+        // the session — matches upstream YOLO iOS pauseTapped.
+        if let view = self.yoloView {
+          view.pause { _ in result(nil) }
+        } else {
+          result(nil)
+        }
+
+      case "resume":
+        // Resumes from a pause()-induced state, clearing the cached frame.
+        self.yoloView?.resume()
+        result(nil)
 
       case "setModel":
         // Method to dynamically switch models
