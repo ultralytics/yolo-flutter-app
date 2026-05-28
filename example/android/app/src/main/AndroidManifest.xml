@@ -9,7 +9,7 @@
     <uses-feature android:name="android.hardware.camera.autofocus" />
 
     <application
-        android:label="yolo_example"
+        android:label="YOLO"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
