@@ -180,6 +180,9 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     let predictor = Self.init()
     predictor.numItemsThreshold = numItemsThreshold
 
+    // Carry the non-Sendable completion across queue boundaries via SendableBox so Swift 6 strict concurrency
+    // doesn't flag the main-queue dispatch below; all invocations land on the main queue.
+    let completionBox = SendableBox(completion)
     // Kick off the expensive loading on a background thread
     DispatchQueue.global(qos: .userInitiated).async {
       do {
@@ -247,13 +250,15 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         predictor.isModelLoaded = true
 
         // Finally, call the completion on the main thread
+        let predictorBox = SendableBox(predictor)
         DispatchQueue.main.async {
-          completion(.success(predictor))
+          completionBox.value(.success(predictorBox.value))
         }
       } catch {
         // If anything goes wrong, call completion with the error
+        let errorBox = SendableBox(error)
         DispatchQueue.main.async {
-          completion(.failure(error))
+          completionBox.value(.failure(errorBox.value))
         }
       }
     }

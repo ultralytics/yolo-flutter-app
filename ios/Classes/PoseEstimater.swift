@@ -19,6 +19,27 @@ import Foundation
 import UIKit
 import Vision
 
+/// Thread-safe accumulator that lets the `DispatchQueue.concurrentPerform` body in `postProcessPose` append
+/// candidate boxes / scores / feature vectors without tripping Swift 6 "mutation of captured var" warnings.
+private final class _PoseResultAccumulator: @unchecked Sendable {
+  private let lock = NSLock()
+  private var boxes: [CGRect] = []
+  private var scores: [Float] = []
+  private var features: [[Float]] = []
+  func append(box: CGRect, score: Float, features: [Float]) {
+    lock.lock()
+    boxes.append(box)
+    scores.append(score)
+    self.features.append(features)
+    lock.unlock()
+  }
+  var snapshot: ([CGRect], [Float], [[Float]]) {
+    lock.lock()
+    defer { lock.unlock() }
+    return (boxes, scores, features)
+  }
+}
+
 /// Specialized predictor for YOLO pose estimation models that identify human body keypoints.
 class PoseEstimater: BasePredictor, @unchecked Sendable {
   var colorsForMask: [(red: UInt8, green: UInt8, blue: UInt8)] = []
@@ -139,22 +160,23 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
     let numAnchors = prediction.shape[2].intValue
     let featureCount = prediction.shape[1].intValue - 5
 
-    var boxes = [CGRect]()
-    var scores = [Float]()
-    var features = [[Float]]()
-
-    let featurePointer = UnsafeMutablePointer<Float>(OpaquePointer(prediction.dataPointer))
-    let lock = DispatchQueue(label: "com.example.lock")
+    // NSLock-protected accumulator wraps the box/score/feature lists so the `DispatchQueue.concurrentPerform` body
+    // below can append safely without tripping Swift 6 "mutation of captured var in concurrently-executing code"
+    // warnings. SendableBox carries the raw model pointer across the @Sendable boundary; reads at unique indices
+    // are race-free.
+    let acc = _PoseResultAccumulator()
+    let pointerBox = SendableBox(UnsafeMutablePointer<Float>(OpaquePointer(prediction.dataPointer)))
 
     DispatchQueue.concurrentPerform(iterations: numAnchors) { j in
+      let p = pointerBox.value
       let confIndex = 4 * numAnchors + j
-      let confidence = featurePointer[confIndex]
+      let confidence = p[confIndex]
 
       if confidence > confidenceThreshold {
-        let x = featurePointer[j]
-        let y = featurePointer[numAnchors + j]
-        let width = featurePointer[2 * numAnchors + j]
-        let height = featurePointer[3 * numAnchors + j]
+        let x = p[j]
+        let y = p[numAnchors + j]
+        let width = p[2 * numAnchors + j]
+        let height = p[3 * numAnchors + j]
 
         let boxWidth = CGFloat(width)
         let boxHeight = CGFloat(height)
@@ -167,16 +189,13 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
         var boxFeatures = [Float](repeating: 0, count: featureCount)
         for k in 0..<featureCount {
           let key = (5 + k) * numAnchors + j
-          boxFeatures[k] = featurePointer[key]
+          boxFeatures[k] = p[key]
         }
 
-        lock.sync {
-          boxes.append(boundingBox)
-          scores.append(confidence)
-          features.append(boxFeatures)
-        }
+        acc.append(box: boundingBox, score: confidence, features: boxFeatures)
       }
     }
+    let (boxes, scores, features) = acc.snapshot
 
     let selectedIndices = nonMaxSuppression(boxes: boxes, scores: scores, threshold: iouThreshold)
 

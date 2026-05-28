@@ -196,7 +196,7 @@ public final class SwiftYOLOPlatformView: NSObject,
       guard let self = self else {
         result(
           FlutterError(
-            code: "not_available", message: "YoloPlatformView was disposed", details: nil))
+            code: "not_available", message: "YOLOPlatformView was disposed", details: nil))
         return
       }
 

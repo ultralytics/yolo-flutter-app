@@ -32,7 +32,7 @@ enum DetectionLabelStyle {
     UIFont(name: fontName, size: size) ?? UIFont.systemFont(ofSize: size)
   }
 
-  static func configure(_ textLayer: CATextLayer, fontSize: CGFloat) {
+  @MainActor static func configure(_ textLayer: CATextLayer, fontSize: CGFloat) {
     let font = font(size: fontSize)
     textLayer.contentsScale = UIScreen.main.scale
     textLayer.fontSize = fontSize
