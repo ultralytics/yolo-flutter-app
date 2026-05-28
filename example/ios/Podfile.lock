@@ -51,7 +51,7 @@ SPEC CHECKSUMS:
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
-  ultralytics_yolo: 650ea1417a5b3ef9b1acc55e6edef5385018d3b5
+  ultralytics_yolo: d59ad3017ab3342db8c087457ba221371e5c7f37
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
 
 PODFILE CHECKSUM: c1f9b04c4f336239018b20f9d77f52962a803e4a

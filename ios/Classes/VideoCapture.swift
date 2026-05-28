@@ -72,12 +72,16 @@ class VideoCapture: NSObject, @unchecked Sendable {
     // iOS camera-permission dialog here on the first launch. Without this `setUpCamera` would bail with
     // `notDetermined` and the live preview would silently never come up. NSCameraUsageDescription must be set in the
     // host app's Info.plist (it is in the example).
-    let proceed: () -> Void = { [self] in
+    // Carry the non-Sendable completion across queue boundaries via SendableBox so Swift 6 strict concurrency doesn't
+    // flag the captures. All invocations land on the main queue. `@Sendable` on `proceed` lets the closure cross into
+    // `AVCaptureDevice.requestAccess`'s `@Sendable` callback below.
+    let completionBox = SendableBox(completion)
+    let proceed: @Sendable () -> Void = { [self] in
       cameraQueue.async {
         let success = self.setUpCamera(
           sessionPreset: sessionPreset, position: position, videoOrientation: videoOrientation)
         DispatchQueue.main.async {
-          completion(success)
+          completionBox.value(success)
         }
       }
     }
@@ -89,14 +93,14 @@ class VideoCapture: NSObject, @unchecked Sendable {
         if granted {
           proceed()
         } else {
-          DispatchQueue.main.async { completion(false) }
+          DispatchQueue.main.async { completionBox.value(false) }
         }
       }
     case .denied, .restricted:
       NSLog("YOLO VideoCapture: Camera permission denied or restricted. Cannot initialize camera.")
-      DispatchQueue.main.async { completion(false) }
+      DispatchQueue.main.async { completionBox.value(false) }
     @unknown default:
-      DispatchQueue.main.async { completion(false) }
+      DispatchQueue.main.async { completionBox.value(false) }
     }
   }
 
@@ -284,13 +288,14 @@ extension VideoCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
   /// `captureNextFrame`. Completion runs on the main queue. Returns `nil` if the session is stopped or a capture is
   /// already pending.
   func captureNextFrame(completion: @escaping (UIImage?) -> Void) {
+    let completionBox = SendableBox(completion)
     cameraQueue.async { [weak self] in
       guard let self else { return }
       guard self.captureSession.isRunning, self.frameCaptureCompletion == nil else {
-        DispatchQueue.main.async { completion(nil) }
+        DispatchQueue.main.async { completionBox.value(nil) }
         return
       }
-      self.frameCaptureCompletion = completion
+      self.frameCaptureCompletion = completionBox.value
     }
   }
 
@@ -308,7 +313,9 @@ extension VideoCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
             UIImage(cgImage: $0)
           }
         }
-        DispatchQueue.main.async { pendingCompletion(image) }
+        let imageBox = SendableBox(image)
+        let completionBox = SendableBox(pendingCompletion)
+        DispatchQueue.main.async { completionBox.value(imageBox.value) }
       }
     }
     guard inferenceOK else { return }

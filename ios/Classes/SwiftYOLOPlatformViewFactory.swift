@@ -1,7 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-// See YOLOPlugin.swift — `@preconcurrency` keeps the FlutterPlatformViewFactory conformance on a `@MainActor` class
-// from tripping Swift-6 strict-isolation warnings until Flutter audits the protocols.
+// See YOLOPlugin.swift — `@preconcurrency` keeps Flutter's pre-concurrency types Sendable-clean under Swift 6
+// strict concurrency.
 @preconcurrency import Flutter
 import UIKit
 
@@ -29,8 +29,10 @@ private class YOLOViewRegistry {
   }
 }
 
+// See YOLOPlugin.swift — `@preconcurrency` on the conformance keeps the FlutterPlatformViewFactory (non-isolated)
+// protocol from tripping Swift 6 strict-isolation warnings on this `@MainActor` class.
 @MainActor
-public class SwiftYOLOPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
+public final class SwiftYOLOPlatformViewFactory: NSObject, @preconcurrency FlutterPlatformViewFactory {
   private var messenger: FlutterBinaryMessenger
   // YOLOViewRegistry is internally thread-safe (NSLock around its dictionary), so `nonisolated(unsafe)` lets the
   // factory's `nonisolated` accessors (e.g. unregisterSync) reach it from background contexts during shutdown

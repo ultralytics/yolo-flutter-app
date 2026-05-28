@@ -1625,12 +1625,15 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     // Release predictor to prevent memory leak
     videoCapture.predictor = nil
 
-    // Clear all callbacks to prevent retain cycles
-    onDetection = nil
-    onStream = nil
-    onZoomChanged = nil
-    onLensChanged = nil
-    onFocusTapped = nil
+    // UIView deinit runs on the main thread; `assumeIsolated` lets us clear the main-actor-isolated callbacks
+    // without crossing isolation under Swift 6 strict concurrency.
+    MainActor.assumeIsolated {
+      onDetection = nil
+      onStream = nil
+      onZoomChanged = nil
+      onLensChanged = nil
+      onFocusTapped = nil
+    }
 
     // Remove notification observers
     NotificationCenter.default.removeObserver(self)

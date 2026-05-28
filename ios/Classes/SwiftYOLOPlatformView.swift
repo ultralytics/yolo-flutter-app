@@ -1,8 +1,8 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import AVFoundation
-// See YOLOPlugin.swift — `@preconcurrency` keeps the FlutterPlatformView / FlutterStreamHandler conformances on a
-// `@MainActor` class from tripping Swift-6 strict-isolation warnings until Flutter audits the protocols.
+// See YOLOPlugin.swift — `@preconcurrency` keeps Flutter's pre-concurrency globals/types Sendable-clean under
+// Swift 6 strict concurrency.
 @preconcurrency import Flutter
 import UIKit
 
@@ -13,8 +13,13 @@ extension Float {
   }
 }
 
+// See YOLOPlugin.swift — `@preconcurrency` on the conformances keeps the (non-isolated) FlutterPlatformView /
+// FlutterStreamHandler protocols from tripping Swift 6 strict-isolation warnings on this `@MainActor` class.
 @MainActor
-public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStreamHandler {
+public final class SwiftYOLOPlatformView: NSObject,
+  @preconcurrency FlutterPlatformView,
+  @preconcurrency FlutterStreamHandler
+{
   private let frame: CGRect
   private let viewId: Int64
   private let messenger: FlutterBinaryMessenger
@@ -537,18 +542,20 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   }
 
   deinit {
-    // Clean up event channel
-    eventSink = nil
-    eventChannel.setStreamHandler(nil)
-
-    // Clean up method channel
-    methodChannel.setMethodCallHandler(nil)
-
-    let yoloViewToClean = yoloView
+    // Flutter calls platform-view dealloc on the main thread, so `MainActor.assumeIsolated` lets us touch the
+    // main-actor-isolated properties (`eventSink`, channels, `yoloView`) without crossing isolation under Swift 6
+    // strict concurrency. Reading `yoloView` then nilling it has to happen inside the same `assumeIsolated` body
+    // because direct access to a main-actor property from a `nonisolated deinit` is an error in Swift 6 mode.
     let viewIdToUnregister = Int(viewId)
     let instanceIdToRemove = flutterViewId
-
-    yoloView = nil
+    let yoloViewToClean: YOLOView? = MainActor.assumeIsolated {
+      eventSink = nil
+      eventChannel.setStreamHandler(nil)
+      methodChannel.setMethodCallHandler(nil)
+      let captured = yoloView
+      yoloView = nil
+      return captured
+    }
 
     Task { @MainActor in
       // Stop the camera capture

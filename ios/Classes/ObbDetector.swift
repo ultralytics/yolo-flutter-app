@@ -142,32 +142,40 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
     }
     var rawDetections = [Detection?](repeating: nil, count: numAnchors)
 
-    // 1) Parallel-extract predictions
-    DispatchQueue.concurrentPerform(iterations: numAnchors) { i in
-      let cx = pointer[i] / inputW
-      let cy = pointer[numAnchors + i] / inputH
-      let w = pointer[2 * numAnchors + i] / inputW
-      let h = pointer[3 * numAnchors + i] / inputH
+    // 1) Parallel-extract predictions. Each iteration writes to a unique `i` index, so the parallel mutation is
+    // race-free. SendableBox wrappers carry the raw MLMultiArray pointer and the mutable buffer across
+    // `DispatchQueue.concurrentPerform`'s `@Sendable` boundary; the box is `@unchecked Sendable` because we hold the
+    // uniqueness invariant ourselves rather than relying on the type system.
+    rawDetections.withUnsafeMutableBufferPointer { buffer in
+      let pointerBox = SendableBox(pointer)
+      let bufferBox = SendableBox(buffer)
+      DispatchQueue.concurrentPerform(iterations: numAnchors) { i in
+        let p = pointerBox.value
+        let cx = p[i] / inputW
+        let cy = p[numAnchors + i] / inputH
+        let w = p[2 * numAnchors + i] / inputW
+        let h = p[3 * numAnchors + i] / inputH
 
-      // Find best class & score
-      var bestScore: Float = 0
-      var bestClass: Int = 0
-      for c in 0..<numClasses {
-        let sc = pointer[(4 + c) * numAnchors + i]
-        if sc > bestScore {
-          bestScore = sc
-          bestClass = c
+        // Find best class & score
+        var bestScore: Float = 0
+        var bestClass: Int = 0
+        for c in 0..<numClasses {
+          let sc = p[(4 + c) * numAnchors + i]
+          if sc > bestScore {
+            bestScore = sc
+            bestClass = c
+          }
         }
-      }
 
-      // Angle is the last channel
-      let angleIndex = (4 + numClasses) * numAnchors + i
-      let angle = pointer[angleIndex]
+        // Angle is the last channel
+        let angleIndex = (4 + numClasses) * numAnchors + i
+        let angle = p[angleIndex]
 
-      // Threshold
-      if bestScore > confidenceThreshold {
-        let obb = OBB(cx: cx, cy: cy, w: w, h: h, angle: angle)
-        rawDetections[i] = Detection(obb: obb, score: bestScore, cls: bestClass)
+        // Threshold
+        if bestScore > confidenceThreshold {
+          let obb = OBB(cx: cx, cy: cy, w: w, h: h, angle: angle)
+          bufferBox.value[i] = Detection(obb: obb, score: bestScore, cls: bestClass)
+        }
       }
     }
 
