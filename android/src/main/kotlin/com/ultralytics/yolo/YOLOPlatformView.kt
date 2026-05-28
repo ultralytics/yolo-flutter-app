@@ -60,7 +60,6 @@ class YOLOPlatformView(
         val taskString = creationParams?.get("task") as? String ?: "detect"
         val confidenceParam = creationParams?.get("confidenceThreshold") as? Double ?: 0.25
         val iouParam = creationParams?.get("iouThreshold") as? Double ?: 0.7
-        val showOverlaysParam = creationParams?.get("showOverlays") as? Boolean ?: true
 
         // Parse lensFacing parameter
         val lensFacingParam = creationParams?.get("lensFacing") as? String ?: "back"
@@ -77,7 +76,6 @@ class YOLOPlatformView(
         // Set initial thresholds
         yoloView.setConfidenceThreshold(confidenceParam)
         yoloView.setIouThreshold(iouParam)
-        yoloView.setShowOverlays(showOverlaysParam)
 
         // Set lens facing before initializing camera
         yoloView.setLensFacing(lensFacing, preferWideBackCamera)
@@ -355,15 +353,6 @@ class YOLOPlatformView(
                         result.error("invalid_args", "numItems is required", null)
                     }
                 }
-                "setShowOverlays" -> {
-                    val show = call.argument<Boolean>("show")
-                    if (show != null) {
-                        yoloView.setShowOverlays(show)
-                        result.success(null)
-                    } else {
-                        result.error("invalid_args", "show is required", null)
-                    }
-                }
                 "setThresholds" -> {
                     val confidence = call.argument<Double>("confidenceThreshold")
                     val iou = call.argument<Double>("iouThreshold")
@@ -462,11 +451,6 @@ class YOLOPlatformView(
                 "reconnectStream" -> {
                     // Handle reconnection request from Flutter
                     startStreaming()
-                    result.success(null)
-                }
-                "setShowUIControls" -> {
-                    val show = call.argument<Boolean>("show") ?: false
-                    yoloView.setShowUIControls(show)
                     result.success(null)
                 }
                 "getAvailableLenses" -> {
