@@ -336,7 +336,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         // Captures the next frame into the cached share image, then stops
         // the session — matches upstream YOLO iOS pauseTapped.
         if let view = self.yoloView {
-          view.pause { _ in result(nil) }
+          view.pause { result(nil) }
         } else {
           result(nil)
         }

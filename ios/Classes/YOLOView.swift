@@ -440,11 +440,11 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   /// Pause the camera session, first snapshotting the next frame into `pausedShareImage` so `capturePhoto` can return
   /// it without re-running the session. Mirrors upstream YOLO iOS `pauseTapped`.
-  public func pause(completion: ((Void) -> Void)? = nil) {
+  public func pause(completion: (() -> Void)? = nil) {
     videoCapture.captureNextFrame { [weak self] image in
       self?.pausedShareImage = image
       self?.videoCapture.stop()
-      completion?(())
+      completion?()
     }
   }
 
