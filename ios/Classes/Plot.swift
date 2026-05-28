@@ -161,6 +161,11 @@ private func renderWithBackground(
 }
 
 /// Draws a filled rounded-rect label background with centered text using `DetectionLabelStyle`.
+///
+/// When `imageSize` is provided the label rect is clamped to `[0, 0, imageSize.width, imageSize.height]` so boxes near the
+/// top/left edge don't end up with the badge cropped off the canvas (the upstream `DetectionLabelStyle.frame` always places
+/// the badge above/left of the anchor and is unaware of image bounds). Live overlays pass `nil` and rely on the
+/// platform-view's own clipping.
 private func drawDetectionLabel(
   _ labelText: String,
   in ctx: CGContext,
@@ -168,9 +173,13 @@ private func drawDetectionLabel(
   color: UIColor,
   alpha: CGFloat,
   anchor: CGPoint,
-  cornerRadius: CGFloat
+  cornerRadius: CGFloat,
+  imageSize: CGSize? = nil
 ) {
-  let labelRect = DetectionLabelStyle.frame(for: labelText, fontSize: fontSize, anchor: anchor)
+  var labelRect = DetectionLabelStyle.frame(for: labelText, fontSize: fontSize, anchor: anchor)
+  if let imageSize {
+    labelRect = clampLabelRect(labelRect, in: imageSize, anchor: anchor)
+  }
   ctx.setFillColor(color.withAlphaComponent(alpha).cgColor)
   let labelPath = UIBezierPath(
     roundedRect: labelRect,
@@ -188,6 +197,17 @@ private func drawDetectionLabel(
     at: textPoint,
     withAttributes: DetectionLabelStyle.attributes(fontSize: fontSize, alpha: alpha)
   )
+}
+
+/// Keeps `labelRect` inside the image: if it would clip off the top it flips below `anchor`, if it would clip off the
+/// right/bottom it slides back in, and if it would clip off the left it left-aligns to 0.
+private func clampLabelRect(_ rect: CGRect, in imageSize: CGSize, anchor: CGPoint) -> CGRect {
+  var origin = rect.origin
+  if origin.y < 0 { origin.y = anchor.y }
+  if origin.x < 0 { origin.x = 0 }
+  if origin.x + rect.width > imageSize.width { origin.x = max(0, imageSize.width - rect.width) }
+  if origin.y + rect.height > imageSize.height { origin.y = max(0, imageSize.height - rect.height) }
+  return CGRect(origin: origin, size: rect.size)
 }
 
 /// Stroked label + box drawing shared by the detection/pose/segmentation renderers.
@@ -224,7 +244,8 @@ private func drawBoxLabel(
     color: color,
     alpha: 1,
     anchor: rect.origin,
-    cornerRadius: max(min(rect.width, rect.height) * 0.05, 2.0)
+    cornerRadius: max(min(rect.width, rect.height) * 0.05, 2.0),
+    imageSize: imageSize
   )
 }
 
@@ -754,7 +775,8 @@ func drawOBBsOnCIImage(
           color: color,
           alpha: 1,
           anchor: first,
-          cornerRadius: DetectionLabelStyle.cornerRadius
+          cornerRadius: DetectionLabelStyle.cornerRadius,
+          imageSize: size
         )
       }
     }

@@ -250,9 +250,11 @@ class YOLOView @JvmOverloads constructor(
     private var selectedLensZoomFactor: Double? = null
     private var selectedLensCameraInfo: CameraInfo? = null
     private var selectedLensLabel: String? = null
-    // Zoom factor requested by setLens() that should be re-applied after the
-    // next `startCamera()` rebind (which otherwise resets zoom to 1.0x).
-    private var pendingZoomAfterRebind: Float? = null
+    // Effective zoom (relative to the wide-camera 1.0x reference) to emit after the next `startCamera()` rebind.
+    // `startCamera()` resets physical zoom to 1.0x, but on a non-wide lens the user-facing effective zoom equals the
+    // lens reference factor (e.g. 0.5x on ultra-wide, 2.0x on telephoto). Without this the ZoomIndicator/LensPicker
+    // would snap back to 1.0x after every lens change.
+    private var pendingEffectiveZoomToEmit: Double? = null
 
     // Optional ImageCapture use-case (bound alongside Preview+Analysis when supported)
     private var imageCaptureUseCase: ImageCapture? = null
@@ -400,48 +402,68 @@ class YOLOView @JvmOverloads constructor(
         confidenceLabel.visibility = visibility
     }
     
+    /**
+     * Apply an *effective* zoom (relative to the wide-camera 1.0x reference). The physical setZoomRatio applied to the
+     * underlying camera is `effective / selectedLensZoomFactor`, so on telephoto the same effective 2.0x produces
+     * physical 1.0x (the tele's native FOV). Auto lens snap happens here before the digital zoom is applied.
+     */
     fun setZoomLevel(zoomLevel: Float) {
+        // First check whether the effective zoom should switch us to a different physical lens. `maybeSnapLensForZoom`
+        // will rebind and emit the post-rebind zoom event itself; bail out so we don't apply digital zoom to the old
+        // lens that's about to die.
+        if (maybeSnapLensForZoom(zoomLevel.toDouble())) return
+
         camera?.let { cam: Camera ->
-            // Clamp zoom level between min and max
-            val clampedZoomRatio = zoomLevel.coerceIn(minZoomRatio, cam.cameraInfo.zoomState.value?.maxZoomRatio ?: maxZoomRatio)
+            val lensFactor = (selectedLensZoomFactor ?: 1.0).toFloat()
+            val physical = (zoomLevel / lensFactor).coerceIn(
+                minZoomRatio,
+                cam.cameraInfo.zoomState.value?.maxZoomRatio ?: maxZoomRatio
+            )
+            cam.cameraControl.setZoomRatio(physical)
+            currentZoomRatio = physical
 
-            cam.cameraControl.setZoomRatio(clampedZoomRatio)
-            currentZoomRatio = clampedZoomRatio
+            val effective = (physical * lensFactor).toDouble()
 
-            // Notify zoom change
-            onZoomChanged?.invoke(currentZoomRatio)
+            // Notify zoom change (legacy callback uses physical ratio).
+            onZoomChanged?.invoke(physical)
 
-            // Emit zoom event so Dart-side ZoomIndicator stays in sync.
-            emitEvent(mapOf("type" to "zoom", "value" to clampedZoomRatio.toDouble()))
-
-            // Mirror iOS upstream updateSelectedLens: if the new zoom crosses a lens
-            // boundary, swap CameraSelector to the matching physical lens.
-            maybeSnapLensForZoom(clampedZoomRatio.toDouble())
+            // Dart-side ZoomIndicator consumes effective zoom so the value is
+            // consistent across lens switches.
+            emitEvent(mapOf("type" to "zoom", "value" to effective))
         }
     }
 
     /**
-     * If the requested zoom factor maps onto a different physical back-camera lens than
-     * the currently selected one, switch CameraSelector and emit a `lens` event. Same
-     * thresholds as iOS upstream `updateSelectedLens` (largest lens whose zoomFactor is
-     * <= requested wins; ties broken by the smallest lens).
+     * If the requested effective zoom maps onto a different physical back-camera lens than the currently selected one,
+     * switch CameraSelector and emit a `lens` event. Returns `true` when a snap was triggered (callers should not also
+     * apply digital zoom on the about-to-rebind lens). Same thresholds as iOS upstream `updateSelectedLens` (largest
+     * lens whose zoomFactor is <= requested wins; ties broken by the smallest lens).
      */
-    private fun maybeSnapLensForZoom(zoomFactor: Double) {
-        if (lensFacing != CameraSelector.LENS_FACING_BACK) return
+    private fun maybeSnapLensForZoom(zoomFactor: Double): Boolean {
+        if (lensFacing != CameraSelector.LENS_FACING_BACK) return false
         val lenses = cachedLenses.filter { it.cameraInfo != null }
-        if (lenses.size < 2) return
+        if (lenses.size < 2) return false
 
         val sorted = lenses.sortedBy { it.zoomFactor }
         val target = sorted.lastOrNull { zoomFactor >= it.zoomFactor - 0.01 } ?: sorted.first()
 
-        val currentLens = selectedLensCameraInfo
-        if (currentLens == target.cameraInfo) return
+        // Skip rebind if we're already on the target lens. When `selectedLensCameraInfo` is null (first frame after the
+        // back camera bound), fall back to identifying the lens by matching cameraInfo against the currently-bound
+        // camera so a first pinch on the wide lens doesn't trigger an unnecessary rebind.
+        val currentInfo = selectedLensCameraInfo ?: camera?.cameraInfo
+        if (currentInfo == target.cameraInfo) return false
 
         try {
+            // Preserve the user-requested effective zoom across the rebind: the new lens starts at physical 1.0x =
+            // effective `target.zoomFactor`, which is the same FOV the user was pinching toward.
+            pendingEffectiveZoomToEmit = target.zoomFactor
             switchToLens(target)
             emitEvent(mapOf("type" to "lens", "label" to target.label))
+            return true
         } catch (e: Exception) {
             Log.w(TAG, "Lens snap to ${target.label} failed", e)
+            pendingEffectiveZoomToEmit = null
+            return false
         }
     }
 
@@ -651,16 +673,25 @@ class YOLOView @JvmOverloads constructor(
                             maxZoomRatio = cameraInfo.zoomState.value?.maxZoomRatio ?: 1.0f
                             currentZoomRatio = cameraInfo.zoomState.value?.zoomRatio ?: 1.0f
 
-                            // If setLens() requested a specific zoom for the new
-                            // physical lens, apply it now and emit a matching zoom
-                            // event so Dart's ZoomIndicator stays in sync.
-                            pendingZoomAfterRebind?.let { requested ->
-                                pendingZoomAfterRebind = null
-                                val clamped = requested.coerceIn(minZoomRatio, maxZoomRatio)
-                                cam.cameraControl.setZoomRatio(clamped)
-                                currentZoomRatio = clamped
-                                onZoomChanged?.invoke(clamped)
-                                emitEvent(mapOf("type" to "zoom", "value" to clamped.toDouble()))
+                            // Sync the lens tracking state with whatever lens we actually bound to so the first pinch
+                            // on the wide lens doesn't think it needs to rebind. Default the selectedLensZoomFactor to
+                            // 1.0 (the wide reference) when we can't identify the bound camera in `cachedLenses`
+                            // (e.g. front-camera path).
+                            val bound = cachedLenses.firstOrNull { it.cameraInfo == cameraInfo }
+                            if (bound != null) {
+                                selectedLensCameraInfo = bound.cameraInfo
+                                selectedLensZoomFactor = bound.zoomFactor
+                                selectedLensLabel = bound.label
+                            } else if (selectedLensZoomFactor == null) {
+                                selectedLensZoomFactor = 1.0
+                            }
+
+                            // setLens() / auto-snap stashes the effective zoom that should appear in Dart after the
+                            // rebind; emit it now so the ZoomIndicator/LensPicker stay consistent across the change.
+                            pendingEffectiveZoomToEmit?.let { effective ->
+                                pendingEffectiveZoomToEmit = null
+                                emitEvent(mapOf("type" to "zoom", "value" to effective))
+                                onZoomChanged?.invoke(currentZoomRatio)
                             }
                         }
                     } catch (e: Exception) {
@@ -767,11 +798,10 @@ class YOLOView @JvmOverloads constructor(
     }
 
     private fun computeLensInfos(cameraProvider: ProcessCameraProvider): List<LensInfo> {
-        // Read focal lengths for each back-facing camera and compute an equivalent zoom
-        // factor relative to the widest standard lens (which we treat as the 1.0x
-        // reference, matching how iOS scales relative to the main wide-angle).
-        // SENSOR_INFO_PHYSICAL_SIZE is also queried so we degrade gracefully on devices
-        // that omit one or the other characteristic.
+        // Read focal lengths + sensor size per back-facing camera and convert to a 35mm-equivalent focal length so we
+        // can classify each lens absolutely (ultra-wide / wide / telephoto) rather than by relative ordering. That
+        // ordering-based heuristic breaks on common 2-camera devices (ultra-wide + wide phones like the Pixel A
+        // series): treating the shortest focal as 1.0x mislabels the ultra-wide as main and the main as telephoto.
         data class Raw(val info: CameraInfo, val focalLength: Float, val sensorWidth: Float)
 
         val raws = cameraProvider.availableCameraInfos.mapNotNull { info ->
@@ -794,35 +824,38 @@ class YOLOView @JvmOverloads constructor(
             return listOf(LensInfo(zoomFactor = 1.0, label = "Default", cameraInfo = raws[0].info))
         }
 
-        // The "main" lens is the widest non-ultrawide lens. Heuristic: among lenses whose
-        // 35mm-equivalent focal length is around 24-35mm, pick the one with the smallest
-        // focal-length value that is NOT classified as ultra-wide. Practically we treat
-        // the lens with the median focal length as main; lenses with shorter focal length
-        // are ultra-wide (~0.5x), longer focal length lenses are telephoto.
-        val sorted = raws.sortedBy { it.focalLength }
-        val mainIdx = if (sorted.size >= 3) 1 else 0  // ultrawide, wide, tele -> pick wide
-        val mainFocal = sorted[mainIdx].focalLength
+        // Convert each lens's focal length to a 35mm-equivalent by scaling against the full-frame sensor width (36mm).
+        // When sensor width is unavailable we fall back to a synthetic equivalent based on raw focal length × a typical
+        // smartphone crop factor (~7.0). Phone lens equivalents land roughly:
+        //   ultra-wide: 13-20mm   wide: 22-32mm   telephoto: 50mm+
+        fun equiv(raw: Raw): Float {
+            val sensorWidth = raw.sensorWidth
+            return if (sensorWidth > 0f) raw.focalLength * 36f / sensorWidth
+            else raw.focalLength * 7f
+        }
 
-        return sorted.map { raw ->
-            val zoom: Double
-            val label: String
+        val withEquiv = raws.map { it to equiv(it) }
+        // Identify the main (wide) lens: closest to the 26mm ideal among lenses that aren't obviously ultra-wide. If
+        // every lens is ultra-wide-ish, pick the longest focal as main.
+        val mainRaw = withEquiv
+            .filter { (_, e) -> e >= 21f }
+            .minByOrNull { (_, e) -> abs(e - 26f) }
+            ?.first
+            ?: withEquiv.maxByOrNull { it.second }!!.first
+        val mainEquiv = equiv(mainRaw)
+
+        return withEquiv.sortedBy { it.second }.map { (raw, equivMm) ->
             when {
-                raw.focalLength < mainFocal - 0.01f -> {
-                    // Ultra-wide: iOS exposes these as 0.5x relative to the main lens.
-                    zoom = (raw.focalLength.toDouble() / mainFocal.toDouble()).coerceAtLeast(0.1)
-                    // Snap to 0.5x if the math lands close (Android focal-length ratios
-                    // typically come out near 0.5 for true ultra-wide modules).
+                raw === mainRaw -> LensInfo(zoomFactor = 1.0, label = "Wide camera", cameraInfo = raw.info)
+                equivMm < mainEquiv - 4f -> {
+                    // Ultra-wide. iOS exposes these as 0.5x relative to the main lens.
+                    val zoom = (equivMm.toDouble() / mainEquiv.toDouble()).coerceAtLeast(0.1)
                     val rounded = if (abs(zoom - 0.5) < 0.15) 0.5 else zoom
-                    label = "Ultra wide camera"
-                    LensInfo(zoomFactor = rounded, label = label, cameraInfo = raw.info)
-                }
-                raw.focalLength > mainFocal + 0.01f -> {
-                    zoom = raw.focalLength.toDouble() / mainFocal.toDouble()
-                    label = "Telephoto camera"
-                    LensInfo(zoomFactor = zoom, label = label, cameraInfo = raw.info)
+                    LensInfo(zoomFactor = rounded, label = "Ultra wide camera", cameraInfo = raw.info)
                 }
                 else -> {
-                    LensInfo(zoomFactor = 1.0, label = "Wide camera", cameraInfo = raw.info)
+                    val zoom = equivMm.toDouble() / mainEquiv.toDouble()
+                    LensInfo(zoomFactor = zoom, label = "Telephoto camera", cameraInfo = raw.info)
                 }
             }
         }
@@ -836,11 +869,9 @@ class YOLOView @JvmOverloads constructor(
         val lenses = if (cachedLenses.isEmpty()) enumerateLenses() else cachedLenses
         if (lenses.isEmpty()) return
         val target = lenses.minByOrNull { abs(it.zoomFactor - zoomFactor) } ?: return
-        // Stash the requested zoom so `startCamera()` (which resets zoom to
-        // 1.0x on every rebind) can re-apply it once binding completes. Without
-        // this, tapping 0.5x or 2x would leave Dart's ZoomIndicator/LensPicker
-        // snapping back to 1x even though the physical lens did switch.
-        pendingZoomAfterRebind = target.zoomFactor.toFloat()
+        // After the rebind the new lens starts at physical 1.0x; that maps to effective `target.zoomFactor`
+        // (e.g. 0.5x on ultra-wide, 2.0x on tele) which is exactly what the user asked for.
+        pendingEffectiveZoomToEmit = target.zoomFactor
         switchToLens(target)
         emitEvent(mapOf("type" to "lens", "label" to target.label))
     }
@@ -903,9 +934,8 @@ class YOLOView @JvmOverloads constructor(
     fun capturePhoto(withOverlays: Boolean = true, callback: (ByteArray?) -> Unit) {
         val ic = imageCaptureUseCase
         if (ic == null) {
-            // Three-use-case bind failed at startup; honor withOverlays via
-            // captureFrame's matching flag so callers asking for a raw photo
-            // don't silently get an annotated one.
+            // Three-use-case bind failed at startup; honor withOverlays via captureFrame's matching flag so callers
+            // asking for a raw photo don't silently get an annotated one.
             callback(captureFrame(withOverlays))
             return
         }
@@ -915,17 +945,22 @@ class YOLOView @JvmOverloads constructor(
                 object : ImageCapture.OnImageCapturedCallback() {
                     override fun onCaptureSuccess(image: ImageProxy) {
                         try {
+                            // Carry the capture rotation + mirroring forward; ImageCapture hands us a JPEG that is
+                            // not yet rotated for portrait sensors, and on the front camera we also need to flip
+                            // horizontally before re-encoding. Without this every portrait share ends up sideways.
+                            val rotationDegrees = image.imageInfo.rotationDegrees
+                            val isFront = lensFacing == CameraSelector.LENS_FACING_FRONT
                             val jpegBytes = imageProxyToJpegBytes(image)
                             if (jpegBytes == null) {
                                 callback(captureFrame(withOverlays))
                                 return
                             }
                             if (!withOverlays) {
-                                callback(jpegBytes)
+                                callback(normalizeJpegOrientation(jpegBytes, rotationDegrees, isFront) ?: jpegBytes)
                                 return
                             }
                             // Composite the current overlay bitmap on top of the still.
-                            val composed = compositeOverlayOnJpeg(jpegBytes)
+                            val composed = compositeOverlayOnJpeg(jpegBytes, rotationDegrees, isFront)
                             callback(composed ?: jpegBytes)
                         } catch (e: Exception) {
                             Log.e(TAG, "capturePhoto: error processing capture", e)
@@ -969,15 +1004,24 @@ class YOLOView @JvmOverloads constructor(
         }
     }
 
-    private fun compositeOverlayOnJpeg(jpegBytes: ByteArray): ByteArray? {
+    private fun compositeOverlayOnJpeg(jpegBytes: ByteArray, rotationDegrees: Int, isFront: Boolean): ByteArray? {
         return try {
-            val still = BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size) ?: return null
-            // Render overlay onto a bitmap sized to match the still.
+            val decoded = BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size) ?: return null
+            // Apply the capture orientation (and mirror for the front camera) BEFORE compositing — the overlay is
+            // drawn in display coordinates, so the still bitmap has to be in the same upright orientation or boxes
+            // land at the wrong positions and the shared JPEG ends up sideways.
+            val still = applyOrientation(decoded, rotationDegrees, isFront)
+            if (still !== decoded) decoded.recycle()
+            // Render overlay onto a bitmap sized to match the upright still.
             val composite = Bitmap.createBitmap(still.width, still.height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(composite)
             canvas.drawBitmap(still, 0f, 0f, null)
             // Capture the overlay at its current view size and scale it to the still.
-            val overlayBitmap = Bitmap.createBitmap(overlayView.width.coerceAtLeast(1), overlayView.height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+            val overlayBitmap = Bitmap.createBitmap(
+                overlayView.width.coerceAtLeast(1),
+                overlayView.height.coerceAtLeast(1),
+                Bitmap.Config.ARGB_8888,
+            )
             overlayView.draw(Canvas(overlayBitmap))
             val matrix = Matrix().apply {
                 setScale(still.width.toFloat() / overlayBitmap.width, still.height.toFloat() / overlayBitmap.height)
@@ -993,6 +1037,37 @@ class YOLOView @JvmOverloads constructor(
             Log.e(TAG, "compositeOverlayOnJpeg failed", e)
             null
         }
+    }
+
+    /** Decode + rotate/mirror a JPEG to the display-correct orientation, then re-encode. */
+    private fun normalizeJpegOrientation(jpegBytes: ByteArray, rotationDegrees: Int, isFront: Boolean): ByteArray? {
+        if (rotationDegrees == 0 && !isFront) return jpegBytes
+        return try {
+            val decoded = BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size) ?: return null
+            val oriented = applyOrientation(decoded, rotationDegrees, isFront)
+            if (oriented === decoded) {
+                jpegBytes
+            } else {
+                val out = java.io.ByteArrayOutputStream()
+                oriented.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                decoded.recycle()
+                oriented.recycle()
+                out.toByteArray()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "normalizeJpegOrientation failed", e)
+            null
+        }
+    }
+
+    /** Rotate `bitmap` clockwise by `rotationDegrees`, mirroring horizontally when `isFront` is true. */
+    private fun applyOrientation(bitmap: Bitmap, rotationDegrees: Int, isFront: Boolean): Bitmap {
+        if (rotationDegrees == 0 && !isFront) return bitmap
+        val matrix = Matrix().apply {
+            if (rotationDegrees != 0) postRotate(rotationDegrees.toFloat())
+            if (isFront) postScale(-1f, 1f)
+        }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
     // endregion
