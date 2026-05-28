@@ -12,7 +12,6 @@ import android.util.Log
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.Toast
-import android.view.ScaleGestureDetector
 import android.hardware.camera2.CameraCharacteristics
 import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.core.*
@@ -244,7 +243,6 @@ class YOLOView @JvmOverloads constructor(
     private var currentZoomRatio = 1.0f
     private var minZoomRatio = 1.0f
     private var maxZoomRatio = 10.0f
-    private lateinit var scaleGestureDetector: ScaleGestureDetector
     var onZoomChanged: ((Float) -> Unit)? = null
 
     // Multi-lens enumeration / selection
@@ -359,25 +357,8 @@ class YOLOView @JvmOverloads constructor(
         }
         addView(confidenceLabel)
         confidenceLabel.elevation = 1000f
-        
-        // Initialize scale gesture detector for pinch-to-zoom
-        scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            override fun onScale(detector: ScaleGestureDetector): Boolean {
-                val scale = detector.scaleFactor
-                val newZoomRatio = currentZoomRatio * scale
-                
-                // Clamp zoom ratio between min and max
-                val clampedZoomRatio = newZoomRatio.coerceIn(minZoomRatio, camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: maxZoomRatio)
-                
-                camera?.cameraControl?.setZoomRatio(clampedZoomRatio)
-                currentZoomRatio = clampedZoomRatio
-                
-                // Notify zoom change
-                onZoomChanged?.invoke(currentZoomRatio)
-                
-                return true
-            }
-        })
+        // Dart owns gestures (pinch + tap) via Flutter GestureDetector in YOLOShowcase;
+        // native is setter-only. Do not attach ScaleGestureDetector here.
     }
 
     // region threshold setters
@@ -1550,49 +1531,6 @@ class YOLOView @JvmOverloads constructor(
             // Pass through all touch events
             return false
         }
-    }
-    
-    // Scale listener for pinch-to-zoom
-    private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
-            // Show zoom label when pinch starts (only if UI controls are not permanently shown)
-            if (!showUIControls) {
-                zoomLabel.visibility = View.VISIBLE
-            }
-            return true
-        }
-        
-        override fun onScale(detector: ScaleGestureDetector): Boolean {
-            val scaleFactor = detector.scaleFactor
-            val newZoomRatio = currentZoomRatio * scaleFactor
-            
-            // Clamp zoom within min/max bounds
-            val clampedZoom = newZoomRatio.coerceIn(minZoomRatio, maxZoomRatio)
-            
-            // Apply zoom to camera
-            camera?.cameraControl?.setZoomRatio(clampedZoom)
-            currentZoomRatio = clampedZoom
-            
-            // Update zoom label
-            zoomLabel.text = String.format("%.1fx", currentZoomRatio)
-            
-            return true
-        }
-        
-        override fun onScaleEnd(detector: ScaleGestureDetector) {
-            // Hide zoom label after 2 seconds (only if UI controls are not permanently shown)
-            if (!showUIControls) {
-                zoomLabel.postDelayed({
-                    zoomLabel.visibility = View.GONE
-                }, 2000)
-            }
-        }
-    }
-    
-    // Touch event handling for pinch-to-zoom
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        scaleGestureDetector.onTouchEvent(event)
-        return true
     }
     
     // region Streaming functionality

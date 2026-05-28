@@ -440,6 +440,17 @@ class YOLOPlatformView(
                     yoloView.startCamera()
                     result.success(null)
                 }
+                // pause/resume mirror the iOS paused-frame semantics. Android
+                // doesn't snapshot a share frame on pause (capturePhoto uses
+                // the live preview snapshot), so this is a stop/start alias.
+                "pause" -> {
+                    yoloView.stop()
+                    result.success(null)
+                }
+                "resume" -> {
+                    yoloView.startCamera()
+                    result.success(null)
+                }
                 "captureFrame" -> {
                     val imageData = yoloView.captureFrame()
                     if (imageData != null) {

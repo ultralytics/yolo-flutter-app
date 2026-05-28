@@ -49,15 +49,19 @@ class VideoCapture: NSObject, @unchecked Sendable {
   let captureSession = AVCaptureSession()
   var videoInput: AVCaptureDeviceInput? = nil
   let videoOutput = AVCaptureVideoDataOutput()
-  var photoOutput = AVCapturePhotoOutput()
   let cameraQueue = DispatchQueue(label: "camera-queue")
-  var lastCapturedPhoto: UIImage? = nil
   var inferenceOK = true
   var longSide: CGFloat = 3
   var shortSide: CGFloat = 4
   var frameSizeCaptured = false
 
   private var currentBuffer: CVPixelBuffer?
+  // Called with the very next sample buffer rendered through the video output;
+  // matches upstream YOLO iOS `captureNextFrame`. Used by `capturePhoto` so
+  // the share-sheet image is a freshly composited live frame (not a separate
+  // AVCapturePhotoOutput still that would be off-axis from the preview).
+  private var frameCaptureCompletion: ((UIImage?) -> Void)?
+  private let imageContext = CIContext()
 
   func setUp(
     sessionPreset: AVCaptureSession.Preset = .hd1280x720,
@@ -137,11 +141,6 @@ class VideoCapture: NSObject, @unchecked Sendable {
     videoOutput.setSampleBufferDelegate(self, queue: cameraQueue)
     if captureSession.canAddOutput(videoOutput) {
       captureSession.addOutput(videoOutput)
-    }
-    if captureSession.canAddOutput(photoOutput) {
-      captureSession.addOutput(photoOutput)
-      photoOutput.isHighResolutionCaptureEnabled = true
-      //            photoOutput.isLivePhotoCaptureEnabled = photoOutput.isLivePhotoCaptureSupported
     }
 
     let connection = videoOutput.connection(with: AVMediaType.video)
@@ -264,27 +263,40 @@ class VideoCapture: NSObject, @unchecked Sendable {
 }
 
 extension VideoCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
+  /// Request a UIImage of the very next sample buffer rendered through the
+  /// video output, matching upstream YOLO iOS `captureNextFrame`. Completion
+  /// runs on the main queue. Returns `nil` if the session is stopped or a
+  /// capture is already pending.
+  func captureNextFrame(completion: @escaping (UIImage?) -> Void) {
+    cameraQueue.async { [weak self] in
+      guard let self else { return }
+      guard self.captureSession.isRunning, self.frameCaptureCompletion == nil else {
+        DispatchQueue.main.async { completion(nil) }
+        return
+      }
+      self.frameCaptureCompletion = completion
+    }
+  }
+
   func captureOutput(
     _ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer,
     from connection: AVCaptureConnection
   ) {
+    let pendingCompletion = frameCaptureCompletion
+    if pendingCompletion != nil { frameCaptureCompletion = nil }
+    defer {
+      if let pendingCompletion {
+        let image = CMSampleBufferGetImageBuffer(sampleBuffer).flatMap { pixelBuffer -> UIImage? in
+          let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+          return imageContext.createCGImage(ciImage, from: ciImage.extent).map {
+            UIImage(cgImage: $0)
+          }
+        }
+        DispatchQueue.main.async { pendingCompletion(image) }
+      }
+    }
     guard inferenceOK else { return }
     predictOnFrame(sampleBuffer: sampleBuffer)
-  }
-}
-
-extension VideoCapture: AVCapturePhotoCaptureDelegate {
-  @available(iOS 11.0, *)
-  func photoOutput(
-    _ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?
-  ) {
-    guard let data = photo.fileDataRepresentation(),
-      let image = UIImage(data: data)
-    else {
-      return
-    }
-
-    self.lastCapturedPhoto = image
   }
 }
 

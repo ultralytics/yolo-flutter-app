@@ -158,23 +158,31 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         if (storedSize != null && _allSizes.contains(storedSize)) {
           _currentSize = storedSize;
         }
-        _availableSizes = _scanAvailableSizes(_currentTask);
       });
     }
+    final initial = await _scanAvailableSizes(_currentTask);
+    if (mounted) setState(() => _availableSizes = initial);
     // Defer lens enumeration to after the platform view is initialized.
     unawaited(_refreshLenses());
   }
 
   Future<void> _refreshLenses() async {
-    // The native side may not be ready instantly on first frame; one retry
-    // covers the common race without an exponential loop.
-    for (var attempt = 0; attempt < 2; attempt++) {
-      final lenses = await _controller.getAvailableLenses();
-      if (lenses.isNotEmpty) {
-        if (mounted) setState(() => _lenses = lenses);
-        return;
+    // Wait for the platform view (and its native YOLOView) to come up before
+    // enumerating lenses. Model download/compile on cold launch can push view
+    // creation well past a few hundred ms; cap at ~30s but keep the body
+    // cheap so the cost of waiting is negligible.
+    const deadline = Duration(seconds: 30);
+    final sw = Stopwatch()..start();
+    while (sw.elapsed < deadline) {
+      if (!mounted) return;
+      if (_controller.isInitialized) {
+        final lenses = await _controller.getAvailableLenses();
+        if (lenses.isNotEmpty) {
+          if (mounted) setState(() => _lenses = lenses);
+          return;
+        }
       }
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: 250));
     }
   }
 
@@ -216,16 +224,32 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     return null;
   }
 
-  /// Filters `YOLO.officialModels(task: ...)` (which already platform-filters
-  /// by tflite vs mlpackage availability) down to a set of size letters.
-  Set<String> _scanAvailableSizes(YOLOTask task) {
-    final ids = YOLO.officialModels(task: task);
-    final set = <String>{};
-    for (final id in ids) {
-      final size = _sizeForModelId(id, task);
-      if (size != null) set.add(size);
+  /// Sizes the resolver can fetch for `task` on the current platform. Drives
+  /// chip visibility — sizes outside this set are hidden so the user can't
+  /// tap a chip that would 404 at download time.
+  Set<String> _supportedSizesForTask(YOLOTask task) {
+    final declared = YOLO.officialModels(task: task);
+    final sizes = <String>{};
+    for (final size in _allSizes) {
+      if (declared.contains(_composeModelId(task: task, size: size))) {
+        sizes.add(size);
+      }
     }
-    return set;
+    return sizes;
+  }
+
+  /// Probes each declared `yolo26<size><suffix>` for the active task to
+  /// decide which chips are "downloaded" vs need a `⤓` glyph. Only models the
+  /// resolver declares (`YOLO.officialModels`) are probed.
+  Future<Set<String>> _scanAvailableSizes(YOLOTask task) async {
+    final supported = _supportedSizesForTask(task);
+    final present = <String>{};
+    for (final size in supported) {
+      final id = _composeModelId(task: task, size: size);
+      final info = await YOLO.checkModelExists(id);
+      if (info['exists'] == true) present.add(size);
+    }
+    return present;
   }
 
   Future<void> _persistTask(YOLOTask task) async {
@@ -244,12 +268,16 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _onTaskChanged(YOLOTask task) {
     if (task == _currentTask) return;
-    setState(() {
-      _currentTask = task;
-      _availableSizes = _scanAvailableSizes(task);
-    });
+    setState(() => _currentTask = task);
     unawaited(_persistTask(task));
+    unawaited(_refreshAvailableSizes(task));
     unawaited(_switchToCurrentModel());
+  }
+
+  Future<void> _refreshAvailableSizes(YOLOTask task) async {
+    final sizes = await _scanAvailableSizes(task);
+    if (!mounted || task != _currentTask) return;
+    setState(() => _availableSizes = sizes);
   }
 
   void _onSizeChanged(String size) {
@@ -265,11 +293,13 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _onPlayPause() {
     setState(() => _isPaused = !_isPaused);
-    // Native pause is implemented by stopping inference; resume restarts.
+    // iOS `pause` snapshots the next frame into the native share cache before
+    // stopping; sharing while paused returns that frame. Android aliases to
+    // stop/start. resume() clears the cached frame and restarts.
     if (_isPaused) {
-      unawaited(_controller.stop());
+      unawaited(_controller.pause());
     } else {
-      unawaited(_controller.restartCamera());
+      unawaited(_controller.resume());
     }
   }
 
@@ -354,7 +384,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
           Align(
             alignment: Alignment.centerLeft,
             child: PerformanceLabel(
-              modelName: 'YOLO26${_currentSize.toUpperCase()}',
+              modelName: 'YOLO26$_currentSize',
               fps: _fps,
               inferenceMs: _inferenceMs,
             ),
@@ -369,6 +399,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
           ModelSizeSegmentedControl(
             currentSize: _currentSize,
             availableSizes: _availableSizes,
+            supportedSizes: _supportedSizesForTask(_currentTask),
             onSizeChanged: _onSizeChanged,
             downloadingSize: _downloadingSize,
             downloadFraction: _downloadFraction,

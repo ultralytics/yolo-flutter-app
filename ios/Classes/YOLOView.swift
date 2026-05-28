@@ -172,6 +172,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   private let minimumZoom: CGFloat = 1.0
   private let maximumZoom: CGFloat = 10.0
   private var lastZoomFactor: CGFloat = 1.0
+  /// Cached frame captured at pause so `capturePhoto` after `pause()` returns
+  /// the paused frame instead of asking a stopped session for a new buffer.
+  /// Matches upstream YOLO iOS pause/share semantics.
+  private var pausedShareImage: UIImage?
 
   /// Callback for zoom level changes
   public var onZoomChanged: ((CGFloat) -> Void)?
@@ -184,7 +188,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   public var onFocusTapped: ((CGFloat, CGFloat) -> Void)?
 
   public var capturedImage: UIImage?
-  private var photoCaptureCompletion: ((UIImage?) -> Void)?
 
   // Lens-snap state (ported from yolo-ios-app YOLOView.swift:1157-1185).
   private let physicalLensTypes: [AVCaptureDevice.DeviceType] = [
@@ -434,6 +437,25 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     videoCapture.delegate = nil
     // Release predictor to prevent memory leak
     videoCapture.predictor = nil
+  }
+
+  /// Pause the camera session, first snapshotting the next frame into
+  /// `pausedShareImage` so `capturePhoto` can return it without re-running
+  /// the session. Mirrors upstream YOLO iOS `pauseTapped`.
+  public func pause(completion: ((Void) -> Void)? = nil) {
+    videoCapture.captureNextFrame { [weak self] image in
+      self?.pausedShareImage = image
+      self?.videoCapture.stop()
+      completion?(())
+    }
+  }
+
+  /// Resume after `pause()`; clears the cached share frame and restarts the
+  /// session. Use this instead of `restartCamera()` when the session was
+  /// paused via `pause()`.
+  public func resume() {
+    pausedShareImage = nil
+    videoCapture.start()
   }
 
   public func resume() {
@@ -918,8 +940,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     toolbar.addSubview(playButton)
     toolbar.addSubview(pauseButton)
     toolbar.addSubview(switchCameraButton)
-
-    self.addGestureRecognizer(UIPinchGestureRecognizer(target: self, action: #selector(pinch)))
+    // Dart owns gestures (pinch + tap) via Flutter GestureDetector in YOLOShowcase;
+    // native is setter-only. Do not attach UIPinchGestureRecognizer here.
   }
 
   /// Update the visibility of UI controls based on the showUIControls flag
@@ -1183,44 +1205,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     if let basePredictor = videoCapture.predictor as? BasePredictor {
       basePredictor.setIouThreshold(iou: iou)
       basePredictor.setConfidenceThreshold(confidence: conf)
-    }
-  }
-
-  @objc func pinch(_ pinch: UIPinchGestureRecognizer) {
-    guard let device = videoCapture.captureDevice else { return }
-
-    // Return zoom value between the minimum and maximum zoom values
-    func minMaxZoom(_ factor: CGFloat) -> CGFloat {
-      return min(min(max(factor, minimumZoom), maximumZoom), device.activeFormat.videoMaxZoomFactor)
-    }
-
-    func update(scale factor: CGFloat) {
-      do {
-        try device.lockForConfiguration()
-        defer {
-          device.unlockForConfiguration()
-        }
-        device.videoZoomFactor = factor
-      } catch {
-        NSLog("YOLOView: %@", error.localizedDescription)
-      }
-    }
-
-    let newScaleFactor = minMaxZoom(pinch.scale * lastZoomFactor)
-    switch pinch.state {
-    case .began, .changed:
-      update(scale: newScaleFactor)
-      self.labelZoom.text = String(format: "%.2fx", newScaleFactor)
-      self.labelZoom.font = UIFont.preferredFont(forTextStyle: .title2)
-      // Notify zoom change
-      onZoomChanged?(newScaleFactor)
-    case .ended:
-      lastZoomFactor = minMaxZoom(newScaleFactor)
-      update(scale: lastZoomFactor)
-      self.labelZoom.font = UIFont.preferredFont(forTextStyle: .body)
-      // Notify final zoom level
-      onZoomChanged?(lastZoomFactor)
-    default: break
     }
   }
 
@@ -1605,13 +1589,23 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     hideCameraTransition()
   }
 
+  /// Capture a composited share image (camera frame + bounding boxes + masks
+  /// + pose layer). Matches upstream YOLO iOS `capturePhoto`: prefers the
+  /// paused-share frame when the session is stopped, otherwise pulls the
+  /// next live sample buffer via `VideoCapture.captureNextFrame`. No
+  /// `AVCapturePhotoOutput` — the share image must match what's visible.
   public func capturePhoto(completion: @escaping (UIImage?) -> Void) {
-    self.photoCaptureCompletion = completion
-    let settings = AVCapturePhotoSettings()
-    usleep(20_000)  // short 10 ms delay to allow camera to focus
-    self.videoCapture.photoOutput.capturePhoto(
-      with: settings, delegate: self as AVCapturePhotoCaptureDelegate
-    )
+    if let pausedShareImage, !videoCapture.captureSession.isRunning {
+      completion(renderShareImage(pausedShareImage))
+      return
+    }
+    videoCapture.captureNextFrame { [weak self] image in
+      guard let self, let image else {
+        completion(nil)
+        return
+      }
+      completion(self.renderShareImage(image))
+    }
   }
 
   public func setInferenceFlag(ok: Bool) {
@@ -1640,143 +1634,120 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 }
 
-extension YOLOView: AVCapturePhotoCaptureDelegate {
-  public func photoOutput(
-    _ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?
-  ) {
-    if let error = error {
-      NSLog("YOLOView: Photo capture error: %@", error.localizedDescription)
+extension YOLOView {
+  /// Composites bounding boxes (and mask/pose overlays when present) on top
+  /// of a freshly captured frame via `drawHierarchy`. Mirrors upstream YOLO
+  /// iOS `renderShareImage`. Mutates the layer hierarchy transiently and
+  /// restores it before returning.
+  fileprivate func renderShareImage(_ image: UIImage) -> UIImage? {
+    var isCameraFront = false
+    if let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput,
+      currentInput.device.position == .front
+    {
+      isCameraFront = true
     }
-    if let dataImage = photo.fileDataRepresentation() {
-      let dataProvider = CGDataProvider(data: dataImage as CFData)
-      let cgImageRef: CGImage! = CGImage(
-        jpegDataProviderSource: dataProvider!, decode: nil, shouldInterpolate: true,
-        intent: .defaultIntent)
-      var isCameraFront = false
-      if let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput,
-        currentInput.device.position == .front
-      {
-        isCameraFront = true
-      }
-      var orientation: CGImagePropertyOrientation = isCameraFront ? .leftMirrored : .right
-      switch UIDevice.current.orientation {
-      case .landscapeLeft:
-        orientation = isCameraFront ? .downMirrored : .up
-      case .landscapeRight:
-        orientation = isCameraFront ? .upMirrored : .down
-      default:
-        break
-      }
-      var image = UIImage(cgImage: cgImageRef, scale: 0.5, orientation: .right)
-      if let orientedCIImage = CIImage(image: image)?.oriented(orientation),
-        let cgImage = CIContext().createCGImage(orientedCIImage, from: orientedCIImage.extent)
-      {
-        image = UIImage(cgImage: cgImage)
-      }
-      let imageView = UIImageView(image: image)
-      imageView.contentMode = .scaleAspectFill
-      imageView.frame = self.frame
-      let imageLayer = imageView.layer
-      self.layer.insertSublayer(imageLayer, above: videoCapture.previewLayer)
+    var orientation: CGImagePropertyOrientation = isCameraFront ? .leftMirrored : .right
+    switch UIDevice.current.orientation {
+    case .landscapeLeft:
+      orientation = isCameraFront ? .downMirrored : .up
+    case .landscapeRight:
+      orientation = isCameraFront ? .upMirrored : .down
+    default:
+      break
+    }
+    var oriented = image
+    if let orientedCIImage = CIImage(image: image)?.oriented(orientation),
+      let cgImage = CIContext().createCGImage(orientedCIImage, from: orientedCIImage.extent)
+    {
+      oriented = UIImage(cgImage: cgImage)
+    }
 
-      // Add mask layer if present (for segmentation task)
-      var tempMaskLayer: CALayer?
-      if let maskLayer = self.maskLayer, !maskLayer.isHidden {
-        // Create a temporary copy of the mask layer for capture
-        let tempLayer = CALayer()
-        // Calculate the correct frame relative to the main view
-        let overlayFrame = self.overlayLayer.frame
-        let maskFrame = maskLayer.frame
+    let imageView = UIImageView(image: oriented)
+    imageView.contentMode = .scaleAspectFill
+    imageView.frame = self.frame
+    let imageLayer = imageView.layer
+    self.layer.insertSublayer(imageLayer, above: videoCapture.previewLayer)
 
-        // Adjust mask frame to be relative to the main view, not overlayLayer
-        tempLayer.frame = CGRect(
-          x: overlayFrame.origin.x + maskFrame.origin.x,
-          y: overlayFrame.origin.y + maskFrame.origin.y,
-          width: maskFrame.width,
-          height: maskFrame.height
-        )
-        tempLayer.contents = maskLayer.contents
-        tempLayer.contentsGravity = maskLayer.contentsGravity
-        tempLayer.contentsRect = maskLayer.contentsRect
-        tempLayer.contentsCenter = maskLayer.contentsCenter
-        tempLayer.opacity = maskLayer.opacity
-        tempLayer.compositingFilter = maskLayer.compositingFilter
-        tempLayer.transform = maskLayer.transform
-        tempLayer.masksToBounds = maskLayer.masksToBounds
-        self.layer.insertSublayer(tempLayer, above: imageLayer)
-        tempMaskLayer = tempLayer
-      }
+    var tempMaskLayer: CALayer?
+    if let maskLayer = self.maskLayer, !maskLayer.isHidden {
+      let tempLayer = CALayer()
+      let overlayFrame = self.overlayLayer.frame
+      let maskFrame = maskLayer.frame
+      tempLayer.frame = CGRect(
+        x: overlayFrame.origin.x + maskFrame.origin.x,
+        y: overlayFrame.origin.y + maskFrame.origin.y,
+        width: maskFrame.width,
+        height: maskFrame.height
+      )
+      tempLayer.contents = maskLayer.contents
+      tempLayer.contentsGravity = maskLayer.contentsGravity
+      tempLayer.contentsRect = maskLayer.contentsRect
+      tempLayer.contentsCenter = maskLayer.contentsCenter
+      tempLayer.opacity = maskLayer.opacity
+      tempLayer.compositingFilter = maskLayer.compositingFilter
+      tempLayer.transform = maskLayer.transform
+      tempLayer.masksToBounds = maskLayer.masksToBounds
+      self.layer.insertSublayer(tempLayer, above: imageLayer)
+      tempMaskLayer = tempLayer
+    }
 
-      // Add pose layer if present (for pose task)
-      var tempPoseLayer: CALayer?
-      if let poseLayer = self.poseLayer {
-        // Create a temporary copy of the pose layer including all sublayers
-        let tempLayer = CALayer()
-        let overlayFrame = self.overlayLayer.frame
-
-        // Set frame relative to main view
-        tempLayer.frame = CGRect(
-          x: overlayFrame.origin.x,
-          y: overlayFrame.origin.y,
-          width: overlayFrame.width,
-          height: overlayFrame.height
-        )
-        tempLayer.opacity = poseLayer.opacity
-
-        // Copy all sublayers (keypoints and skeleton lines)
-        if let sublayers = poseLayer.sublayers {
-          for sublayer in sublayers {
-            let copyLayer = CALayer()
-            copyLayer.frame = sublayer.frame
-            copyLayer.backgroundColor = sublayer.backgroundColor
-            copyLayer.cornerRadius = sublayer.cornerRadius
-            copyLayer.opacity = sublayer.opacity
-
-            // If it's a shape layer (for lines), copy the path
-            if let shapeLayer = sublayer as? CAShapeLayer {
-              let copyShapeLayer = CAShapeLayer()
-              copyShapeLayer.frame = shapeLayer.frame
-              copyShapeLayer.path = shapeLayer.path
-              copyShapeLayer.strokeColor = shapeLayer.strokeColor
-              copyShapeLayer.lineWidth = shapeLayer.lineWidth
-              copyShapeLayer.fillColor = shapeLayer.fillColor
-              copyShapeLayer.opacity = shapeLayer.opacity
-              tempLayer.addSublayer(copyShapeLayer)
-            } else {
-              tempLayer.addSublayer(copyLayer)
-            }
+    var tempPoseLayer: CALayer?
+    if let poseLayer = self.poseLayer {
+      let tempLayer = CALayer()
+      let overlayFrame = self.overlayLayer.frame
+      tempLayer.frame = CGRect(
+        x: overlayFrame.origin.x,
+        y: overlayFrame.origin.y,
+        width: overlayFrame.width,
+        height: overlayFrame.height
+      )
+      tempLayer.opacity = poseLayer.opacity
+      if let sublayers = poseLayer.sublayers {
+        for sublayer in sublayers {
+          let copyLayer = CALayer()
+          copyLayer.frame = sublayer.frame
+          copyLayer.backgroundColor = sublayer.backgroundColor
+          copyLayer.cornerRadius = sublayer.cornerRadius
+          copyLayer.opacity = sublayer.opacity
+          if let shapeLayer = sublayer as? CAShapeLayer {
+            let copyShapeLayer = CAShapeLayer()
+            copyShapeLayer.frame = shapeLayer.frame
+            copyShapeLayer.path = shapeLayer.path
+            copyShapeLayer.strokeColor = shapeLayer.strokeColor
+            copyShapeLayer.lineWidth = shapeLayer.lineWidth
+            copyShapeLayer.fillColor = shapeLayer.fillColor
+            copyShapeLayer.opacity = shapeLayer.opacity
+            tempLayer.addSublayer(copyShapeLayer)
+          } else {
+            tempLayer.addSublayer(copyLayer)
           }
         }
-
-        self.layer.insertSublayer(tempLayer, above: imageLayer)
-        tempPoseLayer = tempLayer
       }
-
-      var tempViews = [UIView]()
-      let boundingBoxInfos = makeBoundingBoxInfos(from: boundingBoxViews)
-      for info in boundingBoxInfos where !info.isHidden {
-        let boxView = createBoxView(from: info)
-        boxView.frame = info.rect
-
-        self.addSubview(boxView)
-        tempViews.append(boxView)
-      }
-      let bounds = UIScreen.main.bounds
-      UIGraphicsBeginImageContextWithOptions(bounds.size, true, 0.0)
-      self.drawHierarchy(in: bounds, afterScreenUpdates: true)
-      let img = UIGraphicsGetImageFromCurrentImageContext()
-      UIGraphicsEndImageContext()
-
-      // Clean up temporary layers and views
-      imageLayer.removeFromSuperlayer()
-      tempMaskLayer?.removeFromSuperlayer()
-      tempPoseLayer?.removeFromSuperlayer()
-      for v in tempViews {
-        v.removeFromSuperview()
-      }
-      photoCaptureCompletion?(img)
-      photoCaptureCompletion = nil
+      self.layer.insertSublayer(tempLayer, above: imageLayer)
+      tempPoseLayer = tempLayer
     }
+
+    var tempViews = [UIView]()
+    let boundingBoxInfos = makeBoundingBoxInfos(from: boundingBoxViews)
+    for info in boundingBoxInfos where !info.isHidden {
+      let boxView = createBoxView(from: info)
+      boxView.frame = info.rect
+      self.addSubview(boxView)
+      tempViews.append(boxView)
+    }
+
+    let bounds = UIScreen.main.bounds
+    UIGraphicsBeginImageContextWithOptions(bounds.size, true, 0.0)
+    drawHierarchy(in: bounds, afterScreenUpdates: true)
+    let snapshot = UIGraphicsGetImageFromCurrentImageContext()
+    UIGraphicsEndImageContext()
+
+    imageLayer.removeFromSuperlayer()
+    tempMaskLayer?.removeFromSuperlayer()
+    tempPoseLayer?.removeFromSuperlayer()
+    for v in tempViews { v.removeFromSuperview() }
+
+    return snapshot
   }
 
   // MARK: - Streaming Functionality
