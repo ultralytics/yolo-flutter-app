@@ -32,7 +32,10 @@ class LensPicker extends StatelessWidget {
     required this.onLensSelected,
   });
 
-  static const LensInfo _defaultLens = LensInfo(zoomFactor: 1, label: 'Default');
+  static const LensInfo _defaultLens = LensInfo(
+    zoomFactor: 1,
+    label: 'Default',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +51,10 @@ class LensPicker extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
         onValueChanged: (zoom) {
           if (zoom == null) return;
-          final picked = effectiveLenses.firstWhere((l) => l.zoomFactor == zoom, orElse: () => selected);
+          final picked = effectiveLenses.firstWhere(
+            (l) => l.zoomFactor == zoom,
+            orElse: () => selected,
+          );
           onLensSelected(picked);
         },
         children: {
@@ -59,9 +65,13 @@ class LensPicker extends StatelessWidget {
                 _formatZoom(lens),
                 style: TextStyle(
                   // systemYellow when selected; white otherwise — matches the iOS reference exactly.
-                  color: lens.zoomFactor == selected.zoomFactor ? CupertinoColors.systemYellow : Colors.white,
+                  color: lens.zoomFactor == selected.zoomFactor
+                      ? CupertinoColors.systemYellow
+                      : Colors.white,
                   fontSize: 13,
-                  fontWeight: lens.zoomFactor == selected.zoomFactor ? FontWeight.w700 : FontWeight.w600,
+                  fontWeight: lens.zoomFactor == selected.zoomFactor
+                      ? FontWeight.w700
+                      : FontWeight.w600,
                 ),
               ),
             ),
@@ -71,7 +81,9 @@ class LensPicker extends StatelessWidget {
   }
 
   static String _formatZoom(LensInfo lens) {
-    return lens.zoomFactor < 1 ? lens.zoomFactor.toStringAsFixed(1) : lens.zoomFactor.toStringAsFixed(0);
+    return lens.zoomFactor < 1
+        ? lens.zoomFactor.toStringAsFixed(1)
+        : lens.zoomFactor.toStringAsFixed(0);
   }
 
   static LensInfo _closestLens(List<LensInfo> lenses, double zoom) {

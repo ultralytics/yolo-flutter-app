@@ -54,7 +54,11 @@ class ThresholdSliderRow extends StatelessWidget {
       children: [
         Text(
           '$prefix $label',
-          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w400),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+          ),
         ),
         const SizedBox(height: 3),
         CupertinoSlider(

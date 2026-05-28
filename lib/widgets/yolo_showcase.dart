@@ -502,10 +502,19 @@ class _ShowcaseOverlay extends StatelessWidget {
         children: [
           // -- Top stack ----------------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(_sidePadding, 8, _sidePadding, 0),
+            padding: const EdgeInsets.fromLTRB(
+              _sidePadding,
+              8,
+              _sidePadding,
+              0,
+            ),
             child: Column(
               children: [
-                PerformanceLabel(modelName: modelName, fps: fps, inferenceMs: inferenceMs),
+                PerformanceLabel(
+                  modelName: modelName,
+                  fps: fps,
+                  inferenceMs: inferenceMs,
+                ),
                 const SizedBox(height: _topGap),
                 TaskSegmentedControl(
                   currentTask: task,
@@ -530,7 +539,12 @@ class _ShowcaseOverlay extends StatelessWidget {
 
           // -- Sliders ------------------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(_sidePadding, 0, _sidePadding, 0),
+            padding: const EdgeInsets.fromLTRB(
+              _sidePadding,
+              0,
+              _sidePadding,
+              0,
+            ),
             child: Column(
               children: [
                 _SliderConstrained(
@@ -558,19 +572,32 @@ class _ShowcaseOverlay extends StatelessWidget {
 
           // -- Zoom HUD + Logo ---------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(_sidePadding, 8, _sidePadding, 0),
+            padding: const EdgeInsets.fromLTRB(
+              _sidePadding,
+              8,
+              _sidePadding,
+              0,
+            ),
             child: Stack(
               alignment: Alignment.center,
               children: [
                 ZoomIndicator(currentZoom: zoom, lensLabel: lensLabel),
-                const Align(alignment: Alignment.centerRight, child: LogoOverlay()),
+                const Align(
+                  alignment: Alignment.centerRight,
+                  child: LogoOverlay(),
+                ),
               ],
             ),
           ),
 
           // -- Lens picker -------------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(_sidePadding, 6, _sidePadding, 6),
+            padding: const EdgeInsets.fromLTRB(
+              _sidePadding,
+              6,
+              _sidePadding,
+              6,
+            ),
             child: LensPicker(
               lenses: lenses,
               currentZoomFactor: zoom,
@@ -581,12 +608,18 @@ class _ShowcaseOverlay extends StatelessWidget {
           // -- Version + toolbar (full-bleed) ------------------------------------------------------------------
           if (versionLabel != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: _sidePadding, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: _sidePadding,
+                vertical: 4,
+              ),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   versionLabel!,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
@@ -614,11 +647,7 @@ class _SliderConstrained extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: FractionallySizedBox(
-        widthFactor: 0.46,
-        child: child,
-      ),
+      child: FractionallySizedBox(widthFactor: 0.46, child: child),
     );
   }
 }
-

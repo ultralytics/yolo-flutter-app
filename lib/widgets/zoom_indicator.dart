@@ -16,7 +16,11 @@ class ZoomIndicator extends StatelessWidget {
   /// Lens label sourced from `LensInfo.label`. May be empty.
   final String lensLabel;
 
-  const ZoomIndicator({super.key, required this.currentZoom, required this.lensLabel});
+  const ZoomIndicator({
+    super.key,
+    required this.currentZoom,
+    required this.lensLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +29,11 @@ class ZoomIndicator extends StatelessWidget {
       children: [
         Text(
           '${currentZoom.toStringAsFixed(2)}x',
-          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         if (lensLabel.isNotEmpty)
           Padding(

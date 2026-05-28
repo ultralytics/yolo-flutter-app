@@ -18,7 +18,12 @@ class PerformanceLabel extends StatelessWidget {
   /// Per-inference time in milliseconds.
   final double inferenceMs;
 
-  const PerformanceLabel({super.key, required this.modelName, required this.fps, required this.inferenceMs});
+  const PerformanceLabel({
+    super.key,
+    required this.modelName,
+    required this.fps,
+    required this.inferenceMs,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,13 +34,21 @@ class PerformanceLabel extends StatelessWidget {
         Text(
           modelName,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w400),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 28,
+            fontWeight: FontWeight.w400,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
           '${fps.toStringAsFixed(1)} FPS - ${inferenceMs.toStringAsFixed(1)} ms',
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w400),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w400,
+          ),
         ),
       ],
     );

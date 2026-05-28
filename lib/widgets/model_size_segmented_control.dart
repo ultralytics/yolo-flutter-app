@@ -47,9 +47,13 @@ class ModelSizeSegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visibleSizes = _sizes.where(supportedSizes.contains).toList(growable: false);
+    final visibleSizes = _sizes
+        .where(supportedSizes.contains)
+        .toList(growable: false);
     if (visibleSizes.isEmpty) return const SizedBox.shrink();
-    final effectiveCurrent = visibleSizes.contains(currentSize) ? currentSize : visibleSizes.first;
+    final effectiveCurrent = visibleSizes.contains(currentSize)
+        ? currentSize
+        : visibleSizes.first;
 
     return SizedBox(
       width: double.infinity,

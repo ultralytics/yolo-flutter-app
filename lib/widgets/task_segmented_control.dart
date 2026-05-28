@@ -51,7 +51,9 @@ class TaskSegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tasks = _order.where((t) => showSemanticTask || t != YOLOTask.semantic).toList(growable: false);
+    final tasks = _order
+        .where((t) => showSemanticTask || t != YOLOTask.semantic)
+        .toList(growable: false);
 
     return SizedBox(
       width: double.infinity,
@@ -74,7 +76,9 @@ class TaskSegmentedControl extends StatelessWidget {
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 13,
-                  fontWeight: task == currentTask ? FontWeight.w700 : FontWeight.w600,
+                  fontWeight: task == currentTask
+                      ? FontWeight.w700
+                      : FontWeight.w600,
                 ),
               ),
             ),

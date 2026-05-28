@@ -44,7 +44,9 @@ class CameraToolbar extends StatelessWidget {
           children: [
             _ToolbarButton(
               // play.fill / pause.fill on iOS → matching Cupertino glyphs for the closest visual to SF Symbols.
-              icon: isPaused ? CupertinoIcons.play_fill : CupertinoIcons.pause_fill,
+              icon: isPaused
+                  ? CupertinoIcons.play_fill
+                  : CupertinoIcons.pause_fill,
               onPressed: onPlayPause,
               semanticLabel: isPaused ? 'Resume' : 'Pause',
             ),
@@ -53,7 +55,11 @@ class CameraToolbar extends StatelessWidget {
               onPressed: onSwitchCamera,
               semanticLabel: 'Switch camera',
             ),
-            _ToolbarButton(icon: CupertinoIcons.share, onPressed: onShare, semanticLabel: 'Share'),
+            _ToolbarButton(
+              icon: CupertinoIcons.share,
+              onPressed: onShare,
+              semanticLabel: 'Share',
+            ),
           ],
         ),
       ),
@@ -66,7 +72,11 @@ class _ToolbarButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String semanticLabel;
 
-  const _ToolbarButton({required this.icon, required this.onPressed, required this.semanticLabel});
+  const _ToolbarButton({
+    required this.icon,
+    required this.onPressed,
+    required this.semanticLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +84,12 @@ class _ToolbarButton extends StatelessWidget {
       child: CupertinoButton(
         padding: EdgeInsets.zero,
         onPressed: onPressed,
-        child: Icon(icon, color: Colors.white, size: CameraToolbar.iconSize, semanticLabel: semanticLabel),
+        child: Icon(
+          icon,
+          color: Colors.white,
+          size: CameraToolbar.iconSize,
+          semanticLabel: semanticLabel,
+        ),
       ),
     );
   }
