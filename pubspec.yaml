@@ -27,6 +27,8 @@ dependencies:
     sdk: flutter
   path_provider: ^2.1.5
   plugin_platform_interface: ^2.1.8
+  shared_preferences: ^2.2.0
+  wakelock_plus: ^1.2.0
 
 dev_dependencies:
   coverage: ^1.15.0
@@ -44,3 +46,6 @@ flutter:
         pluginClass: YOLOPlugin
       ios:
         pluginClass: YOLOPlugin
+  assets:
+    - assets/ultralytics_yolo_logotype.png
+    - assets/focus_reticle.png

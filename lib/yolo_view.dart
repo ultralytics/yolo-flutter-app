@@ -69,6 +69,7 @@ class YOLOView extends StatefulWidget {
 
 class _YOLOViewState extends State<YOLOView> {
   late YOLOViewController _effectiveController;
+  bool _ownsController = false;
   late MethodChannel _methodChannel;
   late EventChannel _resultEventChannel;
   StreamSubscription<dynamic>? _resultSubscription;
@@ -89,7 +90,13 @@ class _YOLOViewState extends State<YOLOView> {
   }
 
   void _setupController() {
-    _effectiveController = widget.controller ?? YOLOViewController();
+    if (widget.controller != null) {
+      _effectiveController = widget.controller!;
+      _ownsController = false;
+    } else {
+      _effectiveController = YOLOViewController();
+      _ownsController = true;
+    }
   }
 
   void _setupChannels() {
@@ -98,12 +105,9 @@ class _YOLOViewState extends State<YOLOView> {
   }
 
   void _subscribeToResults() {
-    if (widget.onResult == null &&
-        widget.onPerformanceMetrics == null &&
-        widget.onStreamingData == null) {
-      return;
-    }
-
+    // Subscribe unconditionally — the controller's zoom/lens/focus streams ride
+    // the same event channel as detection results, so consumers that only
+    // listen via the controller still need an active subscription.
     _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
       _handleEvent,
       onError: (error, stackTrace) {
@@ -127,6 +131,14 @@ class _YOLOViewState extends State<YOLOView> {
 
   void _handleEvent(dynamic event) {
     if (event is! Map) return;
+
+    // Typed native events (`zoom`, `lens`, `focus`) coexist with detection
+    // payloads on the same channel; dispatch them to the controller's streams
+    // before falling through to detection/performance handling.
+    if (event['type'] is String) {
+      _effectiveController.onNativeEvent(event);
+      return;
+    }
 
     if (widget.onStreamingData != null) {
       try {
@@ -260,7 +272,12 @@ class _YOLOViewState extends State<YOLOView> {
 
     // Handle controller changes
     if (oldWidget.controller != widget.controller) {
+      final previousController = _effectiveController;
+      final previouslyOwned = _ownsController;
       _setupController();
+      if (previouslyOwned && previousController != _effectiveController) {
+        previousController.dispose();
+      }
     }
 
     // Handle callback changes
@@ -304,6 +321,9 @@ class _YOLOViewState extends State<YOLOView> {
     _effectiveController.stop();
     _resultSubscription?.cancel();
     _methodChannel.setMethodCallHandler(null);
+    if (_ownsController) {
+      _effectiveController.dispose();
+    }
 
     if (_platformViewId != null) {
       ChannelConfig.createSingleImageChannel()
@@ -431,11 +451,7 @@ class _YOLOViewState extends State<YOLOView> {
       _effectiveController.setStreamingConfig(widget.streamingConfig!);
     }
 
-    if (widget.onResult != null ||
-        widget.onPerformanceMetrics != null ||
-        widget.onStreamingData != null) {
-      _subscribeToResults();
-    }
+    _subscribeToResults();
   }
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
