@@ -43,7 +43,8 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
     }
   }
 
-  private func checkModelExists(modelPath: String) -> [String: Any] {
+  // `nonisolated` so [`inspectModel`] can use it from a background queue without crossing main-actor isolation.
+  nonisolated private func checkModelExists(modelPath: String) -> [String: Any] {
     let fileManager = FileManager.default
     var resultMap: [String: Any] = [
       "exists": false,
@@ -143,7 +144,10 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
     ]
   }
 
-  private func inspectModel(modelPath: String) throws -> [String: Any] {
+  // `nonisolated` so we can dispatch the heavy MLModel.compileModel + load off the main thread without crossing
+  // `@MainActor`. `checkModelExists` and `parseLabels` below are pure (no main-actor state), so calling them from a
+  // background queue is safe.
+  nonisolated private func inspectModel(modelPath: String) throws -> [String: Any] {
     let checkResult = checkModelExists(modelPath: modelPath)
     let resolvedPath = (checkResult["absolutePath"] as? String) ?? modelPath
     let url = URL(fileURLWithPath: resolvedPath)
@@ -190,7 +194,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
     return result
   }
 
-  private func parseLabels(from userDefined: [String: String]) -> [String] {
+  nonisolated private func parseLabels(from userDefined: [String: String]) -> [String] {
     if let labelsData = userDefined["classes"] {
       return
         labelsData

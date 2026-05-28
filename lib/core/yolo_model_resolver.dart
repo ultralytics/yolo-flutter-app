@@ -557,14 +557,12 @@ class YOLOModelResolver {
         await sink.close();
       }
 
-      if (progressId != null) {
-        YOLOModelManager.emitProgress(progressId, 1);
-      }
-
       // Some endpoints (e.g. GitHub release redirects that resolve to a 200 with no body, or chunked-encoding
       // responses that completed with zero chunks) leave the `.download` file in a state where openWrite + close
       // never materialised a real file on disk. Fall through to renameSync would then throw `PathNotFoundException`
-      // with errno=2, which is confusing for users — surface a clean ModelLoadingException instead.
+      // with errno=2, which is confusing for users — surface a clean ModelLoadingException instead. We deliberately
+      // delay the terminal `emitProgress(1)` until AFTER the file has been validated and renamed so a listener that
+      // marks the chip "downloaded" never sees success for a failed transfer.
       if (!temporaryFile.existsSync() || temporaryFile.lengthSync() == 0) {
         throw ModelLoadingException(
           'Downloaded 0 bytes for $url. The asset may be missing from the release.',
@@ -575,6 +573,10 @@ class YOLOModelResolver {
         targetFile.deleteSync();
       }
       temporaryFile.renameSync(targetFile.path);
+
+      if (progressId != null) {
+        YOLOModelManager.emitProgress(progressId, 1);
+      }
     } catch (_) {
       if (temporaryFile.existsSync()) {
         temporaryFile.deleteSync();

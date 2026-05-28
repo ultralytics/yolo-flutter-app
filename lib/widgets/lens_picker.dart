@@ -32,15 +32,12 @@ class LensPicker extends StatelessWidget {
     required this.onLensSelected,
   });
 
-  static const LensInfo _defaultLens = LensInfo(
-    zoomFactor: 1,
-    label: 'Default',
-  );
-
   @override
   Widget build(BuildContext context) {
-    final effectiveLenses = lenses.isEmpty ? const [_defaultLens] : lenses;
-    final selected = _closestLens(effectiveLenses, currentZoomFactor);
+    // Hide entirely on single-lens devices (front camera, older iPhones) — matches `lensControl.isHidden = true` and
+    // the auto-layout skip at `yolo-ios-app/Sources/YOLO/YOLOView.swift:646,823`.
+    if (lenses.length < 2) return const SizedBox.shrink();
+    final selected = _closestLens(lenses, currentZoomFactor);
 
     return SizedBox(
       width: double.infinity,
@@ -51,27 +48,20 @@ class LensPicker extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
         onValueChanged: (zoom) {
           if (zoom == null) return;
-          final picked = effectiveLenses.firstWhere(
-            (l) => l.zoomFactor == zoom,
-            orElse: () => selected,
-          );
+          final picked = lenses.firstWhere((l) => l.zoomFactor == zoom, orElse: () => selected);
           onLensSelected(picked);
         },
         children: {
-          for (final lens in effectiveLenses)
+          for (final lens in lenses)
             lens.zoomFactor: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Text(
                 _formatZoom(lens),
                 style: TextStyle(
                   // systemYellow when selected; white otherwise — matches the iOS reference exactly.
-                  color: lens.zoomFactor == selected.zoomFactor
-                      ? CupertinoColors.systemYellow
-                      : Colors.white,
+                  color: lens.zoomFactor == selected.zoomFactor ? CupertinoColors.systemYellow : Colors.white,
                   fontSize: 13,
-                  fontWeight: lens.zoomFactor == selected.zoomFactor
-                      ? FontWeight.w700
-                      : FontWeight.w600,
+                  fontWeight: lens.zoomFactor == selected.zoomFactor ? FontWeight.w700 : FontWeight.w600,
                 ),
               ),
             ),
@@ -81,21 +71,19 @@ class LensPicker extends StatelessWidget {
   }
 
   static String _formatZoom(LensInfo lens) {
-    return lens.zoomFactor < 1
-        ? lens.zoomFactor.toStringAsFixed(1)
-        : lens.zoomFactor.toStringAsFixed(0);
+    return lens.zoomFactor < 1 ? lens.zoomFactor.toStringAsFixed(1) : lens.zoomFactor.toStringAsFixed(0);
   }
 
+  /// Mirrors `yolo-ios-app/Sources/YOLO/YOLOView.swift#updateSelectedLens` (line 1181): pick the largest-zoom lens
+  /// whose threshold is `<= zoom - 0.01`, falling back to the smallest lens when zoom is below every threshold. The
+  /// previous "closest absolute delta" heuristic switched the yellow selection too early around midpoints (a 1.5x
+  /// zoom on a 1×/2× picker would jump to 2x before the camera actually rebound).
   static LensInfo _closestLens(List<LensInfo> lenses, double zoom) {
-    var best = lenses.first;
-    var bestDelta = (best.zoomFactor - zoom).abs();
-    for (final lens in lenses.skip(1)) {
-      final delta = (lens.zoomFactor - zoom).abs();
-      if (delta < bestDelta) {
-        best = lens;
-        bestDelta = delta;
-      }
+    final sorted = [...lenses]..sort((a, b) => a.zoomFactor.compareTo(b.zoomFactor));
+    LensInfo? best;
+    for (final lens in sorted) {
+      if (zoom + 0.01 >= lens.zoomFactor) best = lens;
     }
-    return best;
+    return best ?? sorted.first;
   }
 }

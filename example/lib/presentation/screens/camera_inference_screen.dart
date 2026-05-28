@@ -9,7 +9,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 /// Real-time YOLO camera inference. Thin shell over [YOLOShowcase] that wires the capture callback to the platform
-/// share sheet via `share_plus`.
+/// share sheet via `share_plus`. Kept intentionally bare so the screen reads side-by-side with `yolo-ios-app`'s
+/// `ViewController` — no extra Material chrome on top.
 class CameraInferenceScreen extends StatelessWidget {
   const CameraInferenceScreen({super.key});
 
@@ -23,26 +24,6 @@ class CameraInferenceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          YOLOShowcase(onCapture: _onCapture),
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: IconButton.filledTonal(
-                  tooltip: 'Single image inference',
-                  icon: const Icon(Icons.image_outlined),
-                  onPressed: () => Navigator.pushNamed(context, '/single'),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return Scaffold(body: YOLOShowcase(onCapture: _onCapture));
   }
 }

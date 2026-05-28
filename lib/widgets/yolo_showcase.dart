@@ -155,12 +155,28 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         if (storedSize != null && _allSizes.contains(storedSize)) {
           _currentSize = storedSize;
         }
+        // Clamp the restored size to whatever the resolver actually publishes for the active platform (Android only
+        // hosts the `n` variants at v0.2.0, for example). Otherwise we'd hand `YOLOView` a `_currentModelId` that
+        // 404s on first launch before the chip even renders.
+        _currentSize = _clampSizeToSupported(_currentSize, _currentTask);
       });
     }
     final initial = await _scanAvailableSizes(_currentTask);
     if (mounted) setState(() => _availableSizes = initial);
     // Defer lens enumeration to after the platform view is initialized.
     unawaited(_refreshLenses());
+  }
+
+  /// Returns `size` if it's supported for `task`; otherwise the first supported size, falling back to `'n'` when even
+  /// that's missing.
+  String _clampSizeToSupported(String size, YOLOTask task) {
+    final supported = _supportedSizesForTask(task);
+    if (supported.contains(size)) return size;
+    if (supported.isEmpty) return 'n';
+    for (final s in _allSizes) {
+      if (supported.contains(s)) return s;
+    }
+    return 'n';
   }
 
   Future<void> _refreshLenses() async {
@@ -285,7 +301,12 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _onTaskChanged(YOLOTask task) {
     if (task == _currentTask) return;
-    setState(() => _currentTask = task);
+    setState(() {
+      _currentTask = task;
+      // The supported set differs per task on Android (only `n` for everything in v0.2.0). Clamp here too so a
+      // task switch never hands `YOLOView` a model id that doesn't exist on the active platform.
+      _currentSize = _clampSizeToSupported(_currentSize, task);
+    });
     unawaited(_persistTask(task));
     unawaited(_refreshAvailableSizes(task));
     unawaited(_switchToCurrentModel());
@@ -629,8 +650,13 @@ class _ShowcaseOverlay extends StatelessWidget {
             onSwitchCamera: onSwitchCamera,
             onShare: onShare,
           ),
-          // Pad the safe-area bottom inset under the toolbar so it visually extends to the home-indicator edge.
-          SizedBox(height: MediaQuery.of(context).padding.bottom),
+          // Extend the same translucent black band under the home-indicator inset so the toolbar reads as a single
+          // flush bottom bar (matches `toolbar.frame = ... height - 66, width: width, height: 66` in
+          // `yolo-ios-app/Sources/YOLO/YOLOView.swift:806`).
+          Container(
+            height: MediaQuery.of(context).padding.bottom,
+            color: Colors.black.withValues(alpha: 0.7),
+          ),
         ],
       ),
     );
