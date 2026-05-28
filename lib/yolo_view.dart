@@ -13,7 +13,6 @@ import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:ultralytics_yolo/utils/map_converter.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
-import 'package:ultralytics_yolo/widgets/yolo_overlay.dart';
 
 /// Enum for camera lens selection.
 enum LensFacing {
@@ -33,14 +32,11 @@ class YOLOView extends StatefulWidget {
   final Function(List<YOLOResult>)? onResult;
   final Function(YOLOPerformanceMetrics)? onPerformanceMetrics;
   final Function(Map<String, dynamic>)? onStreamingData;
-  final bool showNativeUI;
   final Function(double zoomLevel)? onZoomChanged;
   final YOLOStreamingConfig? streamingConfig;
   final double confidenceThreshold;
   final double iouThreshold;
   final bool useGpu;
-  final bool showOverlays;
-  final YOLOOverlayTheme overlayTheme;
   final LensFacing lensFacing;
 
   const YOLOView({
@@ -52,14 +48,11 @@ class YOLOView extends StatefulWidget {
     this.onResult,
     this.onPerformanceMetrics,
     this.onStreamingData,
-    this.showNativeUI = false,
     this.onZoomChanged,
     this.streamingConfig,
     this.confidenceThreshold = 0.25,
     this.iouThreshold = 0.7,
     this.useGpu = true,
-    this.showOverlays = true,
-    this.overlayTheme = const YOLOOverlayTheme(),
     this.lensFacing = LensFacing.back,
   });
 
@@ -79,7 +72,6 @@ class _YOLOViewState extends State<YOLOView> {
 
   final String _viewId = UniqueKey().toString();
   int? _platformViewId;
-  List<YOLOResult> _currentDetections = [];
 
   @override
   void initState() {
@@ -157,21 +149,7 @@ class _YOLOViewState extends State<YOLOView> {
     if (widget.onResult == null || !event.containsKey('detections')) return;
 
     try {
-      final results = _parseDetectionResults(event);
-
-      if (widget.showOverlays && widget.onResult != null) {
-        if (_currentDetections.isNotEmpty) {
-          setState(() {
-            _currentDetections = [];
-          });
-        }
-      } else {
-        setState(() {
-          _currentDetections = results;
-        });
-      }
-
-      widget.onResult!(results);
+      widget.onResult!(_parseDetectionResults(event));
     } catch (e) {
       logInfo('YOLOView: Error parsing detection results: $e');
     }
@@ -293,22 +271,6 @@ class _YOLOViewState extends State<YOLOView> {
       _subscribeToResults();
     }
 
-    if (!oldWidget.showOverlays &&
-        widget.showOverlays &&
-        widget.onResult != null) {
-      setState(() {
-        _currentDetections = [];
-      });
-    }
-
-    if (oldWidget.onResult == null &&
-        widget.onResult != null &&
-        widget.showOverlays) {
-      setState(() {
-        _currentDetections = [];
-      });
-    }
-
     // Handle model or task changes
     if (oldWidget.modelPath != widget.modelPath ||
         oldWidget.task != widget.task) {
@@ -347,22 +309,7 @@ class _YOLOViewState extends State<YOLOView> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Stack(
-      children: [
-        _buildCameraView(),
-
-        if (widget.showOverlays && _currentDetections.isNotEmpty)
-          YOLOOverlay(
-            detections: _currentDetections,
-            showConfidence: true,
-            showClassName: true,
-            theme: widget.overlayTheme,
-            onDetectionTap: (detection) {
-              logInfo('YOLOView: Detection tapped: ${detection.className}');
-            },
-          ),
-      ],
-    );
+    return _buildCameraView();
   }
 
   Widget _buildCameraView() {
@@ -400,7 +347,6 @@ class _YOLOViewState extends State<YOLOView> {
       'numItemsThreshold': _effectiveController.numItemsThreshold,
       'viewId': _viewId,
       'useGpu': widget.useGpu,
-      'showOverlays': widget.showOverlays,
       'lensFacing': widget.lensFacing.name,
     };
 
@@ -443,9 +389,6 @@ class _YOLOViewState extends State<YOLOView> {
     _platformViewId = id;
     _effectiveController.init(_methodChannel, id);
     _methodChannel.setMethodCallHandler(_handleMethodCall);
-    _methodChannel.invokeMethod('setShowUIControls', {
-      'show': widget.showNativeUI,
-    });
 
     if (widget.streamingConfig != null) {
       _effectiveController.setStreamingConfig(widget.streamingConfig!);
@@ -493,6 +436,4 @@ class _YOLOViewState extends State<YOLOView> {
   Future<void> switchCamera() => _effectiveController.switchCamera();
   Future<void> setZoomLevel(double zoomLevel) =>
       _effectiveController.setZoomLevel(zoomLevel);
-  Future<void> setShowOverlays(bool show) =>
-      _effectiveController.setShowOverlays(show);
 }

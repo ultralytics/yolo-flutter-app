@@ -23,6 +23,5 @@ export 'widgets/performance_label.dart';
 export 'widgets/task_segmented_control.dart';
 export 'widgets/threshold_slider_row.dart';
 export 'widgets/yolo_controller.dart' show YOLOViewController, LensInfo;
-export 'widgets/yolo_overlay.dart' show YOLOOverlay, YOLOOverlayTheme;
 export 'widgets/yolo_showcase.dart';
 export 'widgets/zoom_indicator.dart';

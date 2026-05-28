@@ -45,6 +45,11 @@ class YOLOShowcase extends StatefulWidget {
   /// Optional theme override; defaults to dark Material 3.
   final ThemeData? theme;
 
+  /// Optional app version label shown in the bottom-left. Hidden when null.
+  /// Pass the consuming app's `package_info_plus` version, e.g.
+  /// `'v${info.version}'`.
+  final String? versionLabel;
+
   const YOLOShowcase({
     super.key,
     this.initialTask = YOLOTask.detect,
@@ -53,6 +58,7 @@ class YOLOShowcase extends StatefulWidget {
     this.onCapture,
     this.controller,
     this.theme,
+    this.versionLabel,
   });
 
   @override
@@ -318,8 +324,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   modelPath: _currentModelId,
                   task: _currentTask,
                   controller: _controller,
-                  showOverlays: false,
-                  showNativeUI: false,
                   onPerformanceMetrics: _onPerformanceMetrics,
                 ),
                 // Gesture layer above YOLOView but behind controls so taps on
@@ -411,12 +415,15 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'v0.3.5',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.7),
-                    ),
-              ),
+              if (widget.versionLabel != null)
+                Text(
+                  widget.versionLabel!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                )
+              else
+                const SizedBox.shrink(),
               CameraToolbar(
                 isPaused: _isPaused,
                 onPlayPause: _onPlayPause,
