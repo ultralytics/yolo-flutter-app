@@ -188,12 +188,6 @@ class YOLOViewController {
 
   Future<void> restartCamera() => _invoke('restartCamera');
 
-  Future<void> setShowUIControls(bool show) =>
-      _invoke('setShowUIControls', {'show': show});
-
-  Future<void> setShowOverlays(bool show) =>
-      _invoke('setShowOverlays', {'show': show});
-
   Future<Uint8List?> captureFrame() => _invoke<Uint8List>('captureFrame');
 
   /// Routes a typed native event (`zoom`/`lens`/`focus`) to the matching stream.

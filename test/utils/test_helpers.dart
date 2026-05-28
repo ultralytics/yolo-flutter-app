@@ -78,8 +78,6 @@ class YOLOTestHelpers {
               return true;
             case 'setZoomLevel':
               return true;
-            case 'setShowUIControls':
-              return true;
             case 'captureFrame':
               return Uint8List.fromList(List.filled(100, 0));
             case 'checkModelExists':
@@ -443,10 +441,6 @@ class YOLOTestHelpers {
               return true;
             },
             'setZoomLevel': (call) {
-              log.add(call);
-              return true;
-            },
-            'setShowUIControls': (call) {
               log.add(call);
               return true;
             },

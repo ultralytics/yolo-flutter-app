@@ -1,3 +1,15 @@
+## 0.4.0
+
+- **Feature**: Add `YOLOShowcase` — a Material 3 one-import camera screen that mirrors the layout of the native Ultralytics YOLO iOS app (top model name + FPS, task and model-size segmented controls, threshold sliders, multi-lens picker, zoom indicator, share/flip/play-pause toolbar, plugin-bundled logo, animated tap-to-focus reticle).
+- **Feature**: Ship 9 individual Material 3 widgets that `YOLOShowcase` composes, all exported from `package:ultralytics_yolo/ultralytics_yolo.dart`: `TaskSegmentedControl`, `ModelSizeSegmentedControl`, `ThresholdSliderRow`, `LensPicker`, `ZoomIndicator`, `CameraToolbar`, `FocusReticle`, `LogoOverlay`, `PerformanceLabel`. Build your own layout by composing them directly.
+- **Feature**: New `YOLOViewController` methods on iOS + Android: `getAvailableLenses()` returns the device's ultra-wide / wide / telephoto lens info, `setLens(zoomFactor)` switches to the nearest lens, `tapToFocus(x, y)` focuses at view-relative coordinates, `capturePhoto({withOverlays})` returns a composited JPEG. New broadcast streams `zoomEvents`, `lensEvents`, `focusEvents` reflect native state changes.
+- **Feature**: `YOLOModelManager.downloadProgress` exposes a `Stream<DownloadProgress>` of model-download fractions; `ModelSizeSegmentedControl` renders a `LinearProgressIndicator` overlay on the actively-downloading chip.
+- **Enhancement**: Native iOS camera-flip plays a `UIVisualEffectView` blur transition matching the iOS showcase app. Pinch-driven zoom on both platforms auto-snaps to the nearest physical lens and emits the new `lens` event for the Dart layer.
+- **Enhancement**: Plugin now bundles `assets/ultralytics_yolo_logotype.png` and `assets/focus_reticle.png` so consumers no longer need to copy them.
+- **Breaking**: Removed `YOLOOverlay`, `YOLOOverlayTheme`, and `YOLOControls`. Bounding-box rendering is now native-only — drop any Dart-side `YOLOOverlay()` widgets you held.
+- **Breaking**: Removed `YOLOView.showOverlays`, `YOLOView.overlayTheme`, and `YOLOView.showNativeUI` constructor parameters. Use `YOLOShowcase` for the full UI, or compose individual widgets over a bare `YOLOView`.
+- **Breaking**: Removed `YOLOViewController.setShowUIControls` and `setShowOverlays`. They were companions to the removed `YOLOView` parameters above.
+
 ## 0.3.5
 
 - **Feature**: Add YOLO26 semantic segmentation support on Android and iOS with official `yolo26*-sem` model IDs.
