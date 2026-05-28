@@ -49,12 +49,15 @@ class ModelSizeSegmentedControl extends StatelessWidget {
       segments: [
         for (final size in _sizes)
           if (supportedSizes.contains(size))
-          ButtonSegment<String>(value: size, label: _SegmentLabel(
-            size: size,
-            isAvailable: availableSizes.contains(size),
-            isDownloading: downloadingSize == size,
-            fraction: downloadingSize == size ? downloadFraction : null,
-          )),
+            ButtonSegment<String>(
+              value: size,
+              label: _SegmentLabel(
+                size: size,
+                isAvailable: availableSizes.contains(size),
+                isDownloading: downloadingSize == size,
+                fraction: downloadingSize == size ? downloadFraction : null,
+              ),
+            ),
       ],
       selected: {currentSize},
       showSelectedIcon: false,

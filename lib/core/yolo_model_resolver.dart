@@ -439,11 +439,7 @@ class YOLOModelResolver {
       final targetDir = Directory('${documents.path}/$modelName.mlpackage');
       if (await _hasValidMlPackage(targetDir)) return targetDir.path;
       final archiveFile = File('${documents.path}/$fileName');
-      await _downloadToFile(
-        uri.toString(),
-        archiveFile,
-        progressId: modelName,
-      );
+      await _downloadToFile(uri.toString(), archiveFile, progressId: modelName);
       return _extractMlPackageArchiveFile(archiveFile, fileName, targetDir);
     }
 

@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 
-/// One labelled slider row — the prefix (`0.25 Confidence Threshold`) shows
+/// One labeled slider row — the prefix (`0.25 Confidence Threshold`) shows
 /// the live value with the label baked in.
 ///
 /// Style mirrors the iOS showcase: white track + thumb, faded gray inactive
@@ -52,9 +52,9 @@ class ThresholdSliderRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             '$prefix $label',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.white),
           ),
         ),
         SliderTheme(

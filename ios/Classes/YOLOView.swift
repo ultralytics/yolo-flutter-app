@@ -1322,10 +1322,11 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     // Map 0..1 view coords → preview layer point → capture device point.
     // Falls back to the raw view-relative point if the preview layer is not
-    // attached yet (early-frame race), which is the same behaviour as iOS
+    // attached yet (early-frame race), which is the same behavior as iOS
     // before iOS 11 introduced the converter.
     let devicePoint: CGPoint
-    if let preview = videoCapture.previewLayer, preview.bounds.width > 0, preview.bounds.height > 0 {
+    if let preview = videoCapture.previewLayer, preview.bounds.width > 0, preview.bounds.height > 0
+    {
       let layerPoint = CGPoint(
         x: viewX * preview.bounds.width,
         y: viewY * preview.bounds.height)
@@ -1396,7 +1397,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }.sorted { $0.zoom < $1.zoom }
 
     guard !lensZooms.isEmpty else { return }
-    let selected = lensZooms.last(where: { rawZoomFactor >= $0.zoom - 0.01 })?.device
+    let selected =
+      lensZooms.last(where: { rawZoomFactor >= $0.zoom - 0.01 })?.device
       ?? lensZooms.first?.device
     guard let selected else { return }
 
