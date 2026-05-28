@@ -20,6 +20,7 @@ import UIKit
     configurationForConnecting connectingSceneSession: UISceneSession,
     options: UIScene.ConnectionOptions
   ) -> UISceneConfiguration {
-    return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+    return UISceneConfiguration(
+      name: "Default Configuration", sessionRole: connectingSceneSession.role)
   }
 }
