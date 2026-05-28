@@ -32,7 +32,9 @@ private class YOLOViewRegistry {
 // See YOLOPlugin.swift — `@preconcurrency` on the conformance keeps the FlutterPlatformViewFactory (non-isolated)
 // protocol from tripping Swift 6 strict-isolation warnings on this `@MainActor` class.
 @MainActor
-public final class SwiftYOLOPlatformViewFactory: NSObject, @preconcurrency FlutterPlatformViewFactory {
+public final class SwiftYOLOPlatformViewFactory: NSObject,
+  @preconcurrency FlutterPlatformViewFactory
+{
   private var messenger: FlutterBinaryMessenger
   // YOLOViewRegistry is internally thread-safe (NSLock around its dictionary), so `nonisolated(unsafe)` lets the
   // factory's `nonisolated` accessors (e.g. unregisterSync) reach it from background contexts during shutdown

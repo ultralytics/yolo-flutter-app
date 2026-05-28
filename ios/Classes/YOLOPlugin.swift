@@ -22,7 +22,7 @@ final class SendableBox<T>: @unchecked Sendable {
 // it invokes (`checkModelExists`, `inspectModel`, `parseLabels`) are `nonisolated` and read no mutable state.
 @MainActor
 public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @unchecked Sendable {
-  // Statics live on the main actor with the class. `@MainActor` annotation here is redundant with the class default
+  // Statistics live on the main actor with the class. `@MainActor` annotation here is redundant with the class default
   // but explicit so the intent is obvious to a reader scanning for global mutable state.
   @MainActor private static var instanceChannels: [String: FlutterMethodChannel] = [:]
   @MainActor private static var pluginRegistrar: FlutterPluginRegistrar?
