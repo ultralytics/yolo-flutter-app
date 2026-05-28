@@ -1,7 +1,11 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import CoreML
-import Flutter
+// `@preconcurrency` opts the Flutter framework into Swift-6 strict-isolation back-compat — the FlutterPlugin /
+// FlutterPlatformView / FlutterStreamHandler protocols predate Swift concurrency and aren't yet marked as
+// `@MainActor`-isolated. Without this Xcode 26.5 prints "Conformance crosses into main actor-isolated code and can
+// cause data races" for every plugin/platform-view class that uses `@MainActor`.
+@preconcurrency import Flutter
 import UIKit
 
 @MainActor

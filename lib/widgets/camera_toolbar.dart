@@ -1,10 +1,19 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-/// Bottom action toolbar (play/pause, switch camera, share). Implemented as a row of `IconButton.filledTonal` inside a
-/// translucent pill — the M3 stand-in for the iOS `UIToolbar` blur bar.
+/// Bottom action toolbar (play/pause, switch camera, share). Matches `yolo-ios-app/Sources/YOLO/YOLOView.swift`'s
+/// toolbar layout:
+///   * `toolbar.backgroundColor = .black.withAlphaComponent(0.7)` (line 637).
+///   * `toolBarHeight: CGFloat = 66` (line 803) — the toolbar is 66pt tall.
+///   * `buttonHeight = toolBarHeight * 0.75 = 49.5pt` — each button is roughly square at 49.5pt.
+///   * SF Symbol `pointSize: 20` (line 601) — icons render at ~20pt.
+///   * Buttons spread evenly across the toolbar width (`layoutToolbarButtons` lines 802–840).
 class CameraToolbar extends StatelessWidget {
+  static const double height = 66;
+  static const double iconSize = 20;
+
   /// Inference paused state; controls the play/pause icon.
   final bool isPaused;
 
@@ -27,33 +36,45 @@ class CameraToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(22),
+    return SizedBox(
+      height: height,
+      child: ColoredBox(
+        color: Colors.black.withValues(alpha: 0.7),
+        child: Row(
+          children: [
+            _ToolbarButton(
+              // play.fill / pause.fill on iOS → matching Cupertino glyphs for the closest visual to SF Symbols.
+              icon: isPaused ? CupertinoIcons.play_fill : CupertinoIcons.pause_fill,
+              onPressed: onPlayPause,
+              semanticLabel: isPaused ? 'Resume' : 'Pause',
+            ),
+            _ToolbarButton(
+              icon: CupertinoIcons.camera_rotate,
+              onPressed: onSwitchCamera,
+              semanticLabel: 'Switch camera',
+            ),
+            _ToolbarButton(icon: CupertinoIcons.share, onPressed: onShare, semanticLabel: 'Share'),
+          ],
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton.filledTonal(
-            onPressed: onPlayPause,
-            icon: Icon(isPaused ? Icons.play_arrow : Icons.pause),
-            tooltip: isPaused ? 'Resume' : 'Pause',
-          ),
-          const SizedBox(width: 8),
-          IconButton.filledTonal(
-            onPressed: onSwitchCamera,
-            icon: const Icon(Icons.cameraswitch),
-            tooltip: 'Switch camera',
-          ),
-          const SizedBox(width: 8),
-          IconButton.filledTonal(
-            onPressed: onShare,
-            icon: const Icon(Icons.ios_share),
-            tooltip: 'Share',
-          ),
-        ],
+    );
+  }
+}
+
+class _ToolbarButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String semanticLabel;
+
+  const _ToolbarButton({required this.icon, required this.onPressed, required this.semanticLabel});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
+        child: Icon(icon, color: Colors.white, size: CameraToolbar.iconSize, semanticLabel: semanticLabel),
       ),
     );
   }

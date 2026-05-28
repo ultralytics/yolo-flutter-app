@@ -360,8 +360,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final viewSize = Size(constraints.maxWidth, constraints.maxHeight);
-            // Cache for the focus-stream listener (registered in initState, fires later — needs a synchronous view-size
-            // lookup).
+            // Cache for the focus-stream listener (registered in initState, fires later — needs a synchronous
+            // view-size lookup).
             _viewSize = viewSize;
             return Stack(
               fit: StackFit.expand,
@@ -383,7 +383,39 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   ),
                 ),
                 FocusReticle(position: _focusPosition),
-                SafeArea(child: _buildOverlay(context)),
+                _ShowcaseOverlay(
+                  modelName: 'YOLO26$_currentSize',
+                  fps: _fps,
+                  inferenceMs: _inferenceMs,
+                  task: _currentTask,
+                  size: _currentSize,
+                  availableSizes: _availableSizes,
+                  supportedSizes: _supportedSizesForTask(_currentTask),
+                  downloadingSize: _downloadingSize,
+                  downloadFraction: _downloadFraction,
+                  confidence: _confidence,
+                  iou: _iou,
+                  zoom: _currentZoom,
+                  lensLabel: _currentLensLabel,
+                  lenses: _lenses,
+                  isPaused: _isPaused,
+                  versionLabel: widget.versionLabel,
+                  showSemanticTask: widget.showSemanticTask,
+                  onTaskChanged: _onTaskChanged,
+                  onSizeChanged: _onSizeChanged,
+                  onConfidenceChanged: (v) {
+                    setState(() => _confidence = v);
+                    unawaited(_controller.setConfidenceThreshold(v));
+                  },
+                  onIouChanged: (v) {
+                    setState(() => _iou = v);
+                    unawaited(_controller.setIoUThreshold(v));
+                  },
+                  onLensSelected: _onLensSelected,
+                  onPlayPause: _onPlayPause,
+                  onSwitchCamera: () => unawaited(_controller.switchCamera()),
+                  onShare: () => unawaited(_onShare()),
+                ),
               ],
             );
           },
@@ -391,96 +423,202 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       ),
     );
   }
+}
 
-  Widget _buildOverlay(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+/// Stateless overlay sandwich. Layout mirrors `yolo-ios-app/Sources/YOLO/YOLOView.swift#layoutPortrait` (lines 749–798)
+/// and the storyboard segmented-control frames in `Main.storyboard`:
+///   * Top: 20pt side padding, centered model name (10% view-height), centered FPS line (4%), 8pt gap, task control
+///     (32pt), 4pt gap, model-size control (32pt).
+///   * Middle: empty so the camera shows through.
+///   * Bottom: confidence + IoU sliders (46% view width, 20pt left padding), then zoom indicator, then lens picker,
+///     then the 66pt full-width toolbar. The Ultralytics logo + optional version label float to the right and left of
+///     the zoom HUD.
+class _ShowcaseOverlay extends StatelessWidget {
+  const _ShowcaseOverlay({
+    required this.modelName,
+    required this.fps,
+    required this.inferenceMs,
+    required this.task,
+    required this.size,
+    required this.availableSizes,
+    required this.supportedSizes,
+    required this.downloadingSize,
+    required this.downloadFraction,
+    required this.confidence,
+    required this.iou,
+    required this.zoom,
+    required this.lensLabel,
+    required this.lenses,
+    required this.isPaused,
+    required this.versionLabel,
+    required this.showSemanticTask,
+    required this.onTaskChanged,
+    required this.onSizeChanged,
+    required this.onConfidenceChanged,
+    required this.onIouChanged,
+    required this.onLensSelected,
+    required this.onPlayPause,
+    required this.onSwitchCamera,
+    required this.onShare,
+  });
+
+  final String modelName;
+  final double fps;
+  final double inferenceMs;
+  final YOLOTask task;
+  final String size;
+  final Set<String> availableSizes;
+  final Set<String> supportedSizes;
+  final String? downloadingSize;
+  final double? downloadFraction;
+  final double confidence;
+  final double iou;
+  final double zoom;
+  final String lensLabel;
+  final List<LensInfo> lenses;
+  final bool isPaused;
+  final String? versionLabel;
+  final bool showSemanticTask;
+  final ValueChanged<YOLOTask> onTaskChanged;
+  final ValueChanged<String> onSizeChanged;
+  final ValueChanged<double> onConfidenceChanged;
+  final ValueChanged<double> onIouChanged;
+  final ValueChanged<LensInfo> onLensSelected;
+  final VoidCallback onPlayPause;
+  final VoidCallback onSwitchCamera;
+  final VoidCallback onShare;
+
+  // iOS YOLOView ports — kept as constants so the layout reads like the Swift source.
+  static const double _sidePadding = 20;
+  static const double _topGap = 8;
+  static const double _sliderRowGap = 14;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      // Bottom toolbar extends to the device edge; opt the toolbar out of the bottom safe-area pad so it sits flush.
+      bottom: false,
       child: Column(
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: PerformanceLabel(
-              modelName: 'YOLO26$_currentSize',
-              fps: _fps,
-              inferenceMs: _inferenceMs,
+          // -- Top stack ----------------------------------------------------------------------------------------
+          Padding(
+            padding: const EdgeInsets.fromLTRB(_sidePadding, 8, _sidePadding, 0),
+            child: Column(
+              children: [
+                PerformanceLabel(modelName: modelName, fps: fps, inferenceMs: inferenceMs),
+                const SizedBox(height: _topGap),
+                TaskSegmentedControl(
+                  currentTask: task,
+                  onTaskChanged: onTaskChanged,
+                  showSemanticTask: showSemanticTask,
+                ),
+                const SizedBox(height: 4),
+                ModelSizeSegmentedControl(
+                  currentSize: size,
+                  availableSizes: availableSizes,
+                  supportedSizes: supportedSizes,
+                  onSizeChanged: onSizeChanged,
+                  downloadingSize: downloadingSize,
+                  downloadFraction: downloadFraction,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          TaskSegmentedControl(
-            currentTask: _currentTask,
-            onTaskChanged: _onTaskChanged,
-            showSemanticTask: widget.showSemanticTask,
-          ),
-          const SizedBox(height: 8),
-          ModelSizeSegmentedControl(
-            currentSize: _currentSize,
-            availableSizes: _availableSizes,
-            supportedSizes: _supportedSizesForTask(_currentTask),
-            onSizeChanged: _onSizeChanged,
-            downloadingSize: _downloadingSize,
-            downloadFraction: _downloadFraction,
-          ),
+
+          // -- Free camera area --------------------------------------------------------------------------------
           const Spacer(),
-          ThresholdSliderRow(
-            label: 'Confidence Threshold',
-            value: _confidence,
-            min: 0,
-            max: 1,
-            onChanged: (v) {
-              setState(() => _confidence = v);
-              unawaited(_controller.setConfidenceThreshold(v));
-            },
-          ),
-          ThresholdSliderRow(
-            label: 'IoU Threshold',
-            value: _iou,
-            min: 0,
-            max: 1,
-            onChanged: (v) {
-              setState(() => _iou = v);
-              unawaited(_controller.setIoUThreshold(v));
-            },
-          ),
-          const Align(
-            alignment: Alignment.bottomRight,
-            child: Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: LogoOverlay(),
+
+          // -- Sliders ------------------------------------------------------------------------------------------
+          Padding(
+            padding: const EdgeInsets.fromLTRB(_sidePadding, 0, _sidePadding, 0),
+            child: Column(
+              children: [
+                _SliderConstrained(
+                  child: ThresholdSliderRow(
+                    label: 'Confidence Threshold',
+                    value: confidence,
+                    min: 0,
+                    max: 1,
+                    onChanged: onConfidenceChanged,
+                  ),
+                ),
+                const SizedBox(height: _sliderRowGap),
+                _SliderConstrained(
+                  child: ThresholdSliderRow(
+                    label: 'IoU Threshold',
+                    value: iou,
+                    min: 0,
+                    max: 1,
+                    onChanged: onIouChanged,
+                  ),
+                ),
+              ],
             ),
           ),
-          ZoomIndicator(
-            currentZoom: _currentZoom,
-            lensLabel: _currentLensLabel,
+
+          // -- Zoom HUD + Logo ---------------------------------------------------------------------------------
+          Padding(
+            padding: const EdgeInsets.fromLTRB(_sidePadding, 8, _sidePadding, 0),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                ZoomIndicator(currentZoom: zoom, lensLabel: lensLabel),
+                const Align(alignment: Alignment.centerRight, child: LogoOverlay()),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          LensPicker(
-            lenses: _lenses,
-            currentZoomFactor: _currentZoom,
-            onLensSelected: _onLensSelected,
+
+          // -- Lens picker -------------------------------------------------------------------------------------
+          Padding(
+            padding: const EdgeInsets.fromLTRB(_sidePadding, 6, _sidePadding, 6),
+            child: LensPicker(
+              lenses: lenses,
+              currentZoomFactor: zoom,
+              onLensSelected: onLensSelected,
+            ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (widget.versionLabel != null)
-                Text(
-                  widget.versionLabel!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.7),
-                  ),
-                )
-              else
-                const SizedBox.shrink(),
-              CameraToolbar(
-                isPaused: _isPaused,
-                onPlayPause: _onPlayPause,
-                onSwitchCamera: () => unawaited(_controller.switchCamera()),
-                onShare: () => unawaited(_onShare()),
+
+          // -- Version + toolbar (full-bleed) ------------------------------------------------------------------
+          if (versionLabel != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: _sidePadding, vertical: 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  versionLabel!,
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                ),
               ),
-            ],
+            ),
+          CameraToolbar(
+            isPaused: isPaused,
+            onPlayPause: onPlayPause,
+            onSwitchCamera: onSwitchCamera,
+            onShare: onShare,
           ),
+          // Pad the safe-area bottom inset under the toolbar so it visually extends to the home-indicator edge.
+          SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );
   }
 }
+
+/// Constrains the iOS-style sliders to 46% of the view width on the left side, mirroring
+/// `layoutPortrait` line 763 (`sliderWidth = width * 0.46`).
+class _SliderConstrained extends StatelessWidget {
+  const _SliderConstrained({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FractionallySizedBox(
+        widthFactor: 0.46,
+        child: child,
+      ),
+    );
+  }
+}
+

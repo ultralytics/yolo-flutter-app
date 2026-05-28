@@ -18,7 +18,7 @@ import UIKit
 import Vision
 
 /// Specialized predictor for YOLO classification models that identify the subject of an image.
-class Classifier: BasePredictor {
+class Classifier: BasePredictor, @unchecked Sendable {
 
   override var imageCropAndScaleOption: VNImageCropAndScaleOption { .centerCrop }
 

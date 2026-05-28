@@ -14,7 +14,9 @@
 //  The results include both bounding boxes and pixel-level masks that can be overlaid on images.
 
 import Accelerate
-import CoreML
+// `@preconcurrency` suppresses the cascade of Swift-6 Sendable warnings from MLMultiArray captures inside the
+// confidenceMaskBuffer pipeline; CoreML hasn't audited those types yet.
+@preconcurrency import CoreML
 import Foundation
 import UIKit
 import Vision
@@ -45,7 +47,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         let out1 = results[1].featureValue.multiArrayValue
       else { return }
       let out0dim = checkShapeDimensions(of: out0)
-      let out1dim = checkShapeDimensions(of: out1)
+      _ = checkShapeDimensions(of: out1)
       if out0dim == 4 {
         masks = out0
         pred = out1
@@ -91,7 +93,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           DispatchQueue.main.async { self.isUpdating = false }
           return
         }
-        var maskResults = Masks(masks: processedMasks.1, combinedMask: processedMasks.0)
+        let maskResults = Masks(masks: processedMasks.1, combinedMask: processedMasks.0)
 
         let timing = self.updateTiming()
 
@@ -115,8 +117,6 @@ class Segmenter: BasePredictor, @unchecked Sendable {
       let emptyResult = YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
       return emptyResult
     }
-    var boxes = [Box]()
-
     let imageWidth = image.extent.width
     let imageHeight = image.extent.height
     self.inputSize = CGSize(width: imageWidth, height: imageHeight)
@@ -135,7 +135,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           let out1 = results[1].featureValue.multiArrayValue
         else { return YOLOResult(orig_shape: .zero, boxes: [], speed: 0, names: labels) }
         let out0dim = checkShapeDimensions(of: out0)
-        let out1dim = checkShapeDimensions(of: out1)
+        _ = checkShapeDimensions(of: out1)
         if out0dim == 4 {
           masks = out0
           pred = out1
@@ -143,14 +143,11 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           masks = out1
           pred = out0
         }
-        let a = Date()
 
         let detectedObjects = postProcessSegment(
           feature: pred, confidenceThreshold: Float(confidenceThreshold),
           iouThreshold: Float(iouThreshold))
         var boxes: [Box] = []
-        var colorMasks: [CGImage?] = []
-        var alhaMasks: [CGImage?] = []
         var alphas = [CGFloat]()
         for p in detectedObjects {
           let box = p.0

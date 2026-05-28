@@ -1,7 +1,9 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import AVFoundation
-import Flutter
+// See YOLOPlugin.swift — `@preconcurrency` keeps the FlutterPlatformView / FlutterStreamHandler conformances on a
+// `@MainActor` class from tripping Swift-6 strict-isolation warnings until Flutter audits the protocols.
+@preconcurrency import Flutter
 import UIKit
 
 // Helper extension for Float to Double conversion
