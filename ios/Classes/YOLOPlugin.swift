@@ -8,12 +8,27 @@ import CoreML
 @preconcurrency import Flutter
 import UIKit
 
-@MainActor
-public class YOLOPlugin: NSObject, FlutterPlugin {
-  // Dictionary to store channels for each instance
-  private static var instanceChannels: [String: FlutterMethodChannel] = [:]
-  // Store the registrar for creating new channels
-  private static var pluginRegistrar: FlutterPluginRegistrar?
+// Sendable shim that carries a non-Sendable value across queue boundaries. Used to hand `FlutterResult` (a
+// non-Sendable `(Any?) -> Void` closure) into the background `inspectModel` dispatch without tripping Swift 6
+// "capture of non-Sendable in @Sendable closure" warnings. The box is read on a single queue, so the unchecked
+// conformance is safe.
+final class SendableBox<T>: @unchecked Sendable {
+  let value: T
+  init(_ value: T) { self.value = value }
+}
+
+// The class itself stays free of any `@MainActor` annotation so its `FlutterPlugin` conformance doesn't cross into
+// main-actor-isolated code (Swift 6 strict concurrency would otherwise downgrade the conformance to a warning that
+// becomes an error in language mode 6). Methods that touch UI / `FlutterMethodChannel` hop onto the main actor via a
+// `Task { @MainActor in ... }` wrapper inside `handle(_:result:)`. `@unchecked Sendable` lets us carry `self` into
+// the inspectModel background dispatch — all instance methods invoked there (`checkModelExists`, `inspectModel`,
+// `parseLabels`) are pure helpers that read no mutable instance state.
+public final class YOLOPlugin: NSObject, FlutterPlugin, @unchecked Sendable {
+  // Statics here are only ever read/written from the `Task { @MainActor in ... }` body of `handle`, so we mark them
+  // `nonisolated(unsafe)` to silence the Swift 6 "global mutable state" warning without paying for an actor hop on
+  // every plugin call.
+  nonisolated(unsafe) private static var instanceChannels: [String: FlutterMethodChannel] = [:]
+  nonisolated(unsafe) private static var pluginRegistrar: FlutterPluginRegistrar?
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     // Store the registrar for later use
@@ -397,13 +412,17 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
         // MLModel.compileModel / MLModel(contentsOf:) read from disk and load the model into the ANE/GPU; running
         // them on the main thread stalls the UI long enough that iOS prints "This method should not be called on
         // the main thread as it may lead to UI unresponsiveness." Hop off-main, hop back to deliver the result.
-        DispatchQueue.global(qos: .userInitiated).async {
+        // Wrap `result` in a Sendable box so Swift 6 strict concurrency lets us carry the non-Sendable Flutter
+        // closure across the queue boundary without warnings; the box is read on the main queue only.
+        let resultBox = SendableBox(result)
+        let pathCopy = modelPath
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
           do {
-            let info = try self.inspectModel(modelPath: modelPath)
-            DispatchQueue.main.async { result(info) }
+            let info = try self.inspectModel(modelPath: pathCopy)
+            DispatchQueue.main.async { resultBox.value(info) }
           } catch {
             DispatchQueue.main.async {
-              result(
+              resultBox.value(
                 FlutterError(
                   code: "MODEL_INSPECTION_FAILED",
                   message: error.localizedDescription,

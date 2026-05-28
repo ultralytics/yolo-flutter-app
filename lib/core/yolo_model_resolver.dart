@@ -546,9 +546,12 @@ class YOLOModelResolver {
           sink.add(chunk);
           if (progressId == null || totalBytes <= 0) return;
           receivedBytes += chunk.length;
-          final fraction = (receivedBytes / totalBytes).clamp(0.0, 1.0);
+          // Cap the in-flight fraction at 0.99 so listeners never observe `1.0` from the streaming loop — the terminal
+          // emit at `1.0` is reserved for the post-rename success path so a chip never lights up "downloaded" for a
+          // transfer that turns out to be 0-byte / corrupt.
+          final fraction = (receivedBytes / totalBytes).clamp(0.0, 0.99);
           // Throttle to ~1% steps to avoid flooding the stream on fast links.
-          if (fraction - lastFraction >= 0.01 || fraction >= 1.0) {
+          if (fraction - lastFraction >= 0.01) {
             lastFraction = fraction;
             YOLOModelManager.emitProgress(progressId, fraction);
           }
