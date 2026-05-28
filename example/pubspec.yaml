@@ -3,7 +3,7 @@
 name: ultralytics_yolo_example
 description: "Demonstrates how to use the ultralytics_yolo plugin."
 publish_to: "none"
-version: 0.1.0+1
+version: 0.4.0+1
 
 environment:
   sdk: ^3.8.1
@@ -15,6 +15,8 @@ dependencies:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4
   image_picker: ^1.2.1
+  path_provider: ^2.1.5
+  share_plus: ^13.1.0
   ultralytics_yolo:
     path: ../
 
@@ -31,7 +33,6 @@ flutter:
   assets:
     - assets/
     - assets/models/
-    - assets/logo.png
     - assets/applogo.png
 
 flutter_launcher_icons:

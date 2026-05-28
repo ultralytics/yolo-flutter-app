@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo_example/presentation/screens/camera_inference_screen.dart';
+import 'package:ultralytics_yolo_example/presentation/screens/single_image_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,9 +13,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       title: 'Ultralytics YOLO',
-      home: CameraInferenceScreen(),
+      themeMode: ThemeMode.dark,
+      theme: ThemeData.dark(useMaterial3: true),
+      initialRoute: '/',
+      routes: {
+        '/': (_) => const CameraInferenceScreen(),
+        '/single': (_) => const SingleImageScreen(),
+      },
     );
   }
 }
