@@ -262,61 +262,67 @@ Widget logo() => const LogoOverlay();
 /// see the assembled iPhone-style layout — top labels + task/model segmented controls + bottom sliders + lens picker +
 /// toolbar + logo + zoom indicator — without an iOS Simulator or Android emulator. The visuals match the real
 /// YOLOShowcase build() one-for-one; the only thing fake is the camera region (`_CameraStub`) and the controller-driven
-/// state, which is hard-coded so the layout is fully realised.
-@Preview(name: 'YOLOShowcase — Detect / YOLO26n / iPhone-style', size: Size(393, 852))
+/// state, which is hard-coded so the layout is fully realized.
+@Preview(
+  name: 'YOLOShowcase — Detect / YOLO26n / iPhone-style',
+  size: Size(393, 852),
+)
 Widget showcaseDetectIphone() => const _ShowcaseMock(
-      task: YOLOTask.detect,
-      modelSize: 'n',
-      fps: 29.9,
-      inferenceMs: 11.1,
-      confidence: 0.25,
-      iou: 0.7,
-      currentZoom: 1,
-      currentLensLabel: 'Wide camera',
-      lenses: [
-        LensInfo(zoomFactor: 0.5, label: 'Ultra wide camera'),
-        LensInfo(zoomFactor: 1, label: 'Wide camera'),
-        LensInfo(zoomFactor: 4, label: 'Telephoto camera'),
-      ],
-    );
+  task: YOLOTask.detect,
+  modelSize: 'n',
+  fps: 29.9,
+  inferenceMs: 11.1,
+  confidence: 0.25,
+  iou: 0.7,
+  currentZoom: 1,
+  currentLensLabel: 'Wide camera',
+  lenses: [
+    LensInfo(zoomFactor: 0.5, label: 'Ultra wide camera'),
+    LensInfo(zoomFactor: 1, label: 'Wide camera'),
+    LensInfo(zoomFactor: 4, label: 'Telephoto camera'),
+  ],
+);
 
-@Preview(name: 'YOLOShowcase — Segment / YOLO26s downloading', size: Size(393, 852))
+@Preview(
+  name: 'YOLOShowcase — Segment / YOLO26s downloading',
+  size: Size(393, 852),
+)
 Widget showcaseSegmentDownloading() => const _ShowcaseMock(
-      task: YOLOTask.segment,
-      modelSize: 's',
-      availableSizes: {'n'},
-      downloadingSize: 's',
-      downloadFraction: 0.42,
-      fps: 18.3,
-      inferenceMs: 22.5,
-      confidence: 0.4,
-      iou: 0.55,
-      currentZoom: 0.5,
-      currentLensLabel: 'Ultra wide camera',
-      lenses: [
-        LensInfo(zoomFactor: 0.5, label: 'Ultra wide camera'),
-        LensInfo(zoomFactor: 1, label: 'Wide camera'),
-        LensInfo(zoomFactor: 2, label: 'Telephoto camera'),
-      ],
-    );
+  task: YOLOTask.segment,
+  modelSize: 's',
+  availableSizes: {'n'},
+  downloadingSize: 's',
+  downloadFraction: 0.42,
+  fps: 18.3,
+  inferenceMs: 22.5,
+  confidence: 0.4,
+  iou: 0.55,
+  currentZoom: 0.5,
+  currentLensLabel: 'Ultra wide camera',
+  lenses: [
+    LensInfo(zoomFactor: 0.5, label: 'Ultra wide camera'),
+    LensInfo(zoomFactor: 1, label: 'Wide camera'),
+    LensInfo(zoomFactor: 2, label: 'Telephoto camera'),
+  ],
+);
 
 @Preview(name: 'YOLOShowcase — Pose / YOLO26x / Tele 2x', size: Size(393, 852))
 Widget showcasePoseTele() => const _ShowcaseMock(
-      task: YOLOTask.pose,
-      modelSize: 'x',
-      availableSizes: {'n', 's', 'm', 'l', 'x'},
-      fps: 12.4,
-      inferenceMs: 78.6,
-      confidence: 0.3,
-      iou: 0.6,
-      currentZoom: 2,
-      currentLensLabel: 'Telephoto camera',
-      lenses: [
-        LensInfo(zoomFactor: 0.5, label: 'Ultra wide camera'),
-        LensInfo(zoomFactor: 1, label: 'Wide camera'),
-        LensInfo(zoomFactor: 2, label: 'Telephoto camera'),
-      ],
-    );
+  task: YOLOTask.pose,
+  modelSize: 'x',
+  availableSizes: {'n', 's', 'm', 'l', 'x'},
+  fps: 12.4,
+  inferenceMs: 78.6,
+  confidence: 0.3,
+  iou: 0.6,
+  currentZoom: 2,
+  currentLensLabel: 'Telephoto camera',
+  lenses: [
+    LensInfo(zoomFactor: 0.5, label: 'Ultra wide camera'),
+    LensInfo(zoomFactor: 1, label: 'Wide camera'),
+    LensInfo(zoomFactor: 2, label: 'Telephoto camera'),
+  ],
+);
 
 @Preview(name: 'FocusReticle — at center', group: 'Overlays', wrapper: darkBg)
 Widget reticle() => const SizedBox(
@@ -377,7 +383,10 @@ class _ShowcaseMock extends StatelessWidget {
             _CameraStub(),
             SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: Column(
                   children: [
                     Align(
@@ -389,7 +398,10 @@ class _ShowcaseMock extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    TaskSegmentedControl(currentTask: task, onTaskChanged: _noop),
+                    TaskSegmentedControl(
+                      currentTask: task,
+                      onTaskChanged: _noop,
+                    ),
                     const SizedBox(height: 8),
                     ModelSizeSegmentedControl(
                       currentSize: modelSize,
@@ -420,7 +432,10 @@ class _ShowcaseMock extends StatelessWidget {
                         child: LogoOverlay(),
                       ),
                     ),
-                    ZoomIndicator(currentZoom: currentZoom, lensLabel: currentLensLabel),
+                    ZoomIndicator(
+                      currentZoom: currentZoom,
+                      lensLabel: currentLensLabel,
+                    ),
                     const SizedBox(height: 4),
                     LensPicker(
                       lenses: lenses,
@@ -464,8 +479,8 @@ class _CameraStub extends StatelessWidget {
         child: Text(
           'Live camera renders here on device',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.white.withValues(alpha: 0.25),
-              ),
+            color: Colors.white.withValues(alpha: 0.25),
+          ),
         ),
       ),
     );
