@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
-/// Demonstrates YOLO inference on a single gallery image.
+/// Mirrors the iOS `YOLOSingleImageUIKit` example: pick a gallery image, run
+/// `yolo26n` detection, and list the resulting labels + confidences over the
+/// annotated image returned by the native side.
 class SingleImageScreen extends StatefulWidget {
   const SingleImageScreen({super.key});
 
@@ -22,6 +24,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   Uint8List? _imageBytes;
   Uint8List? _annotatedImage;
   bool _isModelReady = false;
+  bool _isInferring = false;
 
   @override
   void initState() {
@@ -46,6 +49,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
     final file = await _picker.pickImage(source: ImageSource.gallery);
     if (file == null) return;
     final bytes = await file.readAsBytes();
+    if (mounted) setState(() => _isInferring = true);
     final result = await _yolo.predict(bytes);
     if (!mounted) return;
     final detections = (result['detections'] as List?)
@@ -56,6 +60,7 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       _detections = detections ?? const [];
       _annotatedImage = result['annotatedImage'] as Uint8List?;
       _imageBytes = bytes;
+      _isInferring = false;
     });
   }
 
@@ -77,48 +82,64 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
       appBar: AppBar(title: const Text('Single Image Inference')),
       body: Column(
         children: [
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: _pickAndPredict,
-            child: const Text('Pick Image & Run Inference'),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: FilledButton.icon(
+              onPressed: (_isModelReady && !_isInferring)
+                  ? _pickAndPredict
+                  : null,
+              icon: const Icon(Icons.photo_library_outlined),
+              label: const Text('Pick image & run inference'),
+            ),
           ),
-          const SizedBox(height: 10),
           if (!_isModelReady)
             const Padding(
               padding: EdgeInsets.all(8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(width: 10),
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 12),
                   Text('Preparing YOLO26 model...'),
                 ],
               ),
             ),
+          if (_isInferring) const LinearProgressIndicator(minHeight: 2),
           Expanded(
             child: ListView(
               children: [
                 if (_annotatedImage != null || _imageBytes != null)
-                  SizedBox(
-                    height: 300,
-                    width: double.infinity,
-                    child: Image.memory(_annotatedImage ?? _imageBytes!),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(
+                        _annotatedImage ?? _imageBytes!,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 if (_detections.isNotEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
-                      'Detections',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      'Detections (${_detections.length})',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
                 for (final d in _detections)
                   ListTile(
                     dense: true,
+                    leading: const Icon(Icons.crop_din),
                     title: Text(d.className),
                     trailing: Text(
                       '${(d.confidence * 100).toStringAsFixed(1)}%',
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
               ],
