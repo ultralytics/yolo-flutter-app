@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Bottom action toolbar (play/pause, switch camera, share). Matches `yolo-ios-app/Sources/YOLO/YOLOView.swift`'s
@@ -11,7 +12,9 @@ import 'package:flutter/material.dart';
 ///   * SF Symbol `pointSize: 20` (line 601) — icons render at ~20pt.
 ///   * Buttons spread evenly across the toolbar width (`layoutToolbarButtons` lines 802–840).
 class CameraToolbar extends StatelessWidget {
-  static const double height = 66;
+  // 66pt matches the iOS reference toolbar; Android's bar is shortened since it also sits above the system nav bar.
+  static double get height =>
+      defaultTargetPlatform == TargetPlatform.android ? 50 : 66;
   static const double iconSize = 20;
 
   /// Inference paused state; controls the play/pause icon.

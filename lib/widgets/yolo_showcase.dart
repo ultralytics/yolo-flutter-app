@@ -101,6 +101,11 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // instead of looking frozen.
   bool _isModelLoading = false;
 
+  // False until the very first model finishes loading. Until then an opaque splash covers the camera so the user sees
+  // a seamless splash -> camera+predictions transition, instead of camera -> black (during the first GPU compile) ->
+  // camera. Stays true afterwards (later switches use the translucent veil instead).
+  bool _initialModelLoaded = false;
+
   bool _isPaused = false;
   Offset? _focusPosition;
   double _baseScale = 1;
@@ -312,6 +317,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     final loadedSize = _sizeForModelId(modelPath, loadedTask);
     setState(() {
       _isModelLoading = false;
+      _initialModelLoaded = true;
       if (loadedSize != null) {
         _runningTask = loadedTask;
         _runningSize = loadedSize;
@@ -328,6 +334,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (!mounted || modelPath != _currentModelId) return;
     setState(() {
       _isModelLoading = false;
+      _initialModelLoaded = true;
       _downloadingSize = null;
       _downloadFraction = null;
       _currentSize = _runningSize;
@@ -500,6 +507,15 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                 // Centered loading veil while a model is downloading/loading after a tap, so the screen never looks
                 // frozen with no indication of progress.
                 if (_isModelLoading) const _ModelLoadingOverlay(),
+                // Opaque startup splash (logotype on white, matching the native launch screen) held over the camera
+                // until the first model finishes loading — hides the camera-start + first GPU-compile black flash.
+                if (!_initialModelLoaded)
+                  const Positioned.fill(
+                    child: ColoredBox(
+                      color: Colors.white,
+                      child: Center(child: LogoOverlay(width: 220)),
+                    ),
+                  ),
               ],
             );
           },
