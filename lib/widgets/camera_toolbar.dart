@@ -12,9 +12,10 @@ import 'package:flutter/material.dart';
 ///   * SF Symbol `pointSize: 20` (line 601) — icons render at ~20pt.
 ///   * Buttons spread evenly across the toolbar width (`layoutToolbarButtons` lines 802–840).
 class CameraToolbar extends StatelessWidget {
-  // 66pt matches the iOS reference toolbar; Android's bar is shortened since it also sits above the system nav bar.
+  // 66pt matches the iOS reference toolbar; Android's bar is shortened to the 44pt min touch target since it also sits
+  // above the system nav bar.
   static double get height =>
-      defaultTargetPlatform == TargetPlatform.android ? 50 : 66;
+      defaultTargetPlatform == TargetPlatform.android ? 44 : 66;
   static const double iconSize = 20;
 
   /// Inference paused state; controls the play/pause icon.
