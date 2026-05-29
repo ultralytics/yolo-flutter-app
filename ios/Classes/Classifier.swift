@@ -33,14 +33,15 @@ class Classifier: BasePredictor, @unchecked Sendable {
 
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
+    // Honor requiresNMS (IoU 1.0 for NMS-free models) so this setter doesn't clobber the create()-time seed.
     detector.featureProvider = ThresholdProvider(
-      iouThreshold: iouThreshold, confidenceThreshold: confidenceThreshold)
+      iouThreshold: requiresNMS ? iouThreshold : 1.0, confidenceThreshold: confidenceThreshold)
   }
 
   override func setIouThreshold(iou: Double) {
     iouThreshold = iou
     detector.featureProvider = ThresholdProvider(
-      iouThreshold: iouThreshold, confidenceThreshold: confidenceThreshold)
+      iouThreshold: requiresNMS ? iouThreshold : 1.0, confidenceThreshold: confidenceThreshold)
   }
 
   override func processObservations(for request: VNRequest, error: Error?) {

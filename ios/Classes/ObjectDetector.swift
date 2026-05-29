@@ -37,8 +37,10 @@ class ObjectDetector: BasePredictor, @unchecked Sendable {
   /// - Parameter confidence: The new confidence threshold value (0.0 to 1.0).
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
+    // Force IoU = 1.0 for NMS-free (YOLO26) models so Vision's NMS doesn't suppress the model's own decoding — same as
+    // the create()-time seed, which this setter would otherwise clobber on the first threshold update.
     detector.featureProvider = ThresholdProvider(
-      iouThreshold: iouThreshold, confidenceThreshold: confidenceThreshold)
+      iouThreshold: requiresNMS ? iouThreshold : 1.0, confidenceThreshold: confidenceThreshold)
   }
 
   /// Sets the IoU threshold and updates the model's feature provider.
@@ -50,7 +52,7 @@ class ObjectDetector: BasePredictor, @unchecked Sendable {
   override func setIouThreshold(iou: Double) {
     iouThreshold = iou
     detector.featureProvider = ThresholdProvider(
-      iouThreshold: iouThreshold, confidenceThreshold: confidenceThreshold)
+      iouThreshold: requiresNMS ? iouThreshold : 1.0, confidenceThreshold: confidenceThreshold)
   }
 
   /// Processes the results from the Vision framework's object detection request.

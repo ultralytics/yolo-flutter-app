@@ -534,30 +534,13 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   func setupOverlayLayer() {
-    let width = self.bounds.width
-    let height = self.bounds.height
+    // overlayLayer fills the view (origin 0,0) so its sublayers (mask/pose) can use the view-coordinate frames produced
+    // by imageFrameInOverlay/aspectFillDisplayRect and register with the live preview. The previous margin-offset frame
+    // (derived from a hardcoded 4:3/16:9 ratio) shifted every pose skeleton and segmentation mask by that margin.
+    // Mirrors yolo-ios-app (overlayLayer.frame = bounds).
+    self.overlayLayer.frame = self.bounds
 
-    var ratio: CGFloat = 1.0
-    if videoCapture.captureSession.sessionPreset == .photo {
-      ratio = (4.0 / 3.0)
-    } else {
-      ratio = (16.0 / 9.0)
-    }
-    var offSet = CGFloat.zero
-    var margin = CGFloat.zero
-    if self.bounds.width < self.bounds.height {
-      offSet = height / ratio
-      margin = (offSet - self.bounds.width) / 2
-      self.overlayLayer.frame = CGRect(
-        x: -margin, y: 0, width: offSet, height: self.bounds.height)
-    } else {
-      offSet = width / ratio
-      margin = (offSet - self.bounds.height) / 2
-      self.overlayLayer.frame = CGRect(
-        x: 0, y: -margin, width: self.bounds.width, height: offSet)
-    }
-
-    // Update mask layer frame to match overlay layer bounds
+    // Update mask layer frame to match overlay layer bounds (re-set per-frame from imageFrameInOverlay during render).
     if let maskLayer = self.maskLayer {
       maskLayer.frame = self.overlayLayer.bounds
     }
@@ -1612,12 +1595,14 @@ extension YOLOView {
     var tempPoseLayer: CALayer?
     if let poseLayer = self.poseLayer {
       let tempLayer = CALayer()
-      let overlayFrame = self.overlayLayer.frame
+      // poseLayer now occupies the aspect-fill image rect (not the full overlay), and overlayLayer is at the view
+      // origin, so the captured-image copy must sit at poseLayer's own frame to match the live keypoints.
+      let poseFrame = poseLayer.frame
       tempLayer.frame = CGRect(
-        x: overlayFrame.origin.x,
-        y: overlayFrame.origin.y,
-        width: overlayFrame.width,
-        height: overlayFrame.height
+        x: poseFrame.origin.x,
+        y: poseFrame.origin.y,
+        width: poseFrame.width,
+        height: poseFrame.height
       )
       tempLayer.opacity = poseLayer.opacity
       if let sublayers = poseLayer.sublayers {

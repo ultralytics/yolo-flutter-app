@@ -99,7 +99,7 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
           )
 
           var obbResults: [OBBResult] = []
-          for result in nmsResults {
+          for result in nmsResults.prefix(numItemsThreshold) {
             // Un-letterbox to original-frame-normalized coords (see processObservations).
             let box = inputOBB(fromModelOBB: result.box)
             let score = result.score
@@ -239,12 +239,14 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
       scores: scores,
       iouThreshold: iouThreshold)
 
-    // 3) Build final
+    // 3) Build final — return RAW model-input-normalized boxes (like postProcessEnd2EndOBB). The single inputOBB
+    // un-letterbox happens in the callers (processObservations/predictOnImage); applying it here too double-transformed
+    // the traditional path. Matches yolo-ios-app (postProcessOBB returns raw; buildResults applies inputOBB once).
     var results = [(box: OBB, score: Float, cls: Int)]()
     results.reserveCapacity(keep.count)
     for idx in keep {
       let d = detections[idx]
-      results.append((inputOBB(fromModelOBB: d.obb), d.score, d.cls))
+      results.append((d.obb, d.score, d.cls))
     }
     return results
   }
