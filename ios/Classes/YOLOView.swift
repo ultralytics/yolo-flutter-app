@@ -16,6 +16,28 @@ import AVFoundation
 import UIKit
 import Vision
 
+/// Maps a rect normalized to `imageSize` into on-screen view coordinates under an aspect-fill (`resizeAspectFill`)
+/// preview: scale the image by `max(viewW/imgW, viewH/imgH)`, center it, and crop. Inverts exactly what the camera
+/// preview layer does, so overlays line up with the live image regardless of camera/preview aspect ratio. Ported from
+/// `yolo-ios-app/Sources/YOLO/YOLOView.swift#aspectFillDisplayRect`.
+func aspectFillDisplayRect(for normalizedRect: CGRect, imageSize: CGSize, viewSize: CGSize) -> CGRect {
+  guard imageSize.width > 0, imageSize.height > 0, viewSize.width > 0, viewSize.height > 0 else {
+    return .zero
+  }
+  let scale = max(viewSize.width / imageSize.width, viewSize.height / imageSize.height)
+  let scaledImageSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+  let offset = CGPoint(
+    x: (scaledImageSize.width - viewSize.width) / 2,
+    y: (scaledImageSize.height - viewSize.height) / 2
+  )
+  return CGRect(
+    x: normalizedRect.minX * imageSize.width * scale - offset.x,
+    y: normalizedRect.minY * imageSize.height * scale - offset.y,
+    width: normalizedRect.width * imageSize.width * scale,
+    height: normalizedRect.height * imageSize.height * scale
+  )
+}
+
 /// A UIView component that provides real-time object detection, segmentation, and pose estimation capabilities.
 @MainActor
 public class YOLOView: UIView, VideoCaptureDelegate {
@@ -794,7 +816,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
     }
 
-    let overlayFrame = overlayLayer.frame
+    let viewSize = bounds.size
     for i in 0..<boundingBoxViews.count {
       guard i < resultCount && i < 50 else {
         boundingBoxViews[i].hide()
@@ -804,11 +826,15 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       let detection = predictions.obb[i]
       let box = detection.box
       let confidence = CGFloat(detection.confidence)
-      let rect = CGRect(
-        x: overlayFrame.minX + CGFloat(box.cx - box.w / 2) * overlayFrame.width,
-        y: overlayFrame.minY + CGFloat(box.cy - box.h / 2) * overlayFrame.height,
-        width: CGFloat(box.w) * overlayFrame.width,
-        height: CGFloat(box.h) * overlayFrame.height
+      // Map the normalized OBB rect through the same aspect-fill transform the preview uses. A naive scale by the raw
+      // view dimensions stretches w/h by different factors (wrong aspect) and ignores the aspect-fill crop offset
+      // (mis-centered — the center can land on a box edge). Mirrors yolo-ios-app YOLOView.showOBBs.
+      let rect = aspectFillDisplayRect(
+        for: CGRect(
+          x: CGFloat(box.cx - box.w / 2), y: CGFloat(box.cy - box.h / 2),
+          width: CGFloat(box.w), height: CGFloat(box.h)),
+        imageSize: predictions.orig_shape,
+        viewSize: viewSize
       )
       if _showOverlays {
         boundingBoxViews[i].show(
