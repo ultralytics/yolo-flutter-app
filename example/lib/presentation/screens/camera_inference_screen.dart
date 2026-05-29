@@ -14,11 +14,24 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 class CameraInferenceScreen extends StatelessWidget {
   const CameraInferenceScreen({super.key});
 
-  Future<void> _onCapture(Uint8List bytes) async {
+  Future<void> _onCapture(BuildContext context, Uint8List bytes) async {
+    // Capture the share-sheet anchor BEFORE any async gap (no BuildContext use after await). iOS 26 gives the activity
+    // controller a popoverPresentationController even on iPhone; without a valid source rect the popover anchors at
+    // (0,0) and can present/dismiss incorrectly (and it is required on iPad). Use the screen's render box.
+    final box = context.findRenderObject() as RenderBox?;
+    final origin = box != null && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/yolo_capture.jpg')..writeAsBytesSync(bytes);
+
     await SharePlus.instance.share(
-      ShareParams(files: [XFile(file.path)], text: 'Ultralytics YOLO'),
+      ShareParams(
+        files: [XFile(file.path)],
+        text: 'Ultralytics YOLO',
+        sharePositionOrigin: origin,
+      ),
     );
   }
 
@@ -26,7 +39,10 @@ class CameraInferenceScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Hide the Semantic tab to mirror the iOS app's task control (Detect / Segment / Classify / Pose / OBB).
     return Scaffold(
-      body: YOLOShowcase(onCapture: _onCapture, showSemanticTask: false),
+      body: YOLOShowcase(
+        onCapture: (bytes) => _onCapture(context, bytes),
+        showSemanticTask: false,
+      ),
     );
   }
 }
