@@ -20,7 +20,9 @@ import Vision
 /// preview: scale the image by `max(viewW/imgW, viewH/imgH)`, center it, and crop. Inverts exactly what the camera
 /// preview layer does, so overlays line up with the live image regardless of camera/preview aspect ratio. Ported from
 /// `yolo-ios-app/Sources/YOLO/YOLOView.swift#aspectFillDisplayRect`.
-func aspectFillDisplayRect(for normalizedRect: CGRect, imageSize: CGSize, viewSize: CGSize) -> CGRect {
+func aspectFillDisplayRect(for normalizedRect: CGRect, imageSize: CGSize, viewSize: CGSize)
+  -> CGRect
+{
   guard imageSize.width > 0, imageSize.height > 0, viewSize.width > 0, viewSize.height > 0 else {
     return .zero
   }
