@@ -24,6 +24,9 @@ class CameraInferenceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: YOLOShowcase(onCapture: _onCapture));
+    // Hide the Semantic tab to mirror the iOS app's task control (Detect / Segment / Classify / Pose / OBB).
+    return Scaffold(
+      body: YOLOShowcase(onCapture: _onCapture, showSemanticTask: false),
+    );
   }
 }

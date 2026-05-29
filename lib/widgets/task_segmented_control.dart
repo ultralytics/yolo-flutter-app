@@ -30,11 +30,12 @@ class TaskSegmentedControl extends StatelessWidget {
     this.showSemanticTask = true,
   });
 
+  // Full words like the iOS app's segmentedControl (Detect / Segment / Classify / Pose / OBB).
   static const Map<YOLOTask, String> _shortLabels = {
-    YOLOTask.detect: 'Det',
-    YOLOTask.segment: 'Seg',
-    YOLOTask.semantic: 'Sem',
-    YOLOTask.classify: 'Cls',
+    YOLOTask.detect: 'Detect',
+    YOLOTask.segment: 'Segment',
+    YOLOTask.semantic: 'Semantic',
+    YOLOTask.classify: 'Classify',
     YOLOTask.pose: 'Pose',
     YOLOTask.obb: 'OBB',
   };

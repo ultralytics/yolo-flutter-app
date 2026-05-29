@@ -39,8 +39,8 @@ class LensPicker extends StatelessWidget {
     if (lenses.length < 2) return const SizedBox.shrink();
     final selected = _closestLens(lenses, currentZoomFactor);
 
-    return SizedBox(
-      width: double.infinity,
+    // Content-hug + centered (NOT full-width) — a compact pill like the iOS app, not a screen-wide bar.
+    return Center(
       child: CupertinoSlidingSegmentedControl<double>(
         groupValue: selected.zoomFactor,
         backgroundColor: Colors.black.withValues(alpha: 0.38),
