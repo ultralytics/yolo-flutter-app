@@ -3,14 +3,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-/// Picks the active YOLO26 model size (n/s/m/l/x) using a `CupertinoSlidingSegmentedControl` styled to match
-/// `yolo-ios-app`'s storyboard `modelSegmentedControl`. Downloaded chips read `YOLO26<size>`; missing chips are
-/// prefixed `⤓ ` to signal a download-on-tap. When [downloadingSize] matches a chip a thin
+/// Picks the active YOLO26 model size using a `CupertinoSlidingSegmentedControl` styled to match `yolo-ios-app`'s
+/// `Main.storyboard` modelSegmentedControl. Chips read `nano / small / medium / large / xlarge` (the storyboard
+/// titles); sizes not yet on disk are dimmed to signal a download-on-tap. When [downloadingSize] matches a chip a thin
 /// [LinearProgressIndicator] tracks [downloadFraction] under the label.
 ///
-/// Visual tokens pulled from `yolo-ios-app/YOLOiOSApp/ModelSelectionManager.swift` + `YOLOView.swift#setupLensControl`
-/// (the segmented controls share styling): translucent black background, 18% white selected thumb, 13pt semibold
-/// labels in white (bold + larger when active).
+/// Visual tokens: translucent black background, 18% white selected thumb, 13pt system-weight labels in white (light
+/// weight bump when active).
 class ModelSizeSegmentedControl extends StatelessWidget {
   /// Currently-selected size (one of `n s m l x`).
   final String currentSize;
@@ -44,6 +43,16 @@ class ModelSizeSegmentedControl extends StatelessWidget {
   });
 
   static const List<String> _sizes = ['n', 's', 'm', 'l', 'x'];
+
+  // iOS `Main.storyboard` modelSegmentedControl titles: nano / small / medium / large / xlarge. Showing `YOLO26<size>`
+  // overflowed the chips; the active model name already appears in the top `PerformanceLabel`.
+  static const Map<String, String> _sizeWords = {
+    'n': 'nano',
+    's': 'small',
+    'm': 'medium',
+    'l': 'large',
+    'x': 'xlarge',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +106,7 @@ class _SegmentLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = isAvailable ? 'YOLO26$size' : '⤓ YOLO26$size';
+    final label = ModelSizeSegmentedControl._sizeWords[size] ?? size;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
@@ -105,12 +114,16 @@ class _SegmentLabel extends StatelessWidget {
         children: [
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.visible,
+            softWrap: false,
             style: TextStyle(
-              color: Colors.white,
-              // Match iOS' 13pt segmented control labels; bump weight when selected to mirror UISegmentedControl's
-              // selected-state delta.
+              // Dim sizes not yet on disk as the download-on-tap affordance (replaces the old `⤓` glyph that
+              // overflowed). Downloaded sizes are full white.
+              color: Colors.white.withValues(alpha: isAvailable ? 1.0 : 0.5),
+              // iOS segmented controls use the system font (~13pt) with a light selected-state weight delta.
               fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
           if (isDownloading)

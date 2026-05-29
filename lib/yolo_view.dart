@@ -372,7 +372,34 @@ class _YOLOViewState extends State<YOLOView> {
       return Center(child: Text('Failed to load model: $_resolutionError'));
     }
     if (_resolvedModel == null) {
-      return const Center(child: CircularProgressIndicator());
+      // Match the in-app model-loading veil so the first load and subsequent switches look consistent.
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              SizedBox(height: 14),
+              Text(
+                'Loading model…',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return _buildCameraView();

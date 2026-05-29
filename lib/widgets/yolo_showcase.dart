@@ -488,6 +488,13 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   onSwitchCamera: () => unawaited(_controller.switchCamera()),
                   onShare: () => unawaited(_onShare()),
                 ),
+                // Ultralytics logotype, bottom-right — matches `Main.storyboard` logoImage (frame x215 y625 w159 h67
+                // on a 393x852 canvas, anchored bottom-right ~19pt from the edge, sitting above the toolbar).
+                const Positioned(
+                  right: 19,
+                  bottom: 160,
+                  child: LogoOverlay(width: 159),
+                ),
                 // Centered loading veil while a model is downloading/loading after a tap, so the screen never looks
                 // frozen with no indication of progress.
                 if (_isModelLoading) const _ModelLoadingOverlay(),
@@ -646,7 +653,8 @@ class _ShowcaseOverlay extends StatelessWidget {
             ),
           ),
 
-          // -- Zoom HUD + Logo ---------------------------------------------------------------------------------
+          // -- Zoom HUD ----------------------------------------------------------------------------------------
+          // Logo is NOT here — it sits bottom-right per `Main.storyboard` (handled in the outer Stack).
           Padding(
             padding: const EdgeInsets.fromLTRB(
               _sidePadding,
@@ -654,22 +662,13 @@ class _ShowcaseOverlay extends StatelessWidget {
               _sidePadding,
               0,
             ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                ValueListenableBuilder<double>(
-                  valueListenable: zoom,
-                  builder: (context, z, _) => ValueListenableBuilder<String>(
-                    valueListenable: lensLabel,
-                    builder: (context, label, _) =>
-                        ZoomIndicator(currentZoom: z, lensLabel: label),
-                  ),
-                ),
-                const Align(
-                  alignment: Alignment.centerRight,
-                  child: LogoOverlay(),
-                ),
-              ],
+            child: ValueListenableBuilder<double>(
+              valueListenable: zoom,
+              builder: (context, z, _) => ValueListenableBuilder<String>(
+                valueListenable: lensLabel,
+                builder: (context, label, _) =>
+                    ZoomIndicator(currentZoom: z, lensLabel: label),
+              ),
             ),
           ),
 
@@ -709,18 +708,14 @@ class _ShowcaseOverlay extends StatelessWidget {
                 ),
               ),
             ),
+          // 66pt toolbar flush at the very bottom (its black band covers the home-indicator inset). Matches
+          // `toolbar.frame = (0, height - 66, width, 66)` in `yolo-ios-app/Sources/YOLO/YOLOView.swift:806`. The
+          // earlier safe-area fill Container below this pushed the buttons ~34pt too high.
           CameraToolbar(
             isPaused: isPaused,
             onPlayPause: onPlayPause,
             onSwitchCamera: onSwitchCamera,
             onShare: onShare,
-          ),
-          // Extend the same translucent black band under the home-indicator inset so the toolbar reads as a single
-          // flush bottom bar (matches `toolbar.frame = ... height - 66, width: width, height: 66` in
-          // `yolo-ios-app/Sources/YOLO/YOLOView.swift:806`).
-          Container(
-            height: MediaQuery.of(context).padding.bottom,
-            color: Colors.black.withValues(alpha: 0.7),
           ),
         ],
       ),

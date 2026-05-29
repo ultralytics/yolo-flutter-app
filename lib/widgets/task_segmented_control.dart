@@ -75,10 +75,12 @@ class TaskSegmentedControl extends StatelessWidget {
                 _shortLabels[task] ?? task.name,
                 style: TextStyle(
                   color: Colors.white,
+                  // iOS segmented controls use the system font — regular, with only a light weight bump when selected.
+                  // The previous w700/w600 read as too heavy versus the native control.
                   fontSize: 13,
                   fontWeight: task == currentTask
-                      ? FontWeight.w700
-                      : FontWeight.w600,
+                      ? FontWeight.w600
+                      : FontWeight.w400,
                 ),
               ),
             ),

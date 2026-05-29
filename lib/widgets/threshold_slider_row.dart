@@ -56,7 +56,7 @@ class ThresholdSliderRow extends StatelessWidget {
           '$prefix $label',
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 15,
+            fontSize: 13,
             fontWeight: FontWeight.w400,
           ),
         ),
