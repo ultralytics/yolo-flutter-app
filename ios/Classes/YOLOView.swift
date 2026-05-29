@@ -623,206 +623,33 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   func showBoxes(predictions: YOLOResult) {
+    // Single preset-agnostic, orientation-agnostic path: map each box's top-left-origin `xywhn` through the same
+    // aspect-fill transform the preview uses (and that showOBBs/pose/masks already use). Replaces the legacy
+    // portrait/landscape ratio + double y-flip + VNImageRectForNormalizedRect code, which only lined up when the live
+    // preset's aspect ratio matched a hardcoded 4:3/16:9 constant. Mirrors yolo-ios-app YOLOView.showBoxes.
+    let resultCount = predictions.boxes.count
+    let maxVisible = min(resultCount, 50, boundingBoxViews.count)
+    let viewSize = bounds.size
 
-    let width = self.bounds.width
-    let height = self.bounds.height
-    var resultCount = 0
+    if showUIControls {
+      self.labelSliderNumItems.text =
+        String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
+    }
 
-    resultCount = predictions.boxes.count
-
-    if UIDevice.current.orientation == .portrait {
-
-      var ratio: CGFloat = 1.0
-
-      if videoCapture.captureSession.sessionPreset == .photo {
-        ratio = (height / width) / (4.0 / 3.0)
-      } else {
-        ratio = (height / width) / (16.0 / 9.0)
+    for i in 0..<boundingBoxViews.count {
+      guard i < maxVisible, _showOverlays else {
+        boundingBoxViews[i].hide()
+        continue
       }
-
-      if showUIControls {
-        self.labelSliderNumItems.text =
-          String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
-      }
-      for i in 0..<boundingBoxViews.count {
-        if i < (resultCount) && i < 50 {
-          var rect = CGRect.zero
-          var label = ""
-          var boxColor: UIColor = .white
-          var confidence: CGFloat = 0
-          var alpha: CGFloat = 0.9
-          var bestClass = ""
-
-          switch task {
-          case .detect:
-            let prediction = predictions.boxes[i]
-            rect = CGRect(
-              x: prediction.xywhn.minX, y: 1 - prediction.xywhn.maxY, width: prediction.xywhn.width,
-              height: prediction.xywhn.height)
-            bestClass = prediction.cls
-            confidence = CGFloat(prediction.conf)
-            let colorIndex = prediction.index % ultralyticsColors.count
-            boxColor = ultralyticsColors[colorIndex]
-            label = DetectionLabelStyle.text(className: bestClass, confidence: confidence)
-            alpha = DetectionLabelStyle.alpha(confidence: confidence)
-          default:
-            let prediction = predictions.boxes[i]
-            rect = prediction.xywhn
-            bestClass = prediction.cls
-            confidence = CGFloat(prediction.conf)
-            label = DetectionLabelStyle.text(className: bestClass, confidence: confidence)
-            let colorIndex = prediction.index % ultralyticsColors.count
-            boxColor = ultralyticsColors[colorIndex]
-            alpha = DetectionLabelStyle.alpha(confidence: confidence)
-
-          }
-          var displayRect = rect
-          switch UIDevice.current.orientation {
-          case .portraitUpsideDown:
-            displayRect = CGRect(
-              x: 1.0 - rect.origin.x - rect.width,
-              y: 1.0 - rect.origin.y - rect.height,
-              width: rect.width,
-              height: rect.height)
-          case .landscapeLeft:
-            displayRect = CGRect(
-              x: rect.origin.x,
-              y: rect.origin.y,
-              width: rect.width,
-              height: rect.height)
-          case .landscapeRight:
-            displayRect = CGRect(
-              x: rect.origin.x,
-              y: rect.origin.y,
-              width: rect.width,
-              height: rect.height)
-          case .unknown:
-            fallthrough
-          default: break
-          }
-          if ratio >= 1 {
-            let offset = (1 - ratio) * (0.5 - displayRect.minX)
-            if task == .detect {
-              let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: offset, y: -1)
-              displayRect = displayRect.applying(transform)
-            } else {
-              let transform = CGAffineTransform(translationX: offset, y: 0)
-              displayRect = displayRect.applying(transform)
-            }
-            displayRect.size.width *= ratio
-          } else {
-            if task == .detect {
-              let offset = (ratio - 1) * (0.5 - displayRect.maxY)
-
-              let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: offset - 1)
-              displayRect = displayRect.applying(transform)
-            } else {
-              let offset = (ratio - 1) * (0.5 - displayRect.minY)
-              let transform = CGAffineTransform(translationX: 0, y: offset)
-              displayRect = displayRect.applying(transform)
-            }
-            ratio = (height / width) / (3.0 / 4.0)
-            displayRect.size.height /= ratio
-          }
-          displayRect = VNImageRectForNormalizedRect(displayRect, Int(width), Int(height))
-
-          if _showOverlays {
-            boundingBoxViews[i].show(
-              frame: displayRect, label: label, color: boxColor, alpha: alpha)
-          } else {
-            boundingBoxViews[i].hide()
-          }
-
-        } else {
-          boundingBoxViews[i].hide()
-        }
-      }
-    } else {
-      resultCount = predictions.boxes.count
-      if showUIControls {
-        self.labelSliderNumItems.text =
-          String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
-      }
-
-      let frameAspectRatio = videoCapture.longSide / videoCapture.shortSide
-      let viewAspectRatio = width / height
-      var scaleX: CGFloat = 1.0
-      var scaleY: CGFloat = 1.0
-      var offsetX: CGFloat = 0.0
-      var offsetY: CGFloat = 0.0
-
-      if frameAspectRatio > viewAspectRatio {
-        scaleY = height / videoCapture.shortSide
-        scaleX = scaleY
-        offsetX = (videoCapture.longSide * scaleX - width) / 2
-      } else {
-        scaleX = width / videoCapture.longSide
-        scaleY = scaleX
-        offsetY = (videoCapture.shortSide * scaleY - height) / 2
-      }
-
-      for i in 0..<boundingBoxViews.count {
-        if i < resultCount && i < 50 {
-          var rect = CGRect.zero
-          var label = ""
-          var boxColor: UIColor = .white
-          var confidence: CGFloat = 0
-          var alpha: CGFloat = 0.9
-          var bestClass = ""
-
-          switch task {
-          case .detect:
-            let prediction = predictions.boxes[i]
-            // For the detect task, invert y using "1 - maxY" as before
-            rect = CGRect(
-              x: prediction.xywhn.minX,
-              y: 1 - prediction.xywhn.maxY,
-              width: prediction.xywhn.width,
-              height: prediction.xywhn.height
-            )
-            bestClass = prediction.cls
-            confidence = CGFloat(prediction.conf)
-
-          default:
-            let prediction = predictions.boxes[i]
-            rect = CGRect(
-              x: prediction.xywhn.minX,
-              y: 1 - prediction.xywhn.maxY,
-              width: prediction.xywhn.width,
-              height: prediction.xywhn.height
-            )
-            bestClass = prediction.cls
-            confidence = CGFloat(prediction.conf)
-          }
-
-          let colorIndex = predictions.boxes[i].index % ultralyticsColors.count
-          boxColor = ultralyticsColors[colorIndex]
-          label = DetectionLabelStyle.text(className: bestClass, confidence: confidence)
-          alpha = DetectionLabelStyle.alpha(confidence: confidence)
-
-          rect.origin.x = rect.origin.x * videoCapture.longSide * scaleX - offsetX
-          rect.origin.y =
-            height
-            - (rect.origin.y * videoCapture.shortSide * scaleY
-              - offsetY
-              + rect.size.height * videoCapture.shortSide * scaleY)
-          rect.size.width *= videoCapture.longSide * scaleX
-          rect.size.height *= videoCapture.shortSide * scaleY
-
-          if _showOverlays {
-            boundingBoxViews[i].show(
-              frame: rect,
-              label: label,
-              color: boxColor,
-              alpha: alpha
-            )
-          } else {
-            boundingBoxViews[i].hide()
-          }
-        } else {
-          boundingBoxViews[i].hide()
-        }
-      }
+      let prediction = predictions.boxes[i]
+      let rect = aspectFillDisplayRect(
+        for: prediction.xywhn, imageSize: predictions.orig_shape, viewSize: viewSize)
+      let confidence = CGFloat(prediction.conf)
+      boundingBoxViews[i].show(
+        frame: rect,
+        label: DetectionLabelStyle.text(className: prediction.cls, confidence: confidence),
+        color: ultralyticsColors[prediction.index % ultralyticsColors.count],
+        alpha: DetectionLabelStyle.alpha(confidence: confidence))
     }
   }
 
