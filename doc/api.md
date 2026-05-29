@@ -29,14 +29,14 @@ class YOLO {
 
 #### Constructor Parameters
 
-| Parameter           | Type                    | Required | Default | Description                                           |
-| ------------------- | ----------------------- | -------- | ------- | ----------------------------------------------------- |
-| `modelPath`         | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL     |
-| `task`              | `YOLOTask?`             | ❌       | `null`  | Type of YOLO task to perform when metadata is missing |
+| Parameter           | Type                    | Required | Default | Description                                                                                                 |
+| ------------------- | ----------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| `modelPath`         | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL                                                           |
+| `task`              | `YOLOTask?`             | ❌       | `null`  | Type of YOLO task to perform when metadata is missing                                                       |
 | `useGpu`            | `bool`                  | ❌       | `true`  | Allow GPU acceleration on Android (LiteRT 2.x GPU → CPU ladder); iOS uses Core ML. Set `false` to force CPU |
-| `useMultiInstance`  | `bool`                  | ❌       | `false` | Enable multi-instance support                         |
-| `classifierOptions` | `Map<String, dynamic>?` | ❌       | `null`  | Optional classifier preprocessing and label overrides |
-| `numItemsThreshold` | `int?`                  | ❌       | `30`    | Maximum number of returned detections                 |
+| `useMultiInstance`  | `bool`                  | ❌       | `false` | Enable multi-instance support                                                                               |
+| `classifierOptions` | `Map<String, dynamic>?` | ❌       | `null`  | Optional classifier preprocessing and label overrides                                                       |
+| `numItemsThreshold` | `int?`                  | ❌       | `30`    | Maximum number of returned detections                                                                       |
 
 #### Properties
 
@@ -253,21 +253,21 @@ class YOLOView extends StatefulWidget {
 
 #### Constructor Parameters
 
-| Parameter              | Type                                | Required | Default           | Description                                       |
-| ---------------------- | ----------------------------------- | -------- | ----------------- | ------------------------------------------------- |
-| `modelPath`            | `String`                            | ✅       | -                 | Official model ID, local path, asset path, or URL |
-| `task`                 | `YOLOTask?`                         | ❌       | `null`            | YOLO task type when metadata is missing           |
-| `controller`           | `YOLOViewController?`               | ❌       | `null`            | Custom view controller                            |
-| `cameraResolution`     | `String`                            | ❌       | `"720p"`          | Camera resolution                                 |
-| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`            | Detection results callback                        |
-| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`            | Performance metrics callback                      |
-| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`            | Comprehensive streaming callback                  |
-| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`            | Zoom level change callback                        |
-| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`            | Streaming configuration                           |
-| `confidenceThreshold`  | `double`                            | ❌       | `0.25`            | Initial confidence threshold for YOLOView         |
-| `iouThreshold`         | `double`                            | ❌       | `0.7`             | Initial IoU threshold for YOLOView                |
+| Parameter              | Type                                | Required | Default           | Description                                                                               |
+| ---------------------- | ----------------------------------- | -------- | ----------------- | ----------------------------------------------------------------------------------------- |
+| `modelPath`            | `String`                            | ✅       | -                 | Official model ID, local path, asset path, or URL                                         |
+| `task`                 | `YOLOTask?`                         | ❌       | `null`            | YOLO task type when metadata is missing                                                   |
+| `controller`           | `YOLOViewController?`               | ❌       | `null`            | Custom view controller                                                                    |
+| `cameraResolution`     | `String`                            | ❌       | `"720p"`          | Camera resolution                                                                         |
+| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`            | Detection results callback                                                                |
+| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`            | Performance metrics callback                                                              |
+| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`            | Comprehensive streaming callback                                                          |
+| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`            | Zoom level change callback                                                                |
+| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`            | Streaming configuration                                                                   |
+| `confidenceThreshold`  | `double`                            | ❌       | `0.25`            | Initial confidence threshold for YOLOView                                                 |
+| `iouThreshold`         | `double`                            | ❌       | `0.7`             | Initial IoU threshold for YOLOView                                                        |
 | `useGpu`               | `bool`                              | ❌       | `true`            | Allow GPU acceleration on Android (LiteRT 2.x GPU → CPU ladder); set `false` to force CPU |
-| `lensFacing`           | `LensFacing`                        | ❌       | `LensFacing.back` | Initial camera lens selection                     |
+| `lensFacing`           | `LensFacing`                        | ❌       | `LensFacing.back` | Initial camera lens selection                                                             |
 
 `LensFacing.backWide` prefers the shortest-focal-length rear camera on Android and falls back to the default back camera when the device does not expose a wide rear lens. Other platforms treat it as `LensFacing.back`.
 
