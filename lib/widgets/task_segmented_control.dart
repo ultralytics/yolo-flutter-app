@@ -30,12 +30,13 @@ class TaskSegmentedControl extends StatelessWidget {
     this.showSemanticTask = true,
   });
 
-  // Full words like the iOS app's segmentedControl (Detect / Segment / Classify / Pose / OBB).
+  // EXACT short button strings the iOS app inserts via task.shortName (yolo-ios-app ViewController.swift:77-108) —
+  // Det / Seg / Sem / Cls / Pose / OBB. The storyboard's full words are placeholders overridden at runtime.
   static const Map<YOLOTask, String> _shortLabels = {
-    YOLOTask.detect: 'Detect',
-    YOLOTask.segment: 'Segment',
-    YOLOTask.semantic: 'Semantic',
-    YOLOTask.classify: 'Classify',
+    YOLOTask.detect: 'Det',
+    YOLOTask.segment: 'Seg',
+    YOLOTask.semantic: 'Sem',
+    YOLOTask.classify: 'Cls',
     YOLOTask.pose: 'Pose',
     YOLOTask.obb: 'OBB',
   };

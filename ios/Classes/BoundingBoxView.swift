@@ -79,7 +79,7 @@ class BoundingBoxView {
   let textLayer: CATextLayer
 
   /// The base font size that can be scaled for external displays.
-  private var baseFontSize: CGFloat = 14
+  private var baseFontSize: CGFloat = 11
 
   /// Initializes a new BoundingBoxView with configured shape and text layers.
   init() {
