@@ -573,7 +573,7 @@ class _ShowcaseOverlay extends StatelessWidget {
   // iOS YOLOView ports — kept as constants so the layout reads like the Swift source.
   static const double _sidePadding = 20;
   static const double _topGap = 8;
-  static const double _sliderRowGap = 14;
+  static const double _sliderRowGap = 8;
 
   @override
   Widget build(BuildContext context) {
@@ -661,7 +661,7 @@ class _ShowcaseOverlay extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(
               _sidePadding,
-              8,
+              4,
               _sidePadding,
               0,
             ),
@@ -679,9 +679,9 @@ class _ShowcaseOverlay extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(
               _sidePadding,
-              6,
+              2,
               _sidePadding,
-              6,
+              2,
             ),
             child: ValueListenableBuilder<double>(
               valueListenable: zoom,

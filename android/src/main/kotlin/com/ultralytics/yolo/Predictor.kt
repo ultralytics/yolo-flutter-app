@@ -196,10 +196,13 @@ abstract class BasePredictor : Predictor {
 
     private fun inputRectFromModelRect(modelRect: RectF, origWidth: Int, origHeight: Int): RectF? {
         val transform = letterboxTransform(origWidth, origHeight) ?: return modelRect
-        val left = ((modelRect.left - transform.padX) / transform.gain).coerceIn(0f, origWidth.toFloat())
-        val top = ((modelRect.top - transform.padY) / transform.gain).coerceIn(0f, origHeight.toFloat())
-        val right = ((modelRect.right - transform.padX) / transform.gain).coerceIn(0f, origWidth.toFloat())
-        val bottom = ((modelRect.bottom - transform.padY) / transform.gain).coerceIn(0f, origHeight.toFloat())
+        // Do NOT clamp to the image bounds: a partially off-frame object has a box that legitimately extends past the
+        // edge, and clamping each side to [0, size] distorts it (e.g. a left edge pinned to 0 shifts the box right /
+        // stretches its width). Keep the true coordinates and let the overlay clip them, matching the iOS app.
+        val left = (modelRect.left - transform.padX) / transform.gain
+        val top = (modelRect.top - transform.padY) / transform.gain
+        val right = (modelRect.right - transform.padX) / transform.gain
+        val bottom = (modelRect.bottom - transform.padY) / transform.gain
         val rect = RectF(min(left, right), min(top, bottom), max(left, right), max(top, bottom))
         return rect.takeIf { it.width() > 0f && it.height() > 0f }
     }
