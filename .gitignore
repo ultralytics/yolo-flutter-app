@@ -96,3 +96,6 @@ threshold_test_sample/
 
 # Dev-only widget previews (per-developer scratch)
 example/lib/widget_previews.dart
+
+# Local dev screenshots
+Screenshot*.png
