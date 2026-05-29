@@ -6,25 +6,18 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.RectF
 import android.util.Log
-import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.support.metadata.MetadataExtractor
-import org.yaml.snakeyaml.Yaml
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.MappedByteBuffer
+
 /**
- * High-performance ObjectDetector.
- * - Performs "letterbox -> getPixels -> ByteBuffer" with reusable buffers
- * - Reuses Bitmap / ByteBuffer to reduce allocations
- * - Reuses inference output arrays
+ * High-performance ObjectDetector on LiteRT 2.x ([LiteRtModel]).
+ * - Letterbox -> getPixels -> FloatArray with reusable buffers
+ * - Reuses Bitmap / FloatArray / output arrays to reduce allocations
  */
 class ObjectDetector(
     context: Context,
     modelPath: String,
     override var labels: List<String>,
     private val useGpu: Boolean = true,
-    private var numItemsThreshold: Int = 30,
-    private val customOptions: Interpreter.Options? = null
+    private var numItemsThreshold: Int = 30
 ) : BasePredictor() {
     // Inference output dimensions
     private var out1 = 0
@@ -39,126 +32,51 @@ class ObjectDetector(
     // (2) Array to temporarily store pixels (inWidth*inHeight)
     private lateinit var intValues: IntArray
 
-    // (3) ByteBuffer for TFLite input (1 * height * width * 3 * 4 bytes)
-    private lateinit var inputBuffer: ByteBuffer
+    // (3) Reusable float input (1 * height * width * 3) for the CompiledModel input buffer.
+    private lateinit var floatInput: FloatArray
 
-    // CPU interpreter options. The GPU delegate is NOT added here; createInterpreterFastestFirst owns delegate
-    // selection (GPU first, closing it on failure) and falls back to these options for the XNNPACK CPU path.
-    private val interpreterOptions: Interpreter.Options = (customOptions ?: Interpreter.Options()).apply {
-        if (customOptions == null) {
-            setNumThreads(Runtime.getRuntime().availableProcessors())
-        }
-    }
-
-    // ========== TFLite Interpreter ==========
-    // Use protected var interpreter: Interpreter? = null from BasePredictor if available
-    // Otherwise, keep it in this class as usual
     init {
-        val modelBuffer  = YOLOUtils.loadModelFile(context, modelPath)
-
-        /* --- Get labels from metadata (try Appended ZIP → FlatBuffers in order) --- */
+        // Labels come from the appended ZIP. LiteRT 2.x drops the FlatBuffers/MetadataExtractor fallback (that
+        // artifact has no 2.x release); the appended-ZIP path covers all official YOLO exports.
         val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
-        var labelsWereLoaded = loadedLabels != null
-
         if (loadedLabels != null) {
-            this.labels = loadedLabels // Use labels from appended ZIP
+            this.labels = loadedLabels
             Log.i(TAG, "Labels successfully loaded from appended ZIP.")
-        } else {
-            Log.w(TAG, "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
-            // Try FlatBuffers as a fallback
-            if (loadLabelsFromFlatbuffers(modelBuffer)) {
-                labelsWereLoaded = true
-                Log.i(TAG, "Labels successfully loaded from FlatBuffers metadata.")
-            }
+        } else if (this.labels.isEmpty()) {
+            Log.w(TAG, "No embedded labels found and none provided; detections may lack class names.")
         }
 
-        if (!labelsWereLoaded) {
-            Log.w(TAG, "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
-            if (this.labels.isEmpty()) {
-                 Log.w(TAG, "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names.")
-            }
-        }
+        rtModel = LiteRtModel(modelPath, useGpu, "ObjectDetector")
 
-        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "ObjectDetector")
-        // Call allocateTensors() once during initialization, not in the inference loop
-        interpreter.allocateTensors()
-
-        // Check input shape (example: [1, inHeight, inWidth, 3])
-        val inputShape = interpreter.getInputTensor(0).shape()
-        val inBatch = inputShape[0]         // Usually 1
-        val inHeight = inputShape[1]        // Example: 320
-        val inWidth = inputShape[2]         // Example: 320
-        val inChannels = inputShape[3]      // 3 (RGB)
-        require(inBatch == 1 && inChannels == 3) {
-            "Input tensor shape not supported. Expected [1, H, W, 3]. But got ${inputShape.joinToString()}"
-        }
-        inputSize = Size(inWidth, inHeight) // Set variable in BasePredictor
+        // Input dims [1, H, W, 3].
+        val inDims = rtModel.inputDims
+        val inHeight = if (inDims.size >= 4) inDims[1] else 640
+        val inWidth = if (inDims.size >= 4) inDims[2] else 640
+        inputSize = Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
 
-        // Output shape (varies by model, modify as needed)
-        // Example: [1, 84, 2100] = [batch, outHeight, outWidth]
-        val outputShape = interpreter.getOutputTensor(0).shape()
-        out1 = outputShape[1] // 84
-        out2 = outputShape[2] // 2100
+        // Output dims [1, features, anchors], e.g. [1, 84, 8400]. Fall back to deriving from the element count.
+        val outDims = rtModel.outputDims.getOrNull(0) ?: IntArray(0)
+        if (outDims.size >= 3) {
+            out1 = outDims[1]
+            out2 = outDims[2]
+        } else {
+            val count = rtModel.outputElementCounts.getOrElse(0) { 0 }
+            val features = labels.size + 4
+            if (features in 1..count && count % features == 0) {
+                out1 = features
+                out2 = count / features
+            }
+        }
 
-        // Allocate preprocessing resources
         initPreprocessingResources(inWidth, inHeight)
-
-        // Allocate inference output arrays
         rawOutput = Array(1) { Array(out1) { FloatArray(out2) } }
     }
 
-    /* =================================================================== */
-    /*                 metadata helper functions (Kotlin)                 */
-    /* =================================================================== */
-
-    /**
-     * ────────────────────────────────────────────────────────────────
-     *  Load labels from FlatBuffers (metadata.yaml) - based on old code
-     *  - Scan all associatedFileNames
-     *  - Parse YAML as Map<Int,String>
-     *  - Use values directly as List and assign to labels
-     * ────────────────────────────────────────────────────────────────
-     */
-    private fun loadLabelsFromFlatbuffers(buf: MappedByteBuffer): Boolean = try {
-        val extractor = MetadataExtractor(buf)
-        val files = extractor.associatedFileNames
-        if (!files.isNullOrEmpty()) {
-            for (fileName in files) {
-                extractor.getAssociatedFile(fileName)?.use { stream ->
-                    val fileString = String(stream.readBytes(), Charsets.UTF_8)
-
-                    val yaml = Yaml()
-                    @Suppress("UNCHECKED_CAST")
-                    val data = yaml.load<Map<String, Any>>(fileString)
-                    if (data != null && data.containsKey("names")) {
-                        val namesMap = data["names"] as? Map<Int, String>
-                        if (namesMap != null) {
-                            labels = namesMap.values.toList()          // Same as old code
-                            return true
-                        }
-                    }
-                }
-            }
-        }
-        false
-    } catch (e: Exception) {
-        Log.e(TAG, "Failed to extract metadata: ${e.message}")
-        false
-    }
-
-
     private fun initPreprocessingResources(width: Int, height: Int) {
-        // ARGB_8888 Bitmap for input size (e.g., 320x320)
         scaledBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-
-        // Int array for pixel reading
         intValues = IntArray(width * height)
-
-        // Buffer for TFLite input
-        inputBuffer = ByteBuffer.allocateDirect(1 * width * height * 3 * 4).apply {
-            order(ByteOrder.nativeOrder())
-        }
+        floatInput = FloatArray(width * height * 3)
     }
 
     /**
@@ -184,16 +102,27 @@ class ObjectDetector(
             isFrontCamera = isFrontCamera,
             rotationDegrees = cameraRotationDegrees
         )
-        ImageUtils.copyRgbBitmapToFloatBuffer(
+        ImageUtils.copyRgbBitmapToFloatArray(
             scaledBitmap,
-            inputBuffer,
+            floatInput,
             intValues,
             INPUT_MEAN,
             INPUT_STANDARD_DEVIATION
         )
 
         // ======== Inference ============
-        interpreter.run(inputBuffer, rawOutput)
+        val outputs = rtModel.run(floatInput)
+
+        // Reshape the flat [out1*out2] output back into rawOutput[0][out1][out2] for the existing postprocess.
+        val flat = outputs[0]
+        val rows = rawOutput[0]
+        var idx = 0
+        for (i in 0 until out1) {
+            val row = rows[i]
+            for (j in 0 until out2) {
+                row[j] = flat[idx++]
+            }
+        }
 
         // ======== Post-processing (same as existing code) ============
         val outHeight = rawOutput[0].size      // out1

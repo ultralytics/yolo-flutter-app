@@ -7,128 +7,44 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.util.Log
-import org.tensorflow.lite.DataType
-import org.tensorflow.lite.Interpreter
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlin.math.roundToInt
 
 class SemanticSegmenter(
     context: Context,
     modelPath: String,
     override var labels: List<String>,
-    private val useGpu: Boolean = true,
-    private val customOptions: Interpreter.Options? = null
+    private val useGpu: Boolean = true
 ) : BasePredictor() {
-    // CPU interpreter options; createInterpreterFastestFirst owns GPU-delegate selection and falls back to these.
-    private val interpreterOptions = (customOptions ?: Interpreter.Options()).apply {
-        if (customOptions == null) {
-            setNumThreads(Runtime.getRuntime().availableProcessors())
-        }
-    }
-
-    private lateinit var inputBuffer: ByteBuffer
+    private lateinit var floatInput: FloatArray
     private lateinit var inputBitmap: Bitmap
     private lateinit var intValues: IntArray
     private lateinit var outputFloat: Array<Array<Array<FloatArray>>>
-    private lateinit var outputByte: Array<Array<Array<ByteArray>>>
     private lateinit var outputShape: IntArray
-    private lateinit var inputDataType: DataType
-    private lateinit var outputDataType: DataType
     private var colorCache = IntArray(0)
-    private var inputScale = 0f
-    private var inputZeroPoint = 0
 
     init {
-        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
-        YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)?.let {
-            labels = it
-        }
+        YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)?.let { labels = it }
 
-        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "SemanticSegmenter")
-        interpreter.allocateTensors()
+        rtModel = LiteRtModel(modelPath, useGpu, "SemanticSegmenter")
 
-        val inputShape = interpreter.getInputTensor(0).shape()
-        val inputTensor = interpreter.getInputTensor(0)
-        val inHeight = inputShape[1]
-        val inWidth = inputShape[2]
+        val inDims = rtModel.inputDims
+        val inHeight = if (inDims.size >= 4) inDims[1] else 640
+        val inWidth = if (inDims.size >= 4) inDims[2] else 640
         inputSize = Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
-        inputDataType = inputTensor.dataType()
-        inputTensor.quantizationParams().let {
-            inputScale = it.scale
-            inputZeroPoint = it.zeroPoint
-        }
 
-        val outputTensor = interpreter.getOutputTensor(0)
-        outputShape = outputTensor.shape()
-        outputDataType = outputTensor.dataType()
+        // fp16 semantic models output FLOAT [1, A, B, C]. The int8/uint8 output paths are dropped with LiteRT 2.x.
+        outputShape = rtModel.outputDims.getOrNull(0) ?: IntArray(0)
         require(outputShape.size == 4 && outputShape[0] == 1) {
             "Semantic output tensor shape not supported: ${outputShape.joinToString()}"
         }
-        when (outputDataType) {
-            DataType.FLOAT32 -> outputFloat = Array(outputShape[0]) {
-                Array(outputShape[1]) {
-                    Array(outputShape[2]) {
-                        FloatArray(outputShape[3])
-                    }
-                }
-            }
-            DataType.UINT8, DataType.INT8 -> outputByte = Array(outputShape[0]) {
-                Array(outputShape[1]) {
-                    Array(outputShape[2]) {
-                        ByteArray(outputShape[3])
-                    }
-                }
-            }
-            else -> throw IllegalArgumentException("Semantic output type not supported: $outputDataType")
+        outputFloat = Array(outputShape[0]) {
+            Array(outputShape[1]) { Array(outputShape[2]) { FloatArray(outputShape[3]) } }
         }
 
-        val inputElementBytes = when (inputDataType) {
-            DataType.FLOAT32 -> 4
-            DataType.UINT8, DataType.INT8 -> 1
-            else -> throw IllegalArgumentException("Semantic input type not supported: $inputDataType")
-        }
-        inputBuffer = ByteBuffer.allocateDirect(inHeight * inWidth * 3 * inputElementBytes).apply {
-            order(ByteOrder.nativeOrder())
-        }
+        floatInput = FloatArray(inWidth * inHeight * 3)
         inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
         intValues = IntArray(inWidth * inHeight)
-    }
-
-    private fun outputBuffer(): Any = when (outputDataType) {
-        DataType.FLOAT32 -> outputFloat
-        DataType.UINT8, DataType.INT8 -> outputByte
-        else -> throw IllegalArgumentException("Semantic output type not supported: $outputDataType")
-    }
-
-    private fun copyBitmapToInputBuffer(bitmap: Bitmap) {
-        inputBuffer.clear()
-        bitmap.getPixels(intValues, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-
-        for (pixel in intValues) {
-            writeInputValue(((pixel shr 16) and 0xFF) / 255f)
-            writeInputValue(((pixel shr 8) and 0xFF) / 255f)
-            writeInputValue((pixel and 0xFF) / 255f)
-        }
-        inputBuffer.rewind()
-    }
-
-    private fun writeInputValue(value: Float) {
-        when (inputDataType) {
-            DataType.FLOAT32 -> inputBuffer.putFloat(value)
-            DataType.UINT8 -> {
-                val scale = inputScale.takeIf { it > 0f } ?: (1f / 255f)
-                val quantized = (value / scale + inputZeroPoint).roundToInt().coerceIn(0, 255)
-                inputBuffer.put(quantized.toByte())
-            }
-            DataType.INT8 -> {
-                val scale = inputScale.takeIf { it > 0f } ?: (1f / 127f)
-                val quantized = (value / scale + inputZeroPoint).roundToInt().coerceIn(-128, 127)
-                inputBuffer.put(quantized.toByte())
-            }
-            else -> throw IllegalArgumentException("Semantic input type not supported: $inputDataType")
-        }
     }
 
     override fun predict(
@@ -148,9 +64,21 @@ class SemanticSegmenter(
             isFrontCamera = isFrontCamera,
             rotationDegrees = cameraRotationDegrees
         )
-        copyBitmapToInputBuffer(inputBitmap)
+        ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
 
-        interpreter.run(inputBuffer, outputBuffer())
+        // Reshape the flat float output into outputFloat[0].
+        val flat = rtModel.run(floatInput)[0]
+        val o = outputFloat[0]
+        var idx = 0
+        for (a in o.indices) {
+            val plane = o[a]
+            for (b in plane.indices) {
+                val cell = plane[b]
+                for (c in cell.indices) {
+                    cell[c] = flat[idx++]
+                }
+            }
+        }
         updateTiming()
 
         val semanticMask = postProcessSemantic(origWidth, origHeight)
@@ -209,60 +137,16 @@ class SemanticSegmenter(
     ): Int {
         if (classCount == 1) return 0
 
-        return when (outputDataType) {
-            DataType.FLOAT32 -> {
-                var bestIndex = 0
-                var bestScore = -Float.MAX_VALUE
-                for (classIndex in 0 until classCount) {
-                    val score = if (isNCHW) {
-                        outputFloat[0][classIndex][y][x]
-                    } else {
-                        outputFloat[0][y][x][classIndex]
-                    }
-                    if (score > bestScore) {
-                        bestScore = score
-                        bestIndex = classIndex
-                    }
-                }
-                bestIndex
+        var bestIndex = 0
+        var bestScore = -Float.MAX_VALUE
+        for (classIndex in 0 until classCount) {
+            val score = if (isNCHW) outputFloat[0][classIndex][y][x] else outputFloat[0][y][x][classIndex]
+            if (score > bestScore) {
+                bestScore = score
+                bestIndex = classIndex
             }
-
-            DataType.UINT8 -> {
-                var bestIndex = 0
-                var bestScore = Int.MIN_VALUE
-                for (classIndex in 0 until classCount) {
-                    val score = if (isNCHW) {
-                        outputByte[0][classIndex][y][x].toInt() and 0xFF
-                    } else {
-                        outputByte[0][y][x][classIndex].toInt() and 0xFF
-                    }
-                    if (score > bestScore) {
-                        bestScore = score
-                        bestIndex = classIndex
-                    }
-                }
-                bestIndex
-            }
-
-            DataType.INT8 -> {
-                var bestIndex = 0
-                var bestScore = Int.MIN_VALUE
-                for (classIndex in 0 until classCount) {
-                    val score = if (isNCHW) {
-                        outputByte[0][classIndex][y][x].toInt()
-                    } else {
-                        outputByte[0][y][x][classIndex].toInt()
-                    }
-                    if (score > bestScore) {
-                        bestScore = score
-                        bestIndex = classIndex
-                    }
-                }
-                bestIndex
-            }
-
-            else -> throw IllegalArgumentException("Semantic output type not supported: $outputDataType")
         }
+        return bestIndex
     }
 
     private fun semanticColors(classCount: Int): IntArray {

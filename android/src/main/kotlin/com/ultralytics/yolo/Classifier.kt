@@ -5,111 +5,62 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
-import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.support.metadata.MetadataExtractor
-import org.yaml.snakeyaml.Yaml
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.MappedByteBuffer
 
 class Classifier(
     context: Context,
     modelPath: String,
     override var labels: List<String> = emptyList(),
     private val useGpu: Boolean = true,
-    private val customOptions: Interpreter.Options? = null,
     private val classifierOptions: Map<String, Any>? = null
 ) : BasePredictor() {
-
-    // CPU interpreter options; createInterpreterFastestFirst owns GPU-delegate selection and falls back to these.
-    private val interpreterOptions: Interpreter.Options = (customOptions ?: Interpreter.Options()).apply {
-        if (customOptions == null) {
-            setNumThreads(4)
-        }
-    }
 
     var numClass: Int = 0
     private var modelInputChannels: Int = 3  // Default to 3-channel, will be detected
     private var isGrayscaleModel: Boolean = false
 
-    private lateinit var inputBuffer: ByteBuffer
+    private lateinit var floatInput: FloatArray
+    private lateinit var grayBuffer: ByteBuffer // only allocated for 1-channel grayscale models
     private lateinit var inputBitmap: Bitmap
     private lateinit var intValues: IntArray
 
     init {
-        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
-
-        // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
         val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
-        var labelsWereLoaded = loadedLabels != null
-
         if (loadedLabels != null) {
-            this.labels = loadedLabels // Use labels from appended ZIP
+            this.labels = loadedLabels
             Log.i(TAG, "Labels successfully loaded from appended ZIP.")
         } else {
-            Log.w(TAG, "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
-            // Try FlatBuffers as a fallback
-            if (loadLabelsFromFlatbuffers(modelBuffer)) {
-                labelsWereLoaded = true
-                Log.i(TAG, "Labels successfully loaded from FlatBuffers metadata.")
-            }
-        }
-
-        if (!labelsWereLoaded) {
-            Log.w(TAG, "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
-            
-            // Check if labels are provided via classifierOptions
             val optionsLabels = classifierOptions?.get("labels") as? List<*>
             if (optionsLabels != null) {
                 this.labels = optionsLabels.map { it.toString() }
-                Log.i(TAG, "Using labels from classifierOptions (${this.labels.size} classes): ${this.labels}")
             } else if (this.labels.isEmpty()) {
-                Log.w(TAG, "Warning: No labels loaded and no labels provided via constructor or classifierOptions. Detections might lack class names.")
+                Log.w(TAG, "No embedded labels found and none provided; predictions may lack class names.")
             }
         }
 
-        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "Classifier")
+        rtModel = LiteRtModel(modelPath, useGpu, "Classifier")
 
-        val inputShape = interpreter.getInputTensor(0).shape()
-        val inBatch = inputShape[0]
-        val inHeight = inputShape[1]
-        val inWidth = inputShape[2]
-        val inChannels = inputShape[3]
-        
-        // Detect model input channels and configure accordingly
+        // Input dims [1, H, W, C].
+        val inDims = rtModel.inputDims
+        val inHeight = if (inDims.size >= 4) inDims[1] else 224
+        val inWidth = if (inDims.size >= 4) inDims[2] else 224
+        val inChannels = if (inDims.size >= 4) inDims[3] else 3
         modelInputChannels = inChannels
-        
-        // Check if 1-channel support is enabled via classifier options
-        val enable1ChannelSupport = classifierOptions?.get("enable1ChannelSupport") as? Boolean ?: false
-        isGrayscaleModel = (inChannels == 1) || (enable1ChannelSupport && inChannels == 1)
-        
-        // Validate input shape based on detected or expected channels
-        val expectedChannels = classifierOptions?.get("expectedChannels") as? Int ?: inChannels
-        require(inBatch == 1) {
-            "Unexpected batch size. Expect batch=1, but got batch=$inBatch"
-        }
-        require(inChannels == expectedChannels || (expectedChannels == 1 && inChannels == 1) || (expectedChannels == 3 && inChannels == 3)) {
-            "Unexpected input channels. Expected $expectedChannels channels, but got $inChannels channels. Input shape: ${inputShape.joinToString()}"
-        }
+        isGrayscaleModel = inChannels == 1
 
         inputSize = Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
 
-        val outputShape = interpreter.getOutputTensor(0).shape()
-        // e.g. outputShape = [1, 1000] for ImageNet, [1, 12] for EMNIST
-        numClass = outputShape[1]
-
-        // Validate expected classes if specified
-        (classifierOptions?.get("expectedClasses") as? Int)?.let { expectedClasses ->
-            if (numClass != expectedClasses) {
-                Log.w(TAG, "Warning: Expected $expectedClasses output classes, but model has $numClass classes")
-            }
-        }
+        // Output dims [1, numClass]; fall back to the element count.
+        val outDims = rtModel.outputDims.getOrNull(0) ?: IntArray(0)
+        numClass = if (outDims.size >= 2) outDims[1] else rtModel.outputElementCounts.getOrElse(0) { labels.size }
 
         inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
         intValues = IntArray(inWidth * inHeight)
-        inputBuffer = ByteBuffer.allocateDirect(inWidth * inHeight * modelInputChannels * 4).apply {
-            order(ByteOrder.nativeOrder())
+        floatInput = FloatArray(inWidth * inHeight * modelInputChannels)
+        if (isGrayscaleModel) {
+            grayBuffer = ByteBuffer.allocateDirect(inWidth * inHeight * 4).apply { order(ByteOrder.nativeOrder()) }
         }
     }
 
@@ -138,23 +89,21 @@ class Classifier(
                 bitmap = inputBitmap,
                 targetWidth = inputSize.width,
                 targetHeight = inputSize.height,
-                outputBuffer = inputBuffer,
+                outputBuffer = grayBuffer,
                 pixels = intValues,
                 enableColorInversion = enableColorInversion,
                 enableMaxNormalization = enableMaxNormalization,
                 inputMean = inputMean,
                 inputStd = inputStd
             )
+            grayBuffer.rewind()
+            grayBuffer.asFloatBuffer().get(floatInput, 0, floatInput.size)
         } else {
-            ImageUtils.copyRgbBitmapToFloatBuffer(inputBitmap, inputBuffer, intValues, INPUT_MEAN, INPUT_STD)
+            ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues, INPUT_MEAN, INPUT_STD)
         }
 
-        val outputArray = Array(1) { FloatArray(numClass) }
-        interpreter.run(inputBuffer, outputArray)
-
+        val scores = rtModel.run(floatInput)[0] // flat FloatArray(numClass)
         updateTiming()
-
-        val scores = outputArray[0]   // FloatArray(numClass)
         val indexedScores = scores.mapIndexed { index, score -> index to score }
         val sorted = indexedScores.sortedByDescending { it.second }
 
@@ -196,35 +145,5 @@ class Classifier(
 
         private const val INPUT_MEAN = 0f
         private const val INPUT_STD = 255f
-    }
-    
-    /**
-     * Load labels from FlatBuffers metadata
-     */
-    private fun loadLabelsFromFlatbuffers(buf: MappedByteBuffer): Boolean = try {
-        val extractor = MetadataExtractor(buf)
-        val files = extractor.associatedFileNames
-        if (!files.isNullOrEmpty()) {
-            for (fileName in files) {
-                extractor.getAssociatedFile(fileName)?.use { stream ->
-                    val fileString = String(stream.readBytes(), Charsets.UTF_8)
-
-                    val yaml = Yaml()
-                    @Suppress("UNCHECKED_CAST")
-                    val data = yaml.load<Map<String, Any>>(fileString)
-                    if (data != null && data.containsKey("names")) {
-                        val namesMap = data["names"] as? Map<Int, String>
-                        if (namesMap != null) {
-                            labels = namesMap.values.toList()
-                            return true
-                        }
-                    }
-                }
-            }
-        }
-        false
-    } catch (e: Exception) {
-        Log.e(TAG, "Failed to extract metadata: ${e.message}")
-        false
     }
 }

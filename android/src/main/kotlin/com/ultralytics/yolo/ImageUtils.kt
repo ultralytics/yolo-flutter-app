@@ -205,6 +205,25 @@ object ImageUtils {
         byteBuffer.rewind()
     }
 
+    // FloatArray variant for the LiteRT 2.x CompiledModel path (TensorBuffer.writeFloat takes a float[], not a
+    // ByteBuffer). Writes planar-free interleaved RGB, normalized to [0,1] by default. `out` must be width*height*3.
+    @JvmStatic
+    fun copyRgbBitmapToFloatArray(
+        bitmap: Bitmap,
+        out: FloatArray,
+        pixels: IntArray,
+        inputMean: Float = 0f,
+        inputStd: Float = 255f
+    ) {
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        var j = 0
+        for (pixel in pixels) {
+            out[j++] = (((pixel shr 16) and 0xFF) - inputMean) / inputStd
+            out[j++] = (((pixel shr 8) and 0xFF) - inputMean) / inputStd
+            out[j++] = ((pixel and 0xFF) - inputMean) / inputStd
+        }
+    }
+
     /**
      * Process grayscale image for 1-channel classification models
      * Optimized for handwriting recognition (EMNIST-like models)

@@ -5,12 +5,6 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.*
 import android.util.Log
-import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.support.metadata.MetadataExtractor
-import org.yaml.snakeyaml.Yaml
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.MappedByteBuffer
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -20,8 +14,7 @@ class Segmenter(
     modelPath: String,
     override var labels: List<String>,
     private val useGpu: Boolean = true,
-    private var numItemsThreshold: Int = 30,
-    private val customOptions: Interpreter.Options? = null
+    private var numItemsThreshold: Int = 30
 ) : BasePredictor() {
 
     private val boxFeatureLength = 4  // (x, y, w, h)
@@ -34,15 +27,8 @@ class Segmenter(
     private var maskC = 0
     private var isEndToEnd = false
 
-    // CPU interpreter options; createInterpreterFastestFirst owns GPU-delegate selection and falls back to these.
-    private val interpreterOptions = (customOptions ?: Interpreter.Options()).apply {
-        if (customOptions == null) {
-            setNumThreads(Runtime.getRuntime().availableProcessors())
-        }
-    }
-
-    // Reuse ByteBuffer for input to reduce allocations
-    private lateinit var inputBuffer: ByteBuffer
+    // Reusable float input for the CompiledModel input buffer.
+    private lateinit var floatInput: FloatArray
     private lateinit var inputBitmap: Bitmap
     private lateinit var intValues: IntArray
 
@@ -50,57 +36,33 @@ class Segmenter(
     private lateinit var output0: Array<Array<FloatArray>>
     private lateinit var output1: Array<Array<Array<FloatArray>>>
 
+    // CompiledModel output indices: detection head (rank-3) and mask proto (rank-4) may be returned in either order.
+    private var detOutIndex = 0
+    private var maskOutIndex = 1
+
     init {
-
-        // Load model file (automatic extension appending)
-        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
-
-        // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
         val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
-        var labelsWereLoaded = loadedLabels != null
-
         if (loadedLabels != null) {
-            this.labels = loadedLabels // Use labels from appended ZIP
+            this.labels = loadedLabels
             Log.i("Segmenter", "Labels successfully loaded from appended ZIP.")
-        } else {
-            Log.w("Segmenter", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
-            // Try FlatBuffers as a fallback
-            if (loadLabelsFromFlatbuffers(modelBuffer)) {
-                labelsWereLoaded = true
-                Log.i("Segmenter", "Labels successfully loaded from FlatBuffers metadata.")
-            }
+        } else if (this.labels.isEmpty()) {
+            Log.w("Segmenter", "No embedded labels found and none provided; detections may lack class names.")
         }
 
-        if (!labelsWereLoaded) {
-            Log.w(
-                "Segmenter",
-                "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list."
-            )
-            if (this.labels.isEmpty()) {
-                Log.w(
-                    "Segmenter",
-                    "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names."
-                )
-            }
-        }
+        rtModel = LiteRtModel(modelPath, useGpu, "Segmenter")
 
-        // Create Interpreter
-        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "Segmenter")
-        // Call allocateTensors() once during initialization
-        interpreter.allocateTensors()
-
-        // Input tensor shape: [1, height, width, 3]
-        val inputShape = interpreter.getInputTensor(0).shape()
-        // Example: [1, 640, 640, 3]
-        val inHeight = inputShape[1]
-        val inWidth = inputShape[2]
-        // Set variables in BasePredictor
+        val inDims = rtModel.inputDims
+        val inHeight = if (inDims.size >= 4) inDims[1] else 640
+        val inWidth = if (inDims.size >= 4) inDims[2] else 640
         inputSize = com.ultralytics.yolo.Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
 
-        // Get and initialize output buffer sizes
-        val out0Shape = interpreter.getOutputTensor(0).shape()
-        val out1Shape = interpreter.getOutputTensor(1).shape()
+        // Segment has two outputs returned in arbitrary order: the detection head (rank 3) and the mask proto (rank 4).
+        val dims = rtModel.outputDims
+        detOutIndex = dims.indexOfFirst { it.size == 3 }.takeIf { it >= 0 } ?: 0
+        maskOutIndex = dims.indexOfFirst { it.size == 4 }.takeIf { it >= 0 } ?: 1
+        val out0Shape = dims.getOrNull(detOutIndex) ?: IntArray(0)
+        val out1Shape = dims.getOrNull(maskOutIndex) ?: IntArray(0)
 
         // Initialize output0 buffer (traditional [1,116,2100] or end-to-end [1,300,38])
         val batch0 = out0Shape[0]
@@ -122,11 +84,7 @@ class Segmenter(
         maskC = out1Shape[3]
         output1 = Array(batch1) { Array(maskH) { Array(maskW) { FloatArray(maskC) } } }
 
-        // Initialize input buffer (direct allocation)
-        val inputBytes = 1 * inHeight * inWidth * 3 * 4 // FLOAT32 is 4 bytes
-        inputBuffer = ByteBuffer.allocateDirect(inputBytes).apply {
-            order(ByteOrder.nativeOrder())
-        }
+        floatInput = FloatArray(inWidth * inHeight * 3)
         inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
         intValues = IntArray(inWidth * inHeight)
     }
@@ -153,15 +111,12 @@ class Segmenter(
             isFrontCamera = isFrontCamera,
             rotationDegrees = cameraRotationDegrees
         )
-        ImageUtils.copyRgbBitmapToFloatBuffer(inputBitmap, inputBuffer, intValues)
+        ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
 
-        // (2) Output buffer already allocated during initialization
         numClasses = out0NumFeatures - boxFeatureLength - maskConfidenceLength
 
-        // (3) Execute inference
-        val outputMap = mapOf(0 to output0, 1 to output1)
-        try {
-            interpreter.runForMultipleInputsOutputs(arrayOf(inputBuffer), outputMap)
+        val outs = try {
+            rtModel.run(floatInput)
         } catch (e: Exception) {
             Log.e("Segmenter", "Inference error: ${e.message}")
             val fpsDouble: Double = if (t4 > 0f) (1f / t4).toDouble() else 0.0
@@ -172,6 +127,30 @@ class Segmenter(
                 fps = fpsDouble,
                 names = labels
             )
+        }
+
+        // Reshape detection head (rank 3) into output0[0].
+        val detFlat = outs[detOutIndex]
+        val o0 = output0[0]
+        var i0 = 0
+        for (r in o0.indices) {
+            val row = o0[r]
+            for (c in row.indices) {
+                row[c] = detFlat[i0++]
+            }
+        }
+        // Reshape mask proto (rank 4) into output1[0].
+        val maskFlat = outs[maskOutIndex]
+        val o1 = output1[0]
+        var i1 = 0
+        for (h in o1.indices) {
+            val plane = o1[h]
+            for (w in plane.indices) {
+                val cell = plane[w]
+                for (c in cell.indices) {
+                    cell[c] = maskFlat[i1++]
+                }
+            }
         }
         updateTiming()
 
@@ -427,34 +406,4 @@ class Segmenter(
         val maskCoeffs: FloatArray
     )
 
-    /**
-     * Load labels from FlatBuffers metadata
-     */
-    private fun loadLabelsFromFlatbuffers(buf: MappedByteBuffer): Boolean = try {
-        val extractor = MetadataExtractor(buf)
-        val files = extractor.associatedFileNames
-        if (!files.isNullOrEmpty()) {
-            for (fileName in files) {
-                extractor.getAssociatedFile(fileName)?.use { stream ->
-                    val fileString = String(stream.readBytes(), Charsets.UTF_8)
-
-                    val yaml = Yaml()
-
-                    @Suppress("UNCHECKED_CAST")
-                    val data = yaml.load<Map<String, Any>>(fileString)
-                    if (data != null && data.containsKey("names")) {
-                        val namesMap = data["names"] as? Map<Int, String>
-                        if (namesMap != null) {
-                            labels = namesMap.values.toList()
-                            return true
-                        }
-                    }
-                }
-            }
-        }
-        false
-    } catch (e: Exception) {
-        Log.e("Segmenter", "Failed to extract metadata: ${e.message}")
-        false
-    }
 }

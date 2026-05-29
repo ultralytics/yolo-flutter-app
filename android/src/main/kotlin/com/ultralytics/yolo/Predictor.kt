@@ -5,7 +5,6 @@ package com.ultralytics.yolo
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.graphics.RectF
-import org.tensorflow.lite.Interpreter
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -37,10 +36,10 @@ interface Predictor {
 abstract class BasePredictor : Predictor {
     override var isUpdating: Boolean = false
     override lateinit var labels: List<String>
-    protected lateinit var interpreter: Interpreter
+    protected lateinit var rtModel: LiteRtModel
     override lateinit var inputSize: Size
     protected lateinit var modelInputSize: Pair<Int, Int>
-    protected fun isInterpreterInitialized() = this::interpreter.isInitialized
+    protected fun isInterpreterInitialized() = this::rtModel.isInitialized
 
     protected var t0: Long = 0L
     protected var t2: Double = 0.0
@@ -54,7 +53,7 @@ abstract class BasePredictor : Predictor {
 
     fun close() {
         if (isInterpreterInitialized()) {
-            interpreter.close()
+            rtModel.close()
         }
     }
 

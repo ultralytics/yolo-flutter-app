@@ -5,7 +5,6 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.Color
 import android.util.Log
-import org.tensorflow.lite.support.common.FileUtil
 
 val ultralyticsColors: List<Int> = listOf(
     Color.argb(153, 4, 42, 255),
@@ -60,6 +59,20 @@ object YOLOUtils {
      * @param modelPath The model path (can be an asset path or absolute filesystem path)
      * @return ByteBuffer containing the model data
      */
+    // Memory-maps a model file bundled in assets (replaces the litert-support FileUtil.loadMappedFile, which has no
+    // LiteRT 2.x release).
+    private fun loadMappedAsset(context: Context, assetPath: String): java.nio.MappedByteBuffer {
+        context.assets.openFd(assetPath).use { afd ->
+            java.io.FileInputStream(afd.fileDescriptor).use { fis ->
+                return fis.channel.map(
+                    java.nio.channels.FileChannel.MapMode.READ_ONLY,
+                    afd.startOffset,
+                    afd.declaredLength
+                )
+            }
+        }
+    }
+
     fun loadModelFile(context: Context, modelPath: String): java.nio.MappedByteBuffer {
         val finalModelPath = ensureTFLiteExtension(modelPath)
 
@@ -69,7 +82,7 @@ object YOLOUtils {
                 return loadModelFromFilesystem(finalModelPath)
             } else {
                 // Try loading from assets
-                return FileUtil.loadMappedFile(context, finalModelPath)
+                return loadMappedAsset(context, finalModelPath)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load model with path: $finalModelPath, error: ${e.message}")
@@ -79,7 +92,7 @@ object YOLOUtils {
                 if (isAbsolutePath(modelPath) && fileExistsAtPath(modelPath)) {
                     return loadModelFromFilesystem(modelPath)
                 } else {
-                    return FileUtil.loadMappedFile(context, modelPath)
+                    return loadMappedAsset(context, modelPath)
                 }
             } catch (e2: Exception) {
                 Log.e(TAG, "Failed to load model with both paths. Original error: ${e.message}, Fallback error: ${e2.message}")

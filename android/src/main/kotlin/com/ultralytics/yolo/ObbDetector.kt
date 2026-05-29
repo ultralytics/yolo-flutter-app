@@ -5,12 +5,6 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.*
 import android.util.Log
-import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.support.metadata.MetadataExtractor
-import org.yaml.snakeyaml.Yaml
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.MappedByteBuffer
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -20,19 +14,11 @@ class ObbDetector(
     modelPath: String,
     override var labels: List<String>,
     private val useGpu: Boolean = true,
-    private var numItemsThreshold: Int = 30,
-    private val customOptions: Interpreter.Options? = null
+    private var numItemsThreshold: Int = 30
 ) : BasePredictor() {
 
-    // CPU interpreter options; createInterpreterFastestFirst owns GPU-delegate selection and falls back to these.
-    private val interpreterOptions: Interpreter.Options = (customOptions ?: Interpreter.Options()).apply {
-        if (customOptions == null) {
-            setNumThreads(Runtime.getRuntime().availableProcessors())
-        }
-    }
-
-    // Reuse ByteBuffer for input to reduce allocations
-    private lateinit var inputBuffer: ByteBuffer
+    // Reusable float input for the CompiledModel input buffer.
+    private lateinit var floatInput: FloatArray
     private lateinit var inputBitmap: Bitmap
     private lateinit var intValues: IntArray
     
@@ -48,58 +34,36 @@ class ObbDetector(
     private var outAnchors = 0
 
     init {
-        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
-
-        // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
         val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
-        var labelsWereLoaded = loadedLabels != null
-
         if (loadedLabels != null) {
-            this.labels = loadedLabels // Use labels from appended ZIP
+            this.labels = loadedLabels
             Log.i("ObbDetector", "Labels successfully loaded from appended ZIP.")
-        } else {
-            Log.w("ObbDetector", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
-            // Try FlatBuffers as a fallback
-            if (loadLabelsFromFlatbuffers(modelBuffer)) {
-                labelsWereLoaded = true
-                Log.i("ObbDetector", "Labels successfully loaded from FlatBuffers metadata.")
-            }
+        } else if (this.labels.isEmpty()) {
+            Log.w("ObbDetector", "No embedded labels found and none provided; detections may lack class names.")
         }
 
-        if (!labelsWereLoaded) {
-            Log.w("ObbDetector", "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
-            if (this.labels.isEmpty()) {
-                Log.w("ObbDetector", "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names.")
-            }
-        }
+        rtModel = LiteRtModel(modelPath, useGpu, "ObbDetector")
 
-        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "ObbDetector")
-        // Call allocateTensors() once during initialization, not in the inference loop
-        interpreter.allocateTensors()
-
-        val inputShape = interpreter.getInputTensor(0).shape()
-        val inHeight = inputShape[1]
-        val inWidth = inputShape[2]
+        val inDims = rtModel.inputDims
+        val inHeight = if (inDims.size >= 4) inDims[1] else 640
+        val inWidth = if (inDims.size >= 4) inDims[2] else 640
         inputSize = Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
-        
-        val outShape = interpreter.getOutputTensor(0).shape() // e.g.: [1, outChannels, outAnchors]
-        outBatch = outShape[0]       // Usually 1
-        outChannels = outShape[1]    // (4 + numClasses + 1)
-        outAnchors = outShape[2]     // Total number of anchors
-        
+
+        val outShape = rtModel.outputDims.getOrNull(0) ?: IntArray(0) // [1, outChannels, outAnchors]
+        outBatch = if (outShape.isNotEmpty()) outShape[0] else 1
+        outChannels = if (outShape.size >= 3) outShape[1] else 0
+        outAnchors = if (outShape.size >= 3) outShape[2] else 0
+
         rawOutput = Array(outBatch) {
             Array(outChannels) { FloatArray(outAnchors) }
         }
-        
+
         transposedOutput = Array(outAnchors) {
             FloatArray(outChannels)
         }
-        
-        val inputBytes = 1 * inHeight * inWidth * 3 * 4 // FLOAT32 is 4 bytes
-        inputBuffer = ByteBuffer.allocateDirect(inputBytes).apply {
-            order(ByteOrder.nativeOrder())
-        }
+
+        floatInput = FloatArray(inWidth * inHeight * 3)
         inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
         intValues = IntArray(inWidth * inHeight)
     }
@@ -120,9 +84,17 @@ class ObbDetector(
             isFrontCamera = isFrontCamera,
             rotationDegrees = cameraRotationDegrees
         )
-        ImageUtils.copyRgbBitmapToFloatBuffer(inputBitmap, inputBuffer, intValues)
+        ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
 
-        interpreter.run(inputBuffer, rawOutput)
+        // Reshape the flat output into rawOutput[0][outChannels][outAnchors].
+        val flat = rtModel.run(floatInput)[0]
+        var idx = 0
+        for (c in 0 until outChannels) {
+            val row = rawOutput[0][c]
+            for (a in 0 until outAnchors) {
+                row[a] = flat[idx++]
+            }
+        }
         updateTiming()
 
         for (i in 0 until outAnchors) {
@@ -406,35 +378,6 @@ class ObbDetector(
         return kotlin.math.abs(area) * 0.5f
     }
     
-    /**
-     * Load labels from FlatBuffers metadata
-     */
-    private fun loadLabelsFromFlatbuffers(buf: MappedByteBuffer): Boolean = try {
-        val extractor = MetadataExtractor(buf)
-        val files = extractor.associatedFileNames
-        if (!files.isNullOrEmpty()) {
-            for (fileName in files) {
-                extractor.getAssociatedFile(fileName)?.use { stream ->
-                    val fileString = String(stream.readBytes(), Charsets.UTF_8)
-
-                    val yaml = Yaml()
-                    @Suppress("UNCHECKED_CAST")
-                    val data = yaml.load<Map<String, Any>>(fileString)
-                    if (data != null && data.containsKey("names")) {
-                        val namesMap = data["names"] as? Map<Int, String>
-                        if (namesMap != null) {
-                            labels = namesMap.values.toList()
-                            return true
-                        }
-                    }
-                }
-            }
-        }
-        false
-    } catch (e: Exception) {
-        Log.e("ObbDetector", "Failed to extract metadata: ${e.message}")
-        false
-    }
 }
 
 /** Extension to get Axis-Aligned Bounding Box (AABB) of OBB */

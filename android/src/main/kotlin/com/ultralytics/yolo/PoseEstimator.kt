@@ -5,11 +5,6 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.*
 import android.util.Log
-import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.support.metadata.MetadataExtractor
-import org.yaml.snakeyaml.Yaml
-import java.nio.ByteBuffer
-import java.nio.MappedByteBuffer
 import kotlin.math.max
 import kotlin.math.min
 
@@ -20,8 +15,7 @@ class PoseEstimator(
     private val useGpu: Boolean = true,
     private var confidenceThreshold: Float = 0.25f,   // Can be changed as needed
     private var iouThreshold: Float = 0.7f,
-    private var numItemsThreshold: Int = 30,
-    private val customOptions: Interpreter.Options? = null
+    private var numItemsThreshold: Int = 30
 ) : BasePredictor() {
 
     private enum class OutputLayout {
@@ -35,15 +29,8 @@ class PoseEstimator(
         private const val KEYPOINTS_COUNT = 17
     }
 
-    // CPU interpreter options; createInterpreterFastestFirst owns GPU-delegate selection and falls back to these.
-    private val interpreterOptions = (customOptions ?: Interpreter.Options()).apply {
-        if (customOptions == null) {
-            setNumThreads(Runtime.getRuntime().availableProcessors())
-        }
-    }
-
-    // Reuse ByteBuffer for input to reduce allocations
-    private lateinit var inputBuffer: ByteBuffer
+    // Reusable float input for the CompiledModel input buffer.
+    private lateinit var floatInput: FloatArray
     private lateinit var inputBitmap: Bitmap
     private lateinit var intValues: IntArray
     
@@ -57,43 +44,24 @@ class PoseEstimator(
     private lateinit var outputLayout: OutputLayout
 
     init {
-        val modelBuffer = YOLOUtils.loadModelFile(context, modelPath)
-
-        // ===== Load label information (try Appended ZIP → FlatBuffers in order) =====
         val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
-        var labelsWereLoaded = loadedLabels != null
-
         if (loadedLabels != null) {
-            this.labels = loadedLabels // Use labels from appended ZIP
+            this.labels = loadedLabels
             Log.i("PoseEstimator", "Labels successfully loaded from appended ZIP.")
-        } else {
-            Log.w("PoseEstimator", "Could not load labels from appended ZIP, trying FlatBuffers metadata...")
-            // Try FlatBuffers as a fallback
-            if (loadLabelsFromFlatbuffers(modelBuffer)) {
-                labelsWereLoaded = true
-                Log.i("PoseEstimator", "Labels successfully loaded from FlatBuffers metadata.")
-            }
+        } else if (this.labels.isEmpty()) {
+            Log.w("PoseEstimator", "No embedded labels found and none provided; detections may lack class names.")
         }
 
-        if (!labelsWereLoaded) {
-            Log.w("PoseEstimator", "No embedded labels found from appended ZIP or FlatBuffers. Using labels passed via constructor (if any) or an empty list.")
-            if (this.labels.isEmpty()) {
-                Log.w("PoseEstimator", "Warning: No labels loaded and no labels provided via constructor. Detections might lack class names.")
-            }
-        }
+        rtModel = LiteRtModel(modelPath, useGpu, "PoseEstimator")
 
-        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "PoseEstimator")
-        // Call allocateTensors() once during initialization
-        interpreter.allocateTensors()
-
-        val inputShape = interpreter.getInputTensor(0).shape()
-        val inHeight = inputShape[1]
-        val inWidth = inputShape[2]
+        val inDims = rtModel.inputDims
+        val inHeight = if (inDims.size >= 4) inDims[1] else 640
+        val inWidth = if (inDims.size >= 4) inDims[2] else 640
         inputSize = com.ultralytics.yolo.Size(inWidth, inHeight)
         modelInputSize = Pair(inWidth, inHeight)
-        
-        val outputShape = interpreter.getOutputTensor(0).shape()
-        batchSize = outputShape[0]
+
+        val outputShape = rtModel.outputDims.getOrNull(0) ?: IntArray(0)
+        batchSize = if (outputShape.isNotEmpty()) outputShape[0] else 1
         isEndToEnd = outputShape[2] < outputShape[1] && outputShape[2] >= 6
         outputLayout = when {
             outputShape[1] == OUTPUT_FEATURES -> OutputLayout.FEATURES_FIRST
@@ -122,10 +90,7 @@ class PoseEstimator(
             }
         }
 
-        val inputBytes = 1 * inHeight * inWidth * 3 * 4 // FLOAT32 is 4 bytes
-        inputBuffer = ByteBuffer.allocateDirect(inputBytes).apply {
-            order(java.nio.ByteOrder.nativeOrder())
-        }
+        floatInput = FloatArray(inWidth * inHeight * 3)
         inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
         intValues = IntArray(inWidth * inHeight)
     }
@@ -140,9 +105,18 @@ class PoseEstimator(
             isFrontCamera = isFrontCamera,
             rotationDegrees = cameraRotationDegrees
         )
-        ImageUtils.copyRgbBitmapToFloatBuffer(inputBitmap, inputBuffer, intValues)
+        ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
 
-        interpreter.run(inputBuffer, outputArray)
+        // Reshape the flat output into outputArray[0] for the existing pose postprocess.
+        val flat = rtModel.run(floatInput)[0]
+        val rows = outputArray[0]
+        var idx = 0
+        for (r in rows.indices) {
+            val row = rows[r]
+            for (c in row.indices) {
+                row[c] = flat[idx++]
+            }
+        }
         // Update processing time measurement
         updateTiming()
 
@@ -400,33 +374,4 @@ class PoseEstimator(
         val keypoints: Keypoints
     )
     
-    /**
-     * Load labels from FlatBuffers metadata
-     */
-    private fun loadLabelsFromFlatbuffers(buf: MappedByteBuffer): Boolean = try {
-        val extractor = MetadataExtractor(buf)
-        val files = extractor.associatedFileNames
-        if (!files.isNullOrEmpty()) {
-            for (fileName in files) {
-                extractor.getAssociatedFile(fileName)?.use { stream ->
-                    val fileString = String(stream.readBytes(), Charsets.UTF_8)
-
-                    val yaml = Yaml()
-                    @Suppress("UNCHECKED_CAST")
-                    val data = yaml.load<Map<String, Any>>(fileString)
-                    if (data != null && data.containsKey("names")) {
-                        val namesMap = data["names"] as? Map<Int, String>
-                        if (namesMap != null) {
-                            labels = namesMap.values.toList()
-                            return true
-                        }
-                    }
-                }
-            }
-        }
-        false
-    } catch (e: Exception) {
-        Log.e("PoseEstimator", "Failed to extract metadata: ${e.message}")
-        false
-    }
 }

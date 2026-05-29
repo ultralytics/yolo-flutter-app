@@ -318,6 +318,18 @@ class YOLOModelResolver {
 
   static Future<String> _resolvePath(String source) async {
     final officialId = _normalizeOfficialModelId(source);
+
+    // Android: prefer a bundled non-end2end fp16 detect model if the app ships one. Unlike the published int8/end2end
+    // model (which the GPU can't compile and runs ~30ms on CPU), it compiles on the LiteRT 2.x GPU accelerator and
+    // runs ~7ms on a Galaxy S26. Falls through to the normal resolver when the asset isn't bundled.
+    if (Platform.isAndroid && officialId == 'yolo26n') {
+      try {
+        return await _copyFlutterAssetToDocuments('assets/models/yolo26n.tflite');
+      } catch (_) {
+        // Not bundled in this build — fall through to the official download path below.
+      }
+    }
+
     if (_officialModelForId(officialId) != null) {
       return _resolveOfficialModel(officialId!);
     }
