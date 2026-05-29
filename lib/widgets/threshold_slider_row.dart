@@ -53,7 +53,22 @@ class ThresholdSliderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prefix = isInt ? value.round().toString() : value.toStringAsFixed(2);
+    final leftFlex = (sliderWidthFactor.clamp(0.05, 1.0) * 100).round();
+    final rightFlex = 100 - leftFlex;
+    final slider = CupertinoSlider(
+      value: value.clamp(min, max),
+      min: min,
+      max: max,
+      divisions: divisions,
+      // iOS YOLOView uses pure white for the filled portion; CupertinoSlider's default `activeColor` is the system
+      // accent, which is blue on iOS. Force white to match the reference.
+      activeColor: Colors.white,
+      thumbColor: Colors.white,
+      onChanged: onChanged,
+    );
     return Column(
+      // Left-justified: the caption and the slider both hug the left edge (matching yolo-ios-app). The Row below
+      // fills the full width, which also forces this Column to full width so the parent can't center it.
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -69,22 +84,13 @@ class ThresholdSliderRow extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 1),
-        // Only the slider track is width-constrained (caption stays full-width single-line). The slider has built-in
-        // vertical padding, so the caption sits tight above it.
-        FractionallySizedBox(
-          widthFactor: sliderWidthFactor,
-          alignment: Alignment.centerLeft,
-          child: CupertinoSlider(
-            value: value.clamp(min, max),
-            min: min,
-            max: max,
-            divisions: divisions,
-            // iOS YOLOView uses pure white for the filled portion; CupertinoSlider's default `activeColor` is the
-            // system accent, which is blue on iOS. Force white to match the reference.
-            activeColor: Colors.white,
-            thumbColor: Colors.white,
-            onChanged: onChanged,
-          ),
+        // The slider track occupies the left `sliderWidthFactor` of the width; the Spacer fills the rest. A Row fills
+        // its width (unlike FractionallySizedBox, which shrink-wrapped and let the whole row get center-aligned).
+        Row(
+          children: [
+            Expanded(flex: leftFlex, child: slider),
+            if (rightFlex > 0) Spacer(flex: rightFlex),
+          ],
         ),
       ],
     );
