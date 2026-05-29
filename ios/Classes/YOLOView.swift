@@ -238,6 +238,26 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
+  // MARK: - Predictor cache
+  //
+  // Recently-loaded predictors kept in memory so switching back to a model is instant (no CoreML re-load). Bounded by
+  // `predictorCacheLimit` to cap memory. All access is on the main thread (setModel and BasePredictor.create's
+  // completion both run on main), so no extra synchronization is needed.
+  private var predictorCache: [String: Predictor] = [:]
+  private var predictorCacheOrder: [String] = []  // LRU: oldest first, newest last
+  private let predictorCacheLimit = 3
+
+  private func cachePredictor(_ predictor: Predictor, forKey key: String) {
+    predictorCache[key] = predictor
+    predictorCacheOrder.removeAll { $0 == key }
+    predictorCacheOrder.append(key)
+    while predictorCacheOrder.count > predictorCacheLimit {
+      // The current predictor is always newest (just touched), so it is never the eviction target.
+      let evicted = predictorCacheOrder.removeFirst()
+      predictorCache.removeValue(forKey: evicted)
+    }
+  }
+
   public func setModel(
     modelPathOrName: String,
     task: YOLOTask,
@@ -291,13 +311,12 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     modelName = unwrappedModelURL.deletingPathExtension().lastPathComponent
 
+    // Cache key for the loaded predictor — reusing an already-instantiated predictor makes switching back to a model
+    // instant instead of re-compiling/loading CoreML every time.
+    let cacheKey = "\(unwrappedModelURL.path)|\(task)|\(useGpu)"
+
     // Common success handling for all tasks
     func handleSuccess(predictor: Predictor) {
-      // Release old predictor before setting new one to prevent memory leak
-      if self.videoCapture.predictor != nil {
-        self.videoCapture.predictor = nil
-      }
-
       self.videoCapture.predictor = predictor
 
       // Set stream configuration for original image capture
@@ -305,6 +324,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         basePredictor.streamConfig = self.streamConfig
       }
 
+      self.cachePredictor(predictor, forKey: cacheKey)
       self.activityIndicator.stopAnimating()
       self.labelName.text = modelName
       completion?(.success(()))
@@ -315,6 +335,17 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       NSLog("YOLOView: Failed to load model: %@", String(describing: error))
       self.activityIndicator.stopAnimating()
       completion?(.failure(error))
+    }
+
+    // Fast path: the predictor is already loaded — reuse it (re-applying the current thresholds) for an instant switch.
+    if let cached = predictorCache[cacheKey] {
+      if let basePredictor = cached as? BasePredictor {
+        basePredictor.setConfidenceThreshold(confidence: Double(sliderConf.value))
+        basePredictor.setIouThreshold(iou: Double(sliderIoU.value))
+        basePredictor.setNumItemsThreshold(numItems: Int(sliderNumItems.value))
+      }
+      handleSuccess(predictor: cached)
+      return
     }
 
     switch task {

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ultralytics_yolo/core/yolo_model_manager.dart';
+import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
 import 'package:ultralytics_yolo/widgets/camera_toolbar.dart';
 import 'package:ultralytics_yolo/widgets/focus_reticle.dart';
 import 'package:ultralytics_yolo/widgets/lens_picker.dart';
@@ -285,8 +286,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     final present = <String>{};
     for (final size in supported) {
       final id = _composeModelId(task: task, size: size);
-      final info = await YOLO.checkModelExists(id);
-      if (info['exists'] == true) present.add(size);
+      // Use the resolver's download cache (app-documents) — `YOLO.checkModelExists` only sees bundle/asset paths and
+      // wrongly reports already-downloaded official models as missing, so the ↓ arrow never cleared.
+      if (await YOLOModelResolver.isOfficialModelCached(id)) present.add(size);
     }
     return present;
   }

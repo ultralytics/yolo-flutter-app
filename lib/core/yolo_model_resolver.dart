@@ -372,6 +372,25 @@ class YOLOModelResolver {
         : _resolveAndroidOfficialModel(artifact);
   }
 
+  /// Whether official [modelId] is already cached on disk (downloaded + extracted) WITHOUT downloading it. UIs use this
+  /// to show a "downloaded" state — the native `checkModelExists` only knows about bundle/asset paths, not the
+  /// resolver's app-documents download cache, so it falsely reports downloaded official models as missing. Returns
+  /// `false` for unknown ids or platforms where the artifact isn't published.
+  static Future<bool> isOfficialModelCached(String modelId) async {
+    final artifact = _officialModelForId(modelId);
+    if (artifact == null) return false;
+    final directory = await getApplicationDocumentsDirectory();
+    if (_isIosLikePlatform) {
+      if (artifact.iosArchiveName == null) return false;
+      return _hasValidMlPackage(
+        Directory('${directory.path}/${artifact.id}.mlpackage'),
+      );
+    }
+    final filename = artifact.androidAssetName;
+    if (filename == null) return false;
+    return File('${directory.path}/$filename').existsSync();
+  }
+
   static Future<String> _resolveAndroidOfficialModel(
     _OfficialModelArtifact artifact,
   ) async {

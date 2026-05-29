@@ -478,7 +478,45 @@ class YOLOView @JvmOverloads constructor(
 
     // region Model / Task
 
+    // Recently-loaded predictors kept in memory so switching back to a model is instant instead of re-building the
+    // TFLite interpreter every time. Bounded by predictorCacheLimit to cap memory. Accessed on the main thread
+    // (setModel is called from the platform channel; cache writes happen inside post {}).
+    private val predictorCache = HashMap<String, Predictor>()
+    private val predictorCacheOrder = ArrayList<String>()  // LRU: oldest first, newest last
+    private val predictorCacheLimit = 3
+
+    private fun cachePredictor(key: String, predictor: Predictor) {
+        predictorCache[key] = predictor
+        predictorCacheOrder.remove(key)
+        predictorCacheOrder.add(key)
+        while (predictorCacheOrder.size > predictorCacheLimit) {
+            // The current predictor is always newest (just touched), so it is never the eviction target.
+            predictorCache.remove(predictorCacheOrder.removeAt(0))
+        }
+    }
+
     fun setModel(modelPath: String, task: YOLOTask, useGpu: Boolean = true, callback: ((Boolean) -> Unit)? = null) {
+        val cacheKey = "$modelPath|$task|$useGpu"
+
+        // Fast path: reuse an already-loaded predictor (re-applying the current thresholds) for an instant switch.
+        predictorCache[cacheKey]?.let { cached ->
+            cached.setConfidenceThreshold(confidenceThreshold)
+            cached.setIouThreshold(iouThreshold)
+            cached.setNumItemsThreshold(numItemsThreshold)
+            post {
+                this.task = task
+                this.predictor = cached
+                this.modelName = modelPath.substringAfterLast("/")
+                cachePredictor(cacheKey, cached)
+                modelLoadCallback?.invoke(true)
+                callback?.invoke(true)
+                if (allPermissionsGranted() && lifecycleOwner != null && (camera == null || isStopped)) {
+                    startCamera()
+                }
+            }
+            return
+        }
+
         Executors.newSingleThreadExecutor().execute {
             try {
                 val newPredictor = when (task) {
@@ -501,6 +539,7 @@ class YOLOView @JvmOverloads constructor(
                     this.task = task
                     this.predictor = newPredictor
                     this.modelName = modelPath.substringAfterLast("/")
+                    cachePredictor(cacheKey, newPredictor)
                     modelLoadCallback?.invoke(true)
                     callback?.invoke(true)
                     // Ensure camera starts after model loads if it's not already running
