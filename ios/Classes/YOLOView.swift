@@ -92,7 +92,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
           maskLayer.isHidden = false
 
-          maskLayer.frame = self.overlayLayer.bounds
+          // Fit the mask to the true aspect-fill image rect (from the actual frame size), not a hardcoded-ratio
+          // overlay rect, so the mask registers with the preview. Mirrors yolo-ios-app YOLOView.
+          maskLayer.frame = self.imageFrameInOverlay(for: result.orig_shape)
           maskLayer.contents = maskImage
 
           self.videoCapture.predictor.isUpdating = false
@@ -112,10 +114,23 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         confsList.append(keypoint.conf)
       }
       guard let poseLayer = poseLayer else { return }
+      // Position + size the pose layer to the true aspect-fill image rect (with the crop offset baked into its
+      // origin), then draw keypoints normalized to that rect — so keypoints register with the person and share the
+      // preview's coordinate space. Mirrors yolo-ios-app YOLOView.
+      let poseFrame = imageFrameInOverlay(for: result.orig_shape)
+      poseLayer.frame = poseFrame
       drawKeypoints(
         keypointsList: keypointList, confsList: confsList, boundingBoxes: result.boxes,
-        on: poseLayer, imageViewSize: overlayLayer.frame.size, originalImageSize: result.orig_shape)
+        on: poseLayer, imageViewSize: poseFrame.size, originalImageSize: result.orig_shape)
     }
+  }
+
+  /// The aspect-fill rect (in view coordinates) that the full camera image of `imageSize` occupies under the preview's
+  /// `resizeAspectFill`. Used to position/size the pose and mask overlay layers. Mirrors yolo-ios-app YOLOView.
+  func imageFrameInOverlay(for imageSize: CGSize) -> CGRect {
+    return aspectFillDisplayRect(
+      for: CGRect(x: 0, y: 0, width: 1, height: 1),
+      imageSize: imageSize, viewSize: bounds.size)
   }
 
   var onDetection: ((YOLOResult) -> Void)?

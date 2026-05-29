@@ -22,6 +22,15 @@ class Classifier: BasePredictor, @unchecked Sendable {
 
   override var imageCropAndScaleOption: VNImageCropAndScaleOption { .centerCrop }
 
+  /// Numerically stable softmax (max-subtraction) converting raw class logits to probabilities that sum to 1.
+  static func softmax(_ logits: [Double]) -> [Double] {
+    guard let maxLogit = logits.max() else { return logits }
+    let exps = logits.map { exp($0 - maxLogit) }
+    let sum = exps.reduce(0, +)
+    guard sum > 0 else { return logits }
+    return exps.map { $0 / sum }
+  }
+
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
     detector.featureProvider = ThresholdProvider(
@@ -45,11 +54,14 @@ class Classifier: BasePredictor, @unchecked Sendable {
       let multiArray = observation.first?.featureValue.multiArrayValue
 
       if let multiArray = multiArray {
-        var valuesArray = [Double]()
+        var rawValues = [Double]()
         for i in 0..<multiArray.count {
-          let value = multiArray[i].doubleValue
-          valuesArray.append(value)
+          rawValues.append(multiArray[i].doubleValue)
         }
+        // Ultralytics `-cls` CoreML models emit raw logits; apply softmax so the reported confidences are real
+        // probabilities in [0,1] (matches yolo-ios-app Classifier). Without it the overlay showed nonsense like
+        // "cat 873%". Argmax ordering is unchanged since softmax is monotonic.
+        let valuesArray = Self.softmax(rawValues)
 
         var indexedMap = [Int: Double]()
         for (index, value) in valuesArray.enumerated() {
@@ -133,11 +145,12 @@ class Classifier: BasePredictor, @unchecked Sendable {
         let multiArray = observation.first?.featureValue.multiArrayValue
 
         if let multiArray = multiArray {
-          var valuesArray = [Double]()
+          var rawValues = [Double]()
           for i in 0..<multiArray.count {
-            let value = multiArray[i].doubleValue
-            valuesArray.append(value)
+            rawValues.append(multiArray[i].doubleValue)
           }
+          // Softmax the raw logits so confidences are real probabilities (see processObservations).
+          let valuesArray = Self.softmax(rawValues)
 
           var indexedMap = [Int: Double]()
           for (index, value) in valuesArray.enumerated() {

@@ -69,7 +69,10 @@ class SemanticSegmenter: BasePredictor, @unchecked Sendable {
 
     var classMap = [Int](repeating: 0, count: outputWidth * outputHeight)
     var pixels = [UInt8](repeating: 0, count: outputWidth * outputHeight * 4)
-    let colors = semanticColors(classCount: classCount)
+    // A single-channel mask is foreground/background: allocate 2 colors (0 = background, 1 = foreground) and threshold
+    // each pixel, instead of painting the whole frame as class 0. Mirrors yolo-ios-app SemanticSegmenter.
+    let colors = semanticColors(classCount: classCount == 1 ? 2 : classCount)
+    let binaryThreshold: Float = classCount == 1 ? singleChannelThreshold(logits) : 0
 
     for y in 0..<outputHeight {
       let sourceY = y + outputY
@@ -77,7 +80,7 @@ class SemanticSegmenter: BasePredictor, @unchecked Sendable {
         let sourceX = x + outputX
         let classIndex = bestClass(
           logits: logits, strides: strides, classCount: classCount,
-          x: sourceX, y: sourceY, isNCHW: isNCHW)
+          x: sourceX, y: sourceY, isNCHW: isNCHW, binaryThreshold: binaryThreshold)
         let outputIndex = y * outputWidth + x
         classMap[outputIndex] = classIndex
         writeColor(colors[classIndex], into: &pixels, at: outputIndex * 4)
@@ -91,15 +94,33 @@ class SemanticSegmenter: BasePredictor, @unchecked Sendable {
       maskImage: makeImage(fromRGBA: pixels, width: outputWidth, height: outputHeight))
   }
 
+  /// Min/max scan to decide the binary cutoff: probability-like outputs (in [0,1]) threshold at 0.5, raw logits at 0.
+  /// Mirrors yolo-ios-app SemanticSegmenter.singleChannelThreshold.
+  private func singleChannelThreshold(_ logits: MLMultiArray) -> Float {
+    var minValue = Float.greatestFiniteMagnitude
+    var maxValue = -Float.greatestFiniteMagnitude
+    for i in 0..<logits.count {
+      let v = logits[i].floatValue
+      minValue = min(minValue, v)
+      maxValue = max(maxValue, v)
+    }
+    return minValue >= 0 && maxValue <= 1 ? 0.5 : 0
+  }
+
   private func bestClass(
     logits: MLMultiArray,
     strides: [Int],
     classCount: Int,
     x: Int,
     y: Int,
-    isNCHW: Bool
+    isNCHW: Bool,
+    binaryThreshold: Float
   ) -> Int {
-    if classCount == 1 { return 0 }
+    if classCount == 1 {
+      let score = value(
+        in: logits, strides: strides, classIndex: 0, x: x, y: y, isNCHW: isNCHW)
+      return score > binaryThreshold ? 1 : 0
+    }
 
     var bestIndex = 0
     var bestScore = -Float.greatestFiniteMagnitude
