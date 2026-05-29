@@ -54,6 +54,28 @@ class ModelSizeSegmentedControl extends StatelessWidget {
         ? currentSize
         : visibleSizes.first;
 
+    // CupertinoSlidingSegmentedControl asserts it has >= 2 segments. On platforms that ship a single size (Android only
+    // hosts the `n` variant in this release), show one static chip instead of crashing with a red error screen.
+    if (visibleSizes.length < 2) {
+      return Center(
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          child: Text(
+            'YOLO26$effectiveCurrent',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    }
+
     // Full-width so the longer `YOLO26<size>` chips get more room (the model row spans wider than the task row).
     return SizedBox(
       width: double.infinity,
