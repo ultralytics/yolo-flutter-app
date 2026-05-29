@@ -95,7 +95,7 @@ class Segmenter(
         }
 
         // Create Interpreter
-        interpreter = Interpreter(modelBuffer, interpreterOptions)
+        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "Segmenter")
         // Call allocateTensors() once during initialization
         interpreter.allocateTensors()
 

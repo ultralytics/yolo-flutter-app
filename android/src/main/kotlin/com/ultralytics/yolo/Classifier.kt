@@ -78,7 +78,7 @@ class Classifier(
             }
         }
 
-        interpreter = Interpreter(modelBuffer, interpreterOptions)
+        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "Classifier")
 
         val inputShape = interpreter.getInputTensor(0).shape()
         val inBatch = inputShape[0]

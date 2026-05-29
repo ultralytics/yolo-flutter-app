@@ -89,7 +89,7 @@ class ObjectDetector(
             }
         }
 
-        interpreter = Interpreter(modelBuffer, interpreterOptions)
+        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "ObjectDetector")
         // Call allocateTensors() once during initialization, not in the inference loop
         interpreter.allocateTensors()
 

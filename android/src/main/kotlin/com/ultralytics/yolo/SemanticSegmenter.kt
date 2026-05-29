@@ -52,7 +52,7 @@ class SemanticSegmenter(
             labels = it
         }
 
-        interpreter = Interpreter(modelBuffer, interpreterOptions)
+        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "SemanticSegmenter")
         interpreter.allocateTensors()
 
         val inputShape = interpreter.getInputTensor(0).shape()

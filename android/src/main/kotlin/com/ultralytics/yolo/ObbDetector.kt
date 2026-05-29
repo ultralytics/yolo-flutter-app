@@ -82,7 +82,7 @@ class ObbDetector(
             }
         }
 
-        interpreter = Interpreter(modelBuffer, interpreterOptions)
+        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "ObbDetector")
         // Call allocateTensors() once during initialization, not in the inference loop
         interpreter.allocateTensors()
 

@@ -91,7 +91,7 @@ class PoseEstimator(
             }
         }
 
-        interpreter = Interpreter(modelBuffer, interpreterOptions)
+        interpreter = createInterpreterFastestFirst(modelBuffer, useGpu, interpreterOptions, "PoseEstimator")
         // Call allocateTensors() once during initialization
         interpreter.allocateTensors()
 

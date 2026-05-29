@@ -57,35 +57,42 @@ class TaskSegmentedControl extends StatelessWidget {
         .where((t) => showSemanticTask || t != YOLOTask.semantic)
         .toList(growable: false);
 
-    // Content-hug + centered (NOT full-width) so the control only uses the width it needs, like the iOS app.
+    // Content-hug + centered (NOT full-width) so the control only uses the width it needs, like the iOS app. Wrapped in
+    // a scale-down FittedBox: on narrow screens the 6 segments can exceed the available width, which makes
+    // CupertinoSlidingSegmentedControl compute a negative per-segment width and crash (BoxConstraints NOT NORMALIZED,
+    // w=-0.8). FittedBox lays the control out at its natural (unbounded) width, then scales it down to fit, so the
+    // per-segment width never goes negative.
     return Center(
-      child: CupertinoSlidingSegmentedControl<YOLOTask>(
-        groupValue: tasks.contains(currentTask) ? currentTask : tasks.first,
-        // black @ 70% — matches `toolbar.backgroundColor = .black.withAlphaComponent(0.7)` from setupToolbar.
-        backgroundColor: Colors.black.withValues(alpha: 0.7),
-        // selected thumb at 18% white, matching the iOS lensControl selectedSegmentTintColor.
-        thumbColor: Colors.white.withValues(alpha: 0.18),
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-        onValueChanged: (task) {
-          if (task != null) onTaskChanged(task);
-        },
-        children: {
-          for (final task in tasks)
-            task: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
-              child: Text(
-                _shortLabels[task] ?? task.name,
-                style: TextStyle(
-                  color: Colors.white,
-                  // 11pt + tighter padding so the 6 short tabs (Det/Seg/Sem/Cls/Pose/OBB) don't span so wide.
-                  fontSize: 11,
-                  fontWeight: task == currentTask
-                      ? FontWeight.w600
-                      : FontWeight.w400,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: CupertinoSlidingSegmentedControl<YOLOTask>(
+          groupValue: tasks.contains(currentTask) ? currentTask : tasks.first,
+          // black @ 70% — matches `toolbar.backgroundColor = .black.withAlphaComponent(0.7)` from setupToolbar.
+          backgroundColor: Colors.black.withValues(alpha: 0.7),
+          // selected thumb at 18% white, matching the iOS lensControl selectedSegmentTintColor.
+          thumbColor: Colors.white.withValues(alpha: 0.18),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          onValueChanged: (task) {
+            if (task != null) onTaskChanged(task);
+          },
+          children: {
+            for (final task in tasks)
+              task: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
+                child: Text(
+                  _shortLabels[task] ?? task.name,
+                  style: TextStyle(
+                    color: Colors.white,
+                    // 11pt + tighter padding so the 6 short tabs (Det/Seg/Sem/Cls/Pose/OBB) don't span so wide.
+                    fontSize: 11,
+                    fontWeight: task == currentTask
+                        ? FontWeight.w600
+                        : FontWeight.w400,
+                  ),
                 ),
               ),
-            ),
-        },
+          },
+        ),
       ),
     );
   }
