@@ -1201,7 +1201,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
-  /// Set the camera zoom level programmatically
+  /// Set the camera zoom level programmatically. `zoomLevel` is a user-facing display factor (matching the lens chips
+  /// and pinch HUD); it is converted to the device's raw `videoZoomFactor` before being applied, so 0.5 reaches the
+  /// ultra-wide on a virtual multi-camera rather than clamping to the wide lens.
   public func setZoomLevel(_ zoomLevel: CGFloat) {
     guard let device = videoCapture.captureDevice else { return }
 
@@ -1210,7 +1212,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       return min(min(max(factor, minimumZoom), maximumZoom), device.activeFormat.videoMaxZoomFactor)
     }
 
-    let newZoomFactor = minMaxZoom(zoomLevel)
+    let multiplier = displayZoomFactor(1.0, for: device)
+    let rawTarget = multiplier > 0 ? zoomLevel / multiplier : zoomLevel
+    let newZoomFactor = minMaxZoom(rawTarget)
 
     do {
       try device.lockForConfiguration()
@@ -1220,11 +1224,12 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       device.videoZoomFactor = newZoomFactor
       lastZoomFactor = newZoomFactor
 
-      // Update zoom label
-      self.labelZoom.text = String(format: "%.1fx", newZoomFactor)
+      // Update zoom label (display factor)
+      let display = displayZoomFactor(newZoomFactor, for: device)
+      self.labelZoom.text = String(format: "%.1fx", display)
 
-      // Notify zoom change
-      onZoomChanged?(newZoomFactor)
+      // Notify zoom change (display factor)
+      onZoomChanged?(display)
 
       // Emit a lens-change event if the active lens (per the lens-snap math)
       // changed as a result of this zoom step.
@@ -1241,15 +1246,17 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   // pinch/tap recognizer.
 
   /// Returns the physical lens devices available for the active camera position (back: ultra-wide / wide / telephoto,
-  /// front: a single device). Each entry pairs the canonical user-facing label with the raw zoom factor on the
-  /// currently active (virtual) device.
-  public func availableLenses() -> [(zoomFactor: CGFloat, label: String)] {
+  /// front: a single device). Each entry carries the user-facing `zoomFactor` shown on the lens chips (e.g. 0.5 / 1 / 2)
+  /// plus the `rawZoom` `videoZoomFactor` that actually selects that constituent lens on the active (virtual) device.
+  /// The two differ on a virtual multi-camera: raw 1.0 ultra-wide reads as 0.5x. Without this split the chips would
+  /// show the raw factors (1 / 2 / ...) and the ultra-wide would have no 0.5x entry.
+  public func availableLenses() -> [(zoomFactor: CGFloat, rawZoom: CGFloat, label: String)] {
     let position = videoCapture.captureDevice?.position ?? .back
     let activeDevice = videoCapture.captureDevice
 
     if position == .front {
       guard let device = activeDevice else { return [] }
-      return [(1.0, lensLabel(for: device))]
+      return [(1.0, 1.0, lensLabel(for: device))]
     }
 
     let discovery = AVCaptureDevice.DiscoverySession(
@@ -1259,9 +1266,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     )
 
     let devices = discovery.devices.sorted { lensSortOrder($0) < lensSortOrder($1) }
-    return devices.map { lens -> (zoomFactor: CGFloat, label: String) in
-      let zoom = zoomFactor(for: lens, on: activeDevice) ?? fallbackZoomFactor(for: lens)
-      return (zoom, lensLabel(for: lens))
+    return devices.map { lens -> (zoomFactor: CGFloat, rawZoom: CGFloat, label: String) in
+      let raw = zoomFactor(for: lens, on: activeDevice) ?? fallbackZoomFactor(for: lens)
+      let display = activeDevice.map { displayZoomFactor(raw, for: $0) } ?? fallbackZoomFactor(for: lens)
+      return (display, raw, lensLabel(for: lens))
     }
   }
 
@@ -1272,12 +1280,14 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     let lenses = availableLenses()
     guard !lenses.isEmpty else { return }
 
-    // Snap to the lens with the smallest |zoomFactor - desired|.
+    // `desired` is a user-facing display factor (0.5 / 1 / 2). Snap to the lens whose display factor is closest, then
+    // apply that lens's RAW videoZoomFactor — the virtual device auto-selects the matching constituent. Setting the
+    // display factor directly would land on the wrong lens (raw 0.5 clamps to 1.0 = ultra-wide for every chip).
     let best = lenses.min(by: { abs($0.zoomFactor - desired) < abs($1.zoomFactor - desired) })
     guard let target = best, let device = videoCapture.captureDevice else { return }
 
     let clamped = min(
-      max(target.zoomFactor, device.minAvailableVideoZoomFactor),
+      max(target.rawZoom, device.minAvailableVideoZoomFactor),
       device.maxAvailableVideoZoomFactor
     )
 
@@ -1286,8 +1296,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       defer { device.unlockForConfiguration() }
       device.videoZoomFactor = clamped
       lastZoomFactor = clamped
-      self.labelZoom.text = String(format: "%.1fx", clamped)
-      onZoomChanged?(clamped)
+      let display = displayZoomFactor(clamped, for: device)
+      self.labelZoom.text = String(format: "%.1fx", display)
+      onZoomChanged?(display)
     } catch {
       NSLog("YOLOView: setLens failed: %@", error.localizedDescription)
       return

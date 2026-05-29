@@ -24,21 +24,31 @@ protocol VideoCaptureDelegate: AnyObject {
 }
 
 func bestCaptureDevice(position: AVCaptureDevice.Position) -> AVCaptureDevice? {
-  if UserDefaults.standard.bool(forKey: "use_telephoto"),
-    let device = AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: position)
-  {
-    return device
-  } else if let device = AVCaptureDevice.default(
-    .builtInDualCamera, for: .video, position: position)
-  {
-    return device
-  } else if let device = AVCaptureDevice.default(
-    .builtInWideAngleCamera, for: .video, position: position)
-  {
-    return device
-  } else {
-    return nil
+  // Prefer the virtual multi-camera so the ultra-wide (0.5x) is a constituent of the active device and reachable via
+  // videoZoomFactor — a plain `.builtInWideAngleCamera`/`.builtInDualCamera` has no ultra-wide, so 0.5x is impossible
+  // and only zoom-in (2x/4x) works. Mirrors `yolo-ios-app/Sources/YOLO/VideoCapture.swift#bestCaptureDevice`.
+  let preferredTypes: [AVCaptureDevice.DeviceType] =
+    position == .back
+    ? [.builtInTripleCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera]
+    : [.builtInTrueDepthCamera, .builtInWideAngleCamera]
+
+  for deviceType in preferredTypes {
+    if let device = AVCaptureDevice.default(deviceType, for: .video, position: position) {
+      return device
+    }
   }
+
+  return nil
+}
+
+/// Converts a raw `videoZoomFactor` into the user-facing factor shown in the UI (e.g. raw 1.0 on a device whose widest
+/// lens is the ultra-wide reads as 0.5x). iOS 18+ exposes the per-device multiplier; earlier OSes have no sub-1x
+/// display concept so the raw value is shown as-is. Mirrors `yolo-ios-app/Sources/YOLO/VideoCapture.swift`.
+func displayZoomFactor(_ zoomFactor: CGFloat, for device: AVCaptureDevice) -> CGFloat {
+  if #available(iOS 18.0, *) {
+    return zoomFactor * device.displayVideoZoomFactorMultiplier
+  }
+  return zoomFactor
 }
 
 class VideoCapture: NSObject, @unchecked Sendable {
