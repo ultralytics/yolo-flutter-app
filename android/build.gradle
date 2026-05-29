@@ -49,7 +49,10 @@ android {
 
     defaultConfig {
         minSdk = 21
-        
+
+        // Ship ProGuard/R8 keep rules to consuming apps so their release builds don't strip LiteRT/JNI classes.
+        consumerProguardFiles 'consumer-rules.pro'
+
         // Native library build configuration
         externalNativeBuild {
             cmake {

@@ -42,3 +42,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/applogo.png"
+  # Adaptive icon (Android 8+/required look on 13+ like the S26) — without it the launcher shows a blank/generic icon.
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/applogo.png"
+  remove_alpha_ios: true
