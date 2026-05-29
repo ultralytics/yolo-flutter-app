@@ -60,7 +60,7 @@ class ModelSizeSegmentedControl extends StatelessWidget {
         groupValue: effectiveCurrent,
         backgroundColor: Colors.black.withValues(alpha: 0.7),
         thumbColor: Colors.white.withValues(alpha: 0.18),
-        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
         onValueChanged: (size) {
           if (size != null) onSizeChanged(size);
         },

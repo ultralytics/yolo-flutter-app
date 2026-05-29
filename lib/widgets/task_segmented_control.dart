@@ -65,14 +65,14 @@ class TaskSegmentedControl extends StatelessWidget {
         backgroundColor: Colors.black.withValues(alpha: 0.7),
         // selected thumb at 18% white, matching the iOS lensControl selectedSegmentTintColor.
         thumbColor: Colors.white.withValues(alpha: 0.18),
-        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
         onValueChanged: (task) {
           if (task != null) onTaskChanged(task);
         },
         children: {
           for (final task in tasks)
             task: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
               child: Text(
                 _shortLabels[task] ?? task.name,
                 style: TextStyle(
