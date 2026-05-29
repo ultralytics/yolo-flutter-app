@@ -39,10 +39,18 @@ build/
 **/linux/flutter/ephemeral/
 **/windows/flutter/ephemeral/
 
-# Model files
+# Model files — NEVER commit model weights (they bloat git history and break pub publish validation).
 **/*.tflite
 **/*.mlmodel
+**/*.mlmodelc
 **/*.mlpackage
+**/*.mlpackage.zip
+**/*.pt
+**/*.onnx
+**/*.pb
+**/*.engine
+**/*.torchscript
+**/*_saved_model/
 
 # Coverage
 coverage/
