@@ -652,6 +652,9 @@ class YOLOView @JvmOverloads constructor(
                     imageAnalysisUseCase = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                        // Ask CameraX for RGBA frames so toBitmap() is a direct buffer copy. The default YUV_420_888
+                        // forced a per-frame JPEG encode@100 + decode round-trip (~100ms/frame, ~5 FPS).
+                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                         .build()
 
                     cameraExecutor = Executors.newSingleThreadExecutor()

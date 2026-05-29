@@ -7,7 +7,6 @@ import android.graphics.Bitmap
 import android.graphics.RectF
 import android.util.Log
 import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.gpu.GpuDelegate
 import org.tensorflow.lite.support.metadata.MetadataExtractor
 import org.yaml.snakeyaml.Yaml
 import java.nio.ByteBuffer
@@ -43,20 +42,11 @@ class ObjectDetector(
     // (3) ByteBuffer for TFLite input (1 * height * width * 3 * 4 bytes)
     private lateinit var inputBuffer: ByteBuffer
 
-    // Options for TensorFlow Lite Interpreter
+    // CPU interpreter options. The GPU delegate is NOT added here; createInterpreterFastestFirst owns delegate
+    // selection (GPU first, closing it on failure) and falls back to these options for the XNNPACK CPU path.
     private val interpreterOptions: Interpreter.Options = (customOptions ?: Interpreter.Options()).apply {
-        // If no custom options provided, use default threads
         if (customOptions == null) {
             setNumThreads(Runtime.getRuntime().availableProcessors())
-        }
-        
-        // If customOptions is provided, only add GPU delegate if requested
-        if (useGpu) {
-            try {
-                addDelegate(GpuDelegate())
-            } catch (e: Exception) {
-                Log.e("ObjectDetector", "GPU delegate error: ${e.message}")
-            }
         }
     }
 

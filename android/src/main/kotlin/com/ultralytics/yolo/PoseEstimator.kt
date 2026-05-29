@@ -6,7 +6,6 @@ import android.content.Context
 import android.graphics.*
 import android.util.Log
 import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.gpu.GpuDelegate
 import org.tensorflow.lite.support.metadata.MetadataExtractor
 import org.yaml.snakeyaml.Yaml
 import java.nio.ByteBuffer
@@ -36,18 +35,10 @@ class PoseEstimator(
         private const val KEYPOINTS_COUNT = 17
     }
 
+    // CPU interpreter options; createInterpreterFastestFirst owns GPU-delegate selection and falls back to these.
     private val interpreterOptions = (customOptions ?: Interpreter.Options()).apply {
-        // If no custom options provided, use default threads
         if (customOptions == null) {
             setNumThreads(Runtime.getRuntime().availableProcessors())
-        }
-        
-        if (useGpu) {
-            try {
-                addDelegate(GpuDelegate())
-            } catch (e: Exception) {
-                Log.e("PoseEstimator", "GPU delegate error: ${e.message}")
-            }
         }
     }
 

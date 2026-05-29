@@ -9,7 +9,6 @@ import android.graphics.Color
 import android.util.Log
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.gpu.GpuDelegate
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.roundToInt
@@ -21,16 +20,10 @@ class SemanticSegmenter(
     private val useGpu: Boolean = true,
     private val customOptions: Interpreter.Options? = null
 ) : BasePredictor() {
+    // CPU interpreter options; createInterpreterFastestFirst owns GPU-delegate selection and falls back to these.
     private val interpreterOptions = (customOptions ?: Interpreter.Options()).apply {
         if (customOptions == null) {
             setNumThreads(Runtime.getRuntime().availableProcessors())
-        }
-        if (useGpu) {
-            try {
-                addDelegate(GpuDelegate())
-            } catch (e: Exception) {
-                Log.e(TAG, "GPU delegate error: ${e.message}")
-            }
         }
     }
 
