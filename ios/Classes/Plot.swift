@@ -593,7 +593,10 @@ func drawKeypoints(
   confThreshold: Float = 0.25,
   drawSkeleton: Bool = true
 ) {
-  let _radius = max(originalImageSize.width, originalImageSize.height) / 300
+  // Scale the keypoint radius (and, via radius * 0.4, the skeleton line width) by the on-screen VIEW size, not the
+  // original image size — matches yolo-ios-app/Sources/YOLO/Plot.swift#drawKeypoints. The image-size/300 formula
+  // rendered points/lines far too small relative to the displayed preview.
+  let _radius = max(imageViewSize.width, imageViewSize.height) / 100
   for (i, keypoints) in keypointsList.enumerated() {
     drawSinglePersonKeypoints(
       keypoints: keypoints, confs: confsList[i], boundingBox: boundingBoxes[i],
