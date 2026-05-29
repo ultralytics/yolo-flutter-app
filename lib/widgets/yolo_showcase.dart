@@ -1,9 +1,10 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:async';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ultralytics_yolo/core/yolo_model_manager.dart';
 import 'package:ultralytics_yolo/widgets/camera_toolbar.dart';
@@ -81,14 +82,20 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   double? _downloadFraction;
 
   List<LensInfo> _lenses = const [];
-  double _currentZoom = 1;
-  String _currentLensLabel = '';
+
+  // High-frequency values driven by native event streams (zoom/lens) and per-inference-frame metrics. These are
+  // ValueNotifiers — NOT setState fields — so updating them rebuilds only the small leaf widgets that display them
+  // (FPS/ms line, zoom HUD, lens highlight) instead of the whole tree (camera platform view + every control) ~30x/sec.
+  final ValueNotifier<({double fps, double ms})> _metrics = ValueNotifier((fps: 0, ms: 0));
+  final ValueNotifier<double> _zoom = ValueNotifier(1);
+  final ValueNotifier<String> _lensLabel = ValueNotifier('');
 
   double _confidence = 0.25;
   double _iou = 0.7;
 
-  double _fps = 0;
-  double _inferenceMs = 0;
+  // True while a model is downloading/loading after a size or task tap, so the UI can show a clear loading overlay
+  // instead of looking frozen.
+  bool _isModelLoading = false;
 
   bool _isPaused = false;
   Offset? _focusPosition;
@@ -115,21 +122,16 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _ownsController = true;
     }
 
-    _zoomSub = _controller.zoomEvents.listen((z) {
-      if (mounted) setState(() => _currentZoom = z);
-    });
-    _lensSub = _controller.lensEvents.listen((label) {
-      if (mounted) setState(() => _currentLensLabel = label);
-    });
+    // Drive the notifiers directly (no setState) — these fire continuously while pinching, so a full rebuild here is
+    // exactly what made the UI feel laggy.
+    _zoomSub = _controller.zoomEvents.listen((z) => _zoom.value = z);
+    _lensSub = _controller.lensEvents.listen((label) => _lensLabel.value = label);
     _focusSub = _controller.focusEvents.listen((offset) {
       // Native-side focus events fire view-relative 0..1 coords; translate to pixels using the most recent
       // LayoutBuilder size tracked in build().
       if (!mounted || _viewSize == Size.zero) return;
       setState(() {
-        _focusPosition = Offset(
-          offset.dx * _viewSize.width,
-          offset.dy * _viewSize.height,
-        );
+        _focusPosition = Offset(offset.dx * _viewSize.width, offset.dy * _viewSize.height);
       });
     });
     _progressSub = YOLOModelManager.downloadProgress.listen((progress) {
@@ -217,6 +219,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     _lensSub?.cancel();
     _focusSub?.cancel();
     _progressSub?.cancel();
+    _metrics.dispose();
+    _zoom.dispose();
+    _lensLabel.dispose();
     WakelockPlus.disable();
     if (_ownsController) _controller.dispose();
     super.dispose();
@@ -224,13 +229,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   static const List<String> _allSizes = ['n', 's', 'm', 'l', 'x'];
 
-  String get _currentModelId =>
-      _composeModelId(task: _currentTask, size: _currentSize);
+  String get _currentModelId => _composeModelId(task: _currentTask, size: _currentSize);
 
-  static String _composeModelId({
-    required YOLOTask task,
-    required String size,
-  }) {
+  static String _composeModelId({required YOLOTask task, required String size}) {
     const suffixes = {
       YOLOTask.detect: '',
       YOLOTask.segment: '-seg',
@@ -295,9 +296,13 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (!mounted) return;
     final loadedTask = task ?? _currentTask;
     final loadedSize = _sizeForModelId(modelPath, loadedTask);
-    if (loadedSize == null) return;
-    _runningTask = loadedTask;
-    _runningSize = loadedSize;
+    setState(() {
+      _isModelLoading = false;
+      if (loadedSize != null) {
+        _runningTask = loadedTask;
+        _runningSize = loadedSize;
+      }
+    });
   }
 
   /// An in-place model switch failed (`YOLOView` kept the previously loaded model running). Ignore stale failures from
@@ -308,6 +313,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   void _onModelError(Object error, String modelPath, YOLOTask? task) {
     if (!mounted || modelPath != _currentModelId) return;
     setState(() {
+      _isModelLoading = false;
       _downloadingSize = null;
       _downloadFraction = null;
       _currentSize = _runningSize;
@@ -317,6 +323,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _onTaskChanged(YOLOTask task) {
     if (task == _currentTask) return;
+    HapticFeedback.selectionClick();
     setState(() {
       _currentTask = task;
       // The supported set differs per task on Android (only `n` for everything in v0.2.0). Clamp here too so a
@@ -326,6 +333,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       // the new current size).
       _downloadingSize = null;
       _downloadFraction = null;
+      // Show the loading veil until `YOLOView` reports the new model loaded (onModelLoad) or failed (onModelError).
+      _isModelLoading = true;
     });
     unawaited(_persistTask(task));
     unawaited(_refreshAvailableSizes(task));
@@ -341,21 +350,25 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _onSizeChanged(String size) {
     if (size == _currentSize) return;
+    HapticFeedback.selectionClick();
     setState(() {
       _currentSize = size;
       // Abandon any in-flight download chip for the previous selection (see `_onTaskChanged`).
       _downloadingSize = null;
       _downloadFraction = null;
+      _isModelLoading = true;
     });
     unawaited(_persistSize(size));
     // `YOLOView.didUpdateWidget` handles the resolve + native switch off the changed `modelPath` prop (see above).
   }
 
   void _onLensSelected(LensInfo lens) {
+    HapticFeedback.selectionClick();
     unawaited(_controller.setLens(lens.zoomFactor));
   }
 
   void _onPlayPause() {
+    HapticFeedback.lightImpact();
     setState(() => _isPaused = !_isPaused);
     // iOS `pause` snapshots the next frame into the native share cache before stopping; sharing while paused returns
     // that frame. Android aliases to stop/start. resume() clears the cached frame and restarts.
@@ -367,12 +380,13 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   Future<void> _onShare() async {
+    HapticFeedback.mediumImpact();
     final bytes = await _controller.capturePhoto(withOverlays: true);
     if (bytes != null) widget.onCapture?.call(bytes);
   }
 
   void _onScaleStart(ScaleStartDetails _) {
-    _baseScale = _currentZoom;
+    _baseScale = _zoom.value;
   }
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
@@ -390,11 +404,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   void _onPerformanceMetrics(YOLOPerformanceMetrics metrics) {
-    if (!mounted) return;
-    setState(() {
-      _fps = metrics.fps;
-      _inferenceMs = metrics.processingTimeMs;
-    });
+    // Update the notifier, NOT setState: this fires every inference frame (~30 fps). A setState here rebuilt the whole
+    // tree — camera platform view and all controls — 30x/sec, which was the primary source of the lag.
+    _metrics.value = (fps: metrics.fps, ms: metrics.processingTimeMs);
   }
 
   @override
@@ -434,8 +446,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                 FocusReticle(position: _focusPosition),
                 _ShowcaseOverlay(
                   modelName: 'YOLO26$_currentSize',
-                  fps: _fps,
-                  inferenceMs: _inferenceMs,
+                  metrics: _metrics,
                   task: _currentTask,
                   size: _currentSize,
                   availableSizes: _availableSizes,
@@ -444,8 +455,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   downloadFraction: _downloadFraction,
                   confidence: _confidence,
                   iou: _iou,
-                  zoom: _currentZoom,
-                  lensLabel: _currentLensLabel,
+                  zoom: _zoom,
+                  lensLabel: _lensLabel,
                   lenses: _lenses,
                   isPaused: _isPaused,
                   versionLabel: widget.versionLabel,
@@ -465,6 +476,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   onSwitchCamera: () => unawaited(_controller.switchCamera()),
                   onShare: () => unawaited(_onShare()),
                 ),
+                // Centered loading veil while a model is downloading/loading after a tap, so the screen never looks
+                // frozen with no indication of progress.
+                if (_isModelLoading) const _ModelLoadingOverlay(),
               ],
             );
           },
@@ -485,8 +499,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 class _ShowcaseOverlay extends StatelessWidget {
   const _ShowcaseOverlay({
     required this.modelName,
-    required this.fps,
-    required this.inferenceMs,
+    required this.metrics,
     required this.task,
     required this.size,
     required this.availableSizes,
@@ -512,8 +525,7 @@ class _ShowcaseOverlay extends StatelessWidget {
   });
 
   final String modelName;
-  final double fps;
-  final double inferenceMs;
+  final ValueListenable<({double fps, double ms})> metrics;
   final YOLOTask task;
   final String size;
   final Set<String> availableSizes;
@@ -522,8 +534,8 @@ class _ShowcaseOverlay extends StatelessWidget {
   final double? downloadFraction;
   final double confidence;
   final double iou;
-  final double zoom;
-  final String lensLabel;
+  final ValueListenable<double> zoom;
+  final ValueListenable<String> lensLabel;
   final List<LensInfo> lenses;
   final bool isPaused;
   final String? versionLabel;
@@ -551,18 +563,12 @@ class _ShowcaseOverlay extends StatelessWidget {
         children: [
           // -- Top stack ----------------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              _sidePadding,
-              8,
-              _sidePadding,
-              0,
-            ),
+            padding: const EdgeInsets.fromLTRB(_sidePadding, 8, _sidePadding, 0),
             child: Column(
               children: [
-                PerformanceLabel(
-                  modelName: modelName,
-                  fps: fps,
-                  inferenceMs: inferenceMs,
+                ValueListenableBuilder<({double fps, double ms})>(
+                  valueListenable: metrics,
+                  builder: (context, m, _) => PerformanceLabel(modelName: modelName, fps: m.fps, inferenceMs: m.ms),
                 ),
                 const SizedBox(height: _topGap),
                 TaskSegmentedControl(
@@ -588,12 +594,7 @@ class _ShowcaseOverlay extends StatelessWidget {
 
           // -- Sliders ------------------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              _sidePadding,
-              0,
-              _sidePadding,
-              0,
-            ),
+            padding: const EdgeInsets.fromLTRB(_sidePadding, 0, _sidePadding, 0),
             child: Column(
               children: [
                 _SliderConstrained(
@@ -621,70 +622,46 @@ class _ShowcaseOverlay extends StatelessWidget {
 
           // -- Zoom HUD + Logo ---------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              _sidePadding,
-              8,
-              _sidePadding,
-              0,
-            ),
+            padding: const EdgeInsets.fromLTRB(_sidePadding, 8, _sidePadding, 0),
             child: Stack(
               alignment: Alignment.center,
               children: [
-                ZoomIndicator(currentZoom: zoom, lensLabel: lensLabel),
-                const Align(
-                  alignment: Alignment.centerRight,
-                  child: LogoOverlay(),
+                ValueListenableBuilder<double>(
+                  valueListenable: zoom,
+                  builder: (context, z, _) => ValueListenableBuilder<String>(
+                    valueListenable: lensLabel,
+                    builder: (context, label, _) => ZoomIndicator(currentZoom: z, lensLabel: label),
+                  ),
                 ),
+                const Align(alignment: Alignment.centerRight, child: LogoOverlay()),
               ],
             ),
           ),
 
           // -- Lens picker -------------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              _sidePadding,
-              6,
-              _sidePadding,
-              6,
-            ),
-            child: LensPicker(
-              lenses: lenses,
-              currentZoomFactor: zoom,
-              onLensSelected: onLensSelected,
+            padding: const EdgeInsets.fromLTRB(_sidePadding, 6, _sidePadding, 6),
+            child: ValueListenableBuilder<double>(
+              valueListenable: zoom,
+              builder: (context, z, _) =>
+                  LensPicker(lenses: lenses, currentZoomFactor: z, onLensSelected: onLensSelected),
             ),
           ),
 
           // -- Version + toolbar (full-bleed) ------------------------------------------------------------------
           if (versionLabel != null)
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: _sidePadding,
-                vertical: 4,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: _sidePadding, vertical: 4),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  versionLabel!,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 12,
-                  ),
-                ),
+                child: Text(versionLabel!, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
               ),
             ),
-          CameraToolbar(
-            isPaused: isPaused,
-            onPlayPause: onPlayPause,
-            onSwitchCamera: onSwitchCamera,
-            onShare: onShare,
-          ),
+          CameraToolbar(isPaused: isPaused, onPlayPause: onPlayPause, onSwitchCamera: onSwitchCamera, onShare: onShare),
           // Extend the same translucent black band under the home-indicator inset so the toolbar reads as a single
           // flush bottom bar (matches `toolbar.frame = ... height - 66, width: width, height: 66` in
           // `yolo-ios-app/Sources/YOLO/YOLOView.swift:806`).
-          Container(
-            height: MediaQuery.of(context).padding.bottom,
-            color: Colors.black.withValues(alpha: 0.7),
-          ),
+          Container(height: MediaQuery.of(context).padding.bottom, color: Colors.black.withValues(alpha: 0.7)),
         ],
       ),
     );
@@ -702,6 +679,43 @@ class _SliderConstrained extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: FractionallySizedBox(widthFactor: 0.46, child: child),
+    );
+  }
+}
+
+/// Centered loading veil shown while a model is downloading/loading after a size or task tap. Without it the screen
+/// looks frozen — there was no indication anything was happening, which read as lag.
+class _ModelLoadingOverlay extends StatelessWidget {
+  const _ModelLoadingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: ColoredBox(
+          color: Colors.black.withValues(alpha: 0.35),
+          child: const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                SizedBox(height: 14),
+                Text(
+                  'Loading model…',
+                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
