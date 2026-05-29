@@ -332,8 +332,10 @@ func generateCombinedMaskImage(
   for i in 0..<N {
     let (_, _, _, coeffsMLArray) = detectedObjects[i]
     let coeffsPtr = coeffsMLArray.dataPointer.assumingMemoryBound(to: Float.self)
-    // Row i of matrix A: write to coeffsArray[i*C .. i*C + C-1]
-    for c in 0..<maskChannels {
+    // Row i of matrix A: write to coeffsArray[i*C .. i*C + C-1]. Clamp to the coefficient array's actual length so a
+    // model whose per-detection mask-coeff count differs from the proto channel count can't read out of bounds.
+    let available = min(maskChannels, coeffsMLArray.count)
+    for c in 0..<available {
       coeffsArray[i * maskChannels + c] = coeffsPtr[c]
     }
   }

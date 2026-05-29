@@ -44,6 +44,10 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   /// The class labels used by the model for categorizing detections.
   public var labels = [String]()
 
+  /// Whether the model needs external NMS. NMS-free exports (YOLO26) set metadata `nms = false`; for those the Vision
+  /// ThresholdProvider IoU is forced to 1.0 so the built-in NMS-free decoding isn't suppressed. Mirrors yolo-ios-app.
+  public private(set) var requiresNMS: Bool = true
+
   /// The current pixel buffer being processed (used for camera frame processing).
   var currentBuffer: CVPixelBuffer?
 
@@ -223,12 +227,21 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         // only keep labels on nested models, and hard-failing here leaves the predictor nil.
         predictor.labels = userDefined.map(Self.parseLabels(from:)) ?? []
 
+        // Detect NMS-free models (YOLO26): metadata `nms` == "false".
+        if let nmsValue = userDefined?["nms"] {
+          predictor.requiresNMS = (nmsValue.lowercased() != "false")
+        }
+
         // (3) Store model input size
         predictor.modelInputSize = predictor.getModelInputSize(for: mlModel)
 
         // (4) Create VNCoreMLModel, VNCoreMLRequest, etc.
         predictor.detector = try VNCoreMLModel(for: mlModel)
-        predictor.detector.featureProvider = ThresholdProvider()
+        // Seed the model's threshold inputs at load (NMS-free models force IoU = 1.0 so their decoding isn't
+        // suppressed). Previously a bare ThresholdProvider() left default thresholds until the user moved a slider.
+        let seedIou = predictor.requiresNMS ? predictor.iouThreshold : 1.0
+        predictor.detector.featureProvider = ThresholdProvider(
+          iouThreshold: seedIou, confidenceThreshold: predictor.confidenceThreshold)
         predictor.visionRequest = {
           let request = VNCoreMLRequest(
             model: predictor.detector,
