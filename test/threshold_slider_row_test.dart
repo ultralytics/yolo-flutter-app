@@ -13,15 +13,15 @@ void main() {
       // inner start-aligned Column. The old FractionallySizedBox shrink-wrapped here and got centered; the Row fill must
       // keep the caption + slider hard against the left.
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [_Probe()],
+                    children: [_Probe()],
                   ),
                 ),
               ],
