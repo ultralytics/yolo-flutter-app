@@ -54,8 +54,9 @@ class ModelSizeSegmentedControl extends StatelessWidget {
         ? currentSize
         : visibleSizes.first;
 
-    // Content-hug + centered (NOT full-width) so the chips only use the width they need, like the iOS app.
-    return Center(
+    // Full-width so the longer `YOLO26<size>` chips get more room (the model row spans wider than the task row).
+    return SizedBox(
+      width: double.infinity,
       child: CupertinoSlidingSegmentedControl<String>(
         groupValue: effectiveCurrent,
         backgroundColor: Colors.black.withValues(alpha: 0.7),

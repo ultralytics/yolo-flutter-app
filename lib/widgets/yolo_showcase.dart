@@ -639,7 +639,7 @@ class _ShowcaseOverlay extends StatelessWidget {
                   min: 0,
                   max: 1,
                   onChanged: onConfidenceChanged,
-                  sliderWidthFactor: 0.58,
+                  sliderWidthFactor: 0.46,
                 ),
                 const SizedBox(height: _sliderRowGap),
                 ThresholdSliderRow(
@@ -648,7 +648,7 @@ class _ShowcaseOverlay extends StatelessWidget {
                   min: 0,
                   max: 1,
                   onChanged: onIouChanged,
-                  sliderWidthFactor: 0.58,
+                  sliderWidthFactor: 0.46,
                 ),
               ],
             ),
