@@ -119,14 +119,59 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
 
   fileprivate let lockQueue = DispatchQueue(label: "com.ultralytics.yolo.obbLock")
 
+  /// Processes YOLO26 end2end OBB output `[1, max_det, 7]` where each detection is `[cx, cy, w, h, conf, class_id,
+  /// angle]` in pixel coords (center-based xywh from `dist2rbox`, angle in radians). NMS is already applied by the
+  /// model, so this only thresholds. Ported from `yolo-ios-app/Sources/YOLO/ObbDetector.swift`.
+  private func postProcessEnd2EndOBB(
+    feature: MLMultiArray,
+    shape: [Int],
+    confidenceThreshold: Float
+  ) -> [(box: OBB, score: Float, cls: Int)] {
+    let numDetections = shape[1]
+    let numFields = shape[2]
+    let strides = feature.strides.map { $0.intValue }
+    let pointer = feature.dataPointer.assumingMemoryBound(to: Float.self)
+    let detStride = strides[1]
+    let fieldStride = strides[2]
+    let inputW = Float(modelInputSize.width)
+    let inputH = Float(modelInputSize.height)
+
+    var results: [(box: OBB, score: Float, cls: Int)] = []
+    for i in 0..<numDetections {
+      let base = i * detStride
+      let conf = pointer[base + 4 * fieldStride]
+      guard conf > confidenceThreshold else { continue }
+
+      let cx = pointer[base] / inputW
+      let cy = pointer[base + fieldStride] / inputH
+      let w = pointer[base + 2 * fieldStride] / inputW
+      let h = pointer[base + 3 * fieldStride] / inputH
+      let classId = numFields > 6 ? Int(pointer[base + 5 * fieldStride]) : 0
+      let angle = pointer[base + (numFields - 1) * fieldStride]
+
+      results.append((box: OBB(cx: cx, cy: cy, w: w, h: h, angle: angle), score: conf, cls: classId))
+    }
+    return results
+  }
+
   func postProcessOBB(
     feature: MLMultiArray,
     confidenceThreshold: Float,
     iouThreshold: Float
   ) -> [(box: OBB, score: Float, cls: Int)] {
+    let shape = feature.shape.map { $0.intValue }
+    guard shape.count == 3 else { return [] }
 
-    let shape1 = feature.shape[1].intValue
-    let numAnchors = feature.shape[2].intValue
+    // YOLO26 end2end OBB output is [1, max_det, 7] = (x, y, w, h, conf, class_id, angle), where shape[2] < shape[1].
+    // Traditional OBB output is [1, 4+nc+1, num_anchors], where shape[2] > shape[1]. Without this branch the YOLO26
+    // format was parsed as traditional, producing the garbage/flashing boxes.
+    if shape[2] < shape[1] {
+      return postProcessEnd2EndOBB(
+        feature: feature, shape: shape, confidenceThreshold: confidenceThreshold)
+    }
+
+    let shape1 = shape[1]
+    let numAnchors = shape[2]
     let numClasses = shape1 - 5  // (4 + numClasses + 1) = shape1
 
     let pointer = feature.dataPointer.bindMemory(
