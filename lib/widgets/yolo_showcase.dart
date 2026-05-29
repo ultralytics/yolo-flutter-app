@@ -578,8 +578,10 @@ class _ShowcaseOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      // Bottom toolbar extends to the device edge; opt the toolbar out of the bottom safe-area pad so it sits flush.
-      bottom: false,
+      // iOS: opt out of the bottom inset so the toolbar sits flush under the translucent home indicator (matches the
+      // iOS reference). Android: the system navigation bar is opaque and always present, so respect the bottom inset
+      // and let the toolbar start above it instead of being hidden underneath.
+      bottom: defaultTargetPlatform == TargetPlatform.android,
       child: Column(
         children: [
           // -- Top stack ----------------------------------------------------------------------------------------
