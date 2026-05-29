@@ -1387,29 +1387,10 @@ class YOLOView @JvmOverloads constructor(
                         var top = box.xywh.top * scale + dy
                         var right = box.xywh.right * scale + dx
                         var bottom = box.xywh.bottom * scale + dy
-                        
-                        // Ensure coordinates are within view bounds and maintain aspect ratio
-                        val boxWidth = right - left
-                        val boxHeight = bottom - top
-                        
-                        // Adjust coordinates to maintain aspect ratio and stay within bounds
-                        if (left < 0) {
-                            left = 0f
-                            right = left + boxWidth
-                        }
-                        if (right > vw) {
-                            right = vw.toFloat()
-                            left = right - boxWidth
-                        }
-                        if (top < 0) {
-                            top = 0f
-                            bottom = top + boxHeight
-                        }
-                        if (bottom > vh) {
-                            bottom = vh.toFloat()
-                            top = bottom - boxHeight
-                        }
-                        
+                        // Draw at the box's true position and let the canvas clip whatever falls outside the view. Do
+                        // NOT pin an edge to the bound while keeping the width — that shifts a partially off-screen box
+                        // inward (a left edge clamped to 0 pushes the right edge too far right, and vice versa).
+
                         // Flip horizontally for front camera (DETECT task)
                         if (isFrontCamera) {
                             val flippedLeft = vw - right
