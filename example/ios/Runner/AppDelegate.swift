@@ -3,24 +3,20 @@
 import Flutter
 import UIKit
 
+// Canonical Flutter 3.41 UIScene setup. Plugins are registered against the implicit engine that `FlutterSceneDelegate`
+// runs (via `didInitializeImplicitFlutterEngine`), NOT against a hand-rolled engine — the previous manual engine +
+// window creation in `SceneDelegate` worked under the Xcode debugger but crashed on a cold relaunch from the home
+// screen. See https://flutter.dev/to/uiscene-migration.
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // Required for the UIScene migration on iOS 26+. Pin the scene configuration to the one declared in Info.plist so
-  // the SceneDelegate above is actually instantiated when the system asks for a window scene.
-  override func application(
-    _ application: UIApplication,
-    configurationForConnecting connectingSceneSession: UISceneSession,
-    options: UIScene.ConnectionOptions
-  ) -> UISceneConfiguration {
-    return UISceneConfiguration(
-      name: "Default Configuration", sessionRole: connectingSceneSession.role)
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 }

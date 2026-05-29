@@ -3,35 +3,10 @@
 import Flutter
 import UIKit
 
-/// iOS 26+ requires a UISceneDelegate. We create the FlutterEngine here (instead of letting the storyboard implicitly
-/// spin up a fresh one) and register the GeneratedPluginRegistrant against it — without this every plugin call lands
-/// on an engine with no plugins and Dart sees `MissingPluginException` / `channel-error` for everything (wakelock_plus,
-/// shared_preferences, ultralytics_yolo, ...). Subclassing Flutter's own delegate keeps its scene-lifecycle plumbing.
+/// Canonical Flutter 3.41 scene delegate. `FlutterSceneDelegate` loads the `Main` storyboard (a `FlutterViewController`)
+/// against the implicit engine, whose plugins are registered in `AppDelegate.didInitializeImplicitFlutterEngine`. Do
+/// NOT hand-roll a `FlutterEngine`/`UIWindow` here or call `super.scene(willConnectTo:)` on top of a manual setup —
+/// that double-configured the scene and crashed on a cold relaunch from the home screen.
 /// See https://flutter.dev/to/uiscene-migration.
 @objc class SceneDelegate: FlutterSceneDelegate {
-  var flutterEngine: FlutterEngine?
-
-  override func scene(
-    _ scene: UIScene,
-    willConnectTo session: UISceneSession,
-    options connectionOptions: UIScene.ConnectionOptions
-  ) {
-    guard let windowScene = scene as? UIWindowScene else {
-      super.scene(scene, willConnectTo: session, options: connectionOptions)
-      return
-    }
-
-    let engine = FlutterEngine(name: "io.ultralytics.yoloExample")
-    engine.run()
-    GeneratedPluginRegistrant.register(with: engine)
-    self.flutterEngine = engine
-
-    let viewController = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
-    let window = UIWindow(windowScene: windowScene)
-    window.rootViewController = viewController
-    self.window = window
-    window.makeKeyAndVisible()
-
-    super.scene(scene, willConnectTo: session, options: connectionOptions)
-  }
 }
