@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license -->
-
-<!-- Splash: Ultralytics logotype centered on white, matching the iOS LaunchScreen. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
-
-    <item
-        android:width="280dp"
-        android:height="79dp"
-        android:drawable="@drawable/launch_logo"
-        android:gravity="center" />
+    <item>
+        <bitmap android:gravity="fill" android:src="@drawable/background"/>
+    </item>
+    <item>
+        <bitmap android:gravity="center" android:src="@drawable/splash"/>
+    </item>
 </layer-list>

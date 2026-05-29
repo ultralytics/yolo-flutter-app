@@ -11,6 +11,7 @@ environment:
 
 dependencies:
   cupertino_icons: ^1.0.9
+  flutter_native_splash: ^2.4.4
   flutter:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4
@@ -46,3 +47,12 @@ flutter_launcher_icons:
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/applogo.png"
   remove_alpha_ios: true
+
+# Splash screen (logotype on white, matching the iOS LaunchScreen). Held until the camera+first detection are ready via
+# FlutterNativeSplash.preserve/remove. Android 12+ shows the centered icon form (platform constraint) on white.
+flutter_native_splash:
+  color: "#ffffff"
+  image: assets/ultralytics_yolo_logotype.png
+  android_12:
+    color: "#ffffff"
+    image: assets/applogo.png

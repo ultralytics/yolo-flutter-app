@@ -49,6 +49,11 @@ class YOLOShowcase extends StatefulWidget {
   /// `package_info_plus` version, e.g. `'v${info.version}'`.
   final String? versionLabel;
 
+  /// Invoked once when the camera is up and the first inference result has arrived — i.e. the live view is fully
+  /// ready. Hosts can use this to dismiss a native splash (e.g. `FlutterNativeSplash.remove()`) so the splash covers
+  /// the model-compile + camera-bind gap instead of showing a black screen with controls over it.
+  final VoidCallback? onReady;
+
   const YOLOShowcase({
     super.key,
     this.initialTask = YOLOTask.detect,
@@ -58,6 +63,7 @@ class YOLOShowcase extends StatefulWidget {
     this.controller,
     this.theme,
     this.versionLabel,
+    this.onReady,
   });
 
   @override
@@ -105,6 +111,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // a seamless splash -> camera+predictions transition, instead of camera -> black (during the first GPU compile) ->
   // camera. Stays true afterwards (later switches use the translucent veil instead).
   bool _initialModelLoaded = false;
+
+  // Fires onReady exactly once, on the first inference result.
+  bool _readyFired = false;
 
   bool _isPaused = false;
   Offset? _focusPosition;
@@ -428,6 +437,12 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     // Update the notifier, NOT setState: this fires every inference frame (~30 fps). A setState here rebuilt the whole
     // tree — camera platform view and all controls — 30x/sec, which was the primary source of the lag.
     _metrics.value = (fps: metrics.fps, ms: metrics.processingTimeMs);
+    // First inference result → the live view is fully up. Let the host dismiss its native splash now (covers the
+    // model-compile + camera-bind window so startup is splash -> camera+detections, no black gap).
+    if (!_readyFired) {
+      _readyFired = true;
+      widget.onReady?.call();
+    }
   }
 
   @override
