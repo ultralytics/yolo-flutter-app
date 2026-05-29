@@ -23,7 +23,7 @@ class SemanticSegmenter(
     private var colorCache = IntArray(0)
 
     init {
-        YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)?.let { labels = it }
+        YOLOFileUtils.loadModelLabels(context, modelPath)?.let { labels = it }
 
         rtModel = LiteRtModel(modelPath, useGpu, "SemanticSegmenter")
 

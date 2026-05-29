@@ -159,6 +159,56 @@ object YOLOFileUtils {
         return (loadMetadataFromAppendedZip(context, modelPath)?.get("labels") as? List<*>)?.filterIsInstance<String>()
     }
 
+    /**
+     * Model metadata from Ultralytics' appended-ZIP, falling back to the standard embedded TFLite (FlatBuffers)
+     * metadata. The fallback lets users drag-and-drop custom models that carry only standard TFLite metadata and still
+     * get their task + labels auto-detected. Returns a map shaped like [loadMetadataFromAppendedZip] (keys: task,
+     * labels, ...).
+     */
+    fun loadModelMetadata(context: Context, modelPath: String): Map<String, Any>? {
+        loadMetadataFromAppendedZip(context, modelPath)?.let { return it }
+        return loadMetadataFromFlatbuffer(context, modelPath)
+    }
+
+    /** Labels from [loadModelMetadata] (appended-ZIP or embedded FlatBuffers metadata). */
+    fun loadModelLabels(context: Context, modelPath: String): List<String>? {
+        return (loadModelMetadata(context, modelPath)?.get("labels") as? List<*>)?.filterIsInstance<String>()
+    }
+
+    private fun loadMetadataFromFlatbuffer(context: Context, modelPath: String): Map<String, Any>? = try {
+        val buffer = YOLOUtils.loadModelFile(context, modelPath)
+        val extractor = org.tensorflow.lite.support.metadata.MetadataExtractor(buffer)
+        var result: Map<String, Any>? = null
+        extractor.associatedFileNames?.forEach { name ->
+            if (result == null) {
+                extractor.getAssociatedFile(name)?.use { stream ->
+                    val text = String(stream.readBytes(), StandardCharsets.UTF_8)
+                    val parsed = org.yaml.snakeyaml.Yaml().load<Any?>(text)
+                    if (parsed is Map<*, *>) {
+                        val map = buildMap<String, Any> {
+                            (parsed["task"] as? String)?.takeIf { it.isNotEmpty() }?.let { put("task", it) }
+                            when (val names = parsed["names"]) {
+                                is Map<*, *> -> {
+                                    val sorted = names.entries.sortedBy { (k, _) ->
+                                        k.toString().toIntOrNull() ?: Int.MAX_VALUE
+                                    }
+                                    put("labels", sorted.map { (_, v) -> v.toString() })
+                                }
+                                is List<*> -> put("labels", names.map { it.toString() })
+                                else -> {}
+                            }
+                        }
+                        if (map.isNotEmpty()) result = map
+                    }
+                }
+            }
+        }
+        result
+    } catch (e: Exception) {
+        Log.w(TAG, "Embedded FlatBuffers metadata read failed for $modelPath: ${e.message}")
+        null
+    }
+
     private fun closeResources(afd: AssetFileDescriptor?, fis: FileInputStream?, fileChannel: FileChannel?, reason: String) {
         try { fileChannel?.close() } catch (e: IOException) { Log.e(TAG, "Error closing FileChannel", e) }
         try { fis?.close() } catch (e: IOException) { Log.e(TAG, "Error closing FileInputStream", e) }

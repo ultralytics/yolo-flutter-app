@@ -26,7 +26,7 @@ class Classifier(
     private lateinit var intValues: IntArray
 
     init {
-        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        val loadedLabels = YOLOFileUtils.loadModelLabels(context, modelPath)
         if (loadedLabels != null) {
             this.labels = loadedLabels
             Log.i(TAG, "Labels successfully loaded from appended ZIP.")

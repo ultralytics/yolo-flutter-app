@@ -424,7 +424,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           val args = call.arguments as? Map<*, *>
           val originalPath = args?.get("modelPath") as? String ?: ""
           val modelPath = resolveModelPath(originalPath)
-          val metadata = YOLOFileUtils.loadMetadataFromAppendedZip(applicationContext, modelPath)
+          val metadata = YOLOFileUtils.loadModelMetadata(applicationContext, modelPath)
           result.success(
             metadata?.plus("path" to modelPath) ?: mapOf(
               "path" to modelPath,

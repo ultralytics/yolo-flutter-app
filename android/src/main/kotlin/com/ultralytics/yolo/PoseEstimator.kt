@@ -44,7 +44,7 @@ class PoseEstimator(
     private lateinit var outputLayout: OutputLayout
 
     init {
-        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        val loadedLabels = YOLOFileUtils.loadModelLabels(context, modelPath)
         if (loadedLabels != null) {
             this.labels = loadedLabels
             Log.i("PoseEstimator", "Labels successfully loaded from appended ZIP.")

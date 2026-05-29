@@ -36,12 +36,12 @@ class ObjectDetector(
     private lateinit var floatInput: FloatArray
 
     init {
-        // Labels come from the appended ZIP. LiteRT 2.x drops the FlatBuffers/MetadataExtractor fallback (that
-        // artifact has no 2.x release); the appended-ZIP path covers all official YOLO exports.
-        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        // Labels from the model metadata: Ultralytics' appended ZIP, falling back to standard embedded TFLite
+        // (FlatBuffers) metadata so drag-and-dropped custom models keep their labels.
+        val loadedLabels = YOLOFileUtils.loadModelLabels(context, modelPath)
         if (loadedLabels != null) {
             this.labels = loadedLabels
-            Log.i(TAG, "Labels successfully loaded from appended ZIP.")
+            Log.i(TAG, "Labels loaded from model metadata.")
         } else if (this.labels.isEmpty()) {
             Log.w(TAG, "No embedded labels found and none provided; detections may lack class names.")
         }

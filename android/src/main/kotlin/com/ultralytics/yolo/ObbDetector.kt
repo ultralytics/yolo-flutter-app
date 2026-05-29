@@ -34,7 +34,7 @@ class ObbDetector(
     private var outAnchors = 0
 
     init {
-        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        val loadedLabels = YOLOFileUtils.loadModelLabels(context, modelPath)
         if (loadedLabels != null) {
             this.labels = loadedLabels
             Log.i("ObbDetector", "Labels successfully loaded from appended ZIP.")

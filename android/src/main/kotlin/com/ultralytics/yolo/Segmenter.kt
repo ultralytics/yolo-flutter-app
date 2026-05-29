@@ -41,7 +41,7 @@ class Segmenter(
     private var maskOutIndex = 1
 
     init {
-        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
+        val loadedLabels = YOLOFileUtils.loadModelLabels(context, modelPath)
         if (loadedLabels != null) {
             this.labels = loadedLabels
             Log.i("Segmenter", "Labels successfully loaded from appended ZIP.")
