@@ -33,6 +33,18 @@ class YOLOView extends StatefulWidget {
   final Function(YOLOPerformanceMetrics)? onPerformanceMetrics;
   final Function(Map<String, dynamic>)? onStreamingData;
   final Function(double zoomLevel)? onZoomChanged;
+
+  /// Called when an in-place model switch fails while a previously loaded model is still running natively. Carries the
+  /// `modelPath`/`task` of the request that failed so the host can ignore stale failures and only react to the request
+  /// that matches its current selection. Lets the host clear transient UI without the view tearing itself down into a
+  /// full-screen error.
+  final void Function(Object error, String modelPath, YOLOTask? task)?
+  onModelError;
+
+  /// Called after a model is successfully loaded (initial load) or switched in place (native `setModel` succeeded).
+  /// Carries the loaded `modelPath`/`task` so the host can record exactly which model is running rather than reading
+  /// its (possibly already-changed) optimistic selection.
+  final void Function(String modelPath, YOLOTask? task)? onModelLoad;
   final YOLOStreamingConfig? streamingConfig;
   final double confidenceThreshold;
   final double iouThreshold;
@@ -49,6 +61,8 @@ class YOLOView extends StatefulWidget {
     this.onPerformanceMetrics,
     this.onStreamingData,
     this.onZoomChanged,
+    this.onModelError,
+    this.onModelLoad,
     this.streamingConfig,
     this.confidenceThreshold = 0.25,
     this.iouThreshold = 0.7,
@@ -69,6 +83,17 @@ class _YOLOViewState extends State<YOLOView> {
   YOLOResolvedModel? _resolvedModel;
   Object? _resolutionError;
   int _resolutionRequestId = 0;
+
+  // Serializes native `switchModel` calls. Each setModel completes asynchronously on the native side (Android spins a
+  // fresh executor, iOS model creation is async), so two overlapping calls could finish out of order and leave native
+  // state behind the latest selection. Chaining them — and skipping any request superseded before its turn — keeps the
+  // most recently requested model as the last one actually applied.
+  Future<void> _nativeSwitchChain = Future<void>.value();
+
+  // The model the native side was last asked to load (or settled on after a failed switch reverted it). Tracks native
+  // intent independently of `_resolvedModel`, which is committed only after a switch succeeds and therefore lags an
+  // in-flight switch. Used to decide whether a native switch is actually needed and to dedupe redundant reloads.
+  YOLOResolvedModel? _nativeSwitchTarget;
 
   final String _viewId = UniqueKey().toString();
   int? _platformViewId;
@@ -216,29 +241,72 @@ class _YOLOViewState extends State<YOLOView> {
       );
       if (!mounted || requestId != _resolutionRequestId) return;
 
-      final previousResolvedModel = _resolvedModel;
-      final didChange =
-          previousResolvedModel?.modelPath != resolvedModel.modelPath ||
-          previousResolvedModel?.task != resolvedModel.task;
-
-      setState(() {
-        _resolvedModel = resolvedModel;
-      });
-
-      if (switchExisting && didChange && _platformViewId != null) {
-        await _effectiveController.switchModel(
-          resolvedModel.modelPath,
-          resolvedModel.task,
-        );
+      if (switchExisting && _platformViewId != null) {
+        // Run the native switch AND the `_resolvedModel` commit inside the serialized chain so overlapping requests
+        // apply strictly in order. The decision to hit the native side compares against `_nativeSwitchTarget` (what
+        // native was last asked / settled on), NOT `_resolvedModel` — `_resolvedModel` is committed only after a
+        // successful switch, so it lags an in-flight switch and would wrongly skip re-applying the latest selection
+        // (e.g. switch to `s` in flight, user taps back to `n`). A request superseded before its turn skips the
+        // native call so the latest selection always wins.
+        final pending = _nativeSwitchChain.then((_) async {
+          if (!mounted || requestId != _resolutionRequestId) return;
+          final alreadyTargeting =
+              _nativeSwitchTarget?.modelPath == resolvedModel.modelPath &&
+              _nativeSwitchTarget?.task == resolvedModel.task;
+          if (!alreadyTargeting) {
+            // Switch BEFORE committing `_resolvedModel`. On failure the native side keeps the previously loaded model
+            // (verified on both platforms), so restore the intent and rethrow — the catch keeps the live camera.
+            final previousTarget = _nativeSwitchTarget;
+            _nativeSwitchTarget = resolvedModel;
+            try {
+              await _effectiveController.switchModel(
+                resolvedModel.modelPath,
+                resolvedModel.task,
+              );
+            } catch (_) {
+              _nativeSwitchTarget = previousTarget;
+              rethrow;
+            }
+          }
+          if (!mounted || requestId != _resolutionRequestId) return;
+          setState(() {
+            _resolvedModel = resolvedModel;
+          });
+          widget.onModelLoad?.call(modelPath, task);
+        });
+        // Keep the chain alive past a failed/superseded switch so later requests still run after this one.
+        _nativeSwitchChain = pending.catchError((_) {});
+        await pending; // surface this request's own native failure to the catch below
+      } else {
+        // Initial load / pre-platform-view: no native switch happens here (creationParams carry the model). Commit
+        // directly and record it as the native target so the first in-place switch compares against the right model.
+        setState(() {
+          _resolvedModel = resolvedModel;
+        });
+        _nativeSwitchTarget = resolvedModel;
+        widget.onModelLoad?.call(modelPath, task);
       }
     } catch (error) {
       if (!mounted || requestId != _resolutionRequestId) return;
-      setState(() {
-        _resolutionError = error;
-        if (!switchExisting) {
+      if (switchExisting && _resolvedModel != null) {
+        // An in-place switch failed (e.g. the requested model isn't published at the release tag yet, or the device
+        // went offline mid-download) but the previously loaded model is still running natively. Keep the live camera
+        // and report the failure out-of-band instead of tearing the view down into a full-screen error.
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            library: 'ultralytics_yolo',
+            context: ErrorDescription('switching model to $modelPath'),
+          ),
+        );
+        widget.onModelError?.call(error, modelPath, task);
+      } else {
+        setState(() {
+          _resolutionError = error;
           _resolvedModel = null;
-        }
-      });
+        });
+        widget.onModelError?.call(error, modelPath, task);
+      }
     }
   }
 

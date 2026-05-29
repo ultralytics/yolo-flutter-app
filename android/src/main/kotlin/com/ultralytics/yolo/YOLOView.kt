@@ -509,11 +509,15 @@ class YOLOView @JvmOverloads constructor(
                     }
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to load model: $modelPath. Camera will run without inference.", e)
+                Log.w(TAG, "Failed to load model: $modelPath. Keeping the previously loaded model if one is present.", e)
                 post {
-                    // Clear predictor so the camera can keep running until a valid model is set
-                    this.predictor = null
-                    this.modelName = "No Model"
+                    // The new predictor was built into a local and never assigned, so the previously loaded model is
+                    // untouched. Only drop inference when there is nothing to fall back to (an initial-load failure);
+                    // for an in-place switch failure keep the previous predictor running so the camera doesn't
+                    // silently stop detecting while the UI reverts to the still-loaded model.
+                    if (this.predictor == null) {
+                        this.modelName = "No Model"
+                    }
                     modelLoadCallback?.invoke(false)
                     callback?.invoke(false)
                 }

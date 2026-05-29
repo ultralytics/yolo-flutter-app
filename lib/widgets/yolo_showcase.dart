@@ -71,6 +71,11 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   late YOLOTask _currentTask;
   late String _currentSize;
+  // The task/size the native side is actually running (last switch that succeeded). `_current*` is the optimistic
+  // selection shown in the controls; on a failed switch we revert `_current*` back to these so the chips never claim a
+  // model that isn't loaded.
+  late YOLOTask _runningTask;
+  late String _runningSize;
   Set<String> _availableSizes = {};
   String? _downloadingSize;
   double? _downloadFraction;
@@ -100,6 +105,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     super.initState();
     _currentTask = widget.initialTask;
     _currentSize = widget.initialModelSize;
+    _runningTask = _currentTask;
+    _runningSize = _currentSize;
 
     if (widget.controller != null) {
       _controller = widget.controller!;
@@ -129,11 +136,17 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       // Match the model id to a size chip; ignore foreign downloads.
       final size = _sizeForModelId(progress.modelId, _currentTask);
       if (size == null || !mounted) return;
+      final done = progress.fraction >= 1;
       setState(() {
-        _downloadingSize = progress.fraction >= 1 ? null : size;
-        _downloadFraction = progress.fraction >= 1 ? null : progress.fraction;
-        if (progress.fraction >= 1) {
+        if (done) {
           _availableSizes = {..._availableSizes, size};
+        }
+        // Only drive the active download spinner for the size the user is currently waiting on. A download abandoned
+        // by a later size tap keeps streaming until it finishes/fails, but must not keep (or resurrect) the chip for a
+        // selection the user has moved off of — `_onSizeChanged`/`_onTaskChanged` already clear the chip on change.
+        if (size == _currentSize) {
+          _downloadingSize = done ? null : size;
+          _downloadFraction = done ? null : progress.fraction;
         }
       });
     });
@@ -275,28 +288,31 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     await prefs.setString(_prefsSizeKey, size);
   }
 
-  Future<void> _switchToCurrentModel() async {
-    try {
-      await _controller.switchModel(_currentModelId, _currentTask);
-    } catch (error, stack) {
-      // Surface the failure to consumers via Flutter's error reporter and keep the UI usable instead of letting the
-      // exception escape into the framework. Common cases here: the requested model isn't published at the release
-      // tag yet, or the device is offline mid-download.
-      FlutterError.reportError(
-        FlutterErrorDetails(
-          exception: error,
-          stack: stack,
-          library: 'ultralytics_yolo',
-          context: ErrorDescription('switching to model $_currentModelId'),
-        ),
-      );
-      if (mounted) {
-        setState(() {
-          _downloadingSize = null;
-          _downloadFraction = null;
-        });
-      }
-    }
+  /// `YOLOView` confirms a model is actually loaded (initial load or a successful in-place switch). Record the loaded
+  /// model's identity (not the possibly-already-changed optimistic selection) as the "running" baseline, so a later
+  /// failed switch reverts to a model that truly loaded.
+  void _onModelLoaded(String modelPath, YOLOTask? task) {
+    if (!mounted) return;
+    final loadedTask = task ?? _currentTask;
+    final loadedSize = _sizeForModelId(modelPath, loadedTask);
+    if (loadedSize == null) return;
+    _runningTask = loadedTask;
+    _runningSize = loadedSize;
+  }
+
+  /// An in-place model switch failed (`YOLOView` kept the previously loaded model running). Ignore stale failures from
+  /// a request the user has already moved off of — the current chip belongs to a newer request. When the failed
+  /// request is still the current selection, clear the transient download chip and revert `_current*` back to the
+  /// model that's actually running so the controls don't claim a model that never loaded. Reverting re-points
+  /// `YOLOView` at the running model, which resolves to the same already-loaded path (no native re-switch).
+  void _onModelError(Object error, String modelPath, YOLOTask? task) {
+    if (!mounted || modelPath != _currentModelId) return;
+    setState(() {
+      _downloadingSize = null;
+      _downloadFraction = null;
+      _currentSize = _runningSize;
+      _currentTask = _runningTask;
+    });
   }
 
   void _onTaskChanged(YOLOTask task) {
@@ -306,10 +322,15 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       // The supported set differs per task on Android (only `n` for everything in v0.2.0). Clamp here too so a
       // task switch never hands `YOLOView` a model id that doesn't exist on the active platform.
       _currentSize = _clampSizeToSupported(_currentSize, task);
+      // Abandon any in-flight download chip for the previous selection (the progress listener only resurrects it for
+      // the new current size).
+      _downloadingSize = null;
+      _downloadFraction = null;
     });
     unawaited(_persistTask(task));
     unawaited(_refreshAvailableSizes(task));
-    unawaited(_switchToCurrentModel());
+    // The `setState` above changes `YOLOView`'s `modelPath`/`task`, so its `didUpdateWidget` performs the single
+    // resolve + native `switchModel`. Don't switch here too — that double-resolves and can race the download.
   }
 
   Future<void> _refreshAvailableSizes(YOLOTask task) async {
@@ -320,9 +341,14 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _onSizeChanged(String size) {
     if (size == _currentSize) return;
-    setState(() => _currentSize = size);
+    setState(() {
+      _currentSize = size;
+      // Abandon any in-flight download chip for the previous selection (see `_onTaskChanged`).
+      _downloadingSize = null;
+      _downloadFraction = null;
+    });
     unawaited(_persistSize(size));
-    unawaited(_switchToCurrentModel());
+    // `YOLOView.didUpdateWidget` handles the resolve + native switch off the changed `modelPath` prop (see above).
   }
 
   void _onLensSelected(LensInfo lens) {
@@ -392,6 +418,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   task: _currentTask,
                   controller: _controller,
                   onPerformanceMetrics: _onPerformanceMetrics,
+                  onModelError: _onModelError,
+                  onModelLoad: _onModelLoaded,
                 ),
                 // Gesture layer above YOLOView but behind controls so taps on segmented buttons / sliders still reach
                 // those widgets first.

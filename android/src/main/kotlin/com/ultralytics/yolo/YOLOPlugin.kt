@@ -550,7 +550,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
     }
     if (!handled && viewsToNotify.isNotEmpty()) {
         // This log means we iterated views but none seemed to handle it, or an exception occurred.
-        Log.w(TAG, "onRequestPermissionsResult was iterated but not confirmed handled by any YoloPlatformView, or an error occurred during delegation.")
+        Log.w(TAG, "onRequestPermissionsResult was iterated but not confirmed handled by any YOLOPlatformView, or an error occurred during delegation.")
     }
     return handled // Return true if any view instance successfully processed it.
   }
