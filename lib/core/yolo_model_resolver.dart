@@ -324,7 +324,9 @@ class YOLOModelResolver {
     // runs ~7ms on a Galaxy S26. Falls through to the normal resolver when the asset isn't bundled.
     if (Platform.isAndroid && officialId == 'yolo26n') {
       try {
-        return await _copyFlutterAssetToDocuments('assets/models/yolo26n.tflite');
+        return await _copyFlutterAssetToDocuments(
+          'assets/models/yolo26n.tflite',
+        );
       } catch (_) {
         // Not bundled in this build — fall through to the official download path below.
       }
