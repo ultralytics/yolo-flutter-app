@@ -86,7 +86,10 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // High-frequency values driven by native event streams (zoom/lens) and per-inference-frame metrics. These are
   // ValueNotifiers — NOT setState fields — so updating them rebuilds only the small leaf widgets that display them
   // (FPS/ms line, zoom HUD, lens highlight) instead of the whole tree (camera platform view + every control) ~30x/sec.
-  final ValueNotifier<({double fps, double ms})> _metrics = ValueNotifier((fps: 0, ms: 0));
+  final ValueNotifier<({double fps, double ms})> _metrics = ValueNotifier((
+    fps: 0,
+    ms: 0,
+  ));
   final ValueNotifier<double> _zoom = ValueNotifier(1);
   final ValueNotifier<String> _lensLabel = ValueNotifier('');
 
@@ -125,13 +128,18 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     // Drive the notifiers directly (no setState) — these fire continuously while pinching, so a full rebuild here is
     // exactly what made the UI feel laggy.
     _zoomSub = _controller.zoomEvents.listen((z) => _zoom.value = z);
-    _lensSub = _controller.lensEvents.listen((label) => _lensLabel.value = label);
+    _lensSub = _controller.lensEvents.listen(
+      (label) => _lensLabel.value = label,
+    );
     _focusSub = _controller.focusEvents.listen((offset) {
       // Native-side focus events fire view-relative 0..1 coords; translate to pixels using the most recent
       // LayoutBuilder size tracked in build().
       if (!mounted || _viewSize == Size.zero) return;
       setState(() {
-        _focusPosition = Offset(offset.dx * _viewSize.width, offset.dy * _viewSize.height);
+        _focusPosition = Offset(
+          offset.dx * _viewSize.width,
+          offset.dy * _viewSize.height,
+        );
       });
     });
     _progressSub = YOLOModelManager.downloadProgress.listen((progress) {
@@ -229,9 +237,13 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   static const List<String> _allSizes = ['n', 's', 'm', 'l', 'x'];
 
-  String get _currentModelId => _composeModelId(task: _currentTask, size: _currentSize);
+  String get _currentModelId =>
+      _composeModelId(task: _currentTask, size: _currentSize);
 
-  static String _composeModelId({required YOLOTask task, required String size}) {
+  static String _composeModelId({
+    required YOLOTask task,
+    required String size,
+  }) {
     const suffixes = {
       YOLOTask.detect: '',
       YOLOTask.segment: '-seg',
@@ -563,12 +575,21 @@ class _ShowcaseOverlay extends StatelessWidget {
         children: [
           // -- Top stack ----------------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(_sidePadding, 8, _sidePadding, 0),
+            padding: const EdgeInsets.fromLTRB(
+              _sidePadding,
+              8,
+              _sidePadding,
+              0,
+            ),
             child: Column(
               children: [
                 ValueListenableBuilder<({double fps, double ms})>(
                   valueListenable: metrics,
-                  builder: (context, m, _) => PerformanceLabel(modelName: modelName, fps: m.fps, inferenceMs: m.ms),
+                  builder: (context, m, _) => PerformanceLabel(
+                    modelName: modelName,
+                    fps: m.fps,
+                    inferenceMs: m.ms,
+                  ),
                 ),
                 const SizedBox(height: _topGap),
                 TaskSegmentedControl(
@@ -594,7 +615,12 @@ class _ShowcaseOverlay extends StatelessWidget {
 
           // -- Sliders ------------------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(_sidePadding, 0, _sidePadding, 0),
+            padding: const EdgeInsets.fromLTRB(
+              _sidePadding,
+              0,
+              _sidePadding,
+              0,
+            ),
             child: Column(
               children: [
                 _SliderConstrained(
@@ -622,7 +648,12 @@ class _ShowcaseOverlay extends StatelessWidget {
 
           // -- Zoom HUD + Logo ---------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(_sidePadding, 8, _sidePadding, 0),
+            padding: const EdgeInsets.fromLTRB(
+              _sidePadding,
+              8,
+              _sidePadding,
+              0,
+            ),
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -630,38 +661,67 @@ class _ShowcaseOverlay extends StatelessWidget {
                   valueListenable: zoom,
                   builder: (context, z, _) => ValueListenableBuilder<String>(
                     valueListenable: lensLabel,
-                    builder: (context, label, _) => ZoomIndicator(currentZoom: z, lensLabel: label),
+                    builder: (context, label, _) =>
+                        ZoomIndicator(currentZoom: z, lensLabel: label),
                   ),
                 ),
-                const Align(alignment: Alignment.centerRight, child: LogoOverlay()),
+                const Align(
+                  alignment: Alignment.centerRight,
+                  child: LogoOverlay(),
+                ),
               ],
             ),
           ),
 
           // -- Lens picker -------------------------------------------------------------------------------------
           Padding(
-            padding: const EdgeInsets.fromLTRB(_sidePadding, 6, _sidePadding, 6),
+            padding: const EdgeInsets.fromLTRB(
+              _sidePadding,
+              6,
+              _sidePadding,
+              6,
+            ),
             child: ValueListenableBuilder<double>(
               valueListenable: zoom,
-              builder: (context, z, _) =>
-                  LensPicker(lenses: lenses, currentZoomFactor: z, onLensSelected: onLensSelected),
+              builder: (context, z, _) => LensPicker(
+                lenses: lenses,
+                currentZoomFactor: z,
+                onLensSelected: onLensSelected,
+              ),
             ),
           ),
 
           // -- Version + toolbar (full-bleed) ------------------------------------------------------------------
           if (versionLabel != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: _sidePadding, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: _sidePadding,
+                vertical: 4,
+              ),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(versionLabel!, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
+                child: Text(
+                  versionLabel!,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 12,
+                  ),
+                ),
               ),
             ),
-          CameraToolbar(isPaused: isPaused, onPlayPause: onPlayPause, onSwitchCamera: onSwitchCamera, onShare: onShare),
+          CameraToolbar(
+            isPaused: isPaused,
+            onPlayPause: onPlayPause,
+            onSwitchCamera: onSwitchCamera,
+            onShare: onShare,
+          ),
           // Extend the same translucent black band under the home-indicator inset so the toolbar reads as a single
           // flush bottom bar (matches `toolbar.frame = ... height - 66, width: width, height: 66` in
           // `yolo-ios-app/Sources/YOLO/YOLOView.swift:806`).
-          Container(height: MediaQuery.of(context).padding.bottom, color: Colors.black.withValues(alpha: 0.7)),
+          Container(
+            height: MediaQuery.of(context).padding.bottom,
+            color: Colors.black.withValues(alpha: 0.7),
+          ),
         ],
       ),
     );
@@ -709,7 +769,11 @@ class _ModelLoadingOverlay extends StatelessWidget {
                 SizedBox(height: 14),
                 Text(
                   'Loading model…',
-                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
