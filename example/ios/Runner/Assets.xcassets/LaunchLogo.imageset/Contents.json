@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "ultralytics_yolo_logotype.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

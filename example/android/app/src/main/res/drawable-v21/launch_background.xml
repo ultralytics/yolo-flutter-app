@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license -->
 
-<!-- Modify this file to customize your launch splash screen -->
+<!-- Splash: Ultralytics logotype centered on white, matching the iOS LaunchScreen (forced white in dark mode too, since
+     the logotype artwork is dark). -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="?android:colorBackground" />
+    <item android:drawable="@android:color/white" />
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+    <item
+        android:width="280dp"
+        android:height="79dp"
+        android:drawable="@drawable/launch_logo"
+        android:gravity="center" />
 </layer-list>
