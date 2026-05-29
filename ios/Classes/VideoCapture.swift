@@ -182,7 +182,7 @@ class VideoCapture: NSObject, @unchecked Sendable {
     let connection = videoOutput.connection(with: AVMediaType.video)
     connection?.videoOrientation = videoOrientation
     if position == .front {
-      connection?.isVideoMirrored = true
+      configureVideoMirroring(connection, isMirrored: true)
     }
 
     // Configure captureDevice
@@ -201,7 +201,9 @@ class VideoCapture: NSObject, @unchecked Sendable {
         device.focusMode = AVCaptureDevice.FocusMode.continuousAutoFocus
         device.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
       }
-      device.exposureMode = AVCaptureDevice.ExposureMode.continuousAutoExposure
+      if device.isExposureModeSupported(.continuousAutoExposure) {
+        device.exposureMode = .continuousAutoExposure
+      }
       device.unlockForConfiguration()
     } catch {
       NSLog("YOLO VideoCapture: device configuration failed: %@", error.localizedDescription)
@@ -269,13 +271,19 @@ class VideoCapture: NSObject, @unchecked Sendable {
 
     connection.videoOrientation = orientation
     let currentInput = self.captureSession.inputs.first as? AVCaptureDeviceInput
-    if currentInput?.device.position == .front {
-      connection.isVideoMirrored = true
-    } else {
-      connection.isVideoMirrored = false
-    }
+    let isFront = currentInput?.device.position == .front
+    configureVideoMirroring(connection, isMirrored: isFront)
     self.previewLayer?.connection?.videoOrientation = connection.videoOrientation
+    configureVideoMirroring(self.previewLayer?.connection, isMirrored: isFront)
     frameSizeCaptured = false
+  }
+
+  /// Sets video mirroring deterministically — turn OFF automatic mirroring first so the explicit value sticks (iOS
+  /// otherwise re-derives it). Mirrors yolo-ios-app VideoCapture.configureVideoMirroring.
+  private func configureVideoMirroring(_ connection: AVCaptureConnection?, isMirrored: Bool) {
+    guard let connection, connection.isVideoMirroringSupported else { return }
+    connection.automaticallyAdjustsVideoMirroring = false
+    connection.isVideoMirrored = isMirrored
   }
 
   deinit {

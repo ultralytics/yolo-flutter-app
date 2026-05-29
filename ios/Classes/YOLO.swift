@@ -265,11 +265,18 @@ public class YOLO {
   }
 
   public func callAsFunction(_ uiImage: UIImage, returnAnnotatedImage: Bool = true) -> YOLOResult {
-    guard let ciImage = CIImage(image: uiImage) else {
+    // CIImage(image:) drops UIImage.imageOrientation, so a non-`.up` photo (e.g. a portrait camera-roll image, which
+    // is usually `.right`) would be analyzed sideways. Build from the CGImage with the mapped orientation; fall back
+    // to an upright redraw. Mirrors yolo-ios-app YOLO.callAsFunction(_:UIImage).
+    if let cgImage = uiImage.cgImage {
+      let oriented = CIImage(cgImage: cgImage).oriented(
+        CGImagePropertyOrientation(uiImage.imageOrientation))
+      return self(oriented, returnAnnotatedImage: returnAnnotatedImage)
+    }
+    guard let ciImage = CIImage(image: uiImage.uprightForYOLO()) else {
       return YOLOResult(orig_shape: .zero, boxes: [], speed: 0, names: [])
     }
-    let result = predictor.predictOnImage(image: ciImage)
-    return result
+    return self(ciImage, returnAnnotatedImage: returnAnnotatedImage)
   }
 
   public func callAsFunction(_ ciImage: CIImage, returnAnnotatedImage: Bool = true) -> YOLOResult {
