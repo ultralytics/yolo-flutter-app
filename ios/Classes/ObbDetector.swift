@@ -48,7 +48,10 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
         let limitedResults = Array(nmsResults.prefix(numItemsThreshold))
 
         for result in limitedResults {
-          let box = result.box
+          // Un-letterbox the model-input-normalized OBB back to original-frame-normalized coords (matches what
+          // detect does via inputRect). Without this, scaleFit padding offsets/scales the box. Mirrors
+          // yolo-ios-app ObbDetector.buildResults.
+          let box = inputOBB(fromModelOBB: result.box)
           let score = result.score
           let clsIdx = labelName(for: result.cls)
           let obbResult = OBBResult(box: box, confidence: score, cls: clsIdx, index: result.cls)
@@ -97,7 +100,8 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
 
           var obbResults: [OBBResult] = []
           for result in nmsResults {
-            let box = result.box
+            // Un-letterbox to original-frame-normalized coords (see processObservations).
+            let box = inputOBB(fromModelOBB: result.box)
             let score = result.score
             let clsIdx = labelName(for: result.cls)
             let obbResult = OBBResult(box: box, confidence: score, cls: clsIdx, index: result.cls)
