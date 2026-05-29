@@ -34,6 +34,10 @@ class ThresholdSliderRow extends StatelessWidget {
   /// When `true` the value is rendered with no decimal places (numItems).
   final bool isInt;
 
+  /// Fraction of the available width the slider track occupies (iOS `sliderWidth = width * 0.46`). The caption above
+  /// always spans full width so it never wraps.
+  final double sliderWidthFactor;
+
   const ThresholdSliderRow({
     super.key,
     required this.label,
@@ -43,6 +47,7 @@ class ThresholdSliderRow extends StatelessWidget {
     required this.onChanged,
     this.divisions,
     this.isInt = false,
+    this.sliderWidthFactor = 1.0,
   });
 
   @override
@@ -54,23 +59,32 @@ class ThresholdSliderRow extends StatelessWidget {
       children: [
         Text(
           '$prefix $label',
+          maxLines: 1,
+          overflow: TextOverflow.visible,
+          softWrap: false,
           style: const TextStyle(
             color: Colors.white,
             fontSize: 13,
             fontWeight: FontWeight.w400,
           ),
         ),
-        const SizedBox(height: 3),
-        CupertinoSlider(
-          value: value.clamp(min, max),
-          min: min,
-          max: max,
-          divisions: divisions,
-          // iOS YOLOView uses pure white for the filled portion; CupertinoSlider's default `activeColor` is the system
-          // accent, which is blue on iOS. Force white to match the reference.
-          activeColor: Colors.white,
-          thumbColor: Colors.white,
-          onChanged: onChanged,
+        const SizedBox(height: 1),
+        // Only the slider track is width-constrained (caption stays full-width single-line). The slider has built-in
+        // vertical padding, so the caption sits tight above it.
+        FractionallySizedBox(
+          widthFactor: sliderWidthFactor,
+          alignment: Alignment.centerLeft,
+          child: CupertinoSlider(
+            value: value.clamp(min, max),
+            min: min,
+            max: max,
+            divisions: divisions,
+            // iOS YOLOView uses pure white for the filled portion; CupertinoSlider's default `activeColor` is the
+            // system accent, which is blue on iOS. Force white to match the reference.
+            activeColor: Colors.white,
+            thumbColor: Colors.white,
+            onChanged: onChanged,
+          ),
         ),
       ],
     );

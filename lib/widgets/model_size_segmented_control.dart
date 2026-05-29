@@ -44,16 +44,6 @@ class ModelSizeSegmentedControl extends StatelessWidget {
 
   static const List<String> _sizes = ['n', 's', 'm', 'l', 'x'];
 
-  // iOS `Main.storyboard` modelSegmentedControl titles: nano / small / medium / large / xlarge. Showing `YOLO26<size>`
-  // overflowed the chips; the active model name already appears in the top `PerformanceLabel`.
-  static const Map<String, String> _sizeWords = {
-    'n': 'nano',
-    's': 'small',
-    'm': 'medium',
-    'l': 'large',
-    'x': 'xlarge',
-  };
-
   @override
   Widget build(BuildContext context) {
     final visibleSizes = _sizes
@@ -64,13 +54,13 @@ class ModelSizeSegmentedControl extends StatelessWidget {
         ? currentSize
         : visibleSizes.first;
 
-    return SizedBox(
-      width: double.infinity,
+    // Content-hug + centered (NOT full-width) so the chips only use the width they need, like the iOS app.
+    return Center(
       child: CupertinoSlidingSegmentedControl<String>(
         groupValue: effectiveCurrent,
         backgroundColor: Colors.black.withValues(alpha: 0.7),
         thumbColor: Colors.white.withValues(alpha: 0.18),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
         onValueChanged: (size) {
           if (size != null) onSizeChanged(size);
         },
@@ -106,24 +96,26 @@ class _SegmentLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = ModelSizeSegmentedControl._sizeWords[size] ?? size;
+    // Matches the iOS app's modelSegmentedControl: downloaded sizes read `YOLO26<size>`; sizes not yet on disk get a
+    // `↓` download-on-tap prefix. FittedBox keeps a long title from clipping its (equal-width) segment.
+    final label = isAvailable ? 'YOLO26$size' : '↓ YOLO26$size';
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.visible,
-            softWrap: false,
-            style: TextStyle(
-              // Dim sizes not yet on disk as the download-on-tap affordance (replaces the old `⤓` glyph that
-              // overflowed). Downloaded sizes are full white.
-              color: Colors.white.withValues(alpha: isAvailable ? 1.0 : 0.5),
-              // iOS segmented controls use the system font (~13pt) with a light selected-state weight delta.
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                color: Colors.white,
+                // iOS segmented controls use the system font (~13pt) with a light selected-state weight delta.
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
             ),
           ),
           if (isDownloading)

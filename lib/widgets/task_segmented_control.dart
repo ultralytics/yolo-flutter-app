@@ -55,22 +55,22 @@ class TaskSegmentedControl extends StatelessWidget {
         .where((t) => showSemanticTask || t != YOLOTask.semantic)
         .toList(growable: false);
 
-    return SizedBox(
-      width: double.infinity,
+    // Content-hug + centered (NOT full-width) so the control only uses the width it needs, like the iOS app.
+    return Center(
       child: CupertinoSlidingSegmentedControl<YOLOTask>(
         groupValue: tasks.contains(currentTask) ? currentTask : tasks.first,
         // black @ 70% — matches `toolbar.backgroundColor = .black.withAlphaComponent(0.7)` from setupToolbar.
         backgroundColor: Colors.black.withValues(alpha: 0.7),
         // selected thumb at 18% white, matching the iOS lensControl selectedSegmentTintColor.
         thumbColor: Colors.white.withValues(alpha: 0.18),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
         onValueChanged: (task) {
           if (task != null) onTaskChanged(task);
         },
         children: {
           for (final task in tasks)
             task: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               child: Text(
                 _shortLabels[task] ?? task.name,
                 style: TextStyle(

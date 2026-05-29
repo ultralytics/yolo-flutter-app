@@ -629,25 +629,24 @@ class _ShowcaseOverlay extends StatelessWidget {
               0,
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SliderConstrained(
-                  child: ThresholdSliderRow(
-                    label: 'Confidence Threshold',
-                    value: confidence,
-                    min: 0,
-                    max: 1,
-                    onChanged: onConfidenceChanged,
-                  ),
+                ThresholdSliderRow(
+                  label: 'Confidence Threshold',
+                  value: confidence,
+                  min: 0,
+                  max: 1,
+                  onChanged: onConfidenceChanged,
+                  sliderWidthFactor: 0.46,
                 ),
                 const SizedBox(height: _sliderRowGap),
-                _SliderConstrained(
-                  child: ThresholdSliderRow(
-                    label: 'IoU Threshold',
-                    value: iou,
-                    min: 0,
-                    max: 1,
-                    onChanged: onIouChanged,
-                  ),
+                ThresholdSliderRow(
+                  label: 'IoU Threshold',
+                  value: iou,
+                  min: 0,
+                  max: 1,
+                  onChanged: onIouChanged,
+                  sliderWidthFactor: 0.46,
                 ),
               ],
             ),
@@ -719,21 +718,6 @@ class _ShowcaseOverlay extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Constrains the iOS-style sliders to 46% of the view width on the left side, mirroring
-/// `layoutPortrait` line 763 (`sliderWidth = width * 0.46`).
-class _SliderConstrained extends StatelessWidget {
-  const _SliderConstrained({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: FractionallySizedBox(widthFactor: 0.46, child: child),
     );
   }
 }
