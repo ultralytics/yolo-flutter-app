@@ -18,7 +18,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.3.5 # Latest version
+  ultralytics_yolo: ^0.4.0 # Latest version
 ```
 
 Run the installation command:
@@ -87,12 +87,17 @@ Add permissions to `android/app/src/main/AndroidManifest.xml`:
 <uses-permission android:name="android.permission.CAMERA" />
 ```
 
-#### 3. ProGuard Configuration (Release Builds)
+#### 3. ProGuard / R8 Configuration (Release Builds)
 
-For release builds, add to `android/app/proguard-rules.pro`:
+The plugin ships consumer R8 rules that keep the LiteRT 2.x classes (`com.google.ai.edge.litert.**`) and metadata classes its native code reaches via JNI/reflection, so a standard release build needs no extra configuration.
+
+If you use a custom R8 setup that strips these rules, the app can crash on model load (or report no detections) in release builds. In that case add to `android/app/proguard-rules.pro`:
 
 ```pro
 # android/app/proguard-rules.pro
+-keep class com.google.ai.edge.litert.** { *; }
+-keep interface com.google.ai.edge.litert.** { *; }
+-dontwarn com.google.ai.edge.litert.**
 -keep class org.tensorflow.** { *; }
 -keep class com.ultralytics.** { *; }
 -dontwarn org.tensorflow.**
@@ -163,19 +168,19 @@ class TestYOLO extends StatelessWidget {
 
 ### iOS Optimization
 
-Enable Metal Performance Shaders in `ios/Runner/Info.plist`:
-
-```xml
-<!-- ios/Runner/Info.plist -->
-<key>UIRequiredDeviceCapabilities</key>
-<array>
-    <string>metal</string>
-</array>
-```
+iOS inference runs on Core ML, which automatically uses the Neural Engine and GPU when available, so no extra configuration is required. Ship a Core ML model (`.mlpackage`/`.mlmodel`, or `.mlpackage.zip` in Flutter assets) and run on a real device for accurate performance.
 
 ### Android Optimization
 
-For better performance on Android, consider enabling:
+Android inference runs on LiteRT 2.x via `CompiledModel`, which automatically tries a GPU → CPU accelerator ladder. To actually hit the GPU path, the model must be an fp16, non-end-to-end TFLite export:
+
+```python
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+```
+
+The end-to-end (NMS-free) head uses INT64 ops, and int8 quantization can't be compiled for the GPU accelerator, so those models fall back to CPU. fp16 + non-end-to-end is the recommended Android export for the GPU fast path; int8/end-to-end models still work, just on CPU. See the [Performance Guide](performance.md) for details.
+
+You can also restrict native ABIs:
 
 ```gradle
 // android/app/build.gradle
@@ -199,9 +204,9 @@ android {
 ### Production Setup
 
 - Optimize model size vs accuracy trade-offs
-- Enable ProGuard/R8 code shrinking
+- Enable ProGuard/R8 code shrinking (the plugin's consumer rules keep LiteRT classes automatically)
 - Test memory usage under load
-- Consider model quantization
+- On Android, prefer fp16 non-end-to-end exports for the GPU fast path; int8/end-to-end models run on CPU
 
 ## 📋 Requirements Summary
 

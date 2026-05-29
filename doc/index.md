@@ -30,6 +30,8 @@ The plugin is built around one model-loading flow:
 | Pose Estimation         | ✅      | ✅  |
 | Oriented Bounding Boxes | ✅      | ✅  |
 
+Android inference runs on LiteRT 2.x (the rebrand of TensorFlow Lite) via `CompiledModel`, with an automatic GPU → CPU accelerator ladder. iOS uses Core ML. For the fastest Android (GPU) path, export your model as fp16 and non-end-to-end (see the [Performance Guide](performance.md)).
+
 ## 🎯 Default Flow
 
 ```dart

@@ -73,9 +73,21 @@ final yolo = YOLO(
 );
 ```
 
+On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the whole graph for the GPU when the model is compatible, and otherwise falls back to XNNPACK CPU. (iOS uses Core ML.)
+
+Real GPU acceleration requires a **fp16, non-end-to-end** TFLite export:
+
+```python
+from ultralytics import YOLO
+
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+```
+
+On a Galaxy S26 (Adreno) this runs YOLO26n detect at roughly **7 ms/inference on the GPU** versus about **30 ms on CPU** (approximate, device-dependent). int8 and end-to-end (`nms=True`) models still load and run correctly, but their INT64 ops and int8 quantization cannot be compiled for the GPU, so they fall back to CPU.
+
 Use CPU when:
 
-- device-specific GPU delegates are unstable
+- device-specific GPU paths are unstable
 - startup reliability matters more than peak throughput
 - you are debugging model-load failures
 
@@ -122,5 +134,5 @@ Measure:
 - Start with `yolo26n`.
 - Prefer metadata-carrying official models or exports.
 - Cap streaming frame rate before trying to micro-optimize code.
-- Disable GPU on problematic devices instead of layering in workarounds.
+- On Android, ship a fp16 non-end2end export so the LiteRT 2.x GPU path engages; fall back to CPU on problematic devices instead of layering in workarounds.
 - Benchmark the actual export you plan to ship.

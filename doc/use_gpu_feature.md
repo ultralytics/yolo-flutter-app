@@ -10,7 +10,7 @@ The default is still:
 useGpu: true
 ```
 
-That is usually the best choice for performance, but disabling GPU is useful when a device-specific GPU path is unstable.
+That is usually the best choice for performance: on Android it engages the LiteRT 2.x GPU accelerator when the model is GPU-compatible (a fp16 non-end-to-end export) and otherwise falls back to CPU. Disabling GPU is useful when a device-specific GPU path is unstable.
 
 ## Basic Usage
 
@@ -43,8 +43,24 @@ Disable GPU when:
 
 ### Android
 
-- `useGpu: true` enables the GPU delegate when available
-- `useGpu: false` falls back to CPU or NNAPI paths
+Android inference runs on LiteRT 2.x (Google's rebrand of TensorFlow Lite) via the `CompiledModel` API, with an automatic **GPU → CPU accelerator ladder**:
+
+- `useGpu: true` requests the GPU. The plugin compiles the whole graph for the GPU when the model is compatible, and otherwise falls back to XNNPACK CPU.
+- `useGpu: false` runs on XNNPACK CPU.
+
+NNAPI is no longer used (it is deprecated and slower).
+
+Actual GPU acceleration requires a **fp16, non-end-to-end** model:
+
+```python
+from ultralytics import YOLO
+
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+```
+
+Here `half=True` produces fp16 weights the GPU can run, and `nms=False` keeps the raw (non-end2end) head while the plugin runs NMS on CPU sub-millisecond. int8 and end-to-end (`nms=True`) models use INT64 ops and int8 quantization the GPU cannot compile, so even with `useGpu: true` they silently fall back to CPU. They still load and run correctly.
+
+On a Galaxy S26 (Adreno) a fp16 non-end2end YOLO26n detect model runs at roughly **7 ms/inference on the GPU** versus about **30 ms on CPU** (approximate, device-dependent).
 
 ### iOS
 

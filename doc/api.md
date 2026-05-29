@@ -33,7 +33,7 @@ class YOLO {
 | ------------------- | ----------------------- | -------- | ------- | ----------------------------------------------------- |
 | `modelPath`         | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL     |
 | `task`              | `YOLOTask?`             | ❌       | `null`  | Type of YOLO task to perform when metadata is missing |
-| `useGpu`            | `bool`                  | ❌       | `true`  | Enable GPU acceleration when supported                |
+| `useGpu`            | `bool`                  | ❌       | `true`  | Allow GPU acceleration on Android (LiteRT 2.x GPU → CPU ladder); iOS uses Core ML. Set `false` to force CPU |
 | `useMultiInstance`  | `bool`                  | ❌       | `false` | Enable multi-instance support                         |
 | `classifierOptions` | `Map<String, dynamic>?` | ❌       | `null`  | Optional classifier preprocessing and label overrides |
 | `numItemsThreshold` | `int?`                  | ❌       | `30`    | Maximum number of returned detections                 |
@@ -266,12 +266,10 @@ class YOLOView extends StatefulWidget {
 | `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`            | Streaming configuration                           |
 | `confidenceThreshold`  | `double`                            | ❌       | `0.25`            | Initial confidence threshold for YOLOView         |
 | `iouThreshold`         | `double`                            | ❌       | `0.7`             | Initial IoU threshold for YOLOView                |
-| `useGpu`               | `bool`                              | ❌       | `true`            | Enable GPU acceleration for camera inference      |
+| `useGpu`               | `bool`                              | ❌       | `true`            | Allow GPU acceleration on Android (LiteRT 2.x GPU → CPU ladder); set `false` to force CPU |
 | `lensFacing`           | `LensFacing`                        | ❌       | `LensFacing.back` | Initial camera lens selection                     |
 
-`LensFacing.backWide` prefers the shortest-focal-length rear camera on Android
-and falls back to the default back camera when the device does not expose a
-wide rear lens. Other platforms treat it as `LensFacing.back`.
+`LensFacing.backWide` prefers the shortest-focal-length rear camera on Android and falls back to the default back camera when the device does not expose a wide rear lens. Other platforms treat it as `LensFacing.back`.
 
 #### Example
 
@@ -529,8 +527,7 @@ class YOLOResult {
 
 ---
 
-Single-image semantic segmentation returns `YOLODetectionResults.semanticMask`
-with a row-major `classMap`, `width`, and `height`.
+Single-image semantic segmentation returns `YOLODetectionResults.semanticMask` with a row-major `classMap`, `width`, and `height`.
 
 ---
 

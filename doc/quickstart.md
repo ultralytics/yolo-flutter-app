@@ -35,7 +35,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.3.5
+  ultralytics_yolo: ^0.4.0
   image_picker: ^1.2.1 # For image selection
 ```
 
@@ -59,7 +59,13 @@ Custom local models are still supported:
 - Android native assets: place `.tflite` files in **android/app/src/main/assets/**
 - Flutter assets: place `.tflite` on Android or `.mlpackage.zip` on iOS in `assets/models/` and use that asset path directly
 
-If your custom model metadata does not include `task`, pass it explicitly.
+Task and labels are auto-detected from the model's embedded metadata. If your custom model has no `task` in its metadata, pass it explicitly.
+
+Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core ML. For the fastest Android (GPU) performance, export your `.tflite` as fp16 and non-end-to-end:
+
+```python
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+```
 
 ## ⚡ Step 4: Minimal Detection Code
 
@@ -270,6 +276,10 @@ final classifications = await classifier.predict(imageBytes);
 
 - Run `flutter clean && flutter pub get`
 - Check minimum SDK versions in installation guide
+
+**Slow detections on Android?**
+
+- Use an fp16, non-end-to-end export so it runs on the GPU: `YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)`. int8/end-to-end models run on CPU.
 
 ## 📚 Learn More
 

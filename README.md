@@ -63,7 +63,7 @@ The main goal is simple integration: use an official model ID, or drop in your o
 | Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                    |
 | Single-Image Inference                | ✅      | ✅  | `YOLO` for image bytes                                  |
 | Official Models                       | ✅      | ✅  | Discovery, download, and caching for packaged model IDs |
-| Custom Models                         | ✅      | ✅  | TFLite on Android, Core ML on iOS, metadata-first tasks |
+| Custom Models                         | ✅      | ✅  | LiteRT (TFLite) on Android, Core ML on iOS, metadata-first tasks |
 
 ## ⚡ Quick Start
 
@@ -113,17 +113,13 @@ The plugin supports three model flows.
 
 ### 1. Official model IDs
 
-Use the default official model or a specific official ID and let the plugin
-handle download and caching:
+Use the default official model or a specific official ID and let the plugin handle download and caching:
 
 ```dart
 final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 ```
 
-Call `YOLO.officialModels()` to see which official IDs are available on the
-current platform. Official assets are downloaded from the canonical `v0.2.0`
-Flutter release on Android and the canonical YOLO iOS `v8.3.0` Core ML release
-on iOS, so package releases do not move model URLs.
+Call `YOLO.officialModels()` to see which official IDs are available on the current platform. Official assets are downloaded from the canonical `v0.2.0` Flutter release on Android and the canonical YOLO iOS `v8.3.0` Core ML release on iOS, so package releases do not move model URLs.
 
 Example assets come from the same canonical locations:
 
@@ -138,7 +134,7 @@ Pass your own exported YOLO model as a local path or Flutter asset path:
 final yolo = YOLO(modelPath: 'assets/models/my-finetuned-model.tflite');
 ```
 
-If the exported model includes metadata, the plugin infers `task` automatically. If metadata is missing, pass `task` explicitly.
+If the exported model includes embedded metadata, the plugin infers `task` and class labels automatically — it reads Ultralytics' appended-ZIP metadata, with a standard TFLite (FlatBuffers) metadata fallback — so drag-and-drop custom models auto-detect. If metadata is missing, pass `task` explicitly.
 
 ```dart
 final yolo = YOLO(
@@ -161,9 +157,7 @@ Pass an `http` or `https` URL and the plugin will download it into app storage b
 | You need the plugin to infer `task` automatically     | Any export with metadata          |
 | You have an older or stripped export without metadata | Custom model plus explicit `task` |
 
-For official models, start with `YOLO.defaultOfficialModel()` or
-`YOLO.officialModels()`. For custom models, start with the exported file you
-actually plan to ship.
+For official models, start with `YOLO.defaultOfficialModel()` or `YOLO.officialModels()`. For custom models, start with the exported file you actually plan to ship.
 
 ## 📥 Drop Your Own Model Into an App
 
@@ -189,6 +183,25 @@ YOLO("yolo26n.pt").export(format="coreml", nms=True, imgsz=[640, 640])
 ```
 
 Other tasks can use the default export settings, with the same square-orientation guidance for `imgsz`.
+
+### Android export note
+
+Android inference runs on [LiteRT](https://ai.google.dev/edge/litert) 2.x (Google's rebrand of TensorFlow Lite) through the `CompiledModel` API, with an automatic GPU → CPU accelerator ladder: the plugin compiles the whole graph for the GPU when the model supports it, otherwise it falls back to XNNPACK on CPU.
+
+For the fastest GPU path, export a fp16, non-end-to-end TFLite model:
+
+```python
+from ultralytics import YOLO
+
+# half=True gives fp16 weights the GPU accelerator can run.
+# nms=False keeps a non-end-to-end detection head; the plugin runs NMS on CPU in
+# well under a millisecond. The plugin reads task and labels from model metadata.
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+```
+
+On a representative device (Galaxy S26 / Adreno GPU, YOLO26n detect) this runs at roughly 7 ms/inference on the GPU, versus about 30 ms on CPU. Figures are approximate and device-dependent.
+
+int8 and end-to-end (`nms=True`) models still load and run correctly — their INT64 ops and int8 quantization can't be compiled for the GPU, so they fall back to CPU rather than failing. fp16 + non-end-to-end is the fast path.
 
 ## 🎯 Choose The Right API
 

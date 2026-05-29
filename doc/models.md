@@ -15,8 +15,7 @@ The plugin treats model metadata as the source of truth whenever it is available
 
 ## 📦 Official Models
 
-Use the default official model or a specific official model ID such as
-`yolo26n`:
+Use the default official model or a specific official model ID such as `yolo26n`:
 
 ```dart
 final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
@@ -43,8 +42,7 @@ Example assets come from the same canonical locations:
 - Android TFLite: [yolo-flutter-app `v0.2.0`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0)
 - iOS Core ML: [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)
 
-If you want the simplest “start from the default Ultralytics model” entry
-point, prefer `YOLO.defaultOfficialModel()`.
+If you want the simplest “start from the default Ultralytics model” entry point, prefer `YOLO.defaultOfficialModel()`.
 
 ## 📁 Custom Models
 
@@ -196,15 +194,27 @@ from ultralytics import YOLO
 YOLO("yolo26n.pt").export(format="tflite", imgsz=[640, 640])
 ```
 
-Quantized exports also work:
+For the fastest Android inference, export a **fp16, non-end-to-end** model. Android runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder, and this is the export the GPU can actually compile:
 
 ```python
 from ultralytics import YOLO
 
-# Use the same square-orientation guidance for quantized exports.
+# Recommended Android GPU fast path:
+#   half=True  -> fp16 weights the GPU can run
+#   nms=False  -> raw (non-end2end) head; the plugin runs NMS on CPU sub-millisecond
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+```
+
+On a Galaxy S26 (Adreno) this runs YOLO26n detect at roughly **7 ms/inference on the GPU**, versus about **30 ms on CPU** (approximate, device-dependent). This mirrors the iOS Core ML note above, which uses `nms=True` for the end-to-end head.
+
+int8 and end-to-end (`nms=True`) exports also load and run correctly, just on **CPU**: the end-to-end head's INT64 ops and int8 quantization cannot be compiled for the GPU, so the accelerator ladder falls back to CPU. Use them when you need the smaller int8 footprint or a single end-to-end artifact rather than the GPU fast path:
+
+```python
+from ultralytics import YOLO
+
+# CPU-only exports. Use the same square-orientation guidance.
 YOLO("yolo26n.pt").export(format="tflite", imgsz=[640, 640], int8=True)
 YOLO("yolo26n-sem.pt").export(format="tflite", imgsz=[640, 640], int8=True)
-YOLO("yolo26n.pt").export(format="tflite", imgsz=[640, 640], half=True)
 ```
 
 ## 🔄 Switching Models

@@ -144,6 +144,16 @@ await controller.setThresholds(
 );
 ```
 
+### Android detections run slow / not on GPU
+
+Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. To actually run on the GPU, the model must be an fp16, non-end-to-end TFLite export:
+
+```python
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+```
+
+End-to-end (NMS-free) heads use INT64 ops, and int8 quantization can't be compiled for the GPU, so those models silently fall back to CPU. On a Samsung Galaxy S26 (Adreno), a non-end-to-end fp16 YOLO26n detect model runs at roughly 7 ms/inference on GPU versus about 30 ms on CPU (approximate). fp16 + non-end-to-end is the recommended Android export; int8/end-to-end models still work, just on CPU. Leave `useGpu: true` (the default) so eligible models use the GPU.
+
 ## 🧠 Memory Issues
 
 If memory use grows too high:
@@ -169,6 +179,20 @@ final yolo = YOLO(
 ```
 
 The same applies to `YOLOView`.
+
+## 🧱 Release Build Crashes / No Detections (Android)
+
+If everything works in debug but a release build crashes on model load or returns no detections, R8 may have stripped the LiteRT 2.x classes that the native code reaches via JNI/reflection.
+
+The plugin ships consumer R8 rules that keep these classes automatically, so most apps need no extra setup. If you use a custom R8/ProGuard configuration that overrides them, add to `android/app/proguard-rules.pro`:
+
+```pro
+-keep class com.google.ai.edge.litert.** { *; }
+-keep interface com.google.ai.edge.litert.** { *; }
+-dontwarn com.google.ai.edge.litert.**
+-keep class org.tensorflow.** { *; }
+-dontwarn org.tensorflow.**
+```
 
 ## ✅ Fast Debug Checklist
 
