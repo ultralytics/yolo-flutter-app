@@ -72,14 +72,13 @@ class TaskSegmentedControl extends StatelessWidget {
         children: {
           for (final task in tasks)
             task: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
               child: Text(
                 _shortLabels[task] ?? task.name,
                 style: TextStyle(
                   color: Colors.white,
-                  // iOS segmented controls use the system font — regular, with only a light weight bump when selected.
-                  // The previous w700/w600 read as too heavy versus the native control.
-                  fontSize: 13,
+                  // 11pt + tighter padding so the 6 short tabs (Det/Seg/Sem/Cls/Pose/OBB) don't span so wide.
+                  fontSize: 11,
                   fontWeight: task == currentTask
                       ? FontWeight.w600
                       : FontWeight.w400,

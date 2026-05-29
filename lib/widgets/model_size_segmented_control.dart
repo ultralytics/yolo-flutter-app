@@ -112,8 +112,8 @@ class _SegmentLabel extends StatelessWidget {
               softWrap: false,
               style: TextStyle(
                 color: Colors.white,
-                // iOS segmented controls use the system font (~13pt) with a light selected-state weight delta.
-                fontSize: 13,
+                // 11pt so the longer `↓ YOLO26x` labels fit each segment without the FittedBox shrinking them.
+                fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
