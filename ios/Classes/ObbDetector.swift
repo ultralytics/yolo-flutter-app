@@ -149,7 +149,8 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
       let classId = numFields > 6 ? Int(pointer[base + 5 * fieldStride]) : 0
       let angle = pointer[base + (numFields - 1) * fieldStride]
 
-      results.append((box: OBB(cx: cx, cy: cy, w: w, h: h, angle: angle), score: conf, cls: classId))
+      results.append(
+        (box: OBB(cx: cx, cy: cy, w: w, h: h, angle: angle), score: conf, cls: classId))
     }
     return results
   }
