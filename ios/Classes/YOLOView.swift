@@ -354,8 +354,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     // instant instead of re-compiling/loading CoreML every time.
     let cacheKey = "\(unwrappedModelURL.path)|\(task)|\(useGpu)"
 
-    // Common success handling for all tasks
-    func handleSuccess(predictor: Predictor) {
+    // Common success handling for all tasks. Keep weak self because model creation can outlive the view during rapid
+    // switches or teardown.
+    let handleSuccess: (Predictor) -> Void = { [weak self] predictor in
+      guard let self else { return }
       self.videoCapture.predictor = predictor
 
       // Set stream configuration for original image capture
@@ -370,7 +372,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
 
     // Common failure handling for all tasks
-    func handleFailure(_ error: Error) {
+    let handleFailure: (Error) -> Void = { [weak self] error in
+      guard let self else { return }
       NSLog("YOLOView: Failed to load model: %@", String(describing: error))
       self.activityIndicator.stopAnimating()
       completion?(.failure(error))
@@ -383,7 +386,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         basePredictor.setIouThreshold(iou: Double(sliderIoU.value))
         basePredictor.setNumItemsThreshold(numItems: Int(sliderNumItems.value))
       }
-      handleSuccess(predictor: cached)
+      handleSuccess(cached)
       return
     }
 
@@ -393,7 +396,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }
@@ -404,7 +407,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }
@@ -417,7 +420,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }
@@ -428,7 +431,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }
@@ -439,7 +442,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }
@@ -451,7 +454,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }

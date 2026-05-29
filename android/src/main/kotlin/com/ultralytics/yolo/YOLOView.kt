@@ -1057,9 +1057,13 @@ class YOLOView @JvmOverloads constructor(
             } else {
                 // Fallback: convert via Bitmap (rare path).
                 val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
-                val out = java.io.ByteArrayOutputStream()
-                bmp.compress(Bitmap.CompressFormat.JPEG, 90, out)
-                out.toByteArray()
+                try {
+                    val out = java.io.ByteArrayOutputStream()
+                    bmp.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                    out.toByteArray()
+                } finally {
+                    bmp.recycle()
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "imageProxyToJpegBytes failed", e)
