@@ -19,6 +19,15 @@ import com.google.ai.edge.litert.TensorBuffer
  * Tensor names follow the Ultralytics tflite export convention: input `images`, outputs `Identity`, `Identity_1`, ...
  */
 class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
+    private data class PreparedModel(
+        val model: CompiledModel,
+        val inputBuffers: List<TensorBuffer>,
+        val outputBuffers: List<TensorBuffer>,
+        val inputDims: IntArray,
+        val outputElementCounts: IntArray,
+        val outputDims: List<IntArray>,
+    )
+
     private val model: CompiledModel
     private val inputBuffers: List<TensorBuffer>
     private val outputBuffers: List<TensorBuffer>
@@ -36,54 +45,79 @@ class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
     val outputDims: List<IntArray>
 
     init {
-        var compiled: CompiledModel? = null
+        var prepared: PreparedModel? = null
         var acc = "CPU"
         if (useGpu) {
             try {
-                compiled = CompiledModel.create(modelPath, CompiledModel.Options(Accelerator.GPU))
+                prepared = prepareModel(modelPath, Accelerator.GPU)
                 acc = "GPU"
             } catch (e: Throwable) {
-                Log.w(tag, "GPU accelerator could not compile model, falling back to CPU: ${e.message}")
+                Log.w(tag, "GPU accelerator could not run model, falling back to CPU: ${e.message}")
             }
         }
-        if (compiled == null) {
-            compiled = CompiledModel.create(modelPath, CompiledModel.Options(Accelerator.CPU))
+        if (prepared == null) {
+            prepared = prepareModel(modelPath, Accelerator.CPU)
             acc = "CPU"
         }
-        model = compiled
+        model = prepared.model
         accelerator = acc
 
-        inputBuffers = model.createInputBuffers()
-        outputBuffers = model.createOutputBuffers()
+        inputBuffers = prepared.inputBuffers
+        outputBuffers = prepared.outputBuffers
+        inputDims = prepared.inputDims
+        outputElementCounts = prepared.outputElementCounts
+        outputDims = prepared.outputDims
 
-        inputDims = try {
-            model.getInputTensorType(inputName = "images").layout?.dimensions?.toIntArray() ?: IntArray(0)
-        } catch (e: Throwable) {
-            Log.w(tag, "Could not read input tensor type: ${e.message}")
-            IntArray(0)
-        }
-
-        // Warm up once with a zeroed input to (a) prime the accelerator and (b) learn each output's element count,
-        // which the predictors use to reshape the flat float outputs.
-        val inputFloats = if (inputDims.isNotEmpty()) inputDims.fold(1) { a, b -> a * b } else 0
-        if (inputFloats > 0) {
-            inputBuffers[0].writeFloat(FloatArray(inputFloats))
-            model.run(inputBuffers, outputBuffers)
-        }
-        outputElementCounts = IntArray(outputBuffers.size) { outputBuffers[it].readFloat().size }
-        outputDims = List(outputBuffers.size) { i ->
-            val name = if (i == 0) "Identity" else "Identity_$i"
-            try {
-                model.getOutputTensorType(outputName = name).layout?.dimensions?.toIntArray() ?: IntArray(0)
-            } catch (e: Throwable) {
-                IntArray(0)
-            }
-        }
         Log.i(
             tag,
             "LiteRT compiled on $acc; inputDims=${inputDims.toList()} " +
                 "outputDims=${outputDims.map { it.toList() }} outputCounts=${outputElementCounts.toList()}",
         )
+    }
+
+    private fun prepareModel(modelPath: String, accelerator: Accelerator): PreparedModel {
+        val compiled = CompiledModel.create(modelPath, CompiledModel.Options(accelerator))
+        val inputs: List<TensorBuffer>
+        val outputs: List<TensorBuffer>
+        try {
+            inputs = compiled.createInputBuffers()
+            outputs = compiled.createOutputBuffers()
+        } catch (e: Throwable) {
+            runCatching { compiled.close() }
+            throw e
+        }
+
+        try {
+            val dims = try {
+                compiled.getInputTensorType(inputName = "images").layout?.dimensions?.toIntArray() ?: IntArray(0)
+            } catch (e: Throwable) {
+                Log.w(tag, "Could not read input tensor type: ${e.message}")
+                IntArray(0)
+            }
+
+            // Warm up once with a zeroed input to (a) prime the accelerator and (b) learn each output's element count,
+            // which the predictors use to reshape the flat float outputs. Keep this inside the accelerator fallback
+            // path: some GPU drivers compile successfully but fail on first run.
+            val inputFloats = if (dims.isNotEmpty()) dims.fold(1) { a, b -> a * b } else 0
+            if (inputFloats > 0) {
+                inputs[0].writeFloat(FloatArray(inputFloats))
+                compiled.run(inputs, outputs)
+            }
+            val elementCounts = IntArray(outputs.size) { outputs[it].readFloat().size }
+            val outputShapes = List(outputs.size) { i ->
+                val name = if (i == 0) "Identity" else "Identity_$i"
+                try {
+                    compiled.getOutputTensorType(outputName = name).layout?.dimensions?.toIntArray() ?: IntArray(0)
+                } catch (e: Throwable) {
+                    IntArray(0)
+                }
+            }
+            return PreparedModel(compiled, inputs, outputs, dims, elementCounts, outputShapes)
+        } catch (e: Throwable) {
+            closeBuffers(inputs, outputs)
+            runCatching { compiled.close() }
+            throw e
+        }
     }
 
     /** Run inference: write [input] floats into the first input buffer, run, and return each output as a flat float array. */
@@ -94,10 +128,28 @@ class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
     }
 
     fun close() {
+        closeBuffers(inputBuffers, outputBuffers)
         try {
             model.close()
         } catch (_: Throwable) {
             // best-effort
+        }
+    }
+
+    private fun closeBuffers(inputs: List<TensorBuffer>, outputs: List<TensorBuffer>) {
+        for (buffer in inputs) {
+            try {
+                buffer.close()
+            } catch (_: Throwable) {
+                // best-effort
+            }
+        }
+        for (buffer in outputs) {
+            try {
+                buffer.close()
+            } catch (_: Throwable) {
+                // best-effort
+            }
         }
     }
 }

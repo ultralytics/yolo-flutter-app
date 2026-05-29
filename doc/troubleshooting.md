@@ -32,7 +32,7 @@ Make sure:
 
 Make sure your app uses:
 
-- `minSdkVersion 21`
+- `minSdkVersion 23`
 - `compileSdkVersion 36`
 - `targetSdkVersion 36`
 

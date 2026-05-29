@@ -72,7 +72,7 @@ android {
     compileSdkVersion 36
 
     defaultConfig {
-        minSdkVersion 21  // Minimum API level 21 required
+        minSdkVersion 23  // Minimum API level 23 required
         targetSdkVersion 36
     }
 }
@@ -213,7 +213,7 @@ android {
 | Platform    | Minimum Version | Recommended   |
 | ----------- | --------------- | ------------- |
 | **iOS**     | 13.0+           | 14.0+         |
-| **Android** | API 21+         | API 28+       |
+| **Android** | API 23+         | API 28+       |
 | **Flutter** | 3.32.1+         | Latest stable |
 | **Dart**    | 3.8.1+          | Latest stable |
 

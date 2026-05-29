@@ -48,7 +48,8 @@ android {
     ndkVersion = project.hasProperty('ndkVersion') ? project.ndkVersion : "28.2.13676358"
 
     defaultConfig {
-        minSdk = 21
+        // LiteRT 2.x declares minSdkVersion 23, so the plugin must advertise the same floor to consumers.
+        minSdk = 23
 
         // Ship ProGuard/R8 keep rules to consuming apps so their release builds don't strip LiteRT/JNI classes.
         consumerProguardFiles 'consumer-rules.pro'

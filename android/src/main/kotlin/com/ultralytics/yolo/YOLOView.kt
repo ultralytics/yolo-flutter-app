@@ -486,12 +486,27 @@ class YOLOView @JvmOverloads constructor(
     private val predictorCacheLimit = 3
 
     private fun cachePredictor(key: String, predictor: Predictor) {
-        predictorCache[key] = predictor
+        val previous = predictorCache.put(key, predictor)
+        if (previous != null && previous !== predictor) {
+            closePredictor(previous)
+        }
         predictorCacheOrder.remove(key)
         predictorCacheOrder.add(key)
         while (predictorCacheOrder.size > predictorCacheLimit) {
             // The current predictor is always newest (just touched), so it is never the eviction target.
-            predictorCache.remove(predictorCacheOrder.removeAt(0))
+            val evictedKey = predictorCacheOrder.removeAt(0)
+            val evictedPredictor = predictorCache.remove(evictedKey)
+            if (evictedPredictor != null && evictedPredictor !== predictor) {
+                closePredictor(evictedPredictor)
+            }
+        }
+    }
+
+    private fun closePredictor(predictor: Predictor) {
+        try {
+            (predictor as? BasePredictor)?.close()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error closing cached predictor", e)
         }
     }
 
