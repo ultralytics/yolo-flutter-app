@@ -1268,7 +1268,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     let devices = discovery.devices.sorted { lensSortOrder($0) < lensSortOrder($1) }
     return devices.map { lens -> (zoomFactor: CGFloat, rawZoom: CGFloat, label: String) in
       let raw = zoomFactor(for: lens, on: activeDevice) ?? fallbackZoomFactor(for: lens)
-      let display = activeDevice.map { displayZoomFactor(raw, for: $0) } ?? fallbackZoomFactor(for: lens)
+      let display =
+        activeDevice.map { displayZoomFactor(raw, for: $0) } ?? fallbackZoomFactor(for: lens)
       return (display, raw, lensLabel(for: lens))
     }
   }
