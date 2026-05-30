@@ -509,10 +509,25 @@ class YOLOView @JvmOverloads constructor(
     }
 
     private fun closePredictor(predictor: Predictor) {
-        try {
-            (predictor as? BasePredictor)?.close()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error closing cached predictor", e)
+        // Cache eviction/replacement runs on the main thread, but onFrame() calls predict() on this predictor on the
+        // camera executor thread. Defer the close onto that same single thread so the native interpreter is never freed
+        // while a frame is still mid-predict() (use-after-free). When no executor is live (e.g. during stop()) close
+        // directly — stop() drains the executor before closing, so no inference can be in flight there.
+        val exec = cameraExecutor
+        if (exec != null && !exec.isShutdown) {
+            exec.execute {
+                try {
+                    (predictor as? BasePredictor)?.close()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error closing cached predictor", e)
+                }
+            }
+        } else {
+            try {
+                (predictor as? BasePredictor)?.close()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error closing cached predictor", e)
+            }
         }
     }
 
@@ -693,7 +708,21 @@ class YOLOView @JvmOverloads constructor(
                     // and each call builds a fresh ImageAnalysis + executor below. Without this, the old executor's
                     // non-daemon analyzer thread and the old ImageAnalysis analyzer would be orphaned on every rebind.
                     imageAnalysisUseCase?.clearAnalyzer()
-                    cameraExecutor?.shutdown()
+                    // Drain the old executor (not just shutdown) so any frame already inside onFrame()/predict() on the
+                    // previous analyzer thread finishes before the new analyzer binds — the generation guard below only
+                    // stops not-yet-started frames, and the predictor is not thread-safe. We're on the camera-provider
+                    // listener thread here, not the analyzer thread, so awaiting does not self-deadlock.
+                    cameraExecutor?.let { exec ->
+                        exec.shutdown()
+                        try {
+                            if (!exec.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+                                exec.shutdownNow()
+                            }
+                        } catch (e: InterruptedException) {
+                            exec.shutdownNow()
+                            Thread.currentThread().interrupt()
+                        }
+                    }
                     cameraExecutor = null
 
                     previewUseCase = Preview.Builder()
