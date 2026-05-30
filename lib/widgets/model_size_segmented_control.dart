@@ -138,7 +138,14 @@ class _SegmentLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     // Matches the iOS app's modelSegmentedControl: downloaded sizes read `YOLO26<size>`; sizes not yet on disk get a
     // `↓` download-on-tap prefix. FittedBox keeps a long title from clipping its (equal-width) segment.
-    final label = isAvailable ? 'YOLO26$size' : '↓ YOLO26$size';
+    final percent = fraction == null
+        ? null
+        : '${(fraction!.clamp(0.0, 0.99) * 100).round()}%';
+    final label = isDownloading && percent != null
+        ? '$percent YOLO26$size'
+        : isAvailable
+        ? 'YOLO26$size'
+        : '↓ YOLO26$size';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Column(

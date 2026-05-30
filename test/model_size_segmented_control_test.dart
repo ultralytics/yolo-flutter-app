@@ -93,4 +93,25 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('YOLO26n'), findsOneWidget);
   });
+
+  testWidgets('shows active download percent in the selected chip', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ModelSizeSegmentedControl(
+            currentSize: 's',
+            availableSizes: const {'n'},
+            supportedSizes: const {'n', 's', 'm', 'l', 'x'},
+            downloadingSize: 's',
+            downloadFraction: 0.37,
+            onSizeChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('37% YOLO26s'), findsOneWidget);
+  });
 }

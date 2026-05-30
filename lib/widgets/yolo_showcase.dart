@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import 'package:ultralytics_yolo/widgets/camera_toolbar.dart';
 import 'package:ultralytics_yolo/widgets/focus_reticle.dart';
 import 'package:ultralytics_yolo/widgets/lens_picker.dart';
 import 'package:ultralytics_yolo/widgets/logo_overlay.dart';
+import 'package:ultralytics_yolo/widgets/model_loading_status.dart';
 import 'package:ultralytics_yolo/widgets/model_size_segmented_control.dart';
 import 'package:ultralytics_yolo/widgets/performance_label.dart';
 import 'package:ultralytics_yolo/widgets/task_segmented_control.dart';
@@ -86,6 +88,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   Set<String> _availableSizes = {};
   String? _downloadingSize;
   double? _downloadFraction;
+  String? _loadingStatusText;
+  String? _modelErrorMessage;
+  int _selectionRequestId = 0;
 
   List<LensInfo> _lenses = const [];
 
@@ -171,6 +176,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         if (size == _currentSize) {
           _downloadingSize = done ? null : size;
           _downloadFraction = done ? null : progress.fraction;
+          _loadingStatusText = done
+              ? 'Loading ${_displayModelNameFor(_currentTask, size)}'
+              : 'Downloading ${(progress.fraction * 100).clamp(0, 99).round()}%';
         }
       });
     });
@@ -268,6 +276,11 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     return 'yolo26$size${suffixes[task] ?? ''}';
   }
 
+  static String _displayModelNameFor(YOLOTask task, String size) {
+    final id = _composeModelId(task: task, size: size);
+    return id.replaceFirst('yolo', 'YOLO');
+  }
+
   /// Maps `yolo26<size><suffix>` back to its size letter — used to route download-progress events to the matching
   /// chip.
   static String? _sizeForModelId(String id, YOLOTask task) {
@@ -322,13 +335,21 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (!mounted) return;
     final loadedTask = task ?? _currentTask;
     final loadedSize = _sizeForModelId(modelPath, loadedTask);
+    final preserveError =
+        _modelErrorMessage != null &&
+        loadedTask == _runningTask &&
+        loadedSize == _runningSize;
     setState(() {
       _isModelLoading = false;
       _initialModelLoaded = true;
+      _loadingStatusText = null;
+      if (!preserveError) _modelErrorMessage = null;
       if (loadedSize != null) {
         _availableSizes = {..._availableSizes, loadedSize};
         _runningTask = loadedTask;
         _runningSize = loadedSize;
+        unawaited(_persistTask(loadedTask));
+        unawaited(_persistSize(loadedSize));
       }
     });
   }
@@ -345,27 +366,58 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _initialModelLoaded = true;
       _downloadingSize = null;
       _downloadFraction = null;
+      _loadingStatusText = null;
+      _modelErrorMessage = _modelSwitchErrorMessage(error);
       _currentSize = _runningSize;
       _currentTask = _runningTask;
     });
+    unawaited(_refreshAvailableSizes(_runningTask));
+  }
+
+  String _modelSwitchErrorMessage(Object error) {
+    final text = error.toString().toLowerCase();
+    if (text.contains('failed host lookup') ||
+        text.contains('no address associated with hostname') ||
+        text.contains('unknown host') ||
+        text.contains('unknownhostexception') ||
+        text.contains('unable to resolve host') ||
+        text.contains('hostname could not be found') ||
+        text.contains('cannot find host') ||
+        text.contains('nodename nor servname') ||
+        text.contains('-1003')) {
+      return 'Model download failed: device cannot resolve the release host. Check network or preload the model.';
+    }
+    return 'Model switch failed. Check network, model asset availability, or device logs.';
   }
 
   void _onTaskChanged(YOLOTask task) {
-    if (task == _currentTask) return;
+    if (task == _currentTask || _isModelLoading) return;
     HapticFeedback.selectionClick();
+    unawaited(_changeTask(task));
+  }
+
+  Future<void> _changeTask(YOLOTask task) async {
+    final targetSize = _clampSizeToSupported(_currentSize, task);
+    final readiness = await _prepareModelSelection(task, targetSize);
+    if (readiness == null || !mounted) return;
+
     setState(() {
       _currentTask = task;
       // The supported set can differ by platform. Clamp here too so a task switch never hands `YOLOView` a model id
       // that doesn't exist on the active platform.
-      _currentSize = _clampSizeToSupported(_currentSize, task);
+      _currentSize = targetSize;
       // Abandon any in-flight download chip for the previous selection (the progress listener only resurrects it for
       // the new current size).
-      _downloadingSize = null;
-      _downloadFraction = null;
-      // Show the loading veil until `YOLOView` reports the new model loaded (onModelLoad) or failed (onModelError).
+      _downloadingSize = readiness.isCached ? null : targetSize;
+      _downloadFraction = readiness.isCached ? null : 0;
+      _modelErrorMessage = null;
+      _loadingStatusText = readiness.isCached
+          ? 'Loading ${_displayModelNameFor(task, targetSize)}'
+          : 'Downloading 0%';
+      // Show the progress/status strip until `YOLOView` reports the new model loaded (onModelLoad) or failed
+      // (onModelError).
       _isModelLoading = true;
     });
-    unawaited(_persistTask(task));
     unawaited(_refreshAvailableSizes(task));
     // The `setState` above changes `YOLOView`'s `modelPath`/`task`, so its `didUpdateWidget` performs the single
     // resolve + native `switchModel`. Don't switch here too — that double-resolves and can race the download.
@@ -378,17 +430,81 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   void _onSizeChanged(String size) {
-    if (size == _currentSize) return;
+    if (size == _currentSize || _isModelLoading) return;
     HapticFeedback.selectionClick();
+    unawaited(_changeSize(size));
+  }
+
+  Future<void> _changeSize(String size) async {
+    final readiness = await _prepareModelSelection(_currentTask, size);
+    if (readiness == null || !mounted) return;
+
     setState(() {
       _currentSize = size;
       // Abandon any in-flight download chip for the previous selection (see `_onTaskChanged`).
-      _downloadingSize = null;
-      _downloadFraction = null;
+      _downloadingSize = readiness.isCached ? null : size;
+      _downloadFraction = readiness.isCached ? null : 0;
+      _modelErrorMessage = null;
+      _loadingStatusText = readiness.isCached
+          ? 'Loading ${_displayModelNameFor(_currentTask, size)}'
+          : 'Downloading 0%';
       _isModelLoading = true;
     });
-    unawaited(_persistSize(size));
     // `YOLOView.didUpdateWidget` handles the resolve + native switch off the changed `modelPath` prop (see above).
+  }
+
+  Future<_ModelSelectionReadiness?> _prepareModelSelection(
+    YOLOTask task,
+    String size,
+  ) async {
+    final requestId = ++_selectionRequestId;
+    final modelId = _composeModelId(task: task, size: size);
+    final displayName = _displayModelNameFor(task, size);
+    setState(() {
+      _modelErrorMessage = null;
+      _downloadingSize = null;
+      _downloadFraction = null;
+      _loadingStatusText = 'Checking $displayName';
+      _isModelLoading = true;
+    });
+
+    final isCached = await YOLOModelResolver.isOfficialModelCached(modelId);
+    if (!mounted || requestId != _selectionRequestId) return null;
+    if (isCached) return const _ModelSelectionReadiness(isCached: true);
+
+    setState(() {
+      _downloadingSize = size;
+      _downloadFraction = 0;
+      _loadingStatusText = 'Checking network for $displayName';
+    });
+
+    if (await _canResolveReleaseHost()) {
+      if (!mounted || requestId != _selectionRequestId) return null;
+      return const _ModelSelectionReadiness(isCached: false);
+    }
+
+    if (!mounted || requestId != _selectionRequestId) return null;
+    setState(() {
+      _isModelLoading = false;
+      _downloadingSize = null;
+      _downloadFraction = null;
+      _loadingStatusText = null;
+      _modelErrorMessage =
+          'Offline: connect to the internet to download $displayName, or preload the model.';
+    });
+    return null;
+  }
+
+  Future<bool> _canResolveReleaseHost() async {
+    try {
+      final addresses = await InternetAddress.lookup(
+        'github.com',
+      ).timeout(const Duration(seconds: 3));
+      return addresses.isNotEmpty &&
+          addresses.any((address) => address.rawAddress.isNotEmpty);
+    } catch (_) {
+      return false;
+    }
   }
 
   void _onLensSelected(LensInfo lens) {
@@ -479,6 +595,14 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   ),
                 ),
                 FocusReticle(position: _focusPosition),
+                if (_isModelLoading)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: ColoredBox(
+                        color: Colors.black.withValues(alpha: 0.28),
+                      ),
+                    ),
+                  ),
                 _ShowcaseOverlay(
                   modelName: 'YOLO26$_currentSize',
                   metrics: _metrics,
@@ -488,6 +612,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   supportedSizes: _supportedSizesForTask(_currentTask),
                   downloadingSize: _downloadingSize,
                   downloadFraction: _downloadFraction,
+                  isModelLoading: _isModelLoading,
+                  loadingStatusText: _loadingStatusText,
+                  modelErrorMessage: _modelErrorMessage,
                   confidence: _confidence,
                   iou: _iou,
                   zoom: _zoom,
@@ -518,9 +645,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   bottom: 160,
                   child: LogoOverlay(width: 159),
                 ),
-                // Centered loading veil while a model is downloading/loading after a tap, so the screen never looks
-                // frozen with no indication of progress.
-                if (_isModelLoading) const _ModelLoadingOverlay(),
                 // Opaque startup splash (logotype on white, matching the native launch screen) held over the camera
                 // until the first model finishes loading — hides the camera-start + first GPU-compile black flash.
                 if (!_initialModelLoaded)
@@ -537,6 +661,12 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       ),
     );
   }
+}
+
+class _ModelSelectionReadiness {
+  const _ModelSelectionReadiness({required this.isCached});
+
+  final bool isCached;
 }
 
 /// Stateless overlay sandwich. Layout mirrors `yolo-ios-app/Sources/YOLO/YOLOView.swift#layoutPortrait` (lines 749–798)
@@ -557,6 +687,9 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.supportedSizes,
     required this.downloadingSize,
     required this.downloadFraction,
+    required this.isModelLoading,
+    required this.loadingStatusText,
+    required this.modelErrorMessage,
     required this.confidence,
     required this.iou,
     required this.zoom,
@@ -583,6 +716,9 @@ class _ShowcaseOverlay extends StatelessWidget {
   final Set<String> supportedSizes;
   final String? downloadingSize;
   final double? downloadFraction;
+  final bool isModelLoading;
+  final String? loadingStatusText;
+  final String? modelErrorMessage;
   final double confidence;
   final double iou;
   final ValueListenable<double> zoom;
@@ -646,6 +782,11 @@ class _ShowcaseOverlay extends StatelessWidget {
                   onSizeChanged: onSizeChanged,
                   downloadingSize: downloadingSize,
                   downloadFraction: downloadFraction,
+                ),
+                ModelLoadingStatus(
+                  statusText: isModelLoading ? loadingStatusText : null,
+                  progress: isModelLoading ? downloadFraction : null,
+                  errorMessage: modelErrorMessage,
                 ),
               ],
             ),
@@ -751,47 +892,6 @@ class _ShowcaseOverlay extends StatelessWidget {
             onShare: onShare,
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Centered loading veil shown while a model is downloading/loading after a size or task tap. Without it the screen
-/// looks frozen — there was no indication anything was happening, which read as lag.
-class _ModelLoadingOverlay extends StatelessWidget {
-  const _ModelLoadingOverlay();
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: ColoredBox(
-          color: Colors.black.withValues(alpha: 0.35),
-          child: const Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
-                SizedBox(height: 14),
-                Text(
-                  'Loading model…',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
