@@ -105,9 +105,7 @@ def tflite_metadata(path: Path) -> dict | None:
     try:
         with zipfile.ZipFile(path) as zf:
             infos = [
-                info
-                for info in zf.infolist()
-                if info.filename in {"metadata.json", "TFLITE_ULTRALYTICS_METADATA.json"}
+                info for info in zf.infolist() if info.filename in {"metadata.json", "TFLITE_ULTRALYTICS_METADATA.json"}
             ]
             if infos:
                 return json.loads(zf.read(infos[-1]))
