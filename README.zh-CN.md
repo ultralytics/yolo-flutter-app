@@ -235,14 +235,14 @@ YOLOShowcase(
 
 0.4.0 版本移除了旧的 Dart 侧叠层/控件层。相机检测结果现在由 `YOLOView` 原生渲染；Flutter 仅负责周围的应用控件。
 
-| 已移除的 0.3.x API                               | 0.4.0 替代方案                                                                                     |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `YOLOOverlay`, `YOLOOverlayTheme`                | 删除这些 widget。使用原生 `YOLOView` 叠层，或通过 `onResult`/`YOLO.predict()` 自行渲染。           |
-| `YOLOControls`                                   | 使用 `YOLOShowcase` 获取完整 UI，或直接组合导出的 Material widget。                                |
-| `YOLOView.showNativeUI`                          | 使用 `YOLOShowcase` 获取内置控件；使用裸 `YOLOView` 自行构建 UI。                                 |
-| `YOLOView.showOverlays`, `YOLOView.overlayTheme` | 无构造参数替代。相机叠层绘制为原生实现，不再从 Dart 侧控制主题。                                   |
-| `YOLOViewController.setShowUIControls()`         | 在 `YOLOView` 外侧自行显示/隐藏 Flutter 控件。                                                    |
-| `YOLOViewController.setShowOverlays()`           | 无控制器替代。`capturePhoto(withOverlays: false)` 仅影响捕获的 JPEG 输出。                         |
+| 已移除的 0.3.x API                               | 0.4.0 替代方案                                                                           |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `YOLOOverlay`, `YOLOOverlayTheme`                | 删除这些 widget。使用原生 `YOLOView` 叠层，或通过 `onResult`/`YOLO.predict()` 自行渲染。 |
+| `YOLOControls`                                   | 使用 `YOLOShowcase` 获取完整 UI，或直接组合导出的 Material widget。                      |
+| `YOLOView.showNativeUI`                          | 使用 `YOLOShowcase` 获取内置控件；使用裸 `YOLOView` 自行构建 UI。                        |
+| `YOLOView.showOverlays`, `YOLOView.overlayTheme` | 无构造参数替代。相机叠层绘制为原生实现，不再从 Dart 侧控制主题。                         |
+| `YOLOViewController.setShowUIControls()`         | 在 `YOLOView` 外侧自行显示/隐藏 Flutter 控件。                                           |
+| `YOLOViewController.setShowOverlays()`           | 无控制器替代。`capturePhoto(withOverlays: false)` 仅影响捕获的 JPEG 输出。               |
 
 ## 🧩 推荐接入模式
 

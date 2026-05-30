@@ -310,12 +310,12 @@ class YOLOViewController {
 
 #### Properties
 
-| Property              | Type            | Description                                                        |
-| --------------------- | --------------- | ------------------------------------------------------------------ |
-| `confidenceThreshold` | `double`        | Current confidence threshold (0.0-1.0)                             |
-| `iouThreshold`        | `double`        | Current IoU threshold (0.0-1.0)                                    |
-| `numItemsThreshold`   | `int`           | Maximum number of detections (1-100)                               |
-| `isInitialized`       | `bool`          | Whether controller is initialized                                  |
+| Property              | Type             | Description                                                         |
+| --------------------- | ---------------- | ------------------------------------------------------------------- |
+| `confidenceThreshold` | `double`         | Current confidence threshold (0.0-1.0)                              |
+| `iouThreshold`        | `double`         | Current IoU threshold (0.0-1.0)                                     |
+| `numItemsThreshold`   | `int`            | Maximum number of detections (1-100)                                |
+| `isInitialized`       | `bool`           | Whether controller is initialized                                   |
 | `zoomEvents`          | `Stream<double>` | Broadcast stream of zoom-factor changes emitted by the native layer |
 | `lensEvents`          | `Stream<String>` | Broadcast stream of lens-switch events emitted by the native layer  |
 | `focusEvents`         | `Stream<Offset>` | Broadcast stream of tap-to-focus coordinates (view-relative)        |
@@ -584,9 +584,9 @@ YOLOShowcase(
 
 #### Constructor Parameters
 
-| Parameter   | Type                    | Required | Default | Description                                       |
-| ----------- | ----------------------- | -------- | ------- | ------------------------------------------------- |
-| `modelPath` | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL |
+| Parameter   | Type                    | Required | Default | Description                                        |
+| ----------- | ----------------------- | -------- | ------- | -------------------------------------------------- |
+| `modelPath` | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL  |
 | `onCapture` | `Function(Uint8List?)?` | ❌       | `null`  | Callback invoked with the JPEG bytes after capture |
 
 Import once and get the full UI:

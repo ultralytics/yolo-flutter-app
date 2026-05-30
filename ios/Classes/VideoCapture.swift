@@ -332,7 +332,8 @@ extension VideoCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
       // Defense-in-depth: if no sample buffer arrives within ~1s (e.g. the session is interrupted before the next
       // frame), fire the still-pending completion with nil so the caller's Dart `await` never hangs.
       self.cameraQueue.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-        guard let self, self.frameCaptureToken == token, let pending = self.frameCaptureCompletion else { return }
+        guard let self, self.frameCaptureToken == token, let pending = self.frameCaptureCompletion
+        else { return }
         self.frameCaptureCompletion = nil
         let completionBox = SendableBox(pending)
         DispatchQueue.main.async { completionBox.value(nil) }
