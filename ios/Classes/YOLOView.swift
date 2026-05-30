@@ -307,10 +307,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     boundingBoxViews.forEach { box in
       box.hide()
     }
-    removeClassificationLayers()
-
-    self.task = task
-    setupSublayers()
 
     var modelURL: URL?
     let lowercasedPath = modelPathOrName.lowercased()
@@ -358,6 +354,12 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     // switches or teardown.
     let handleSuccess: (Predictor) -> Void = { [weak self] predictor in
       guard let self else { return }
+      // Switch the task and rebuild the overlay sublayers only now that a predictor exists. Doing this up front would
+      // strand the new task's sublayers over the previous predictor when a load fails (handleFailure) or the model is
+      // missing; keeping it here leaves the previously working task/predictor untouched on those paths.
+      self.task = task
+      self.removeClassificationLayers()
+      self.setupSublayers()
       self.videoCapture.predictor = predictor
 
       // Set stream configuration for original image capture
