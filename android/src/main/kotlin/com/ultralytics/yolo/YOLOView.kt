@@ -535,12 +535,12 @@ class YOLOView @JvmOverloads constructor(
         Executors.newSingleThreadExecutor().execute {
             try {
                 val newPredictor = when (task) {
-                    YOLOTask.DETECT -> ObjectDetector(context = context, modelPath = modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
-                    YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
-                    YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
-                    YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
-                    YOLOTask.POSE -> PoseEstimator(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
-                    YOLOTask.OBB -> ObbDetector(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
+                    YOLOTask.DETECT -> ObjectDetector(context = context, modelPath = modelPath, labels = emptyList(), useGpu = useGpu)
+                    YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels = emptyList(), useGpu = useGpu)
+                    YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels = emptyList(), useGpu = useGpu)
+                    YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels = emptyList(), useGpu = useGpu)
+                    YOLOTask.POSE -> PoseEstimator(context, modelPath, labels = emptyList(), useGpu = useGpu)
+                    YOLOTask.OBB -> ObbDetector(context, modelPath, labels = emptyList(), useGpu = useGpu)
                 }
 
                 // Apply thresholds to all predictor types
@@ -577,29 +577,6 @@ class YOLOView @JvmOverloads constructor(
                 }
             }
         }
-    }
-
-    private fun loadLabels(modelPath: String): List<String> {
-        // Try to load labels from model metadata first
-        val loadedLabels = YOLOFileUtils.loadModelLabels(context, modelPath)
-        if (loadedLabels != null) {
-            return loadedLabels
-        }
-
-        // Return COCO dataset's 80 classes as a fallback
-        // This is much more complete than the previous 7-class hardcoded list
-        return listOf(
-            "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
-            "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog",
-            "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
-            "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite",
-            "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle",
-            "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich",
-            "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
-            "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote",
-            "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book",
-            "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
-        )
     }
 
     // endregion
@@ -1822,7 +1799,7 @@ class YOLOView @JvmOverloads constructor(
                 for ((poseIndex, keypoints) in result.keypointsList.withIndex()) {
                     val detection = HashMap<String, Any>()
                     detection["classIndex"] = 0
-                    detection["className"] = "person"
+                    detection["className"] = result.names.getOrNull(0)?.takeIf { it.isNotBlank() } ?: "class 0"
                     detection["confidence"] = 1.0
                     var minX = Float.MAX_VALUE
                     var minY = Float.MAX_VALUE

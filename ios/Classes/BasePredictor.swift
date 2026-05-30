@@ -96,11 +96,11 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   }
 
   func labelName(for index: Int) -> String {
-    guard index >= 0 else { return "class_\(index)" }
-    guard index < labels.count else { return "class_\(index)" }
+    guard index >= 0 else { return "class \(index)" }
+    guard index < labels.count else { return "class \(index)" }
 
     let label = labels[index].trimmingCharacters(in: .whitespacesAndNewlines)
-    return label.isEmpty ? "class_\(index)" : label
+    return label.isEmpty ? "class \(index)" : label
   }
 
   private static func parseLabels(from userDefined: [String: String]) -> [String] {

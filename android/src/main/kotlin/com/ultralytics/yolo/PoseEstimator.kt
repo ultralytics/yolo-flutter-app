@@ -117,9 +117,6 @@ class PoseEstimator(
                 row[c] = flat[idx++]
             }
         }
-        // Update processing time measurement
-        updateTiming()
-
         val rawDetections = postProcessPose(
             features = outputArray[0],  // shape: [56][numAnchors]
             numAnchors = numAnchors,
@@ -135,13 +132,14 @@ class PoseEstimator(
         val boxes = limitedDetections.map { it.box }
         val keypointsList = limitedDetections.map { it.keypoints }
 
+        updateTiming()
         val fpsDouble: Double = if (t4 > 0) (1.0 / t4) else 0.0
         // Pack into YOLOResult and return
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
             keypointsList = keypointsList,
-            speed = t2,   // Measurement values in milliseconds etc. depend on BasePredictor implementation
+            speed = elapsedMsSinceStart(),
             fps = fpsDouble,
             names = labels
         )
@@ -207,7 +205,7 @@ class PoseEstimator(
             val xynList = kpArray.map { (fx, fy) ->
                 (fx / origWidth) to (fy / origHeight)
             }
-            val boxObj = Box(0, "person", conf, rectF, normBox)
+            val boxObj = Box(0, labelName(0), conf, rectF, normBox)
             
             val keypoints = Keypoints(
                 xyn = xynList,
@@ -277,7 +275,7 @@ class PoseEstimator(
 
             detections.add(
                 PoseDetection(
-                    box = Box(0, "person", conf, rectF, normBox),
+                    box = Box(0, labelName(0), conf, rectF, normBox),
                     keypoints = Keypoints(
                         xyn = kpArray.map { (fx, fy) -> (fx / origWidth) to (fy / origHeight) },
                         xy = kpArray,

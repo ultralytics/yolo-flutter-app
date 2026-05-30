@@ -7,7 +7,6 @@ import android.graphics.*
 import android.util.Log
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
 
 class ObbDetector(
     context: Context,
@@ -95,8 +94,6 @@ class ObbDetector(
                 row[a] = flat[idx++]
             }
         }
-        updateTiming()
-
         for (i in 0 until outAnchors) {
             for (c in 0 until outChannels) {
                 transposedOutput[i][c] = rawOutput[0][c][i]
@@ -118,11 +115,12 @@ class ObbDetector(
             drawOBBsOnBitmap(bitmap, limitedDetections, origWidth, origHeight)
         }
 
+        updateTiming()
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
             obb = limitedDetections,
             annotatedImage = annotatedImage,
-            speed = t2,
+            speed = elapsedMsSinceStart(),
             fps = if (t4 > 0) 1.0 / t4 else 0.0,
             names = labels
         )
@@ -137,7 +135,7 @@ class ObbDetector(
         origHeight: Int
     ): List<OBBResult> {
         val anchorsCount = detections2D.size
-        val numClasses = labels.size
+        val numClasses = ((detections2D.firstOrNull()?.size ?: 5) - 5).coerceAtLeast(0)
 
         val detections = mutableListOf<Detection>()
 
@@ -178,7 +176,7 @@ class ObbDetector(
             OBBResult(
                 box = inputOBBFromModelOBB(d.obb, origWidth, origHeight),
                 confidence = d.score,
-                cls = labels.getOrElse(d.cls) { "Unknown" },
+                cls = labelName(d.cls),
                 index = d.cls
             )
         }

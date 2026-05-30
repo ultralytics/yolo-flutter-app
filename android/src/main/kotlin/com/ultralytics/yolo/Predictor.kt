@@ -59,11 +59,19 @@ abstract class BasePredictor : Predictor {
 
     protected fun updateTiming() {
         val now = System.nanoTime()
-        val dt = (now - t0) / 1e9
-        t2 = 0.05 * dt + 0.95 * t2
+        val dtMs = (now - t0) / 1_000_000.0
+        t2 = 0.05 * dtMs + 0.95 * t2
         t4 = 0.05 * ((now - t3) / 1e9) + 0.95 * t4
         t3 = now
     }
+
+    protected fun elapsedMsSinceStart(): Double = (System.nanoTime() - t0) / 1_000_000.0
+
+    protected fun labelName(index: Int): String {
+        if (index < 0) return "class $index"
+        return labels.getOrNull(index)?.takeIf { it.isNotBlank() } ?: "class $index"
+    }
+
     override fun setIouThreshold(iou: Double) {
         IOU_THRESHOLD = iou.toFloat()
     }

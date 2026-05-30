@@ -210,7 +210,7 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
       let imageSizeBox = inputRect(fromModelRect: box)
       let normalizedBox = normalizedRect(fromInputRect: imageSizeBox)
       let boxResult = Box(
-        index: 0, cls: "person", conf: score, xywh: imageSizeBox, xywhn: normalizedBox)
+        index: 0, cls: labelName(for: 0), conf: score, xywh: imageSizeBox, xywhn: normalizedBox)
       let numKeypoints = boxFeatures.count / 3
 
       var xynArray = [(x: Float, y: Float)]()
@@ -262,7 +262,7 @@ class PoseEstimater: BasePredictor, @unchecked Sendable {
       let imageSizeBox = inputRect(
         fromModelRect: CGRect(x: x1, y: y1, width: x2 - x1, height: y2 - y1))
       let boxResult = Box(
-        index: 0, cls: "person", conf: confidence, xywh: imageSizeBox,
+        index: 0, cls: labelName(for: 0), conf: confidence, xywh: imageSizeBox,
         xywhn: normalizedRect(fromInputRect: imageSizeBox))
 
       var xynArray = [(x: Float, y: Float)]()

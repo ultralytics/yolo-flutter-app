@@ -131,6 +131,7 @@ class ObjectDetector(
         val resultBoxes = if (outWidth < outHeight && outWidth >= 6) {
             postprocessEndToEnd(rawOutput[0])
         } else {
+            val classCount = (outHeight - 4).coerceAtLeast(0)
             postprocess(
                 rawOutput[0],
                 w = outWidth,   // width is out2
@@ -138,7 +139,7 @@ class ObjectDetector(
                 confidenceThreshold = confidenceThreshold,
                 iouThreshold = iouThreshold,
                 numItemsThreshold = numItemsThreshold,
-                numClasses = labels.size
+                numClasses = classCount
             )
         }
         // Convert to Box list
@@ -154,8 +155,7 @@ class ObjectDetector(
                 if (rect != null) {
                     val normRect = normalizedRectFromInputRect(rect, origWidth, origHeight)
                     val classIdx = boxArray[5].toInt()
-                    val label = if (classIdx in labels.indices) labels[classIdx] else "Unknown"
-                    boxes.add(Box(classIdx, label, boxArray[4], rect, normRect))
+                    boxes.add(Box(classIdx, labelName(classIdx), boxArray[4], rect, normRect))
                 }
             }
         }

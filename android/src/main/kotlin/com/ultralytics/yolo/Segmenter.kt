@@ -119,11 +119,12 @@ class Segmenter(
             rtModel.run(floatInput)
         } catch (e: Exception) {
             Log.e("Segmenter", "Inference error: ${e.message}")
+            updateTiming()
             val fpsDouble: Double = if (t4 > 0f) (1f / t4).toDouble() else 0.0
             return YOLOResult(
                 origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
                 boxes = emptyList(),
-                speed = t2,
+                speed = elapsedMsSinceStart(),
                 fps = fpsDouble,
                 names = labels
             )
@@ -152,8 +153,6 @@ class Segmenter(
                 }
             }
         }
-        updateTiming()
-
         // (4) Post-processing (box + mask)
         val rawDetections = postProcessSegment(
             feature = output0[0],
@@ -171,8 +170,7 @@ class Segmenter(
             val (boxRect, cls, score, _) = detection
             val rectF = inputRectFromOutputRect(boxRect, origWidth, origHeight) ?: continue
             val normRect = normalizedRectFromInputRect(rectF, origWidth, origHeight)
-            val label = labels.getOrElse(cls) { "Unknown" }
-            boxes.add(Box(cls, label, score, rectF, normRect))
+            boxes.add(Box(cls, labelName(cls), score, rectF, normRect))
             maskDetections.add(detection)
         }
 
@@ -186,12 +184,13 @@ class Segmenter(
             threshold = 0.5f
         )
         val masks = Masks(probMasks ?: emptyList(), combinedMask)
+        updateTiming()
         val fpsDouble: Double = if (t4 > 0f) (1f / t4).toDouble() else 0.0
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
             masks = masks,
-            speed = t2,
+            speed = elapsedMsSinceStart(),
             fps = fpsDouble,
             names = labels
         )

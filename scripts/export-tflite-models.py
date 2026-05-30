@@ -21,6 +21,7 @@ Usage from the repository root:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -54,6 +55,8 @@ TASKS: dict[str, TaskSpec] = {
     "pose": TaskSpec("-pose", 640),
     "obb": TaskSpec("-obb", 640),
 }
+
+_TASK_NAMES_CACHE: dict[str, dict[int, str]] = {}
 
 
 def parse_args() -> argparse.Namespace:
@@ -96,6 +99,68 @@ def verify_tflite(path: Path) -> list[tuple[int, ...]]:
     interpreter.set_tensor(input_detail["index"], sample)
     interpreter.invoke()
     return [tuple(detail["shape"].tolist()) for detail in interpreter.get_output_details()]
+
+
+def tflite_metadata(path: Path) -> dict | None:
+    try:
+        with zipfile.ZipFile(path) as zf:
+            infos = [
+                info
+                for info in zf.infolist()
+                if info.filename in {"metadata.json", "TFLITE_ULTRALYTICS_METADATA.json"}
+            ]
+            if infos:
+                return json.loads(zf.read(infos[-1]))
+    except Exception:
+        return None
+    return None
+
+
+def task_names(task_name: str, suffix: str) -> dict[int, str]:
+    if task_name not in _TASK_NAMES_CACHE:
+        from ultralytics import YOLO
+
+        weights_name = f"yolo26m{suffix}.pt"
+        model = YOLO(str(ROOT / weights_name) if (ROOT / weights_name).exists() else weights_name)
+        _TASK_NAMES_CACHE[task_name] = {int(k): str(v) for k, v in model.names.items()}
+    return _TASK_NAMES_CACHE[task_name]
+
+
+def append_tflite_metadata(path: Path, model_id: str, task_name: str, task: TaskSpec) -> None:
+    metadata = {
+        "description": f"Ultralytics {model_id} int8 TFLite model",
+        "author": "Ultralytics",
+        "date": time.strftime("%Y-%m-%d"),
+        "version": "8.4.0",
+        "task": task_name,
+        "batch": 1,
+        "imgsz": [task.imgsz, task.imgsz],
+        "names": task_names(task_name, task.suffix),
+        "channels": 3,
+        "stride": 32,
+        "format": "tflite",
+        "int8": True,
+        "nms": False,
+        "end2end": False,
+    }
+    with zipfile.ZipFile(path, "a", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("metadata.json", json.dumps(metadata, separators=(",", ":")))
+
+
+def ensure_tflite_metadata(path: Path, model_id: str, task_name: str, task: TaskSpec) -> None:
+    metadata = tflite_metadata(path)
+    names = (metadata or {}).get("names")
+    if (
+        metadata is None
+        or metadata.get("task") != task_name
+        or metadata.get("int8") is not True
+        or metadata.get("nms") is not False
+        or metadata.get("end2end") is not False
+        or metadata.get("imgsz") != [task.imgsz, task.imgsz]
+        or not isinstance(names, dict)
+        or not names
+    ):
+        append_tflite_metadata(path, model_id, task_name, task)
 
 
 def upload_assets(repo: str, tag: str, assets: list[Path]) -> None:
@@ -325,6 +390,7 @@ def main() -> None:
             model_id = f"yolo26{size}{task.suffix}"
             target = release_dir / f"{model_id}_int8.tflite"
             if target.exists() and not args.force:
+                ensure_tflite_metadata(target, model_id, task_name, task)
                 outputs = verify_tflite(target) if args.verify else []
                 suffix = f" outputs={outputs}" if outputs else ""
                 print(f"\nSkipping {model_id}; asset exists at {target.relative_to(ROOT)}{suffix}")
@@ -340,6 +406,7 @@ def main() -> None:
             else:
                 exported = run_export_worker(model_id, task, args, output_dir, export_data)
             shutil.copy2(exported, target)
+            ensure_tflite_metadata(target, model_id, task_name, task)
             outputs = verify_tflite(target) if args.verify else []
             suffix = f" outputs={outputs}" if outputs else ""
             print(f"asset {target.relative_to(ROOT)} size={target.stat().st_size / 1_000_000:.2f} MB{suffix}")

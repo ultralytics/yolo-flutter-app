@@ -162,9 +162,6 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           // Use classifier options map directly (follows existing pattern)
           val classifierOptions = classifierOptionsMap
 
-          // Load labels (in real implementation, you would load from metadata)
-          val labels = loadLabels(modelPath)
-          
           // Initialize YOLO with instance manager
           YOLOInstanceManager.shared.loadModel(
             instanceId = instanceId,
@@ -555,13 +552,4 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
     return handled // Return true if any view instance successfully processed it.
   }
   
-  // Helper function to load labels
-  private fun loadLabels(modelPath: String): List<String> {
-    // This is a placeholder - in a real implementation, you would load labels from metadata
-    return listOf(
-      "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
-      "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
-      "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack"
-    )
-  }
 }

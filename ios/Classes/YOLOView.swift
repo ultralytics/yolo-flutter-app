@@ -1781,7 +1781,12 @@ extension YOLOView {
         for (_, keypoints) in result.keypointsList.enumerated() {
           var detection: [String: Any] = [:]
           detection["classIndex"] = 0
-          detection["className"] = "person"
+          let className = result.names.first?.trimmingCharacters(in: .whitespacesAndNewlines)
+          if let className, !className.isEmpty {
+            detection["className"] = className
+          } else {
+            detection["className"] = "class 0"
+          }
           detection["confidence"] = 1.0
           var minX = Float.greatestFiniteMagnitude
           var minY = Float.greatestFiniteMagnitude

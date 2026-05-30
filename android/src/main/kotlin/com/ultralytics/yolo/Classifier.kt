@@ -103,7 +103,6 @@ class Classifier(
         }
 
         val scores = rtModel.run(floatInput)[0] // flat FloatArray(numClass)
-        updateTiming()
         val indexedScores = scores.mapIndexed { index, score -> index to score }
         val sorted = indexedScores.sortedByDescending { it.second }
 
@@ -112,12 +111,12 @@ class Classifier(
         // Top5
         val top5 = sorted.take(5)
 
-        val top1Label = if (top1 != null) labels.getOrElse(top1.first) { "Unknown" } else "Unknown"
+        val top1Label = if (top1 != null) labelName(top1.first) else "class 0"
         val top1Score = top1?.second ?: 0f
         val top1Index: Int = if (top1 != null) top1.first else 0
 
         val top5Indices = top5.map { it.first }
-        val top5Labels = top5.map { (idx, _) -> labels.getOrElse(idx) { "Unknown" } }
+        val top5Labels = top5.map { (idx, _) -> labelName(idx) }
         val top5Scores = top5.map { it.second }
 
         val probs = Probs(
@@ -129,12 +128,12 @@ class Classifier(
             top5Indices = top5Indices
         )
 
+        updateTiming()
         val fpsVal = if (t4 > 0) 1.0 / t4 else 0.0
-
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
             probs = probs,
-            speed = t2,
+            speed = elapsedMsSinceStart(),
             fps = fpsVal,
             names = labels
         )
