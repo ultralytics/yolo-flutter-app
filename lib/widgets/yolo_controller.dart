@@ -157,15 +157,24 @@ class YOLOViewController {
       _invoke<Uint8List>('capturePhoto', {'withOverlays': withOverlays});
 
   Future<void> switchModel(String modelPath, [YOLOTask? task]) async {
-    if (_methodChannel == null || _viewId == null) return;
+    final channel = _methodChannel;
+    if (channel == null || _viewId == null) return;
     final resolvedModel = await YOLOModelResolver.resolve(
       modelPath: modelPath,
       task: task,
     );
-    await _invoke('setModel', {
-      'modelPath': resolvedModel.modelPath,
-      'task': resolvedModel.task.name,
-    });
+    // Call the channel directly (not _invoke) so a native setModel failure propagates: the in-place-switch path in
+    // YOLOView relies on this throwing to revert the target and route to onModelError, instead of silently
+    // committing the new model and firing onModelLoad as if it succeeded.
+    try {
+      await channel.invokeMethod<void>('setModel', {
+        'modelPath': resolvedModel.modelPath,
+        'task': resolvedModel.task.name,
+      });
+    } catch (e) {
+      logInfo('YOLOViewController.setModel failed: $e');
+      rethrow;
+    }
   }
 
   Future<void> setStreamingConfig(YOLOStreamingConfig config) =>
