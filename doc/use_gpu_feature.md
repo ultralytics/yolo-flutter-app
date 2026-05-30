@@ -55,10 +55,10 @@ Actual GPU acceleration requires a **fp16, non-end-to-end** model:
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
 
-Here `half=True` produces fp16 weights the GPU can run, and `nms=False` keeps the raw (non-end2end) head while the plugin runs NMS on CPU sub-millisecond. int8 and end-to-end (`nms=True`) models use INT64 ops and int8 quantization the GPU cannot compile, so even with `useGpu: true` they silently fall back to CPU. They still load and run correctly.
+Here `half=True` produces fp16 weights the GPU can run, `nms=False` leaves NMS to the plugin, and `end2end=False` keeps the YOLO26 raw head that LiteRT can compile for GPU. int8 and end-to-end models use ops or quantization paths the GPU cannot compile, so even with `useGpu: true` they silently fall back to CPU. They still load and run correctly.
 
 On a Galaxy S26 (Adreno) a fp16 non-end2end YOLO26n detect model runs at roughly **7 ms/inference on the GPU** versus about **30 ms on CPU** (approximate, device-dependent).
 

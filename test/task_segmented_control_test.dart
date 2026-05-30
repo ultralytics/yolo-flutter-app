@@ -30,6 +30,10 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     expect(find.text('Det'), findsOneWidget);
+    expect(find.text('Seg'), findsOneWidget);
+    expect(find.text('Sem'), findsOneWidget);
+    expect(find.text('Cls'), findsOneWidget);
+    expect(find.text('Pose'), findsOneWidget);
     expect(find.text('OBB'), findsOneWidget);
   });
 

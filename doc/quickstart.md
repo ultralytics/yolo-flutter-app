@@ -64,7 +64,7 @@ Task and labels are auto-detected from the model's embedded metadata. If your cu
 Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core ML. For the fastest Android (GPU) performance, export your `.tflite` as fp16 and non-end-to-end:
 
 ```python
-YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
 
 ## ⚡ Step 4: Minimal Detection Code
@@ -279,7 +279,7 @@ final classifications = await classifier.predict(imageBytes);
 
 **Slow detections on Android?**
 
-- Use an fp16, non-end-to-end export so it runs on the GPU: `YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)`. int8/end-to-end models run on CPU.
+- Use an fp16, non-end-to-end export so it runs on the GPU: `YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)`. int8/end-to-end models run on CPU.
 
 ## 📚 Learn More
 

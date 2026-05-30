@@ -62,6 +62,8 @@ Good defaults:
 - disable masks unless you actually render them
 - disable `includeOriginalImage` unless you consume full frame bytes
 
+For the detailed experiment log that mirrors the iOS app's canonical performance record, see [`../docs/performance.md`](../docs/performance.md).
+
 ## 🖥️ GPU vs CPU
 
 `useGpu` defaults to `true`, but CPU can be the better choice on unstable devices:
@@ -73,17 +75,17 @@ final yolo = YOLO(
 );
 ```
 
-On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the whole graph for the GPU when the model is compatible, and otherwise falls back to XNNPACK CPU. (iOS uses Core ML.)
+On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the graph for the GPU when the model is compatible, and otherwise falls back to XNNPACK CPU. (iOS uses Core ML.)
 
-Real GPU acceleration requires a **fp16, non-end-to-end** TFLite export:
+The official YOLO26 int8 TFLite assets can compile on the LiteRT GPU path on supported devices. For example, a Galaxy S26 compiled `yolo26n_int8.tflite` with the OpenCL delegate (`LITERT_CL`) and ran at about **15 FPS / 32 ms** in the live camera example app. Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
+
+fp16 non-end-to-end TFLite exports are still useful for GPU benchmarking:
 
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
-
-On a Galaxy S26 (Adreno) this runs YOLO26n detect at roughly **7 ms/inference on the GPU** versus about **30 ms on CPU** (approximate, device-dependent). int8 and end-to-end (`nms=True`) models still load and run correctly, but their INT64 ops and int8 quantization cannot be compiled for the GPU, so they fall back to CPU.
 
 Use CPU when:
 
@@ -134,5 +136,5 @@ Measure:
 - Start with `yolo26n`.
 - Prefer metadata-carrying official models or exports.
 - Cap streaming frame rate before trying to micro-optimize code.
-- On Android, ship a fp16 non-end2end export so the LiteRT 2.x GPU path engages; fall back to CPU on problematic devices instead of layering in workarounds.
+- On Android, keep `useGpu: true` for the automatic LiteRT GPU -> CPU ladder, and verify actual delegate placement on target devices.
 - Benchmark the actual export you plan to ship.

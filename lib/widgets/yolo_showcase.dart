@@ -32,8 +32,7 @@ class YOLOShowcase extends StatefulWidget {
   /// Model size (`n/s/m/l/x`) to load on first launch (overridden by stored preference).
   final String initialModelSize;
 
-  /// When `false`, the Semantic task chip is hidden — useful while semantic models for the current release are still
-  /// missing.
+  /// When `false`, the Semantic task chip is hidden for hosts that do not want to expose semantic segmentation.
   final bool showSemanticTask;
 
   /// Invoked with a composited JPEG when the user taps the share button.
@@ -327,6 +326,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _isModelLoading = false;
       _initialModelLoaded = true;
       if (loadedSize != null) {
+        _availableSizes = {..._availableSizes, loadedSize};
         _runningTask = loadedTask;
         _runningSize = loadedSize;
       }

@@ -175,7 +175,7 @@ iOS inference runs on Core ML, which automatically uses the Neural Engine and GP
 Android inference runs on LiteRT 2.x via `CompiledModel`, which automatically tries a GPU → CPU accelerator ladder. To actually hit the GPU path, the model must be an fp16, non-end-to-end TFLite export:
 
 ```python
-YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
 
 The end-to-end (NMS-free) head uses INT64 ops, and int8 quantization can't be compiled for the GPU accelerator, so those models fall back to CPU. fp16 + non-end-to-end is the recommended Android export for the GPU fast path; int8/end-to-end models still work, just on CPU. See the [Performance Guide](performance.md) for details.

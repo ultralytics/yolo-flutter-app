@@ -71,7 +71,7 @@ final yolo = YOLO(
 On Android, inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. For the GPU fast path, export your `.tflite` as fp16 and non-end-to-end:
 
 ```python
-YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
 
 fp16 + non-end-to-end is the recommended Android export. The end-to-end (NMS-free) head's INT64 ops and int8 quantization can't be compiled for the GPU, so int8/end-to-end models still work but run on CPU (the plugin runs NMS on CPU in sub-millisecond time, so non-end-to-end models lose nothing).

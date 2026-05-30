@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
@@ -40,12 +39,7 @@ class CameraInferenceScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Show all 6 tasks (Detect / Segment / Semantic / Classify / Pose / OBB) to match the iOS app's task control.
     return Scaffold(
-      body: YOLOShowcase(
-        onCapture: (bytes) => _onCapture(context, bytes),
-        // Dismiss the native splash once the camera + first detection are up, so the splash covers the model-compile
-        // and camera-bind window instead of flashing a black screen with controls over it.
-        onReady: FlutterNativeSplash.remove,
-      ),
+      body: YOLOShowcase(onCapture: (bytes) => _onCapture(context, bytes)),
     );
   }
 }

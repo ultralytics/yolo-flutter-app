@@ -51,6 +51,7 @@ build/
 **/*.engine
 **/*.torchscript
 **/*_saved_model/
+exports/
 
 # Coverage
 coverage/

@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
@@ -44,243 +45,83 @@ class YOLOModelResolver {
       'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
 
-  // Canonical YOLO26 task × size matrix (mirrors RemoteModels.swift:21-22). Every cell is enumerated so chip
-  // availability is driven by the matrix, not by per-task special-casing; assets that don't exist at the release tag
-  // simply fail at download time and surface as a UI-level "missing" state.
-  static const List<_OfficialModelArtifact> _officialModels = [
-    // Detect
-    _OfficialModelArtifact(
-      id: 'yolo26n',
-      task: YOLOTask.detect,
-      androidAssetName: 'yolo26n_int8.tflite',
-      iosArchiveName: 'yolo26n.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26s',
-      task: YOLOTask.detect,
-      androidAssetName: 'yolo26s_int8.tflite',
-      iosArchiveName: 'yolo26s.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26m',
-      task: YOLOTask.detect,
-      androidAssetName: 'yolo26m_int8.tflite',
-      iosArchiveName: 'yolo26m.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26l',
-      task: YOLOTask.detect,
-      androidAssetName: 'yolo26l_int8.tflite',
-      iosArchiveName: 'yolo26l.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26x',
-      task: YOLOTask.detect,
-      androidAssetName: 'yolo26x_int8.tflite',
-      iosArchiveName: 'yolo26x.mlpackage.zip',
-    ),
-    // Segment
-    _OfficialModelArtifact(
-      id: 'yolo26n-seg',
-      task: YOLOTask.segment,
-      androidAssetName: 'yolo26n-seg_int8.tflite',
-      iosArchiveName: 'yolo26n-seg.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26s-seg',
-      task: YOLOTask.segment,
-      androidAssetName: 'yolo26s-seg_int8.tflite',
-      iosArchiveName: 'yolo26s-seg.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26m-seg',
-      task: YOLOTask.segment,
-      androidAssetName: 'yolo26m-seg_int8.tflite',
-      iosArchiveName: 'yolo26m-seg.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26l-seg',
-      task: YOLOTask.segment,
-      androidAssetName: 'yolo26l-seg_int8.tflite',
-      iosArchiveName: 'yolo26l-seg.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26x-seg',
-      task: YOLOTask.segment,
-      androidAssetName: 'yolo26x-seg_int8.tflite',
-      iosArchiveName: 'yolo26x-seg.mlpackage.zip',
-    ),
-    // Semantic
-    _OfficialModelArtifact(
-      id: 'yolo26n-sem',
-      task: YOLOTask.semantic,
-      androidAssetName: 'yolo26n-sem_int8.tflite',
-      iosArchiveName: 'yolo26n-sem.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26s-sem',
-      task: YOLOTask.semantic,
-      androidAssetName: 'yolo26s-sem_int8.tflite',
-      iosArchiveName: 'yolo26s-sem.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26m-sem',
-      task: YOLOTask.semantic,
-      androidAssetName: 'yolo26m-sem_int8.tflite',
-      iosArchiveName: 'yolo26m-sem.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26l-sem',
-      task: YOLOTask.semantic,
-      androidAssetName: 'yolo26l-sem_int8.tflite',
-      iosArchiveName: 'yolo26l-sem.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26x-sem',
-      task: YOLOTask.semantic,
-      androidAssetName: 'yolo26x-sem_int8.tflite',
-      iosArchiveName: 'yolo26x-sem.mlpackage.zip',
-    ),
-    // Classify
-    _OfficialModelArtifact(
-      id: 'yolo26n-cls',
-      task: YOLOTask.classify,
-      androidAssetName: 'yolo26n-cls_int8.tflite',
-      iosArchiveName: 'yolo26n-cls.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26s-cls',
-      task: YOLOTask.classify,
-      androidAssetName: 'yolo26s-cls_int8.tflite',
-      iosArchiveName: 'yolo26s-cls.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26m-cls',
-      task: YOLOTask.classify,
-      androidAssetName: 'yolo26m-cls_int8.tflite',
-      iosArchiveName: 'yolo26m-cls.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26l-cls',
-      task: YOLOTask.classify,
-      androidAssetName: 'yolo26l-cls_int8.tflite',
-      iosArchiveName: 'yolo26l-cls.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26x-cls',
-      task: YOLOTask.classify,
-      androidAssetName: 'yolo26x-cls_int8.tflite',
-      iosArchiveName: 'yolo26x-cls.mlpackage.zip',
-    ),
-    // Pose
-    _OfficialModelArtifact(
-      id: 'yolo26n-pose',
-      task: YOLOTask.pose,
-      androidAssetName: 'yolo26n-pose_int8.tflite',
-      iosArchiveName: 'yolo26n-pose.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26s-pose',
-      task: YOLOTask.pose,
-      androidAssetName: 'yolo26s-pose_int8.tflite',
-      iosArchiveName: 'yolo26s-pose.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26m-pose',
-      task: YOLOTask.pose,
-      androidAssetName: 'yolo26m-pose_int8.tflite',
-      iosArchiveName: 'yolo26m-pose.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26l-pose',
-      task: YOLOTask.pose,
-      androidAssetName: 'yolo26l-pose_int8.tflite',
-      iosArchiveName: 'yolo26l-pose.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26x-pose',
-      task: YOLOTask.pose,
-      androidAssetName: 'yolo26x-pose_int8.tflite',
-      iosArchiveName: 'yolo26x-pose.mlpackage.zip',
-    ),
-    // OBB
-    _OfficialModelArtifact(
-      id: 'yolo26n-obb',
-      task: YOLOTask.obb,
-      androidAssetName: 'yolo26n-obb_int8.tflite',
-      iosArchiveName: 'yolo26n-obb.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26s-obb',
-      task: YOLOTask.obb,
-      androidAssetName: 'yolo26s-obb_int8.tflite',
-      iosArchiveName: 'yolo26s-obb.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26m-obb',
-      task: YOLOTask.obb,
-      androidAssetName: 'yolo26m-obb_int8.tflite',
-      iosArchiveName: 'yolo26m-obb.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26l-obb',
-      task: YOLOTask.obb,
-      androidAssetName: 'yolo26l-obb_int8.tflite',
-      iosArchiveName: 'yolo26l-obb.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26x-obb',
-      task: YOLOTask.obb,
-      androidAssetName: 'yolo26x-obb_int8.tflite',
-      iosArchiveName: 'yolo26x-obb.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
+  static const List<String> _yolo26Sizes = ['n', 's', 'm', 'l', 'x'];
+  static const List<({YOLOTask task, String suffix})> _yolo26Tasks = [
+    (task: YOLOTask.detect, suffix: ''),
+    (task: YOLOTask.segment, suffix: '-seg'),
+    (task: YOLOTask.semantic, suffix: '-sem'),
+    (task: YOLOTask.classify, suffix: '-cls'),
+    (task: YOLOTask.pose, suffix: '-pose'),
+    (task: YOLOTask.obb, suffix: '-obb'),
+  ];
+
+  // Canonical YOLO26 task x size matrix. Keep generated so the app, docs, and export script all represent the same
+  // 6-task x 5-size official asset set.
+  static final List<_OfficialModelArtifact> _officialModels = [
+    for (final task in _yolo26Tasks)
+      for (final size in _yolo26Sizes)
+        _yolo26Artifact(task: task.task, size: size, suffix: task.suffix),
+    const _OfficialModelArtifact(
       id: 'yolo11n',
       task: YOLOTask.detect,
       androidAssetName: 'yolo11n.tflite',
       iosArchiveName: 'yolo11n.mlpackage.zip',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11s',
       task: YOLOTask.detect,
       iosArchiveName: 'yolo11s.mlpackage.zip',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11m',
       task: YOLOTask.detect,
       iosArchiveName: 'yolo11m.mlpackage.zip',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11l',
       task: YOLOTask.detect,
       iosArchiveName: 'yolo11l.mlpackage.zip',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11x',
       task: YOLOTask.detect,
       iosArchiveName: 'yolo11x.mlpackage.zip',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11n-seg',
       task: YOLOTask.segment,
       androidAssetName: 'yolo11n-seg.tflite',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11n-cls',
       task: YOLOTask.classify,
       androidAssetName: 'yolo11n-cls.tflite',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11n-pose',
       task: YOLOTask.pose,
       androidAssetName: 'yolo11n-pose.tflite',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11n-obb',
       task: YOLOTask.obb,
       androidAssetName: 'yolo11n-obb.tflite',
     ),
   ];
+
+  static _OfficialModelArtifact _yolo26Artifact({
+    required YOLOTask task,
+    required String size,
+    required String suffix,
+  }) {
+    final id = 'yolo26$size$suffix';
+    return _OfficialModelArtifact(
+      id: id,
+      task: task,
+      androidAssetName: '${id}_int8.tflite',
+      iosArchiveName: '$id.mlpackage.zip',
+    );
+  }
 
   static List<String> officialModels({YOLOTask? task}) {
     return _officialModels
@@ -297,6 +138,23 @@ class YOLOModelResolver {
 
   static bool isOfficialModel(String source) =>
       _officialModelForId(_normalizeOfficialModelId(source)) != null;
+
+  @visibleForTesting
+  static String? officialModelDownloadUrlForTesting(
+    String modelId, {
+    required bool iosLike,
+  }) {
+    final artifact = _officialModelForId(modelId);
+    if (artifact == null) return null;
+    if (iosLike) {
+      final archiveName = artifact.iosArchiveName;
+      return archiveName == null
+          ? null
+          : '$_iosModelReleaseBaseUrl/$archiveName';
+    }
+    final assetName = artifact.androidAssetName;
+    return assetName == null ? null : '$_androidModelReleaseBaseUrl/$assetName';
+  }
 
   static Future<YOLOResolvedModel> resolve({
     required String modelPath,
@@ -342,19 +200,6 @@ class YOLOModelResolver {
 
   static Future<String> _resolvePath(String source) async {
     final officialId = _normalizeOfficialModelId(source);
-
-    // Android: prefer a bundled non-end2end fp16 detect model if the app ships one. Unlike the published int8/end2end
-    // model (which the GPU can't compile and runs ~30ms on CPU), it compiles on the LiteRT 2.x GPU accelerator and
-    // runs ~7ms on a Galaxy S26. Falls through to the normal resolver when the asset isn't bundled.
-    if (Platform.isAndroid && officialId == 'yolo26n') {
-      try {
-        return await _copyFlutterAssetToDocuments(
-          'assets/models/yolo26n.tflite',
-        );
-      } catch (_) {
-        // Not bundled in this build — fall through to the official download path below.
-      }
-    }
 
     if (_officialModelForId(officialId) != null) {
       return _resolveOfficialModel(officialId!);

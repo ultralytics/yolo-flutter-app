@@ -54,8 +54,8 @@ class ModelSizeSegmentedControl extends StatelessWidget {
         ? currentSize
         : visibleSizes.first;
 
-    // CupertinoSlidingSegmentedControl asserts it has >= 2 segments. On platforms that ship a single size (Android only
-    // hosts the `n` variant in this release), show one static chip instead of crashing with a red error screen.
+    // CupertinoSlidingSegmentedControl asserts it has >= 2 segments. If a host limits official assets to one size, show
+    // one static chip instead of crashing with a red error screen.
     if (visibleSizes.length < 2) {
       return Center(
         child: Container(
@@ -76,28 +76,45 @@ class ModelSizeSegmentedControl extends StatelessWidget {
       );
     }
 
-    // Full-width so the longer `YOLO26<size>` chips get more room (the model row spans wider than the task row).
-    return SizedBox(
-      width: double.infinity,
-      child: CupertinoSlidingSegmentedControl<String>(
-        groupValue: effectiveCurrent,
-        backgroundColor: Colors.black.withValues(alpha: 0.7),
-        thumbColor: Colors.white.withValues(alpha: 0.18),
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-        onValueChanged: (size) {
-          if (size != null) onSizeChanged(size);
-        },
-        children: {
-          for (final size in visibleSizes)
-            size: _SegmentLabel(
-              size: size,
-              isSelected: size == effectiveCurrent,
-              isAvailable: availableSizes.contains(size),
-              isDownloading: downloadingSize == size,
-              fraction: downloadingSize == size ? downloadFraction : null,
-            ),
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Android can deliver an initial zero-width warm-up layout before viewport metrics arrive. A full-width
+        // CupertinoSlidingSegmentedControl under those constraints computes a negative per-segment width and prevents
+        // the first Flutter frame from painting. Reserve the row height until the real width arrives.
+        if (constraints.hasBoundedWidth && constraints.maxWidth <= 0) {
+          return const SizedBox(height: 32);
+        }
+
+        final control = CupertinoSlidingSegmentedControl<String>(
+          groupValue: effectiveCurrent,
+          backgroundColor: Colors.black.withValues(alpha: 0.7),
+          thumbColor: Colors.white.withValues(alpha: 0.18),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          onValueChanged: (size) {
+            if (size != null) onSizeChanged(size);
+          },
+          children: {
+            for (final size in visibleSizes)
+              size: _SegmentLabel(
+                size: size,
+                isSelected: size == effectiveCurrent,
+                isAvailable: availableSizes.contains(size),
+                isDownloading: downloadingSize == size,
+                fraction: downloadingSize == size ? downloadFraction : null,
+              ),
+          },
+        );
+
+        // Full-width when there is enough room, matching the iOS model row. On constrained layouts, lay the control
+        // out at its natural width and scale down so Cupertino never receives impossible per-segment constraints.
+        if (!constraints.hasBoundedWidth || constraints.maxWidth >= 280) {
+          return SizedBox(width: double.infinity, child: control);
+        }
+
+        return Center(
+          child: FittedBox(fit: BoxFit.scaleDown, child: control),
+        );
+      },
     );
   }
 }
