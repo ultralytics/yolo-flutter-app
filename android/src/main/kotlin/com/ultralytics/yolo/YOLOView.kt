@@ -33,6 +33,7 @@ import android.widget.TextView
 import android.view.Gravity
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import android.content.res.Configuration
 
 /**
@@ -234,6 +235,11 @@ class YOLOView @JvmOverloads constructor(
     // New fields for proper teardown:
     private var cameraExecutor: ExecutorService? = null
     private var imageAnalysisUseCase: ImageAnalysis? = null
+
+    // Bumped on every camera (re)bind. A rebind path (lens snap / camera flip / resume) shuts down the old executor
+    // without awaiting it, so an in-flight analyzer frame on the old thread can still be running when the new analyzer
+    // goes live; stale frames check this and bail so two predict() calls never overlap on the non-thread-safe predictor.
+    private val cameraGeneration = AtomicInteger(0)
     
     // Flag to track if the view is stopped/disposed to prevent race conditions
     @Volatile
@@ -694,7 +700,14 @@ class YOLOView @JvmOverloads constructor(
                         .build()
 
                     cameraExecutor = Executors.newSingleThreadExecutor()
+                    val myGeneration = cameraGeneration.incrementAndGet()
                     imageAnalysisUseCase!!.setAnalyzer(cameraExecutor!!) { imageProxy ->
+                        // Drop frames from a superseded binding: the old executor may still deliver one in-flight frame
+                        // after a rebind, and overlapping predict() calls on the shared predictor are not thread-safe.
+                        if (myGeneration != cameraGeneration.get()) {
+                            imageProxy.close()
+                            return@setAnalyzer
+                        }
                         onFrame(imageProxy)
                     }
 
@@ -2204,9 +2217,18 @@ class YOLOView @JvmOverloads constructor(
 
             camera = null
             
-            // Close predictor safely - ensure no inference is running
+            // Close predictor safely - ensure no inference is running. First evict it from the cache so a later
+            // same-key setModel() can't serve this now-closed instance from the fast path (use-after-close).
+            val closing = predictor
+            if (closing != null) {
+                val cachedKeys = predictorCache.filterValues { it === closing }.keys.toList()
+                for (key in cachedKeys) {
+                    predictorCache.remove(key)
+                    predictorCacheOrder.remove(key)
+                }
+            }
             try {
-                (predictor as? BasePredictor)?.close()
+                (closing as? BasePredictor)?.close()
             } catch (e: Exception) {
                 Log.e(TAG, "Error closing predictor", e)
             }
