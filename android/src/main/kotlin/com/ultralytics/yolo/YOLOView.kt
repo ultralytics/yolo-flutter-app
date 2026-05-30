@@ -585,11 +585,40 @@ class YOLOView @JvmOverloads constructor(
      * Called when a LifecycleOwner is available for camera operations
      */
     fun onLifecycleOwnerAvailable(owner: LifecycleOwner) {
+        // Detach from any previous owner before re-registering so a re-attach (or owner change) can't leave a stale
+        // observer wired to this view, and so disposal can fully release it.
+        this.lifecycleOwner?.lifecycle?.removeObserver(this)
         this.lifecycleOwner = owner
         owner.lifecycle.addObserver(this)
-        
+
         if (allPermissionsGranted() && (camera == null || isStopped)) {
             startCamera()
+        }
+    }
+
+    /**
+     * Pause the camera pipeline without tearing down the predictor.
+     *
+     * The "pause" method channel call routes here (not [stop]) so that "resume" -> [startCamera] can rebind: [stop]
+     * closes and nulls the predictor, and [startCamera] early-returns while `predictor == null`, which would otherwise
+     * leave the preview dead after a single pause/resume cycle. This only unbinds the camera use-cases and clears the
+     * analyzer; the predictor, callbacks and cache stay intact for an instant resume.
+     */
+    fun pauseCamera() {
+        isStopped = true
+        try {
+            imageAnalysisUseCase?.clearAnalyzer()
+            if (::cameraProviderFuture.isInitialized) {
+                try {
+                    cameraProviderFuture.get(1, TimeUnit.SECONDS).unbindAll()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error unbinding camera on pause", e)
+                }
+            }
+            previewUseCase?.setSurfaceProvider(null)
+            camera = null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during camera pause", e)
         }
     }
     
