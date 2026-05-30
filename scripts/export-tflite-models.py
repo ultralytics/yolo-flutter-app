@@ -30,7 +30,6 @@ from pathlib import Path
 import numpy as np
 from ultralytics import YOLO
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = ROOT / "exports" / "yolo26-tflite"
 DEFAULT_REPO = "ultralytics/yolo-flutter-app"
