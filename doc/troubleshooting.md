@@ -146,13 +146,13 @@ await controller.setThresholds(
 
 ### Android detections run slow / not on GPU
 
-Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. To actually run on the GPU, the model must be an fp16, non-end-to-end TFLite export:
+Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; unsupported graphs or ops may fall back to CPU. To compare against fp16, export a non-end-to-end TFLite model:
 
 ```python
 YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
 
-End-to-end (NMS-free) heads use INT64 ops, and int8 quantization can't be compiled for the GPU, so those models silently fall back to CPU. On a Samsung Galaxy S26 (Adreno), a non-end-to-end fp16 YOLO26n detect model runs at roughly 7 ms/inference on GPU versus about 30 ms on CPU (approximate). fp16 + non-end-to-end is the recommended Android export; int8/end-to-end models still work, just on CPU. Leave `useGpu: true` (the default) so eligible models use the GPU.
+On a Samsung Galaxy S26, the official `yolo26n_int8.tflite` compiled with the LiteRT OpenCL GPU delegate and ran around 15 FPS / 32 ms in the live camera example. Leave `useGpu: true` (the default), inspect LiteRT logs for `LITERT_CL` or CPU fallback, and benchmark the exact model you plan to ship.
 
 ## 🧠 Memory Issues
 

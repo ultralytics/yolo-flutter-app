@@ -44,7 +44,7 @@ The on-screen `ms` value comes from native `YOLOResult.speed`, forwarded through
 
 **Q:** Can the official Android `yolo26n_int8.tflite` asset run on GPU?
 
-**A:** Yes on the Galaxy S26. LiteRT loaded the GPU accelerator and compiled the graph with the OpenCL delegate:
+**A:** Yes on the Galaxy S26. LiteRT loaded the GPU accelerator and compiled the full graph with the OpenCL delegate:
 
 ```text
 RegisterAccelerator: name=LiteRT GPU
@@ -58,7 +58,7 @@ Observed app-level result:
 | ---------- | --------------------- | ------------------------ | ------------- | ------------ |
 | Galaxy S26 | `yolo26n_int8.tflite` | LiteRT GPU (`LITERT_CL`) | ~15.2 FPS     | ~32 ms       |
 
-**Conclusion:** Keep official Android assets as int8 TFLite for download size and confirm GPU placement per device from LiteRT logs. Do not assume int8 means CPU-only on current LiteRT.
+**Conclusion:** Keep official Android assets as int8 TFLite for download size and confirm GPU placement per device from LiteRT logs. Do not assume int8 means CPU-only on current LiteRT, and do not assume all int8 graphs receive the same GPU coverage: driver support is device-dependent, and unsupported graphs or ops may fall back to CPU.
 
 ## Experiment: Release Download vs. Local Validation
 

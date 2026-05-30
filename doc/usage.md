@@ -51,6 +51,58 @@ YOLOView(
 )
 ```
 
+Use `YOLOShowcase` when you want the complete Ultralytics camera UI with model/task controls, thresholds, lens controls, capture, and performance labels:
+
+```dart
+YOLOShowcase(
+  modelPath: 'yolo26n',
+  onCapture: (bytes) {},
+)
+```
+
+## 🔄 Migrating From 0.3.x Overlay/UI APIs
+
+Version 0.4.0 removes the old Dart-side overlay/control layer. `YOLOView` is now the camera + native detection-rendering surface. The full app UI lives in `YOLOShowcase`, and reusable controls are exported as normal Flutter widgets for custom layouts.
+
+| Removed 0.3.x API                                           | 0.4.0 replacement                                                                                 |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `YOLOOverlay`, `YOLOOverlayTheme`                           | Remove these widgets. Use native `YOLOView` overlays, or consume `onResult`/`YOLO.predict()` data. |
+| `YOLOControls`                                              | Use `YOLOShowcase` for the full UI, or compose `TaskSegmentedControl`, `ThresholdSliderRow`, etc.  |
+| `YOLOView.showNativeUI`                                     | Use `YOLOShowcase` for built-in controls; use bare `YOLOView` when building your own UI.           |
+| `YOLOView.showOverlays`, `YOLOView.overlayTheme`            | No constructor replacement. Camera overlay drawing is native and not themed from Dart.             |
+| `YOLOViewController.setShowUIControls()`                    | Show/hide your own Flutter controls around `YOLOView`.                                             |
+| `YOLOViewController.setShowOverlays()`                      | No controller replacement. `capturePhoto(withOverlays: false)` only affects captured JPEG output.  |
+
+Typical upgrade:
+
+```dart
+// 0.3.x: YOLOView plus package-provided Dart controls/overlays.
+YOLOView(
+  modelPath: 'yolo11n',
+  onResult: (results) {},
+)
+
+// 0.4.0: full built-in experience.
+YOLOShowcase(modelPath: 'yolo26n')
+
+// 0.4.0: custom experience.
+Stack(
+  children: [
+    YOLOView(modelPath: 'yolo26n', controller: controller),
+    Align(
+      alignment: Alignment.bottomCenter,
+      child: ThresholdSliderRow(
+        label: 'Confidence',
+        value: confidence,
+        min: 0.0,
+        max: 1.0,
+        onChanged: controller.setConfidenceThreshold,
+      ),
+    ),
+  ],
+)
+```
+
 ## 🧠 Using Custom Models
 
 Custom models work the same way:
@@ -68,13 +120,13 @@ final yolo = YOLO(
 );
 ```
 
-On Android, inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. For the GPU fast path, export your `.tflite` as fp16 and non-end-to-end:
+On Android, inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; unsupported graphs or ops may fall back to CPU. For GPU benchmarking, fp16 non-end-to-end exports are also useful:
 
 ```python
 YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
 
-fp16 + non-end-to-end is the recommended Android export. The end-to-end (NMS-free) head's INT64 ops and int8 quantization can't be compiled for the GPU, so int8/end-to-end models still work but run on CPU (the plugin runs NMS on CPU in sub-millisecond time, so non-end-to-end models lose nothing).
+Keep `useGpu: true` for automatic GPU -> CPU fallback and verify actual delegate placement on target devices.
 
 ## 🔍 Task-Specific Result Access
 

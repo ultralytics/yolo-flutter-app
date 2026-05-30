@@ -37,6 +37,7 @@ hello_yolo/
 **/*.zip
 
 # Development documents and notes
+docs/
 CLAUDE.md
 fix_summary.md
 MISSING_FEATURES.md

@@ -10,7 +10,7 @@ The default is still:
 useGpu: true
 ```
 
-That is usually the best choice for performance: on Android it engages the LiteRT 2.x GPU accelerator when the model is GPU-compatible (a fp16 non-end-to-end export) and otherwise falls back to CPU. Disabling GPU is useful when a device-specific GPU path is unstable.
+That is usually the best choice for performance: on Android it engages the LiteRT 2.x GPU accelerator when the model is GPU-compatible and otherwise falls back to CPU. Disabling GPU is useful when a device-specific GPU path is unstable.
 
 ## Basic Usage
 
@@ -45,12 +45,12 @@ Disable GPU when:
 
 Android inference runs on LiteRT 2.x (Google's rebrand of TensorFlow Lite) via the `CompiledModel` API, with an automatic **GPU → CPU accelerator ladder**:
 
-- `useGpu: true` requests the GPU. The plugin compiles the whole graph for the GPU when the model is compatible, and otherwise falls back to XNNPACK CPU.
+- `useGpu: true` requests the GPU. The plugin compiles compatible graphs for the GPU, while unsupported graphs or ops may fall back to XNNPACK CPU.
 - `useGpu: false` runs on XNNPACK CPU.
 
 NNAPI is no longer used (it is deprecated and slower).
 
-Actual GPU acceleration requires a **fp16, non-end-to-end** model:
+Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph. fp16 non-end-to-end exports are still useful for GPU benchmarking:
 
 ```python
 from ultralytics import YOLO
@@ -58,9 +58,9 @@ from ultralytics import YOLO
 YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
 
-Here `half=True` produces fp16 weights the GPU can run, `nms=False` leaves NMS to the plugin, and `end2end=False` keeps the YOLO26 raw head that LiteRT can compile for GPU. int8 and end-to-end models use ops or quantization paths the GPU cannot compile, so even with `useGpu: true` they silently fall back to CPU. They still load and run correctly.
+Here `half=True` produces fp16 weights, `nms=False` leaves NMS to the plugin, and `end2end=False` keeps the YOLO26 raw head for the Android LiteRT conversion path. Keep `useGpu: true` and verify the actual delegate from LiteRT logs.
 
-On a Galaxy S26 (Adreno) a fp16 non-end2end YOLO26n detect model runs at roughly **7 ms/inference on the GPU** versus about **30 ms on CPU** (approximate, device-dependent).
+On a Galaxy S26, the official `yolo26n_int8.tflite` compiled fully with the LiteRT OpenCL GPU delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran around **15 FPS / 32 ms** in the live camera example.
 
 ### iOS
 

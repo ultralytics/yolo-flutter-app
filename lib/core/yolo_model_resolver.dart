@@ -39,6 +39,8 @@ class YOLOResolvedModel {
 }
 
 class YOLOModelResolver {
+  // Pinned release assets provide reproducible first-use downloads. Update these constants, docs, and URL tests together
+  // when the official model asset set moves to a new release.
   static const String _androidModelReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5';
   static const String _iosModelReleaseBaseUrl =

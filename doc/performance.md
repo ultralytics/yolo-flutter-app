@@ -75,9 +75,9 @@ final yolo = YOLO(
 );
 ```
 
-On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the graph for the GPU when the model is compatible, and otherwise falls back to XNNPACK CPU. (iOS uses Core ML.)
+On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles compatible graphs for the GPU, while unsupported graphs or ops may fall back to XNNPACK CPU. (iOS uses Core ML.)
 
-The official YOLO26 int8 TFLite assets can compile on the LiteRT GPU path on supported devices. For example, a Galaxy S26 compiled `yolo26n_int8.tflite` with the OpenCL delegate (`LITERT_CL`) and ran at about **15 FPS / 32 ms** in the live camera example app. Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
+The official YOLO26 int8 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph. For example, a Galaxy S26 compiled `yolo26n_int8.tflite` fully with the OpenCL delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran at about **15 FPS / 32 ms** in the live camera example app. Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
 
 fp16 non-end-to-end TFLite exports are still useful for GPU benchmarking:
 

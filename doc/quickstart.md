@@ -61,7 +61,7 @@ Custom local models are still supported:
 
 Task and labels are auto-detected from the model's embedded metadata. If your custom model has no `task` in its metadata, pass it explicitly.
 
-Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core ML. For the fastest Android (GPU) performance, export your `.tflite` as fp16 and non-end-to-end:
+Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core ML. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; unsupported graphs or ops may fall back to CPU. fp16 non-end-to-end exports are useful for GPU benchmarking:
 
 ```python
 YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
@@ -279,7 +279,7 @@ final classifications = await classifier.predict(imageBytes);
 
 **Slow detections on Android?**
 
-- Use an fp16, non-end-to-end export so it runs on the GPU: `YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)`. int8/end-to-end models run on CPU.
+- Keep `useGpu: true` and verify LiteRT delegate placement in device logs; benchmark fp16 non-end-to-end exports when comparing GPU paths.
 
 ## 📚 Learn More
 
