@@ -353,7 +353,12 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     // Common success handling for all tasks. Keep weak self because model creation can outlive the view during rapid
     // switches or teardown.
     let handleSuccess: (Predictor) -> Void = { [weak self] predictor in
-      guard let self else { return }
+      // Always reply, even if the view was deallocated mid-load: `completion` is caller-owned (it doesn't capture
+      // self), and a dropped reply permanently stalls the Dart serialized model-switch chain.
+      guard let self else {
+        completion?(.success(()))
+        return
+      }
       // Switch the task and rebuild the overlay sublayers only now that a predictor exists. Doing this up front would
       // strand the new task's sublayers over the previous predictor when a load fails (handleFailure) or the model is
       // missing; keeping it here leaves the previously working task/predictor untouched on those paths.
@@ -375,7 +380,11 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     // Common failure handling for all tasks
     let handleFailure: (Error) -> Void = { [weak self] error in
-      guard let self else { return }
+      // Always reply so the Dart switch chain doesn't stall if the view deallocated mid-load (see handleSuccess).
+      guard let self else {
+        completion?(.failure(error))
+        return
+      }
       NSLog("YOLOView: Failed to load model: %@", String(describing: error))
       self.activityIndicator.stopAnimating()
       completion?(.failure(error))
@@ -1468,6 +1477,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       NSLog(
         "YOLOView: No camera device available for position: %@",
         String(describing: nextCameraPosition))
+      // currentInput was already removed above; re-add it so the session isn't left with no camera input.
+      if self.videoCapture.captureSession.canAddInput(currentInput) {
+        self.videoCapture.captureSession.addInput(currentInput)
+      }
       self.videoCapture.captureSession.commitConfiguration()
       hideCameraTransition()
       return
@@ -1475,6 +1488,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     guard let videoInput1 = try? AVCaptureDeviceInput(device: newCameraDevice) else {
       NSLog("YOLOView: Failed to create AVCaptureDeviceInput for camera switch")
+      // currentInput was already removed above; re-add it so the session isn't left with no camera input.
+      if self.videoCapture.captureSession.canAddInput(currentInput) {
+        self.videoCapture.captureSession.addInput(currentInput)
+      }
       self.videoCapture.captureSession.commitConfiguration()
       hideCameraTransition()
       return
