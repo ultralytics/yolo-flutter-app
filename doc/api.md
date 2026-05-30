@@ -310,12 +310,15 @@ class YOLOViewController {
 
 #### Properties
 
-| Property              | Type     | Description                            |
-| --------------------- | -------- | -------------------------------------- |
-| `confidenceThreshold` | `double` | Current confidence threshold (0.0-1.0) |
-| `iouThreshold`        | `double` | Current IoU threshold (0.0-1.0)        |
-| `numItemsThreshold`   | `int`    | Maximum number of detections (1-100)   |
-| `isInitialized`       | `bool`   | Whether controller is initialized      |
+| Property              | Type            | Description                                                        |
+| --------------------- | --------------- | ------------------------------------------------------------------ |
+| `confidenceThreshold` | `double`        | Current confidence threshold (0.0-1.0)                             |
+| `iouThreshold`        | `double`        | Current IoU threshold (0.0-1.0)                                    |
+| `numItemsThreshold`   | `int`           | Maximum number of detections (1-100)                               |
+| `isInitialized`       | `bool`          | Whether controller is initialized                                  |
+| `zoomEvents`          | `Stream<double>` | Broadcast stream of zoom-factor changes emitted by the native layer |
+| `lensEvents`          | `Stream<String>` | Broadcast stream of lens-switch events emitted by the native layer  |
+| `focusEvents`         | `Stream<Offset>` | Broadcast stream of tap-to-focus coordinates (view-relative)        |
 
 #### Methods
 
@@ -504,6 +507,121 @@ if (imageData != null) {
 - Pose keypoints and skeleton (for pose task)
 - OBB rotated boxes (for OBB task)
 - Classification results (for classify task)
+
+##### `capturePhoto()`
+
+Capture a composited JPEG of the current camera frame, optionally with native detection overlays drawn in.
+
+```dart
+Future<Uint8List?> capturePhoto({bool withOverlays = true})
+```
+
+**Parameters**: `withOverlays` - Include native detection overlays in the output JPEG (default `true`)
+
+**Returns**: `Future<Uint8List?>` - JPEG image data, or `null` if capture fails
+
+##### `getAvailableLenses()`
+
+Return the list of physical camera lenses available on the device.
+
+```dart
+Future<List<LensInfo>> getAvailableLenses()
+```
+
+**Returns**: `Future<List<LensInfo>>` - Each entry carries a `zoomFactor` (the lens's approximate optical zoom relative to the main sensor) and a human-readable `label`.
+
+##### `setLens()`
+
+Switch to the physical lens whose zoom factor is nearest to the requested value.
+
+```dart
+Future<void> setLens(double zoomFactor)
+```
+
+**Parameters**: `zoomFactor` - Target zoom factor; the nearest available lens is selected.
+
+##### `tapToFocus()`
+
+Request a focus/exposure lock at the given view-relative coordinates.
+
+```dart
+Future<void> tapToFocus(double x, double y)
+```
+
+**Parameters**:
+
+- `x` - Horizontal position in the range 0.0 (left) to 1.0 (right)
+- `y` - Vertical position in the range 0.0 (top) to 1.0 (bottom)
+
+##### `pause()`
+
+Pause the active camera session. On iOS the last frame is kept frozen so `capturePhoto` returns that frame; on Android this is an alias for `stop()`.
+
+```dart
+Future<void> pause()
+```
+
+##### `resume()`
+
+Resume after `pause()`. On iOS the cached share frame is cleared and the session restarts; on Android this is an alias for `restartCamera()`.
+
+```dart
+Future<void> resume()
+```
+
+---
+
+### YOLOShowcase Widget
+
+A Material 3 one-import camera screen that mirrors the layout of the native Ultralytics YOLO iOS app. All 9 exported UI widgets are composed automatically.
+
+```dart
+YOLOShowcase(
+  modelPath: 'yolo26n',
+  onCapture: (bytes) {},
+)
+```
+
+#### Constructor Parameters
+
+| Parameter   | Type                    | Required | Default | Description                                       |
+| ----------- | ----------------------- | -------- | ------- | ------------------------------------------------- |
+| `modelPath` | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL |
+| `onCapture` | `Function(Uint8List?)?` | ❌       | `null`  | Callback invoked with the JPEG bytes after capture |
+
+Import once and get the full UI:
+
+```dart
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
+
+YOLOShowcase(modelPath: 'yolo26n')
+```
+
+For a custom layout, compose the 9 exported Material widgets around a bare `YOLOView` instead: `TaskSegmentedControl`, `ModelSizeSegmentedControl`, `ThresholdSliderRow`, `LensPicker`, `ZoomIndicator`, `CameraToolbar`, `FocusReticle`, `LogoOverlay`, `PerformanceLabel`.
+
+---
+
+### YOLOModelManager Class
+
+Static class that manages model downloads and caching.
+
+#### Static Properties
+
+##### `downloadProgress`
+
+A broadcast `Stream<DownloadProgress>` that emits fractional progress (0.0–1.0) while an official model asset is downloading.
+
+```dart
+static Stream<DownloadProgress> get downloadProgress
+```
+
+**Example**:
+
+```dart
+YOLOModelManager.downloadProgress.listen((progress) {
+  print('Download: ${(progress.fraction * 100).toStringAsFixed(0)}%');
+});
+```
 
 ---
 

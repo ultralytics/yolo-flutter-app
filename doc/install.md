@@ -128,7 +128,7 @@ Create a simple test to verify everything works:
 ```dart
 // lib/test_yolo.dart
 import 'package:flutter/material.dart';
-import 'package:ultralytics_yolo/yolo.dart';
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 class TestYOLO extends StatelessWidget {
   @override

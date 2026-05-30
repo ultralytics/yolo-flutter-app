@@ -73,7 +73,7 @@ Replace `lib/main.dart` with this complete working example:
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:ultralytics_yolo/yolo.dart';
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -204,7 +204,7 @@ You now have a working YOLO object detection app! The app will:
 Want real-time detection? Add the YOLOView widget:
 
 ```dart
-import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 // Replace the Column with:
 YOLOView(
