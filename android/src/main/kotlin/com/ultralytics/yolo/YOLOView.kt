@@ -243,7 +243,12 @@ class YOLOView @JvmOverloads constructor(
     
     // Flag to track if the view is stopped/disposed to prevent race conditions
     @Volatile
-    private var isStopped = false    
+    private var isStopped = false
+
+    // Distinguishes an intentional Dart-driven pause (pauseCamera) from a lifecycle stop. Both set isStopped, but a
+    // lifecycle onStart/onResume must NOT auto-restart the camera while the app explicitly paused it.
+    @Volatile
+    private var intentionallyPaused = false
 
     // Zoom related
     private var currentZoomRatio = 1.0f
@@ -636,6 +641,7 @@ class YOLOView @JvmOverloads constructor(
      */
     fun pauseCamera() {
         isStopped = true
+        intentionallyPaused = true
         try {
             imageAnalysisUseCase?.clearAnalyzer()
             if (::cameraProviderFuture.isInitialized) {
@@ -696,12 +702,20 @@ class YOLOView @JvmOverloads constructor(
             return
         }
         isStopped = false
+        // An explicit start/resume clears the intentional-pause flag so lifecycle events resume the camera again.
+        intentionallyPaused = false
 
         try {
             cameraProviderFuture = ProcessCameraProvider.getInstance(context)
             cameraProviderFuture.addListener({
                 try {
                     val cameraProvider = cameraProviderFuture.get()
+
+                    // Stale-listener guard: if pauseCamera()/stop() ran after this listener was posted but before it
+                    // fired (e.g. rapid pause during model load), bail so we don't rebind a camera that was just stopped.
+                    if (isStopped) {
+                        return@addListener
+                    }
 
                     // Tear down the previous analyzer + executor before rebinding. Rebind paths (setLens/auto-snap,
                     // switchCamera, setLensFacing, onStart/onResume) reach startCamera() without going through stop(),
@@ -1207,9 +1221,9 @@ class YOLOView @JvmOverloads constructor(
     // Lifecycle methods from DefaultLifecycleObserver
     override fun onStart(owner: LifecycleOwner) {
         if (allPermissionsGranted()) {
-            // Always restart camera on start if it's stopped or null
-            // This ensures camera resumes when navigating back
-            if (isStopped || camera == null) {
+            // Restart the camera on start if it was stopped by a lifecycle event (e.g. navigating back), but NOT if the
+            // Dart layer intentionally paused it — that pause must hold until an explicit resume.
+            if (!intentionallyPaused && (isStopped || camera == null)) {
                 startCamera()
             }
         }
@@ -1217,8 +1231,8 @@ class YOLOView @JvmOverloads constructor(
 
     override fun onResume(owner: LifecycleOwner) {
         if (allPermissionsGranted()) {
-            // Double-check camera is running on resume
-            if (isStopped || camera == null) {
+            // Double-check camera is running on resume, unless the Dart layer intentionally paused it.
+            if (!intentionallyPaused && (isStopped || camera == null)) {
                 startCamera()
             }
         }
@@ -2217,6 +2231,8 @@ class YOLOView @JvmOverloads constructor(
     fun stop() {
         // Set stopped flag first to prevent new frames from being processed
         isStopped = true
+        // A full teardown is not an intentional pause; a later lifecycle restart should rebind normally.
+        intentionallyPaused = false
 
         try {
             imageAnalysisUseCase?.clearAnalyzer()
