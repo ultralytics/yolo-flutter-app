@@ -16,12 +16,12 @@ Canonical record of the on-device profiling behind the Ultralytics YOLO Flutter 
 
 ## Methodology
 
-| Tool | What it measures | Notes |
-| --- | --- | --- |
-| `YOLOView.onPerformanceMetrics` / on-screen FPS label | Native inference stream rate and `processingTimeMs` | Best quick app-level signal. Includes the native predictor's per-frame processing time, not Flutter build/layout time. |
-| `adb logcat` | Runtime delegate selection and camera/device errors | Confirm LiteRT accelerator placement from logs such as `Replacing ... node(s) with delegate (LITERT_CL)` and `compiled on GPU`. |
-| `adb exec-out screencap` | Actual rendered UI and camera state | Catches splash, black-screen, overlay, and control-layout failures that tests and logs can miss. |
-| `flutter analyze`, `flutter test`, `flutter build apk --debug` | Static, widget, and build health | Required before trusting a device-only performance result. |
+| Tool                                                           | What it measures                                    | Notes                                                                                                                           |
+| -------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `YOLOView.onPerformanceMetrics` / on-screen FPS label          | Native inference stream rate and `processingTimeMs` | Best quick app-level signal. Includes the native predictor's per-frame processing time, not Flutter build/layout time.          |
+| `adb logcat`                                                   | Runtime delegate selection and camera/device errors | Confirm LiteRT accelerator placement from logs such as `Replacing ... node(s) with delegate (LITERT_CL)` and `compiled on GPU`. |
+| `adb exec-out screencap`                                       | Actual rendered UI and camera state                 | Catches splash, black-screen, overlay, and control-layout failures that tests and logs can miss.                                |
+| `flutter analyze`, `flutter test`, `flutter build apk --debug` | Static, widget, and build health                    | Required before trusting a device-only performance result.                                                                      |
 
 ## What the App's "Inference Time" Measures
 
@@ -54,9 +54,9 @@ ObjectDetector: LiteRT compiled on GPU; inputDims=[1, 640, 640, 3] outputDims=[[
 
 Observed app-level result:
 
-| Device | Model | Runtime | On-screen FPS | On-screen ms |
-| --- | --- | --- | --- | --- |
-| Galaxy S26 | `yolo26n_int8.tflite` | LiteRT GPU (`LITERT_CL`) | ~15.2 FPS | ~32 ms |
+| Device     | Model                 | Runtime                  | On-screen FPS | On-screen ms |
+| ---------- | --------------------- | ------------------------ | ------------- | ------------ |
+| Galaxy S26 | `yolo26n_int8.tflite` | LiteRT GPU (`LITERT_CL`) | ~15.2 FPS     | ~32 ms       |
 
 **Conclusion:** Keep official Android assets as int8 TFLite for download size and confirm GPU placement per device from LiteRT logs. Do not assume int8 means CPU-only on current LiteRT.
 

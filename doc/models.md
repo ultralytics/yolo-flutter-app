@@ -39,10 +39,10 @@ print(models);
 
 Official assets are maintained as GitHub release assets:
 
-| Platform | Runtime asset | Release |
-| --- | --- | --- |
-| Android | TFLite int8 `.tflite` | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
-| iOS/macOS | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0) |
+| Platform  | Runtime asset                 | Release                                                                                          |
+| --------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| Android   | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| iOS/macOS | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 URL patterns:
 
@@ -53,17 +53,17 @@ The Flutter resolver uses the TFLite release for Android and the Core ML release
 
 Official export properties:
 
-| Property | TFLite | Core ML |
-| --- | --- | --- |
-| Model IDs | `yolo26{n,s,m,l,x}` | `yolo26{n,s,m,l,x}` |
-| Tasks | detect, seg, sem, cls, pose, obb | detect, seg, sem, cls, pose, obb |
-| Format | `.tflite` | `.mlpackage.zip` |
-| Quantization | int8 dynamic range TFLite from `int8=True` export | int8 Core ML |
-| `imgsz` | `224` cls; `640` others | `224` cls; `1024` OBB; `640` others |
-| `nms` | `False` | `False` |
-| `end2end` | `False` | `True` |
-| Calibration | `ultralytics.cfg.TASK2CALIBRATIONDATA` per task | exporter default |
-| Postprocessing | Android native | Swift/Core ML |
+| Property       | TFLite                                            | Core ML                             |
+| -------------- | ------------------------------------------------- | ----------------------------------- |
+| Model IDs      | `yolo26{n,s,m,l,x}`                               | `yolo26{n,s,m,l,x}`                 |
+| Tasks          | detect, seg, sem, cls, pose, obb                  | detect, seg, sem, cls, pose, obb    |
+| Format         | `.tflite`                                         | `.mlpackage.zip`                    |
+| Quantization   | int8 dynamic range TFLite from `int8=True` export | int8 Core ML                        |
+| `imgsz`        | `224` cls; `640` others                           | `224` cls; `1024` OBB; `640` others |
+| `nms`          | `False`                                           | `False`                             |
+| `end2end`      | `False`                                           | `True`                              |
+| Calibration    | `ultralytics.cfg.TASK2CALIBRATIONDATA` per task   | exporter default                    |
+| Postprocessing | Android native                                    | Swift/Core ML                       |
 
 The TFLite export script passes both `nms=False` and `end2end=False`. `nms=False` excludes an exported NMS operator, while `end2end=False` disables the YOLO26 end-to-end head for the Android LiteRT conversion path. Core ML assets use `end2end=True`, which is the YOLO26 output contract consumed by the Swift decoders. For Android calibration, the script uses the Ultralytics `TASK2CALIBRATIONDATA` mapping by default: detect `coco128.yaml`, segment `coco128-seg.yaml`, classify `imagenet100`, pose `coco8-pose.yaml`, OBB `dota128.yaml`, and semantic `cityscapes8.yaml`.
 
@@ -177,10 +177,10 @@ For Flutter assets on iOS, use `.mlpackage.zip` so the package can unpack the mo
 
 Official release assets are generated from YOLO26 checkpoints with task/size loops so the app, package, and release assets use the same naming scheme.
 
-| Runtime | Source script | Release |
-| --- | --- | --- |
-| TFLite int8 | [`scripts/export-tflite-models.py`](../scripts/export-tflite-models.py) | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
-| Core ML int8 | `../yolo-ios-app/scripts/export-models.py` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0) |
+| Runtime      | Source script                                                           | Release                                                                                          |
+| ------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| TFLite int8  | [`scripts/export-tflite-models.py`](../scripts/export-tflite-models.py) | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| Core ML int8 | `../yolo-ios-app/scripts/export-models.py`                              | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 `scripts/export-tflite-models.py` is the source of truth for Android export settings, verification, output names, and optional release upload. The Core ML counterpart in `../yolo-ios-app` owns the Apple asset export settings and packaging.
 
