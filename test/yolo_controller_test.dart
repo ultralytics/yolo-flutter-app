@@ -215,5 +215,26 @@ void main() {
         throwsA(isA<ModelLoadingException>()),
       );
     });
+
+    test('switchModel propagates native setModel failures', () async {
+      // Unlike the fire-and-forget controls (which swallow native errors), a setModel failure must surface so
+      // YOLOView can revert the switch target and route to onModelError instead of committing the new model.
+      final setup = YOLOTestHelpers.createYOLOTestSetup(
+        customResponses: {
+          'setModel': (_) => throw PlatformException(
+            code: 'ERROR',
+            message: 'native setModel failed',
+          ),
+        },
+      );
+      mockChannel = setup.$1;
+      log = setup.$2;
+      controller.init(mockChannel, 1);
+
+      await expectLater(
+        controller.switchModel('test_model.tflite', YOLOTask.detect),
+        throwsA(isA<PlatformException>()),
+      );
+    });
   });
 }
