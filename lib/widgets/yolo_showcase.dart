@@ -193,9 +193,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         if (storedSize != null && _allSizes.contains(storedSize)) {
           _currentSize = storedSize;
         }
-        // Clamp the restored size to whatever the resolver actually publishes for the active platform (Android only
-        // hosts the `n` variants at v0.2.0, for example). Otherwise we'd hand `YOLOView` a `_currentModelId` that
-        // 404s on first launch before the chip even renders.
+        // Clamp the restored size to whatever the resolver actually publishes for the active platform. Otherwise we'd
+        // hand `YOLOView` a `_currentModelId` that 404s on first launch before the chip even renders.
         _currentSize = _clampSizeToSupported(_currentSize, _currentTask);
       });
     }
@@ -356,8 +355,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     HapticFeedback.selectionClick();
     setState(() {
       _currentTask = task;
-      // The supported set differs per task on Android (only `n` for everything in v0.2.0). Clamp here too so a
-      // task switch never hands `YOLOView` a model id that doesn't exist on the active platform.
+      // The supported set can differ by platform. Clamp here too so a task switch never hands `YOLOView` a model id
+      // that doesn't exist on the active platform.
       _currentSize = _clampSizeToSupported(_currentSize, task);
       // Abandon any in-flight download chip for the previous selection (the progress listener only resurrects it for
       // the new current size).

@@ -39,7 +39,7 @@ class YOLOResolvedModel {
 
 class YOLOModelResolver {
   static const String _androidModelReleaseBaseUrl =
-      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0';
+      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5';
   static const String _iosModelReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
@@ -58,21 +58,25 @@ class YOLOModelResolver {
     _OfficialModelArtifact(
       id: 'yolo26s',
       task: YOLOTask.detect,
+      androidAssetName: 'yolo26s_int8.tflite',
       iosArchiveName: 'yolo26s.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26m',
       task: YOLOTask.detect,
+      androidAssetName: 'yolo26m_int8.tflite',
       iosArchiveName: 'yolo26m.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26l',
       task: YOLOTask.detect,
+      androidAssetName: 'yolo26l_int8.tflite',
       iosArchiveName: 'yolo26l.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26x',
       task: YOLOTask.detect,
+      androidAssetName: 'yolo26x_int8.tflite',
       iosArchiveName: 'yolo26x.mlpackage.zip',
     ),
     // Segment
@@ -85,21 +89,25 @@ class YOLOModelResolver {
     _OfficialModelArtifact(
       id: 'yolo26s-seg',
       task: YOLOTask.segment,
+      androidAssetName: 'yolo26s-seg_int8.tflite',
       iosArchiveName: 'yolo26s-seg.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26m-seg',
       task: YOLOTask.segment,
+      androidAssetName: 'yolo26m-seg_int8.tflite',
       iosArchiveName: 'yolo26m-seg.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26l-seg',
       task: YOLOTask.segment,
+      androidAssetName: 'yolo26l-seg_int8.tflite',
       iosArchiveName: 'yolo26l-seg.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26x-seg',
       task: YOLOTask.segment,
+      androidAssetName: 'yolo26x-seg_int8.tflite',
       iosArchiveName: 'yolo26x-seg.mlpackage.zip',
     ),
     // Semantic
@@ -112,21 +120,25 @@ class YOLOModelResolver {
     _OfficialModelArtifact(
       id: 'yolo26s-sem',
       task: YOLOTask.semantic,
+      androidAssetName: 'yolo26s-sem_int8.tflite',
       iosArchiveName: 'yolo26s-sem.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26m-sem',
       task: YOLOTask.semantic,
+      androidAssetName: 'yolo26m-sem_int8.tflite',
       iosArchiveName: 'yolo26m-sem.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26l-sem',
       task: YOLOTask.semantic,
+      androidAssetName: 'yolo26l-sem_int8.tflite',
       iosArchiveName: 'yolo26l-sem.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26x-sem',
       task: YOLOTask.semantic,
+      androidAssetName: 'yolo26x-sem_int8.tflite',
       iosArchiveName: 'yolo26x-sem.mlpackage.zip',
     ),
     // Classify
@@ -139,21 +151,25 @@ class YOLOModelResolver {
     _OfficialModelArtifact(
       id: 'yolo26s-cls',
       task: YOLOTask.classify,
+      androidAssetName: 'yolo26s-cls_int8.tflite',
       iosArchiveName: 'yolo26s-cls.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26m-cls',
       task: YOLOTask.classify,
+      androidAssetName: 'yolo26m-cls_int8.tflite',
       iosArchiveName: 'yolo26m-cls.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26l-cls',
       task: YOLOTask.classify,
+      androidAssetName: 'yolo26l-cls_int8.tflite',
       iosArchiveName: 'yolo26l-cls.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26x-cls',
       task: YOLOTask.classify,
+      androidAssetName: 'yolo26x-cls_int8.tflite',
       iosArchiveName: 'yolo26x-cls.mlpackage.zip',
     ),
     // Pose
@@ -166,21 +182,25 @@ class YOLOModelResolver {
     _OfficialModelArtifact(
       id: 'yolo26s-pose',
       task: YOLOTask.pose,
+      androidAssetName: 'yolo26s-pose_int8.tflite',
       iosArchiveName: 'yolo26s-pose.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26m-pose',
       task: YOLOTask.pose,
+      androidAssetName: 'yolo26m-pose_int8.tflite',
       iosArchiveName: 'yolo26m-pose.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26l-pose',
       task: YOLOTask.pose,
+      androidAssetName: 'yolo26l-pose_int8.tflite',
       iosArchiveName: 'yolo26l-pose.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26x-pose',
       task: YOLOTask.pose,
+      androidAssetName: 'yolo26x-pose_int8.tflite',
       iosArchiveName: 'yolo26x-pose.mlpackage.zip',
     ),
     // OBB
@@ -193,21 +213,25 @@ class YOLOModelResolver {
     _OfficialModelArtifact(
       id: 'yolo26s-obb',
       task: YOLOTask.obb,
+      androidAssetName: 'yolo26s-obb_int8.tflite',
       iosArchiveName: 'yolo26s-obb.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26m-obb',
       task: YOLOTask.obb,
+      androidAssetName: 'yolo26m-obb_int8.tflite',
       iosArchiveName: 'yolo26m-obb.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26l-obb',
       task: YOLOTask.obb,
+      androidAssetName: 'yolo26l-obb_int8.tflite',
       iosArchiveName: 'yolo26l-obb.mlpackage.zip',
     ),
     _OfficialModelArtifact(
       id: 'yolo26x-obb',
       task: YOLOTask.obb,
+      androidAssetName: 'yolo26x-obb_int8.tflite',
       iosArchiveName: 'yolo26x-obb.mlpackage.zip',
     ),
     _OfficialModelArtifact(
