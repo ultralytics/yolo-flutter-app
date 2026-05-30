@@ -1478,16 +1478,26 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       return
     }
 
-    self.videoCapture.captureSession.addInput(videoInput1)
-    self.videoCapture.captureDevice = newCameraDevice
-    self.videoCapture.updateVideoOrientation(orientation: currentVideoOrientation())
+    if self.videoCapture.captureSession.canAddInput(videoInput1) {
+      self.videoCapture.captureSession.addInput(videoInput1)
+      self.videoCapture.captureDevice = newCameraDevice
+      self.videoCapture.updateVideoOrientation(orientation: currentVideoOrientation())
 
-    self.videoCapture.captureSession.commitConfiguration()
+      self.videoCapture.captureSession.commitConfiguration()
 
-    // Reset lens label cache so the next zoom step (or a getAvailableLenses
-    // poll from Dart) reports the new position's lens.
-    currentLensLabel = ""
-    lastZoomFactor = 1.0
+      // Reset lens label cache so the next zoom step (or a getAvailableLenses
+      // poll from Dart) reports the new position's lens.
+      currentLensLabel = ""
+      lastZoomFactor = 1.0
+    } else {
+      // The new camera input can't be attached — restore the previous one so the session isn't left with no video
+      // input (which would freeze the preview). The old input was removed above, so re-add it before committing.
+      NSLog("YOLOView: Cannot add input for camera switch; restoring previous camera")
+      if self.videoCapture.captureSession.canAddInput(currentInput) {
+        self.videoCapture.captureSession.addInput(currentInput)
+      }
+      self.videoCapture.captureSession.commitConfiguration()
+    }
 
     hideCameraTransition()
   }
