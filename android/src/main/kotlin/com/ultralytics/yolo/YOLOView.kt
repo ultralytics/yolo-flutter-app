@@ -644,6 +644,14 @@ class YOLOView @JvmOverloads constructor(
                 try {
                     val cameraProvider = cameraProviderFuture.get()
 
+                    // Tear down the previous analyzer + executor before rebinding. Rebind paths (setLens/auto-snap,
+                    // switchCamera, setLensFacing, onStart/onResume) reach startCamera() without going through stop(),
+                    // and each call builds a fresh ImageAnalysis + executor below. Without this, the old executor's
+                    // non-daemon analyzer thread and the old ImageAnalysis analyzer would be orphaned on every rebind.
+                    imageAnalysisUseCase?.clearAnalyzer()
+                    cameraExecutor?.shutdown()
+                    cameraExecutor = null
+
                     previewUseCase = Preview.Builder()
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                         .build()

@@ -70,6 +70,9 @@ class VideoCapture: NSObject, @unchecked Sendable {
   // `captureNextFrame`. Used by `capturePhoto` so the share-sheet image is a freshly composited live frame (not a
   // separate AVCapturePhotoOutput still that would be off-axis from the preview).
   private var frameCaptureCompletion: ((UIImage?) -> Void)?
+  // Monotonic token identifying the in-flight `captureNextFrame` request, so the watchdog only fires the completion it
+  // armed (and not a newer one that replaced it).
+  private var frameCaptureToken: UInt64 = 0
   private let imageContext = CIContext()
 
   func setUp(
@@ -224,6 +227,15 @@ class VideoCapture: NSObject, @unchecked Sendable {
   }
 
   func stop() {
+    // Drain any pending `captureNextFrame` completion on the cameraQueue (the same queue that stores it in
+    // captureNextFrame and fires it in captureOutput). Without this, stopping before the next sample buffer arrives
+    // strands the completion forever, hanging the Dart `await` behind pause/capturePhoto.
+    cameraQueue.async { [weak self] in
+      guard let self, let pending = self.frameCaptureCompletion else { return }
+      self.frameCaptureCompletion = nil
+      let completionBox = SendableBox(pending)
+      DispatchQueue.main.async { completionBox.value(nil) }
+    }
     if captureSession.isRunning {
       DispatchQueue.global().async {
         self.captureSession.stopRunning()
@@ -313,7 +325,18 @@ extension VideoCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
         DispatchQueue.main.async { completionBox.value(nil) }
         return
       }
-      self.frameCaptureCompletion = completionBox.value
+      let pending = completionBox.value
+      self.frameCaptureCompletion = pending
+      self.frameCaptureToken &+= 1
+      let token = self.frameCaptureToken
+      // Defense-in-depth: if no sample buffer arrives within ~1s (e.g. the session is interrupted before the next
+      // frame), fire the still-pending completion with nil so the caller's Dart `await` never hangs.
+      self.cameraQueue.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        guard let self, self.frameCaptureToken == token, let pending = self.frameCaptureCompletion else { return }
+        self.frameCaptureCompletion = nil
+        let completionBox = SendableBox(pending)
+        DispatchQueue.main.async { completionBox.value(nil) }
+      }
     }
   }
 
