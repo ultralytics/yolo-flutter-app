@@ -150,7 +150,7 @@ class YOLOPlatformView(
                 includeOBB = streamingConfigParam["includeOBB"] as? Boolean ?: false,
                 includeOriginalImage = streamingConfigParam["includeOriginalImage"] as? Boolean ?: false,
                 maxFPS = (streamingConfigParam["maxFPS"] as? Number)?.toInt(),
-                throttleIntervalMs = (streamingConfigParam["throttleInterval"] as? Number)?.toInt(),
+                throttleIntervalMs = (streamingConfigParam["throttleIntervalMs"] as? Number)?.toInt(),
                 inferenceFrequency = (streamingConfigParam["inferenceFrequency"] as? Number)?.toInt(),
                 skipFrames = (streamingConfigParam["skipFrames"] as? Number)?.toInt()
             )
@@ -284,7 +284,7 @@ class YOLOPlatformView(
                     }
                 } else {
                     // Request Flutter to recreate the event channel
-                    methodChannel?.invokeMethod("reconnectEventChannel", mapOf(
+                    methodChannel?.invokeMethod("recreateEventChannel", mapOf(
                         "viewId" to viewUniqueId,
                         "reason" to "sink_disconnected"
                     ))
@@ -422,7 +422,7 @@ class YOLOPlatformView(
                             includeOBB = configMap["includeOBB"] as? Boolean ?: false,
                             includeOriginalImage = configMap["includeOriginalImage"] as? Boolean ?: false,
                             maxFPS = (configMap["maxFPS"] as? Number)?.toInt(),
-                            throttleIntervalMs = (configMap["throttleInterval"] as? Number)?.toInt(),
+                            throttleIntervalMs = (configMap["throttleIntervalMs"] as? Number)?.toInt(),
                             inferenceFrequency = (configMap["inferenceFrequency"] as? Number)?.toInt(),
                             skipFrames = (configMap["skipFrames"] as? Number)?.toInt()
                         )
