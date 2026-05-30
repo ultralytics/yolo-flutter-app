@@ -301,6 +301,7 @@ class _YOLOViewState extends State<YOLOView> {
         );
         widget.onModelError?.call(error, modelPath, task);
       } else {
+        logInfo('YOLOView: Failed to load model $modelPath: $error');
         setState(() {
           _resolutionError = error;
           _resolvedModel = null;
@@ -369,7 +370,20 @@ class _YOLOViewState extends State<YOLOView> {
       return const Center(child: Text('Platform not supported for YOLOView'));
     }
     if (_resolutionError != null) {
-      return Center(child: Text('Failed to load model: $_resolutionError'));
+      // Show a neutral message on the same dark veil as the loading state — never surface the raw exception to users.
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Unable to load the model. Please try again.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+        ),
+      );
     }
     if (_resolvedModel == null) {
       // Match the in-app model-loading veil so the first load and subsequent switches look consistent.

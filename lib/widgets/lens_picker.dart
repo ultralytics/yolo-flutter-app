@@ -56,19 +56,28 @@ class LensPicker extends StatelessWidget {
         },
         children: {
           for (final lens in lenses)
-            lens.zoomFactor: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text(
-                _formatZoom(lens),
-                style: TextStyle(
-                  // systemYellow when selected; white otherwise — matches the iOS reference exactly.
-                  color: lens.zoomFactor == selected.zoomFactor
-                      ? CupertinoColors.systemYellow
-                      : Colors.white,
-                  fontSize: 13,
-                  fontWeight: lens.zoomFactor == selected.zoomFactor
-                      ? FontWeight.w700
-                      : FontWeight.w600,
+            lens.zoomFactor: Semantics(
+              // Name each chip for screen readers (the bare `0.5`/`1`/`2` glyphs are ambiguous out of context) and
+              // expose its selected state. Visuals are unchanged.
+              button: true,
+              selected: lens.zoomFactor == selected.zoomFactor,
+              label: lens.label.isNotEmpty
+                  ? lens.label
+                  : '${_formatZoom(lens)}x zoom',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Text(
+                  _formatZoom(lens),
+                  style: TextStyle(
+                    // systemYellow when selected; white otherwise — matches the iOS reference exactly.
+                    color: lens.zoomFactor == selected.zoomFactor
+                        ? CupertinoColors.systemYellow
+                        : Colors.white,
+                    fontSize: 13,
+                    fontWeight: lens.zoomFactor == selected.zoomFactor
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                  ),
                 ),
               ),
             ),

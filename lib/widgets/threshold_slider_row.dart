@@ -55,16 +55,23 @@ class ThresholdSliderRow extends StatelessWidget {
     final prefix = isInt ? value.round().toString() : value.toStringAsFixed(2);
     final leftFlex = (sliderWidthFactor.clamp(0.05, 1.0) * 100).round();
     final rightFlex = 100 - leftFlex;
-    final slider = CupertinoSlider(
-      value: value.clamp(min, max),
-      min: min,
-      max: max,
-      divisions: divisions,
-      // iOS YOLOView uses pure white for the filled portion; CupertinoSlider's default `activeColor` is the system
-      // accent, which is blue on iOS. Force white to match the reference.
-      activeColor: Colors.white,
-      thumbColor: Colors.white,
-      onChanged: onChanged,
+    final slider = Semantics(
+      // CupertinoSlider carries no descriptive label; name it + read out the live value so screen readers announce
+      // "Confidence Threshold, 0.25" instead of an anonymous adjustable. Visuals are unchanged.
+      label: label,
+      value: prefix,
+      slider: true,
+      child: CupertinoSlider(
+        value: value.clamp(min, max),
+        min: min,
+        max: max,
+        divisions: divisions,
+        // iOS YOLOView uses pure white for the filled portion; CupertinoSlider's default `activeColor` is the system
+        // accent, which is blue on iOS. Force white to match the reference.
+        activeColor: Colors.white,
+        thumbColor: Colors.white,
+        onChanged: onChanged,
+      ),
     );
     return Column(
       // Left-justified: the caption and the slider both hug the left edge (matching yolo-ios-app). The Row below

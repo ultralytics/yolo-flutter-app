@@ -172,7 +172,8 @@ class _SegmentLabel extends StatelessWidget {
                 width: 36,
                 height: 2,
                 child: LinearProgressIndicator(
-                  value: fraction,
+                  // Clamp to [0,1] so a fraction over 1 (or below 0) never paints an out-of-range / asserting bar.
+                  value: fraction?.clamp(0.0, 1.0),
                   color: Colors.white,
                   backgroundColor: Colors.white.withValues(alpha: 0.2),
                 ),
