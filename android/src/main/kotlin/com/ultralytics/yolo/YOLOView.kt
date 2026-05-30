@@ -603,6 +603,15 @@ class YOLOView @JvmOverloads constructor(
     }
 
     /**
+     * Detach from the lifecycle owner. Called on platform-view disposal so the Activity's lifecycle no longer holds a
+     * strong reference to this (now-dead) view — otherwise a later onStart/onResume would invoke startCamera() on it.
+     */
+    fun detachLifecycle() {
+        lifecycleOwner?.lifecycle?.removeObserver(this)
+        lifecycleOwner = null
+    }
+
+    /**
      * Pause the camera pipeline without tearing down the predictor.
      *
      * The "pause" method channel call routes here (not [stop]) so that "resume" -> [startCamera] can rebind: [stop]
@@ -2217,21 +2226,26 @@ class YOLOView @JvmOverloads constructor(
 
             camera = null
             
-            // Close predictor safely - ensure no inference is running. First evict it from the cache so a later
-            // same-key setModel() can't serve this now-closed instance from the fast path (use-after-close).
+            // Close the active predictor AND release every other cached predictor (prior setModel() instances), so a
+            // disposed view doesn't leak their native LiteRT interpreters / tensor buffers. Closing also makes a later
+            // same-key setModel() fast path unable to serve a now-closed instance (use-after-close).
             val closing = predictor
-            if (closing != null) {
-                val cachedKeys = predictorCache.filterValues { it === closing }.keys.toList()
-                for (key in cachedKeys) {
-                    predictorCache.remove(key)
-                    predictorCacheOrder.remove(key)
-                }
-            }
             try {
                 (closing as? BasePredictor)?.close()
             } catch (e: Exception) {
                 Log.e(TAG, "Error closing predictor", e)
             }
+            for (cached in predictorCache.values) {
+                if (cached !== closing) {
+                    try {
+                        (cached as? BasePredictor)?.close()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error closing cached predictor", e)
+                    }
+                }
+            }
+            predictorCache.clear()
+            predictorCacheOrder.clear()
             predictor = null
             inferenceCallback = null
             streamCallback = null

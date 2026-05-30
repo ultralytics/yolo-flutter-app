@@ -523,6 +523,9 @@ class YOLOPlatformView(
 
         try {
             yoloView.stop()
+            // Detach from the lifecycle so the Activity doesn't retain this disposed view (and won't fire
+            // onStart/onResume into it after disposal).
+            yoloView.detachLifecycle()
             // Clear callbacks by setting them to empty implementations
             yoloView.setStreamCallback { }
             yoloView.setOnInferenceCallback { }
