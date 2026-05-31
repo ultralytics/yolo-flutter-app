@@ -13,7 +13,7 @@
 - **Feature**: Auto-detect `task` and class labels for custom models from embedded model metadata — Ultralytics' appended-ZIP, with a standard TFLite (FlatBuffers) metadata fallback — so drag-and-drop custom models resolve their task and labels without explicit configuration.
 - **Enhancement**: Ship consumer ProGuard/R8 keep rules so release builds don't strip LiteRT classes; consumers get this automatically.
 - **Enhancement**: Convert camera frames to RGBA per frame instead of round-tripping through JPEG, removing a per-frame encode/decode cost on Android.
-- **Enhancement**: Hold a native splash until the live view is ready, removing the black gap at startup.
+- **Enhancement**: Keep startup on the platform's automatic native launch screen and let `YOLOShowcase` own only the in-app loading state.
 - **Enhancement**: Add an adaptive Android launcher icon.
 - **Bug Fix**: Clip off-screen detection boxes to the view bounds on Android instead of shifting them back on-screen.
 - **Breaking**: Removed `YOLOOverlay`, `YOLOOverlayTheme`, and `YOLOControls`. Bounding-box rendering is now native-only — drop any Dart-side `YOLOOverlay()` widgets you held.

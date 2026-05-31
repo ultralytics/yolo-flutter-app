@@ -705,9 +705,9 @@ class YOLOView @JvmOverloads constructor(
 
     fun startCamera() {
         // Defer binding the camera until a model is loaded. Otherwise the preview starts on view-attach and the heavy
-        // first GPU model compile runs while the preview is live, disrupting it (camera -> black -> camera). With this
-        // guard the camera binds exactly once, from setModel's callback after the predictor is ready, so startup is a
-        // clean splash -> camera+detections with no black flash. setModel re-invokes startCamera once it sets predictor.
+        // first GPU model compile runs while the preview is live, disrupting it. With this guard the camera binds
+        // exactly once, from setModel's callback after the predictor is ready. setModel re-invokes startCamera once it
+        // sets predictor.
         if (predictor == null) {
             return
         }

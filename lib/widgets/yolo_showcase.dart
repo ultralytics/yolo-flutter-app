@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -49,11 +50,6 @@ class YOLOShowcase extends StatefulWidget {
   /// `package_info_plus` version, e.g. `'v${info.version}'`.
   final String? versionLabel;
 
-  /// Invoked once when the camera is up and the first inference result has arrived — i.e. the live view is fully
-  /// ready. Hosts can use this to dismiss a native splash (e.g. `FlutterNativeSplash.remove()`) so the splash covers
-  /// the model-compile + camera-bind gap instead of showing a black screen with controls over it.
-  final VoidCallback? onReady;
-
   const YOLOShowcase({
     super.key,
     this.initialTask = YOLOTask.detect,
@@ -63,7 +59,6 @@ class YOLOShowcase extends StatefulWidget {
     this.controller,
     this.theme,
     this.versionLabel,
-    this.onReady,
   });
 
   @override
@@ -89,6 +84,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   double? _downloadFraction;
   String? _loadingStatusText;
   String? _modelErrorMessage;
+  Uint8List? _modelSwitchSnapshot;
 
   List<LensInfo> _lenses = const [];
 
@@ -109,15 +105,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // instead of looking frozen.
   bool _isModelLoading = false;
 
-  // False until the very first model finishes loading. Until then an opaque splash covers the camera so the user sees
-  // a seamless splash -> camera+predictions transition, instead of camera -> black (during the first GPU compile) ->
-  // camera. Stays true afterwards (later switches use the translucent veil instead).
-  bool _initialModelLoaded = false;
-
-  // Fires onReady exactly once, on the first inference result.
-  bool _readyFired = false;
-
   bool _isPaused = false;
+  int _modelSwitchRequestId = 0;
   Offset? _focusPosition;
   double _baseScale = 1;
   Size _viewSize = Size.zero;
@@ -335,7 +324,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         loadedSize == _runningSize;
     setState(() {
       _isModelLoading = false;
-      _initialModelLoaded = true;
+      _modelSwitchSnapshot = null;
       _loadingStatusText = null;
       if (!preserveError) _modelErrorMessage = null;
       if (loadedSize != null) {
@@ -358,7 +347,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (!mounted || modelPath != _currentModelId) return;
     setState(() {
       _isModelLoading = false;
-      _initialModelLoaded = true;
+      _modelSwitchSnapshot = null;
       _downloadingSize = null;
       _downloadFraction = null;
       _loadingStatusText = null;
@@ -394,8 +383,16 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _onTaskChanged(YOLOTask task) {
     if (task == _currentTask) return;
+    unawaited(_changeTask(task));
+  }
+
+  Future<void> _changeTask(YOLOTask task) async {
+    if (task == _currentTask) return;
+    final requestId = ++_modelSwitchRequestId;
     HapticFeedback.selectionClick();
     final targetSize = _clampSizeToSupported(_currentSize, task);
+    final snapshot = await _captureModelSwitchSnapshot();
+    if (!mounted || requestId != _modelSwitchRequestId) return;
     _suppressInferenceForModelSwitch();
     setState(() {
       _currentTask = task;
@@ -408,6 +405,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _downloadFraction = null;
       _availableSizes = {};
       _modelErrorMessage = null;
+      _modelSwitchSnapshot = snapshot;
       _loadingStatusText = 'Loading model...';
       _isModelLoading = true;
     });
@@ -424,8 +422,16 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _onSizeChanged(String size) {
     if (size == _currentSize) return;
+    unawaited(_changeSize(size));
+  }
+
+  Future<void> _changeSize(String size) async {
+    if (size == _currentSize) return;
+    final requestId = ++_modelSwitchRequestId;
     HapticFeedback.selectionClick();
     final isCached = _availableSizes.contains(size);
+    final snapshot = await _captureModelSwitchSnapshot();
+    if (!mounted || requestId != _modelSwitchRequestId) return;
     _suppressInferenceForModelSwitch();
     setState(() {
       _currentSize = size;
@@ -433,10 +439,23 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _downloadingSize = isCached ? null : size;
       _downloadFraction = isCached ? null : 0;
       _modelErrorMessage = null;
+      _modelSwitchSnapshot = snapshot;
       _loadingStatusText = isCached ? 'Loading model...' : 'Downloading 0%';
       _isModelLoading = true;
     });
     // `YOLOView.didUpdateWidget` handles the resolve + native switch off the changed `modelPath` prop (see above).
+  }
+
+  Future<Uint8List?> _captureModelSwitchSnapshot() async {
+    if (!_controller.isInitialized || _isPaused) return null;
+    try {
+      return await _controller
+          .capturePhoto(withOverlays: false)
+          .timeout(const Duration(milliseconds: 700));
+    } catch (error) {
+      debugPrint('Unable to capture model switch snapshot: $error');
+      return null;
+    }
   }
 
   void _suppressInferenceForModelSwitch() {
@@ -507,12 +526,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     // Update the notifier, NOT setState: this fires every inference frame (~30 fps). A setState here rebuilt the whole
     // tree — camera platform view and all controls — 30x/sec, which was the primary source of the lag.
     _metrics.value = (fps: metrics.fps, ms: metrics.processingTimeMs);
-    // First inference result → the live view is fully up. Let the host dismiss its native splash now (covers the
-    // model-compile + camera-bind window so startup is splash -> camera+detections, no black gap).
-    if (!_readyFired) {
-      _readyFired = true;
-      widget.onReady?.call();
-    }
   }
 
   @override
@@ -556,6 +569,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                       child: _ModelSwitchLoadingOverlay(
                         statusText: _loadingStatusText,
                         progress: _downloadFraction,
+                        snapshot: _modelSwitchSnapshot,
                       ),
                     ),
                   ),
@@ -602,15 +616,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   bottom: 160,
                   child: LogoOverlay(width: 159),
                 ),
-                // Opaque startup splash (logotype on white, matching the native launch screen) held over the camera
-                // until the first model finishes loading — hides the camera-start + first GPU-compile black flash.
-                if (!_initialModelLoaded)
-                  const Positioned.fill(
-                    child: ColoredBox(
-                      color: Colors.white,
-                      child: Center(child: LogoOverlay(width: 220)),
-                    ),
-                  ),
               ],
             );
           },
@@ -621,53 +626,73 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 }
 
 class _ModelSwitchLoadingOverlay extends StatelessWidget {
-  const _ModelSwitchLoadingOverlay({this.statusText, this.progress});
+  const _ModelSwitchLoadingOverlay({
+    this.statusText,
+    this.progress,
+    this.snapshot,
+  });
 
   final String? statusText;
   final double? progress;
+  final Uint8List? snapshot;
 
   @override
   Widget build(BuildContext context) {
     final value = progress?.clamp(0.0, 1.0);
-    return ColoredBox(
-      color: Colors.black.withValues(alpha: 0.32),
-      child: Center(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.62),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: CircularProgressIndicator(
-                    value: value,
-                    strokeWidth: 2.5,
-                    color: Colors.white,
-                    backgroundColor: Colors.white.withValues(alpha: 0.22),
+    final snapshot = this.snapshot;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (snapshot != null)
+          ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Image.memory(
+              snapshot,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+            ),
+          )
+        else
+          const ColoredBox(color: Color(0xFF111111)),
+        ColoredBox(color: Colors.black.withValues(alpha: 0.42)),
+        Center(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.62),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 36,
+                    height: 36,
+                    child: CircularProgressIndicator(
+                      value: value,
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                      backgroundColor: Colors.white.withValues(alpha: 0.22),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  statusText ?? 'Loading model...',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 12),
+                  Text(
+                    statusText ?? 'Loading model...',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
