@@ -4,7 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Bottom action toolbar (play/pause, switch camera, share). Matches `yolo-ios-app/Sources/YOLO/YOLOView.swift`'s
+/// Bottom action toolbar (play/pause, switch camera, share, info). Matches `yolo-ios-app/Sources/YOLO/YOLOView.swift`'s
 /// toolbar layout:
 ///   * `toolbar.backgroundColor = .black.withAlphaComponent(0.7)` (line 637).
 ///   * `toolBarHeight: CGFloat = 66` (line 803) — the toolbar is 66pt tall.
@@ -30,12 +30,16 @@ class CameraToolbar extends StatelessWidget {
   /// Fires on the share button (capture + system share / save).
   final VoidCallback onShare;
 
+  /// Fires on the info button.
+  final VoidCallback onInfo;
+
   const CameraToolbar({
     super.key,
     required this.isPaused,
     required this.onPlayPause,
     required this.onSwitchCamera,
     required this.onShare,
+    required this.onInfo,
   });
 
   @override
@@ -63,6 +67,11 @@ class CameraToolbar extends StatelessWidget {
               icon: CupertinoIcons.share,
               onPressed: onShare,
               semanticLabel: 'Share',
+            ),
+            _ToolbarButton(
+              icon: CupertinoIcons.info,
+              onPressed: onInfo,
+              semanticLabel: 'Ultralytics',
             ),
           ],
         ),

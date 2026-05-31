@@ -108,7 +108,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // True while a model is downloading/loading after a size or task tap, so the UI can show a clear loading overlay
   // instead of looking frozen.
   bool _isModelLoading = false;
-  bool _resumeCameraAfterModelSwitch = false;
 
   // False until the very first model finishes loading. Until then an opaque splash covers the camera so the user sees
   // a seamless splash -> camera+predictions transition, instead of camera -> black (during the first GPU compile) ->
@@ -347,7 +346,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         unawaited(_persistSize(loadedSize));
       }
     });
-    unawaited(_restoreInferenceAfterModelSwitch());
+    _restoreInferenceAfterModelSwitch();
   }
 
   /// An in-place model switch failed (`YOLOView` kept the previously loaded model running). Ignore stale failures from
@@ -367,7 +366,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _currentSize = _runningSize;
       _currentTask = _runningTask;
     });
-    unawaited(_restoreInferenceAfterModelSwitch());
+    _restoreInferenceAfterModelSwitch();
     unawaited(_refreshAvailableSizes(_runningTask));
   }
 
@@ -442,20 +441,10 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _suppressInferenceForModelSwitch() {
     unawaited(_controller.setShowOverlays(false));
-    if (!_isPaused && _controller.isInitialized) {
-      _resumeCameraAfterModelSwitch = true;
-      setState(() => _isPaused = true);
-      unawaited(_controller.pause());
-    }
   }
 
-  Future<void> _restoreInferenceAfterModelSwitch() async {
+  void _restoreInferenceAfterModelSwitch() {
     unawaited(_controller.setShowOverlays(true));
-    if (_resumeCameraAfterModelSwitch) {
-      _resumeCameraAfterModelSwitch = false;
-      if (mounted) setState(() => _isPaused = false);
-      await _controller.resume();
-    }
   }
 
   void _onLensSelected(LensInfo lens) {
@@ -564,8 +553,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                 if (_isModelLoading)
                   Positioned.fill(
                     child: IgnorePointer(
-                      child: ColoredBox(
-                        color: Colors.black.withValues(alpha: 0.28),
+                      child: _ModelSwitchLoadingOverlay(
+                        statusText: _loadingStatusText,
+                        progress: _downloadFraction,
                       ),
                     ),
                   ),
@@ -603,6 +593,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   onPlayPause: _onPlayPause,
                   onSwitchCamera: () => unawaited(_controller.switchCamera()),
                   onShare: () => unawaited(_onShare()),
+                  onInfo: () => unawaited(_openUltralyticsWebsite()),
                 ),
                 // Ultralytics logotype, bottom-right — matches `Main.storyboard` logoImage (frame x215 y625 w159 h67
                 // on a 393x852 canvas, anchored bottom-right ~19pt from the edge, sitting above the toolbar).
@@ -610,15 +601,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   right: 19,
                   bottom: 160,
                   child: LogoOverlay(width: 159),
-                ),
-                Positioned(
-                  right: 12,
-                  bottom: 226,
-                  child: SafeArea(
-                    child: _UltralyticsInfoButton(
-                      onPressed: () => unawaited(_openUltralyticsWebsite()),
-                    ),
-                  ),
                 ),
                 // Opaque startup splash (logotype on white, matching the native launch screen) held over the camera
                 // until the first model finishes loading — hides the camera-start + first GPU-compile black flash.
@@ -638,27 +620,53 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 }
 
-class _UltralyticsInfoButton extends StatelessWidget {
-  const _UltralyticsInfoButton({required this.onPressed});
+class _ModelSwitchLoadingOverlay extends StatelessWidget {
+  const _ModelSwitchLoadingOverlay({this.statusText, this.progress});
 
-  final VoidCallback onPressed;
+  final String? statusText;
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.48),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-      ),
-      child: IconButton(
-        tooltip: 'Ultralytics',
-        icon: const Icon(Icons.info_outline),
-        color: Colors.white,
-        iconSize: 22,
-        constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-        padding: EdgeInsets.zero,
-        onPressed: onPressed,
+    final value = progress?.clamp(0.0, 1.0);
+    return ColoredBox(
+      color: Colors.black.withValues(alpha: 0.32),
+      child: Center(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.62),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: CircularProgressIndicator(
+                    value: value,
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.22),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  statusText ?? 'Loading model...',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -701,6 +709,7 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.onPlayPause,
     required this.onSwitchCamera,
     required this.onShare,
+    required this.onInfo,
   });
 
   final String modelName;
@@ -730,6 +739,7 @@ class _ShowcaseOverlay extends StatelessWidget {
   final VoidCallback onPlayPause;
   final VoidCallback onSwitchCamera;
   final VoidCallback onShare;
+  final VoidCallback onInfo;
 
   // iOS YOLOView ports — kept as constants so the layout reads like the Swift source.
   static const double _sidePadding = 20;
@@ -885,6 +895,7 @@ class _ShowcaseOverlay extends StatelessWidget {
             onPlayPause: onPlayPause,
             onSwitchCamera: onSwitchCamera,
             onShare: onShare,
+            onInfo: onInfo,
           ),
         ],
       ),

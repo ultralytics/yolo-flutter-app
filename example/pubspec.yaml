@@ -55,4 +55,4 @@ flutter_native_splash:
   image: assets/ultralytics_yolo_logotype.png
   android_12:
     color: "#ffffff"
-    image: assets/applogo.png
+    image: assets/applogo_splash.png
