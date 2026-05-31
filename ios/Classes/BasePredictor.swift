@@ -196,15 +196,17 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         let config = MLModelConfiguration()
 
         if useGpu {
-          // Enable GPU acceleration
-          config.computeUnits = .all
-        } else {
-          // Avoid GPU while keeping Neural Engine acceleration available.
+          // Pin inference to the Apple Neural Engine (with CPU) rather than `.all`. In a live camera app `.all` is no
+          // faster and is jitterier because the GPU is already busy compositing the preview and overlays; the conv
+          // backbone belongs on the ANE. Mirrors yolo-ios-app PR #246 (verified on a physical iPhone there).
           if #available(iOS 16.0, *) {
             config.computeUnits = .cpuAndNeuralEngine
           } else {
-            config.computeUnits = .cpuOnly
+            config.computeUnits = .all
           }
+        } else {
+          // Avoid the Neural Engine/GPU entirely.
+          config.computeUnits = .cpuOnly
         }
 
         if #available(iOS 17.0, *) {
