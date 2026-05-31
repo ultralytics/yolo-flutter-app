@@ -209,10 +209,6 @@ public class BasePredictor: Predictor, @unchecked Sendable {
           config.computeUnits = .cpuOnly
         }
 
-        if #available(iOS 17.0, *) {
-          config.setValue(1, forKey: "experimentalMLE5EngineUsage")
-        }
-
         let mlModel: MLModel
         if isCompiled {
           mlModel = try MLModel(contentsOf: unwrappedModelURL, configuration: config)
