@@ -8,7 +8,9 @@
 # back to a network download, so a bundled model means no first-run download for the user.
 #
 # Best-effort: if a download fails (e.g. offline build machine) the script warns and exits 0 so the build still
-# succeeds — the app simply falls back to the existing runtime download for any missing model.
+# succeeds — the app simply falls back to the existing runtime download for any missing model. Bundling is skipped
+# entirely under CI (CI / GITHUB_ACTIONS) to keep GitHub builds fast and off the network; set FORCE_BUNDLED_MODELS=1
+# to override.
 #
 # Usage: fetch_bundled_models.sh <android|ios>
 #   android -> *_int8.tflite from the yolo-flutter-app release
@@ -21,6 +23,14 @@ set -u
 PLATFORM="${1:-}"
 if [ "$PLATFORM" != "android" ] && [ "$PLATFORM" != "ios" ]; then
   echo "fetch_bundled_models: usage: $0 <android|ios>" >&2
+  exit 0
+fi
+
+# Skip bundling under CI. GitHub Actions builds (example-android / example-ios) don't need the models embedded, and
+# downloading six of them on every run is slow and a network-flakiness risk. CI exercises the runtime-download fallback
+# instead. Set FORCE_BUNDLED_MODELS=1 to bundle anyway (e.g. a release build that intentionally ships them).
+if [ "${FORCE_BUNDLED_MODELS:-}" != "1" ] && { [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ]; }; then
+  echo "fetch_bundled_models: CI detected (CI/GITHUB_ACTIONS set); skipping model bundling — app will download at runtime."
   exit 0
 fi
 
