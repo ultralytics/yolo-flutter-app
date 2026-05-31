@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "97C146ED1CF9000F007C117D"
-               BuildableName = "YOLOFlutteriOSApp.app"
-               BlueprintName = "YOLOFlutteriOSApp"
-               ReferencedContainer = "container:YOLOFlutteriOSApp.xcodeproj">
+               BuildableName = "Runner.app"
+               BlueprintName = "Runner"
+               ReferencedContainer = "container:Runner.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,9 +32,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "97C146ED1CF9000F007C117D"
-            BuildableName = "YOLOFlutteriOSApp.app"
-            BlueprintName = "YOLOFlutteriOSApp"
-            ReferencedContainer = "container:YOLOFlutteriOSApp.xcodeproj">
+            BuildableName = "Runner.app"
+            BlueprintName = "Runner"
+            ReferencedContainer = "container:Runner.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -44,9 +44,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "331C8080294A63A400263BE5"
-               BuildableName = "YOLOFlutteriOSAppTests.xctest"
-               BlueprintName = "YOLOFlutteriOSAppTests"
-               ReferencedContainer = "container:YOLOFlutteriOSApp.xcodeproj">
+               BuildableName = "RunnerTests.xctest"
+               BlueprintName = "RunnerTests"
+               ReferencedContainer = "container:Runner.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -68,9 +68,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "97C146ED1CF9000F007C117D"
-            BuildableName = "YOLOFlutteriOSApp.app"
-            BlueprintName = "YOLOFlutteriOSApp"
-            ReferencedContainer = "container:YOLOFlutteriOSApp.xcodeproj">
+            BuildableName = "Runner.app"
+            BlueprintName = "Runner"
+            ReferencedContainer = "container:Runner.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -85,9 +85,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "97C146ED1CF9000F007C117D"
-            BuildableName = "YOLOFlutteriOSApp.app"
-            BlueprintName = "YOLOFlutteriOSApp"
-            ReferencedContainer = "container:YOLOFlutteriOSApp.xcodeproj">
+            BuildableName = "Runner.app"
+            BlueprintName = "Runner"
+            ReferencedContainer = "container:Runner.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

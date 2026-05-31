@@ -10,10 +10,10 @@ import XCTest
 //
 // See https://developer.apple.com/documentation/xctest for more information about using XCTest.
 
-class YOLOFlutteriOSAppTests: XCTestCase {
+class RunnerTests: XCTestCase {
 
   func testGetPlatformVersion() {
-    let plugin = YOLOPlugin()
+    let plugin = YoloPlugin()
 
     let call = FlutterMethodCall(methodName: "getPlatformVersion", arguments: [])
 
