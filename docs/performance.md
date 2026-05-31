@@ -20,7 +20,7 @@ Canonical record of the on-device profiling behind the Ultralytics YOLO Flutter 
 | -------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `YOLOView.onPerformanceMetrics` / on-screen FPS label          | Native inference stream rate and `processingTimeMs` | Best quick app-level signal. Includes the native predictor's per-frame processing time, not Flutter build/layout time.          |
 | `adb logcat`                                                   | Runtime delegate selection and camera/device errors | Confirm LiteRT accelerator placement from logs such as `Replacing ... node(s) with delegate (LITERT_CL)` and `compiled on GPU`. |
-| `adb exec-out screencap`                                       | Actual rendered UI and camera state                 | Catches splash, black-screen, overlay, and control-layout failures that tests and logs can miss.                                |
+| `adb exec-out screencap`                                       | Actual rendered UI and camera state                 | Catches startup, black-screen, overlay, and control-layout failures that tests and logs can miss.                               |
 | `flutter analyze`, `flutter test`, `flutter build apk --debug` | Static, widget, and build health                    | Required before trusting a device-only performance result.                                                                      |
 
 ## What the App's "Inference Time" Measures
@@ -31,14 +31,14 @@ The on-screen `ms` value comes from native `YOLOResult.speed`, forwarded through
 
 ## Experiment: Android Startup Path
 
-**Q:** Why did the app get stuck after the splash screen on the Galaxy S26?
+**Q:** Why did the app get stuck on startup on the Galaxy S26?
 
 **A:** There were two separate blockers.
 
-1. The native splash was preserved until first inference. If model resolution, camera binding, or layout did not reach first inference, the Android launch splash could hide the Flutter UI indefinitely.
-2. After removing the preserved native splash, the Flutter route still failed its first layout because `CupertinoSlidingSegmentedControl` received a zero-width warm-up pass and computed a negative segment width.
+1. Startup visibility was tied to first inference. If model resolution, camera binding, or layout did not reach first inference, the user could wait indefinitely without usable UI.
+2. The Flutter route then failed its first layout because `CupertinoSlidingSegmentedControl` received a zero-width warm-up pass and computed a negative segment width.
 
-**Shipped:** The example app no longer preserves the native splash until first inference. The Flutter showcase owns the in-app startup/loading state. The size segmented control now tolerates zero-width and narrow warm-up constraints before the real viewport metrics arrive.
+**Shipped:** The example app now enters Flutter immediately. The size segmented control tolerates zero-width and narrow warm-up constraints before the real viewport metrics arrive, and model changes use a single modal loading overlay.
 
 ## Experiment: Official INT8 TFLite on GPU
 
@@ -110,7 +110,7 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 - Android official assets: YOLO26 int8 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `v0.3.5`.
 - Android export settings: `int8=True`, `nms=False`, `end2end=False`; classify `imgsz=224`, all other tasks `imgsz=640`; calibration from `ultralytics.cfg.TASK2CALIBRATIONDATA`.
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
-- Example UI: Flutter overlay owns loading state after native splash removal; controls expose all six tasks and all five model sizes.
+- Example UI: controls expose all six tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.
 - Bundled models: local/release builds fetch the six `yolo26n` nano models into `example/assets/models/` at build time (gitignored, not committed; skipped under CI), so nano tasks work offline with no first-run download; larger sizes download on demand.
 - iOS runtime: Core ML pinned to `.cpuAndNeuralEngine` (Neural Engine + CPU), not `.all` — avoids GPU contention with the live preview/overlay compositing.
 

@@ -13,7 +13,6 @@ dependencies:
   cupertino_icons: ^1.0.9
   flutter:
     sdk: flutter
-  flutter_launcher_icons: ^0.14.4
   image_picker: ^1.2.1
   path_provider: ^2.1.5
   # Pinned to ^12.x: share_plus 13.x ships a Swift Package umbrella that fails framework module verification under
@@ -34,14 +33,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/
     - assets/models/
-
-flutter_launcher_icons:
-  android: true
-  ios: true
-  image_path: "assets/applogo.png"
-  # Adaptive icon (Android 8+/required look on 13+ like the S26) — without it the launcher shows a blank/generic icon.
-  adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/applogo.png"
-  remove_alpha_ios: true

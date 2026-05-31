@@ -1,7 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,7 +11,6 @@ import 'package:ultralytics_yolo/widgets/camera_toolbar.dart';
 import 'package:ultralytics_yolo/widgets/focus_reticle.dart';
 import 'package:ultralytics_yolo/widgets/lens_picker.dart';
 import 'package:ultralytics_yolo/widgets/logo_overlay.dart';
-import 'package:ultralytics_yolo/widgets/model_loading_status.dart';
 import 'package:ultralytics_yolo/widgets/model_size_segmented_control.dart';
 import 'package:ultralytics_yolo/widgets/performance_label.dart';
 import 'package:ultralytics_yolo/widgets/task_segmented_control.dart';
@@ -84,7 +82,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   double? _downloadFraction;
   String? _loadingStatusText;
   String? _modelErrorMessage;
-  Uint8List? _modelSwitchSnapshot;
 
   List<LensInfo> _lenses = const [];
 
@@ -106,7 +103,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   bool _isModelLoading = false;
 
   bool _isPaused = false;
-  int _modelSwitchRequestId = 0;
   Offset? _focusPosition;
   double _baseScale = 1;
   Size _viewSize = Size.zero;
@@ -164,8 +160,14 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
           _downloadingSize = done ? null : size;
           _downloadFraction = done ? null : progress.fraction;
           _loadingStatusText = done
-              ? (_isModelLoading ? 'Loading model...' : null)
-              : 'Downloading ${(progress.fraction * 100).clamp(0, 99).round()}%';
+              ? (_isModelLoading
+                    ? _loadingTextFor(_currentTask, _currentSize)
+                    : null)
+              : _loadingTextFor(
+                  _currentTask,
+                  size,
+                  progress: progress.fraction,
+                );
           _isModelLoading = done ? _isModelLoading : true;
         }
       });
@@ -324,7 +326,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         loadedSize == _runningSize;
     setState(() {
       _isModelLoading = false;
-      _modelSwitchSnapshot = null;
       _loadingStatusText = null;
       if (!preserveError) _modelErrorMessage = null;
       if (loadedSize != null) {
@@ -347,7 +348,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (!mounted || modelPath != _currentModelId) return;
     setState(() {
       _isModelLoading = false;
-      _modelSwitchSnapshot = null;
       _downloadingSize = null;
       _downloadFraction = null;
       _loadingStatusText = null;
@@ -383,16 +383,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _onTaskChanged(YOLOTask task) {
     if (task == _currentTask) return;
-    unawaited(_changeTask(task));
-  }
-
-  Future<void> _changeTask(YOLOTask task) async {
-    if (task == _currentTask) return;
-    final requestId = ++_modelSwitchRequestId;
     HapticFeedback.selectionClick();
     final targetSize = _clampSizeToSupported(_currentSize, task);
-    final snapshot = await _captureModelSwitchSnapshot();
-    if (!mounted || requestId != _modelSwitchRequestId) return;
     _suppressInferenceForModelSwitch();
     setState(() {
       _currentTask = task;
@@ -405,8 +397,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _downloadFraction = null;
       _availableSizes = {};
       _modelErrorMessage = null;
-      _modelSwitchSnapshot = snapshot;
-      _loadingStatusText = 'Loading model...';
+      _loadingStatusText = _loadingTextFor(task, targetSize);
       _isModelLoading = true;
     });
     unawaited(_refreshAvailableSizes(task));
@@ -422,16 +413,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   void _onSizeChanged(String size) {
     if (size == _currentSize) return;
-    unawaited(_changeSize(size));
-  }
-
-  Future<void> _changeSize(String size) async {
-    if (size == _currentSize) return;
-    final requestId = ++_modelSwitchRequestId;
     HapticFeedback.selectionClick();
     final isCached = _availableSizes.contains(size);
-    final snapshot = await _captureModelSwitchSnapshot();
-    if (!mounted || requestId != _modelSwitchRequestId) return;
     _suppressInferenceForModelSwitch();
     setState(() {
       _currentSize = size;
@@ -439,23 +422,12 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _downloadingSize = isCached ? null : size;
       _downloadFraction = isCached ? null : 0;
       _modelErrorMessage = null;
-      _modelSwitchSnapshot = snapshot;
-      _loadingStatusText = isCached ? 'Loading model...' : 'Downloading 0%';
+      _loadingStatusText = isCached
+          ? _loadingTextFor(_currentTask, size)
+          : _loadingTextFor(_currentTask, size, progress: 0);
       _isModelLoading = true;
     });
     // `YOLOView.didUpdateWidget` handles the resolve + native switch off the changed `modelPath` prop (see above).
-  }
-
-  Future<Uint8List?> _captureModelSwitchSnapshot() async {
-    if (!_controller.isInitialized || _isPaused) return null;
-    try {
-      return await _controller
-          .capturePhoto(withOverlays: false)
-          .timeout(const Duration(milliseconds: 700));
-    } catch (error) {
-      debugPrint('Unable to capture model switch snapshot: $error');
-      return null;
-    }
   }
 
   void _suppressInferenceForModelSwitch() {
@@ -528,6 +500,28 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     _metrics.value = (fps: metrics.fps, ms: metrics.processingTimeMs);
   }
 
+  static String _taskLabel(YOLOTask task) {
+    return switch (task) {
+      YOLOTask.detect => 'Detect',
+      YOLOTask.segment => 'Segment',
+      YOLOTask.semantic => 'Semantic',
+      YOLOTask.classify => 'Classify',
+      YOLOTask.pose => 'Pose',
+      YOLOTask.obb => 'OBB',
+    };
+  }
+
+  static String _loadingTextFor(
+    YOLOTask task,
+    String size, {
+    double? progress,
+  }) {
+    final model = 'YOLO26$size ${_taskLabel(task)}';
+    if (progress == null) return 'Loading $model';
+    final percent = (progress * 100).clamp(0, 99).round();
+    return 'Downloading $model $percent%';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme ?? ThemeData.dark(useMaterial3: true);
@@ -563,16 +557,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   ),
                 ),
                 FocusReticle(position: _focusPosition),
-                if (_isModelLoading)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: _ModelSwitchLoadingOverlay(
-                        statusText: _loadingStatusText,
-                        progress: _downloadFraction,
-                        snapshot: _modelSwitchSnapshot,
-                      ),
-                    ),
-                  ),
                 _ShowcaseOverlay(
                   modelName: 'YOLO26$_currentSize',
                   metrics: _metrics,
@@ -582,8 +566,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   supportedSizes: _supportedSizesForTask(_currentTask),
                   downloadingSize: _downloadingSize,
                   downloadFraction: _downloadFraction,
-                  isModelLoading: _isModelLoading,
-                  loadingStatusText: _loadingStatusText,
                   modelErrorMessage: _modelErrorMessage,
                   confidence: _confidence,
                   iou: _iou,
@@ -616,6 +598,20 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   bottom: 160,
                   child: LogoOverlay(width: 159),
                 ),
+                Positioned.fill(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    reverseDuration: const Duration(milliseconds: 120),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: _isModelLoading
+                        ? _ModelSwitchLoadingOverlay(
+                            statusText: _loadingStatusText,
+                            progress: _downloadFraction,
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ),
               ],
             );
           },
@@ -626,68 +622,66 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 }
 
 class _ModelSwitchLoadingOverlay extends StatelessWidget {
-  const _ModelSwitchLoadingOverlay({
-    this.statusText,
-    this.progress,
-    this.snapshot,
-  });
+  const _ModelSwitchLoadingOverlay({this.statusText, this.progress});
 
   final String? statusText;
   final double? progress;
-  final Uint8List? snapshot;
 
   @override
   Widget build(BuildContext context) {
     final value = progress?.clamp(0.0, 1.0);
-    final snapshot = this.snapshot;
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (snapshot != null)
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Image.memory(
-              snapshot,
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
-            ),
-          )
-        else
-          const ColoredBox(color: Color(0xFF111111)),
-        ColoredBox(color: Colors.black.withValues(alpha: 0.42)),
+        ModalBarrier(
+          dismissible: false,
+          color: Colors.black.withValues(alpha: 0.72),
+        ),
         Center(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.62),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 36,
-                    height: 36,
-                    child: CircularProgressIndicator(
-                      value: value,
-                      strokeWidth: 2.5,
-                      color: Colors.white,
-                      backgroundColor: Colors.white.withValues(alpha: 0.22),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 320),
+            child: Card(
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              color: const Color(0xFF202124),
+              elevation: 10,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (value == null)
+                      const SizedBox(
+                        width: 34,
+                        height: 34,
+                        child: CircularProgressIndicator(strokeWidth: 3),
+                      )
+                    else
+                      LinearProgressIndicator(value: value),
+                    const SizedBox(height: 16),
+                    Text(
+                      statusText ?? 'Loading model',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    statusText ?? 'Loading model...',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 6),
+                    Text(
+                      value == null
+                          ? 'Preparing inference'
+                          : 'Downloading model weights',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.72),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -715,8 +709,6 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.supportedSizes,
     required this.downloadingSize,
     required this.downloadFraction,
-    required this.isModelLoading,
-    required this.loadingStatusText,
     required this.modelErrorMessage,
     required this.confidence,
     required this.iou,
@@ -745,8 +737,6 @@ class _ShowcaseOverlay extends StatelessWidget {
   final Set<String> supportedSizes;
   final String? downloadingSize;
   final double? downloadFraction;
-  final bool isModelLoading;
-  final String? loadingStatusText;
   final String? modelErrorMessage;
   final double confidence;
   final double iou;
@@ -813,11 +803,34 @@ class _ShowcaseOverlay extends StatelessWidget {
                   downloadingSize: downloadingSize,
                   downloadFraction: downloadFraction,
                 ),
-                ModelLoadingStatus(
-                  statusText: isModelLoading ? loadingStatusText : null,
-                  progress: isModelLoading ? downloadFraction : null,
-                  errorMessage: modelErrorMessage,
-                ),
+                if (modelErrorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.72),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.18),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        child: Text(
+                          modelErrorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
