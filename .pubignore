@@ -41,6 +41,7 @@ hello_yolo/
 
 # Development documents and notes
 docs/
+store-assets/
 CLAUDE.md
 fix_summary.md
 MISSING_FEATURES.md

@@ -15,8 +15,7 @@ import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 /// Labels render `0.5`, `1`, `2`, `4` (sub-1× lenses get one decimal). The chip whose zoom factor is closest to
 /// [currentZoomFactor] is selected, so a pinch-zoom past a lens threshold visually snaps the picker.
 class LensPicker extends StatelessWidget {
-  /// Lenses the active camera exposes (back lens cluster on iOS, focal-length enumeration on Android). Empty for
-  /// single-lens devices.
+  /// Lenses the active camera exposes (back lens cluster on iOS, focal-length enumeration on Android).
   final List<LensInfo> lenses;
 
   /// Current effective zoom factor; drives selection.
@@ -34,10 +33,37 @@ class LensPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Hide entirely on single-lens devices (front camera, older iPhones) — matches `lensControl.isHidden = true` and
-    // the auto-layout skip at `yolo-ios-app/Sources/YOLO/YOLOView.swift:646,823`.
-    if (lenses.length < 2) return const SizedBox.shrink();
+    if (lenses.isEmpty) return const SizedBox.shrink();
     final selected = _closestLens(lenses, currentZoomFactor);
+    if (lenses.length == 1) {
+      return Center(
+        child: Semantics(
+          button: true,
+          selected: true,
+          label: selected.label.isNotEmpty
+              ? selected.label
+              : '${_formatZoom(selected)}x zoom',
+          child: GestureDetector(
+            onTap: () => onLensSelected(selected),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.38),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+              child: Text(
+                _formatZoom(selected),
+                style: const TextStyle(
+                  color: CupertinoColors.systemYellow,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     // Content-hug + centered (NOT full-width) — a compact pill like the iOS app, not a screen-wide bar.
     return Center(

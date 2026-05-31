@@ -443,6 +443,15 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     unawaited(_controller.setLens(lens.zoomFactor));
   }
 
+  Future<void> _onSwitchCamera() async {
+    setState(() => _lenses = const [LensInfo(zoomFactor: 1, label: 'Camera')]);
+    _zoom.value = 1;
+    _lensLabel.value = '';
+    await _controller.switchCamera();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    await _refreshLenses();
+  }
+
   void _onPlayPause() {
     if (_isModelLoading) return;
     HapticFeedback.lightImpact();
@@ -587,7 +596,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   },
                   onLensSelected: _onLensSelected,
                   onPlayPause: _onPlayPause,
-                  onSwitchCamera: () => unawaited(_controller.switchCamera()),
+                  onSwitchCamera: () => unawaited(_onSwitchCamera()),
                   onShare: () => unawaited(_onShare()),
                   onInfo: () => unawaited(_openUltralyticsWebsite()),
                 ),

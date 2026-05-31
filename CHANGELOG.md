@@ -1,3 +1,10 @@
+## 0.4.1
+
+- **Enhancement**: Enable Android edge-to-edge handling in the example app for Android 15+ Play Store compatibility.
+- **Enhancement**: Bump the Play Store example build to `0.4.1+2`.
+- **Bug Fix**: Refresh camera lens chips after switching front/back cameras and include logical multi-camera physical
+  lenses on Android so hidden telephoto cameras appear when the device exposes them.
+
 ## 0.4.0
 
 - **Feature**: Add `YOLOShowcase` — a Material 3 one-import camera screen that mirrors the layout of the native Ultralytics YOLO iOS app (top model name + FPS, task and model-size segmented controls, threshold sliders, multi-lens picker, zoom indicator, share/flip/play-pause toolbar, plugin-bundled logo, animated tap-to-focus reticle).
