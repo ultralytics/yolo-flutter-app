@@ -149,6 +149,10 @@ class YOLOViewController {
   Future<void> tapToFocus(double x, double y) =>
       _invoke('tapToFocus', {'x': x, 'y': y});
 
+  /// Shows or hides native prediction overlays without changing inference callbacks.
+  Future<void> setShowOverlays(bool visible) =>
+      _invoke('setShowOverlays', {'visible': visible});
+
   /// Captures a still photo from the live preview.
   ///
   /// When [withOverlays] is `true`, the returned JPEG includes the rendered bounding-box overlays composited over the

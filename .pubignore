@@ -20,6 +20,9 @@ example/android/ultralytics_yolo_plugin
 
 # Generated files
 coverage/
+exports/
+**/__pycache__/
+**/*.pyc
 **/doc/api/
 **/.dart_tool/
 **/build/

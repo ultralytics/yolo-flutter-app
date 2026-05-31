@@ -432,6 +432,15 @@ class YOLOPlatformView(
                         result.error("invalid_args", "Invalid streaming config", null)
                     }
                 }
+                "setShowOverlays" -> {
+                    val visible = call.argument<Boolean>("visible")
+                    if (visible != null) {
+                        yoloView.setShowOverlays(visible)
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "visible is required", null)
+                    }
+                }
                 "stop" -> {
                     yoloView.stop()
                     result.success(null)

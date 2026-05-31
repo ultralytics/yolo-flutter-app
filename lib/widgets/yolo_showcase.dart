@@ -21,6 +21,7 @@ import 'package:ultralytics_yolo/widgets/zoom_indicator.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// One-import camera UI matching the iOS showcase layout. Composes every widget under `lib/widgets/`, owns gestures
@@ -107,6 +108,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // True while a model is downloading/loading after a size or task tap, so the UI can show a clear loading overlay
   // instead of looking frozen.
   bool _isModelLoading = false;
+  bool _resumeCameraAfterModelSwitch = false;
 
   // False until the very first model finishes loading. Until then an opaque splash covers the camera so the user sees
   // a seamless splash -> camera+predictions transition, instead of camera -> black (during the first GPU compile) ->
@@ -174,9 +176,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
           _downloadingSize = done ? null : size;
           _downloadFraction = done ? null : progress.fraction;
           _loadingStatusText = done
-              ? null
+              ? (_isModelLoading ? 'Loading model...' : null)
               : 'Downloading ${(progress.fraction * 100).clamp(0, 99).round()}%';
-          _isModelLoading = !done;
+          _isModelLoading = done ? _isModelLoading : true;
         }
       });
     });
@@ -345,6 +347,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         unawaited(_persistSize(loadedSize));
       }
     });
+    unawaited(_restoreInferenceAfterModelSwitch());
   }
 
   /// An in-place model switch failed (`YOLOView` kept the previously loaded model running). Ignore stale failures from
@@ -364,6 +367,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _currentSize = _runningSize;
       _currentTask = _runningTask;
     });
+    unawaited(_restoreInferenceAfterModelSwitch());
     unawaited(_refreshAvailableSizes(_runningTask));
   }
 
@@ -393,6 +397,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (task == _currentTask) return;
     HapticFeedback.selectionClick();
     final targetSize = _clampSizeToSupported(_currentSize, task);
+    _suppressInferenceForModelSwitch();
     setState(() {
       _currentTask = task;
       // The supported set can differ by platform. Clamp here too so a task switch never hands `YOLOView` a model id
@@ -404,8 +409,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _downloadFraction = null;
       _availableSizes = {};
       _modelErrorMessage = null;
-      _loadingStatusText = null;
-      _isModelLoading = false;
+      _loadingStatusText = 'Loading model...';
+      _isModelLoading = true;
     });
     unawaited(_refreshAvailableSizes(task));
     // The `setState` above changes `YOLOView`'s `modelPath`/`task`, so its `didUpdateWidget` performs the single
@@ -422,16 +427,35 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (size == _currentSize) return;
     HapticFeedback.selectionClick();
     final isCached = _availableSizes.contains(size);
+    _suppressInferenceForModelSwitch();
     setState(() {
       _currentSize = size;
       // Abandon any in-flight download chip for the previous selection (see `_onTaskChanged`).
       _downloadingSize = isCached ? null : size;
       _downloadFraction = isCached ? null : 0;
       _modelErrorMessage = null;
-      _loadingStatusText = isCached ? null : 'Downloading 0%';
-      _isModelLoading = !isCached;
+      _loadingStatusText = isCached ? 'Loading model...' : 'Downloading 0%';
+      _isModelLoading = true;
     });
     // `YOLOView.didUpdateWidget` handles the resolve + native switch off the changed `modelPath` prop (see above).
+  }
+
+  void _suppressInferenceForModelSwitch() {
+    unawaited(_controller.setShowOverlays(false));
+    if (!_isPaused && _controller.isInitialized) {
+      _resumeCameraAfterModelSwitch = true;
+      setState(() => _isPaused = true);
+      unawaited(_controller.pause());
+    }
+  }
+
+  Future<void> _restoreInferenceAfterModelSwitch() async {
+    unawaited(_controller.setShowOverlays(true));
+    if (_resumeCameraAfterModelSwitch) {
+      _resumeCameraAfterModelSwitch = false;
+      if (mounted) setState(() => _isPaused = false);
+      await _controller.resume();
+    }
   }
 
   void _onLensSelected(LensInfo lens) {
@@ -440,6 +464,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   void _onPlayPause() {
+    if (_isModelLoading) return;
     HapticFeedback.lightImpact();
     setState(() => _isPaused = !_isPaused);
     // iOS `pause` snapshots the next frame into the native share cache before stopping; sharing while paused returns
@@ -455,6 +480,20 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     HapticFeedback.mediumImpact();
     final bytes = await _controller.capturePhoto(withOverlays: true);
     if (bytes != null) widget.onCapture?.call(bytes);
+  }
+
+  Future<void> _openUltralyticsWebsite() async {
+    HapticFeedback.selectionClick();
+    final uri = Uri.parse('https://www.ultralytics.com');
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) debugPrint('Unable to open $uri');
+    } catch (error) {
+      debugPrint('Unable to open $uri: $error');
+    }
   }
 
   void _onScaleStart(ScaleStartDetails _) {
@@ -572,6 +611,15 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   bottom: 160,
                   child: LogoOverlay(width: 159),
                 ),
+                Positioned(
+                  right: 12,
+                  bottom: 226,
+                  child: SafeArea(
+                    child: _UltralyticsInfoButton(
+                      onPressed: () => unawaited(_openUltralyticsWebsite()),
+                    ),
+                  ),
+                ),
                 // Opaque startup splash (logotype on white, matching the native launch screen) held over the camera
                 // until the first model finishes loading — hides the camera-start + first GPU-compile black flash.
                 if (!_initialModelLoaded)
@@ -585,6 +633,32 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _UltralyticsInfoButton extends StatelessWidget {
+  const _UltralyticsInfoButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.48),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+      ),
+      child: IconButton(
+        tooltip: 'Ultralytics',
+        icon: const Icon(Icons.info_outline),
+        color: Colors.white,
+        iconSize: 22,
+        constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
       ),
     );
   }

@@ -82,6 +82,12 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
     }
 
+    if !_showOverlays {
+      clearPredictionOverlays()
+      self.videoCapture.predictor.isUpdating = false
+      return
+    }
+
     if task == .segment || task == .semantic {
       DispatchQueue.main.async {
         let maskImage =
@@ -205,6 +211,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     get { return _showOverlays }
     set {
       _showOverlays = newValue
+      if !newValue {
+        clearPredictionOverlays()
+      }
     }
   }
 
@@ -697,6 +706,14 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         layer.removeFromSuperlayer()
       }
     }
+  }
+
+  func clearPredictionOverlays() {
+    boundingBoxViews.forEach { $0.hide() }
+    removeClassificationLayers()
+    maskLayer?.isHidden = true
+    maskLayer?.contents = nil
+    removeAllSubLayers(parentLayer: poseLayer)
   }
 
   func overlayYOLOClassificationsCALayer(on view: UIView, result: YOLOResult) {

@@ -334,6 +334,20 @@ public final class SwiftYOLOPlatformView: NSObject,
             ))
         }
 
+      case "setShowOverlays":
+        if let args = call.arguments as? [String: Any],
+          let visible = args["visible"] as? Bool
+        {
+          self.yoloView?.showOverlays = visible
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for setShowOverlays",
+              details: nil
+            ))
+        }
+
       case "stop":
         // Method to stop camera and inference
         self.stopCamera()

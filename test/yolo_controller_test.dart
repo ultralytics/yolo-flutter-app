@@ -98,6 +98,13 @@ void main() {
         arguments: {'zoomLevel': 2.0},
       );
 
+      await controller.setShowOverlays(false);
+      YOLOTestHelpers.assertMethodCalled(
+        log,
+        'setShowOverlays',
+        arguments: {'visible': false},
+      );
+
       // Test capture frame
       final result = await controller.captureFrame();
       expect(result, isA<Uint8List>());

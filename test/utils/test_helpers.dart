@@ -444,6 +444,10 @@ class YOLOTestHelpers {
               log.add(call);
               return true;
             },
+            'setShowOverlays': (call) {
+              log.add(call);
+              return true;
+            },
             'captureFrame': (call) {
               log.add(call);
               return Uint8List.fromList(List.filled(100, 0));

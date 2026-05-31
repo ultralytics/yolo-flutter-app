@@ -543,4 +543,6 @@ class _YOLOViewState extends State<YOLOView> {
   Future<void> switchCamera() => _effectiveController.switchCamera();
   Future<void> setZoomLevel(double zoomLevel) =>
       _effectiveController.setZoomLevel(zoomLevel);
+  Future<void> setShowOverlays(bool visible) =>
+      _effectiveController.setShowOverlays(visible);
 }

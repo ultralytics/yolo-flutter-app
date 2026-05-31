@@ -402,6 +402,12 @@ class YOLOView @JvmOverloads constructor(
     
     fun setShowOverlays(show: Boolean) {
         showOverlays = show
+        if (!show) {
+            inferenceResult = null
+        }
+        post {
+            overlayView.invalidate()
+        }
     }
     
     fun setShowUIControls(show: Boolean) {
@@ -538,6 +544,10 @@ class YOLOView @JvmOverloads constructor(
 
     fun setModel(modelPath: String, task: YOLOTask, useGpu: Boolean = true, callback: ((Boolean) -> Unit)? = null) {
         val cacheKey = "$modelPath|$task|$useGpu"
+        inferenceResult = null
+        post {
+            overlayView.invalidate()
+        }
 
         // Fast path: reuse an already-loaded predictor (re-applying the current thresholds) for an instant switch.
         predictorCache[cacheKey]?.let { cached ->
