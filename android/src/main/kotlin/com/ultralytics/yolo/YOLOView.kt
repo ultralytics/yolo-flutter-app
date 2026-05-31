@@ -37,7 +37,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import android.content.res.Configuration
-import java.util.Locale
 
 /**
  * Describes a back-camera lens with its equivalent zoom factor relative to the main wide-angle lens (1.0x). Used by
@@ -269,8 +268,6 @@ class YOLOView @JvmOverloads constructor(
     // lens reference factor (e.g. 0.5x on ultra-wide, 2.0x on telephoto). Without this the ZoomIndicator/LensPicker
     // would snap back to 1.0x after every lens change.
     private var pendingEffectiveZoomToEmit: Double? = null
-    private var pendingPhysicalZoomToApply: Float? = null
-    private var pendingLensLabelAfterBind: String? = null
 
     // Optional ImageCapture use-case (bound alongside Preview+Analysis when supported)
     private var imageCaptureUseCase: ImageCapture? = null
@@ -462,31 +459,17 @@ class YOLOView @JvmOverloads constructor(
      */
     private fun maybeSnapLensForZoom(zoomFactor: Double): Boolean {
         if (lensFacing != CameraSelector.LENS_FACING_BACK) return false
-        val lenses = cachedLenses
+        val lenses = cachedLenses.filter { it.cameraInfo != null }
         if (lenses.size < 2) return false
 
         val sorted = lenses.sortedBy { it.zoomFactor }
         val target = sorted.lastOrNull { zoomFactor >= it.zoomFactor - 0.01 } ?: sorted.first()
 
-        if (target.cameraInfo == null) {
-            if (selectedLensCameraInfo == null && selectedLensLabel == target.label) return false
-            selectLogicalBackLens(target)
-            return true
-        }
-
         // Skip rebind if we're already on the target lens. When `selectedLensCameraInfo` is null (first frame after the
         // back camera bound), fall back to identifying the lens by matching cameraInfo against the currently-bound
         // camera so a first pinch on the wide lens doesn't trigger an unnecessary rebind.
         val currentInfo = selectedLensCameraInfo ?: camera?.cameraInfo
-        if (currentInfo == target.cameraInfo) {
-            selectedLensCameraInfo = target.cameraInfo
-            selectedLensZoomFactor = target.zoomFactor
-            if (selectedLensLabel != target.label) {
-                selectedLensLabel = target.label
-                emitEvent(mapOf("type" to "lens", "label" to target.label))
-            }
-            return false
-        }
+        if (currentInfo == target.cameraInfo) return false
 
         try {
             // Preserve the user-requested effective zoom across the rebind: the new lens starts at physical 1.0x =
@@ -859,18 +842,6 @@ class YOLOView @JvmOverloads constructor(
                                 selectedLensZoomFactor = 1.0
                             }
 
-                            pendingPhysicalZoomToApply?.let { requested ->
-                                val physical = requested.coerceIn(minZoomRatio, maxZoomRatio)
-                                cam.cameraControl.setZoomRatio(physical)
-                                currentZoomRatio = physical
-                                pendingPhysicalZoomToApply = null
-                                onZoomChanged?.invoke(physical)
-                            }
-                            pendingLensLabelAfterBind?.let { label ->
-                                selectedLensLabel = label
-                                pendingLensLabelAfterBind = null
-                            }
-
                             // setLens() / auto-snap stashes the effective zoom that should appear in Dart after the
                             // rebind; emit it now so the ZoomIndicator/LensPicker stay consistent across the change.
                             pendingEffectiveZoomToEmit?.let { effective ->
@@ -967,8 +938,6 @@ class YOLOView @JvmOverloads constructor(
         selectedLensZoomFactor = null
         selectedLensLabel = null
         pendingEffectiveZoomToEmit = null
-        pendingPhysicalZoomToApply = null
-        pendingLensLabelAfterBind = null
     }
 
     // endregion
@@ -991,7 +960,7 @@ class YOLOView @JvmOverloads constructor(
     }
 
     private fun computeLensInfos(cameraProvider: ProcessCameraProvider): List<LensInfo> {
-        data class Raw(val id: String, val info: CameraInfo?, val focalLength: Float, val sensorWidth: Float)
+        data class Raw(val info: CameraInfo?, val focalLength: Float, val sensorWidth: Float)
 
         val publicInfos = cameraProvider.availableCameraInfos.mapNotNull { info ->
             try {
@@ -1000,7 +969,7 @@ class YOLOView @JvmOverloads constructor(
                 val focal = c2.getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
                     ?.minOrNull() ?: return@mapNotNull null
                 val sensor: SizeF? = c2.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
-                Triple(facing, c2.cameraId, Raw(c2.cameraId, info, focal, sensor?.width ?: 0f))
+                Triple(facing, c2.cameraId, Raw(info, focal, sensor?.width ?: 0f))
             } catch (e: Exception) {
                 Log.w(TAG, "computeLensInfos: skipping camera with unreadable metadata", e)
                 null
@@ -1046,7 +1015,6 @@ class YOLOView @JvmOverloads constructor(
                             ?.minOrNull() ?: continue
                         val sensor = physicalChars.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
                         rawsById[physicalId] = Raw(
-                            id = physicalId,
                             info = publicInfoById[physicalId],
                             focalLength = focal,
                             sensorWidth = sensor?.width ?: 0f
@@ -1108,7 +1076,7 @@ class YOLOView @JvmOverloads constructor(
         val logicalMinZoom = logicalZoomState?.minZoomRatio ?: 1f
         val logicalMaxZoom = logicalZoomState?.maxZoomRatio ?: 1f
 
-        return deduped.mapIndexedNotNull { index, (raw, equivMm) ->
+        return deduped.mapNotNull { (raw, equivMm) ->
             val lensInfo = when {
                 abs(equivMm - mainEquiv) < 1f -> LensInfo(zoomFactor = 1.0, label = "Wide camera", cameraInfo = raw.info)
                 equivMm < mainEquiv - 4f -> {
@@ -1125,19 +1093,9 @@ class YOLOView @JvmOverloads constructor(
             if (raw.info == null) {
                 val zoom = lensInfo.zoomFactor.toFloat()
                 if (logicalWideInfo == null || zoom < logicalMinZoom - 0.01f || zoom > logicalMaxZoom + 0.01f) {
-                    Log.d(
-                        TAG,
-                        "Lens ${index + 1}/${deduped.size}: id=${raw.id}, ${String.format(Locale.US, "%.1f", equivMm)}mm, " +
-                            "${String.format(Locale.US, "%.2f", lensInfo.zoomFactor)}x, ${lensInfo.label}, cameraInfo=false, reachable=false"
-                    )
-                    return@mapIndexedNotNull null
+                    return@mapNotNull null
                 }
             }
-            Log.d(
-                TAG,
-                "Lens ${index + 1}/${deduped.size}: id=${raw.id}, ${String.format(Locale.US, "%.1f", equivMm)}mm, " +
-                    "${String.format(Locale.US, "%.2f", lensInfo.zoomFactor)}x, ${lensInfo.label}, cameraInfo=${raw.info != null}"
-            )
             lensInfo
         }
     }
@@ -1196,20 +1154,20 @@ class YOLOView @JvmOverloads constructor(
         selectedLensLabel = target.label
 
         if (camera?.cameraInfo != logicalWideCameraInfo) {
-            pendingPhysicalZoomToApply = targetPhysicalZoom
-            pendingEffectiveZoomToEmit = target.zoomFactor
-            pendingLensLabelAfterBind = target.label
-            startCamera()
-        } else {
-            val physical = targetPhysicalZoom.coerceIn(
-                minZoomRatio,
-                camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: maxZoomRatio
-            )
-            camera?.cameraControl?.setZoomRatio(physical)
-            currentZoomRatio = physical
-            onZoomChanged?.invoke(physical)
-            emitEvent(mapOf("type" to "zoom", "value" to physical.toDouble()))
+            selectedLensLabel = logicalWide.label
+            switchToLens(logicalWide)
+            emitEvent(mapOf("type" to "lens", "label" to logicalWide.label))
+            return
         }
+
+        val physical = targetPhysicalZoom.coerceIn(
+            minZoomRatio,
+            camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: maxZoomRatio
+        )
+        camera?.cameraControl?.setZoomRatio(physical)
+        currentZoomRatio = physical
+        onZoomChanged?.invoke(physical)
+        emitEvent(mapOf("type" to "zoom", "value" to physical.toDouble()))
         emitEvent(mapOf("type" to "lens", "label" to target.label))
     }
 
