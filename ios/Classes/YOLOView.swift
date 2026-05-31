@@ -438,7 +438,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
 
     case .pose:
-      PoseEstimater.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
+      PoseEstimator.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
         result in
         switch result {
         case .success(let predictor):

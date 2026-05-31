@@ -227,7 +227,7 @@ public class YOLO {
       }
 
     case .pose:
-      PoseEstimater.create(
+      PoseEstimator.create(
         unwrappedModelURL: unwrappedModelURL, useGpu: useGpu, numItemsThreshold: numItemsThreshold
       ) { result in
         switch result {
