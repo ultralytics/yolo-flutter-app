@@ -5,11 +5,11 @@ import 'package:ultralytics_yolo_example/presentation/screens/camera_inference_s
 import 'package:ultralytics_yolo_example/presentation/screens/single_image_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const YOLOExampleApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class YOLOExampleApp extends StatelessWidget {
+  const YOLOExampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
