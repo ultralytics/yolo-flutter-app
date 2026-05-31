@@ -66,7 +66,7 @@ class YOLOResult {
   /// Only available when using pose models (YOLOTask.pose).
   /// Coordinates are in image pixel space.
   /// Common keypoints include body joints like shoulders, elbows, knees, etc.
-  final List<Point>? keypoints;
+  final List<Keypoint>? keypoints;
 
   /// The confidence values for each detected keypoint.
   ///
@@ -132,7 +132,7 @@ class YOLOResult {
       mask = MapConverter.convertMaskData(maskData);
     }
 
-    List<Point>? keypoints;
+    List<Keypoint>? keypoints;
     List<double>? keypointConfidences;
     if (map.containsKey('keypoints') && map['keypoints'] != null) {
       final keypointsData = map['keypoints'] as List<dynamic>;
@@ -334,22 +334,22 @@ class YOLOSemanticMask {
   };
 }
 
-/// A 2D point in image/pixel space.
-class Point {
+/// A single 2D pose keypoint (joint) in image/pixel space.
+class Keypoint {
   final double x;
   final double y;
 
-  Point(this.x, this.y);
+  Keypoint(this.x, this.y);
 
   Map<String, double> toMap() => {'x': x, 'y': y};
 
-  factory Point.fromMap(Map<dynamic, dynamic> map) {
-    return Point(
+  factory Keypoint.fromMap(Map<dynamic, dynamic> map) {
+    return Keypoint(
       MapConverter.safeGetDouble(map, 'x'),
       MapConverter.safeGetDouble(map, 'y'),
     );
   }
 
   @override
-  String toString() => 'Point($x, $y)';
+  String toString() => 'Keypoint($x, $y)';
 }

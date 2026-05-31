@@ -185,7 +185,7 @@ void main() {
     });
 
     test('constructor creates instance with all parameters', () {
-      final keypoints = [Point(0.5, 0.3), Point(0.6, 0.4)];
+      final keypoints = [Keypoint(0.5, 0.3), Keypoint(0.6, 0.4)];
       final keypointConfidences = [0.8, 0.9];
       final mask = [
         [0.1, 0.2],
@@ -238,7 +238,7 @@ void main() {
     test('constructor with keypoints and confidences', () {
       const rect = Rect.fromLTWH(10, 20, 100, 200);
       const normalizedRect = Rect.fromLTWH(0.1, 0.2, 0.5, 0.8);
-      final keypoints = [Point(50, 60), Point(70, 80)];
+      final keypoints = [Keypoint(50, 60), Keypoint(70, 80)];
       final confidences = [0.9, 0.8];
 
       final result = YOLOResult(
@@ -291,7 +291,7 @@ void main() {
     test('toMap with keypoints', () {
       const rect = Rect.fromLTWH(10, 20, 100, 200);
       const normalizedRect = Rect.fromLTWH(0.1, 0.2, 0.5, 0.8);
-      final keypoints = [Point(50, 60), Point(70, 80)];
+      final keypoints = [Keypoint(50, 60), Keypoint(70, 80)];
       final confidences = [0.9, 0.8];
 
       final result = YOLOResult(
@@ -455,27 +455,27 @@ void main() {
     });
   });
 
-  group('Point', () {
+  group('Keypoint', () {
     test('constructor and properties', () {
-      final point = Point(150.5, 200.0);
+      final point = Keypoint(150.5, 200.0);
       expect(point.x, 150.5);
       expect(point.y, 200.0);
     });
 
     test('toString works correctly', () {
-      final point = Point(150.5, 200.0);
-      expect(point.toString(), 'Point(150.5, 200.0)');
+      final point = Keypoint(150.5, 200.0);
+      expect(point.toString(), 'Keypoint(150.5, 200.0)');
     });
 
     test('toMap works correctly', () {
-      final point = Point(150.5, 200.0);
+      final point = Keypoint(150.5, 200.0);
       final map = point.toMap();
       expect(map['x'], 150.5);
       expect(map['y'], 200.0);
     });
 
     test('fromMap works correctly', () {
-      final fromMapPoint = Point.fromMap({'x': 100.0, 'y': 200.0});
+      final fromMapPoint = Keypoint.fromMap({'x': 100.0, 'y': 200.0});
       expect(fromMapPoint.x, 100.0);
       expect(fromMapPoint.y, 200.0);
     });

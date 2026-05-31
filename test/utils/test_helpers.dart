@@ -252,11 +252,11 @@ class YOLOTestHelpers {
     );
   }
 
-  static List<Point> _keypointsToList(List<double> keypoints) {
-    final points = <Point>[];
+  static List<Keypoint> _keypointsToList(List<double> keypoints) {
+    final points = <Keypoint>[];
     for (int i = 0; i < keypoints.length; i += 3) {
       if (i + 2 < keypoints.length) {
-        points.add(Point(keypoints[i], keypoints[i + 1]));
+        points.add(Keypoint(keypoints[i], keypoints[i + 1]));
       }
     }
     return points;

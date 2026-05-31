@@ -75,11 +75,11 @@ class MapConverter {
 
   /// Unpacks a flat `[x0, y0, c0, x1, y1, c1, ...]` keypoint list into
   /// parallel lists of points and confidences.
-  static ({List<Point> keypoints, List<double> confidences}) convertKeypoints(
+  static ({List<Keypoint> keypoints, List<double> confidences}) convertKeypoints(
     List<dynamic> keypointsData,
   ) {
     final count = keypointsData.length ~/ 3;
-    final keypoints = <Point>[];
+    final keypoints = <Keypoint>[];
     final confidences = <double>[];
     for (var i = 0; i < count; i++) {
       final base = i * 3;
@@ -87,7 +87,7 @@ class MapConverter {
       final y = keypointsData[base + 1];
       final c = keypointsData[base + 2];
       keypoints.add(
-        Point(x is num ? x.toDouble() : 0.0, y is num ? y.toDouble() : 0.0),
+        Keypoint(x is num ? x.toDouble() : 0.0, y is num ? y.toDouble() : 0.0),
       );
       confidences.add(c is num ? c.toDouble() : 0.0);
     }
