@@ -13,7 +13,7 @@ import XCTest
 class YOLOFlutteriOSAppTests: XCTestCase {
 
   func testGetPlatformVersion() {
-    let plugin = YoloPlugin()
+    let plugin = YOLOPlugin()
 
     let call = FlutterMethodCall(methodName: "getPlatformVersion", arguments: [])
 
