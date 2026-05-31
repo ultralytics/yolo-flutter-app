@@ -108,3 +108,6 @@ example/lib/widget_previews.dart
 
 # Local dev screenshots
 Screenshot*.png
+
+# Local store listing assets
+store-assets/

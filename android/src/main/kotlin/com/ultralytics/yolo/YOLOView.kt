@@ -13,6 +13,8 @@ import android.view.*
 import android.widget.FrameLayout
 import android.widget.Toast
 import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.os.Build
 import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.core.*
 import androidx.camera.core.Camera
@@ -35,6 +37,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import android.content.res.Configuration
+import java.util.Locale
 
 /**
  * Describes a back-camera lens with its equivalent zoom factor relative to the main wide-angle lens (1.0x). Used by
@@ -266,6 +269,8 @@ class YOLOView @JvmOverloads constructor(
     // lens reference factor (e.g. 0.5x on ultra-wide, 2.0x on telephoto). Without this the ZoomIndicator/LensPicker
     // would snap back to 1.0x after every lens change.
     private var pendingEffectiveZoomToEmit: Double? = null
+    private var pendingPhysicalZoomToApply: Float? = null
+    private var pendingLensLabelAfterBind: String? = null
 
     // Optional ImageCapture use-case (bound alongside Preview+Analysis when supported)
     private var imageCaptureUseCase: ImageCapture? = null
@@ -457,17 +462,31 @@ class YOLOView @JvmOverloads constructor(
      */
     private fun maybeSnapLensForZoom(zoomFactor: Double): Boolean {
         if (lensFacing != CameraSelector.LENS_FACING_BACK) return false
-        val lenses = cachedLenses.filter { it.cameraInfo != null }
+        val lenses = cachedLenses
         if (lenses.size < 2) return false
 
         val sorted = lenses.sortedBy { it.zoomFactor }
         val target = sorted.lastOrNull { zoomFactor >= it.zoomFactor - 0.01 } ?: sorted.first()
 
+        if (target.cameraInfo == null) {
+            if (selectedLensCameraInfo == null && selectedLensLabel == target.label) return false
+            selectLogicalBackLens(target)
+            return true
+        }
+
         // Skip rebind if we're already on the target lens. When `selectedLensCameraInfo` is null (first frame after the
         // back camera bound), fall back to identifying the lens by matching cameraInfo against the currently-bound
         // camera so a first pinch on the wide lens doesn't trigger an unnecessary rebind.
         val currentInfo = selectedLensCameraInfo ?: camera?.cameraInfo
-        if (currentInfo == target.cameraInfo) return false
+        if (currentInfo == target.cameraInfo) {
+            selectedLensCameraInfo = target.cameraInfo
+            selectedLensZoomFactor = target.zoomFactor
+            if (selectedLensLabel != target.label) {
+                selectedLensLabel = target.label
+                emitEvent(mapOf("type" to "lens", "label" to target.label))
+            }
+            return false
+        }
 
         try {
             // Preserve the user-requested effective zoom across the rebind: the new lens starts at physical 1.0x =
@@ -840,6 +859,18 @@ class YOLOView @JvmOverloads constructor(
                                 selectedLensZoomFactor = 1.0
                             }
 
+                            pendingPhysicalZoomToApply?.let { requested ->
+                                val physical = requested.coerceIn(minZoomRatio, maxZoomRatio)
+                                cam.cameraControl.setZoomRatio(physical)
+                                currentZoomRatio = physical
+                                pendingPhysicalZoomToApply = null
+                                onZoomChanged?.invoke(physical)
+                            }
+                            pendingLensLabelAfterBind?.let { label ->
+                                selectedLensLabel = label
+                                pendingLensLabelAfterBind = null
+                            }
+
                             // setLens() / auto-snap stashes the effective zoom that should appear in Dart after the
                             // rebind; emit it now so the ZoomIndicator/LensPicker stay consistent across the change.
                             pendingEffectiveZoomToEmit?.let { effective ->
@@ -911,6 +942,10 @@ class YOLOView @JvmOverloads constructor(
     fun setLensFacing(facing: Int, preferWideBackCamera: Boolean = false) {
         lensFacing = facing
         this.preferWideBackCamera = preferWideBackCamera && facing == CameraSelector.LENS_FACING_BACK
+        cachedLenses = emptyList()
+        selectedLensCameraInfo = null
+        selectedLensZoomFactor = null
+        selectedLensLabel = null
         // Restart camera if already started
         if (::cameraProviderFuture.isInitialized) {
             startCamera()
@@ -923,6 +958,7 @@ class YOLOView @JvmOverloads constructor(
         selectedLensCameraInfo = null
         selectedLensZoomFactor = null
         selectedLensLabel = null
+        cachedLenses = emptyList()
         lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
             CameraSelector.LENS_FACING_FRONT
         } else {
@@ -936,9 +972,8 @@ class YOLOView @JvmOverloads constructor(
     // region multi-lens / focus / capture (Dart-driven setters)
 
     /**
-     * Enumerate back-facing physical lenses with an equivalent zoom factor relative to
-     * the main wide-angle (1.0x). Mirrors the iOS app's `AVCaptureDevice.DiscoverySession`
-     * output. If the device exposes only one back camera, returns a single "Default" entry.
+     * Enumerate physical lenses for the active camera side. Back cameras include public CameraX cameras plus Camera2
+     * physical IDs from logical multi-camera devices; front cameras return their single active lens.
      */
     fun enumerateLenses(): List<LensInfo> {
         if (cachedLenses.isNotEmpty()) return cachedLenses
@@ -952,30 +987,77 @@ class YOLOView @JvmOverloads constructor(
     }
 
     private fun computeLensInfos(cameraProvider: ProcessCameraProvider): List<LensInfo> {
-        // Read focal lengths + sensor size per back-facing camera and convert to a 35mm-equivalent focal length so we
-        // can classify each lens absolutely (ultra-wide / wide / telephoto) rather than by relative ordering. That
-        // ordering-based heuristic breaks on common 2-camera devices (ultra-wide + wide phones like the Pixel A
-        // series): treating the shortest focal as 1.0x mislabels the ultra-wide as main and the main as telephoto.
-        data class Raw(val info: CameraInfo, val focalLength: Float, val sensorWidth: Float)
+        data class Raw(val id: String, val info: CameraInfo?, val focalLength: Float, val sensorWidth: Float)
 
-        val raws = cameraProvider.availableCameraInfos.mapNotNull { info ->
+        val publicInfos = cameraProvider.availableCameraInfos.mapNotNull { info ->
             try {
                 val c2 = Camera2CameraInfo.from(info)
                 val facing = c2.getCameraCharacteristic(CameraCharacteristics.LENS_FACING)
-                if (facing != CameraCharacteristics.LENS_FACING_BACK) return@mapNotNull null
                 val focal = c2.getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
                     ?.minOrNull() ?: return@mapNotNull null
                 val sensor: SizeF? = c2.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
-                Raw(info, focal, sensor?.width ?: 0f)
+                Triple(facing, c2.cameraId, Raw(c2.cameraId, info, focal, sensor?.width ?: 0f))
             } catch (e: Exception) {
                 Log.w(TAG, "computeLensInfos: skipping camera with unreadable metadata", e)
                 null
             }
         }
 
+        if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
+            val front = publicInfos.firstOrNull { it.first == CameraCharacteristics.LENS_FACING_FRONT }
+            return listOf(LensInfo(zoomFactor = 1.0, label = "Front camera", cameraInfo = front?.third?.info))
+        }
+
+        // Read physical IDs from Camera2 in addition to CameraX's public CameraInfo list. Samsung and other flagship
+        // devices often expose telephoto lenses only as hidden physical cameras under a logical back camera; CameraX's
+        // availableCameraInfos may therefore report ultra-wide + wide but omit telephoto.
+        val publicInfoById = publicInfos.associate { it.second to it.third.info }
+        val rawsById = linkedMapOf<String, Raw>()
+        publicInfos
+            .filter { it.first == CameraCharacteristics.LENS_FACING_BACK }
+            .forEach { rawsById[it.second] = it.third }
+
+        val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+        if (cameraManager != null) {
+            for (id in cameraManager.cameraIdList) {
+                try {
+                    val chars = cameraManager.getCameraCharacteristics(id)
+                    val facing = chars.get(CameraCharacteristics.LENS_FACING)
+                    if (facing != CameraCharacteristics.LENS_FACING_BACK) continue
+                    val physicalIds: Set<String> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        chars.physicalCameraIds
+                    } else {
+                        emptySet<String>()
+                    }
+                    val ids = physicalIds.ifEmpty { setOf(id) }
+                    for (physicalId in ids) {
+                        val physicalChars = if (physicalId == id) {
+                            chars
+                        } else {
+                            cameraManager.getCameraCharacteristics(physicalId)
+                        }
+                        val physicalFacing = physicalChars.get(CameraCharacteristics.LENS_FACING)
+                        if (physicalFacing != CameraCharacteristics.LENS_FACING_BACK) continue
+                        val focal = physicalChars.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+                            ?.minOrNull() ?: continue
+                        val sensor = physicalChars.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
+                        rawsById[physicalId] = Raw(
+                            id = physicalId,
+                            info = publicInfoById[physicalId],
+                            focalLength = focal,
+                            sensorWidth = sensor?.width ?: 0f
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "computeLensInfos: skipping Camera2 id $id", e)
+                }
+            }
+        }
+
+        val raws = rawsById.values.toList()
         if (raws.isEmpty()) return emptyList()
         if (raws.size == 1) {
-            return listOf(LensInfo(zoomFactor = 1.0, label = "Default", cameraInfo = raws[0].info))
+            return listOf(LensInfo(zoomFactor = 1.0, label = "Wide camera", cameraInfo = raws[0].info))
         }
 
         // Convert each lens's focal length to a 35mm-equivalent by scaling against the full-frame sensor width (36mm).
@@ -998,9 +1080,25 @@ class YOLOView @JvmOverloads constructor(
             ?: withEquiv.maxByOrNull { it.second }!!.first
         val mainEquiv = equiv(mainRaw)
 
-        return withEquiv.sortedBy { it.second }.map { (raw, equivMm) ->
-            when {
-                raw === mainRaw -> LensInfo(zoomFactor = 1.0, label = "Wide camera", cameraInfo = raw.info)
+        val deduped = withEquiv
+            .sortedBy { it.second }
+            .fold(mutableListOf<Pair<Raw, Float>>()) { acc, item ->
+                val previous = acc.lastOrNull()
+                val sameFocal = previous != null && abs(previous.second - item.second) < 1f
+                if (sameFocal) {
+                    // Prefer the public CameraX camera when a logical and physical ID describe the same lens.
+                    if (previous!!.first.info == null && item.first.info != null) {
+                        acc[acc.lastIndex] = item
+                    }
+                } else {
+                    acc.add(item)
+                }
+                acc
+            }
+
+        return deduped.mapIndexed { index, (raw, equivMm) ->
+            val lensInfo = when {
+                abs(equivMm - mainEquiv) < 1f -> LensInfo(zoomFactor = 1.0, label = "Wide camera", cameraInfo = raw.info)
                 equivMm < mainEquiv - 4f -> {
                     // Ultra-wide. iOS exposes these as 0.5x relative to the main lens.
                     val zoom = (equivMm.toDouble() / mainEquiv.toDouble()).coerceAtLeast(0.1)
@@ -1012,6 +1110,12 @@ class YOLOView @JvmOverloads constructor(
                     LensInfo(zoomFactor = zoom, label = "Telephoto camera", cameraInfo = raw.info)
                 }
             }
+            Log.d(
+                TAG,
+                "Lens ${index + 1}/${deduped.size}: id=${raw.id}, ${String.format(Locale.US, "%.1f", equivMm)}mm, " +
+                    "${String.format(Locale.US, "%.2f", lensInfo.zoomFactor)}x, ${lensInfo.label}, cameraInfo=${raw.info != null}"
+            )
+            lensInfo
         }
     }
 
@@ -1020,9 +1124,14 @@ class YOLOView @JvmOverloads constructor(
      * to [zoomFactor]. Emits a `{type:"lens",label}` event on the existing event sink.
      */
     fun setLens(zoomFactor: Double) {
+        if (lensFacing != CameraSelector.LENS_FACING_BACK) return
         val lenses = if (cachedLenses.isEmpty()) enumerateLenses() else cachedLenses
         if (lenses.isEmpty()) return
         val target = lenses.minByOrNull { abs(it.zoomFactor - zoomFactor) } ?: return
+        if (target.cameraInfo == null) {
+            selectLogicalBackLens(target)
+            return
+        }
         // After the rebind the new lens starts at physical 1.0x; that maps to effective `target.zoomFactor`
         // (e.g. 0.5x on ultra-wide, 2.0x on tele) which is exactly what the user asked for.
         pendingEffectiveZoomToEmit = target.zoomFactor
@@ -1039,6 +1148,36 @@ class YOLOView @JvmOverloads constructor(
         preferWideBackCamera = false
         // Rebind so the new CameraSelector is honored.
         startCamera()
+    }
+
+    private fun selectLogicalBackLens(target: LensInfo) {
+        lensFacing = CameraSelector.LENS_FACING_BACK
+        preferWideBackCamera = false
+        val logicalWide = cachedLenses
+            .filter { it.cameraInfo != null }
+            .minByOrNull { abs(it.zoomFactor - 1.0) }
+
+        selectedLensCameraInfo = logicalWide?.cameraInfo
+        selectedLensZoomFactor = 1.0
+        selectedLensLabel = target.label
+
+        val targetPhysicalZoom = target.zoomFactor.toFloat()
+        if (logicalWide?.cameraInfo != null && camera?.cameraInfo != logicalWide.cameraInfo) {
+            pendingPhysicalZoomToApply = targetPhysicalZoom
+            pendingEffectiveZoomToEmit = target.zoomFactor
+            pendingLensLabelAfterBind = target.label
+            startCamera()
+        } else {
+            val physical = targetPhysicalZoom.coerceIn(
+                minZoomRatio,
+                camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: maxZoomRatio
+            )
+            camera?.cameraControl?.setZoomRatio(physical)
+            currentZoomRatio = physical
+            onZoomChanged?.invoke(physical)
+            emitEvent(mapOf("type" to "zoom", "value" to physical.toDouble()))
+        }
+        emitEvent(mapOf("type" to "lens", "label" to target.label))
     }
 
     /**
