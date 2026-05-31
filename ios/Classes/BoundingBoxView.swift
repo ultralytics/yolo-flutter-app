@@ -32,7 +32,7 @@ enum DetectionLabelStyle {
     UIFont(name: fontName, size: size) ?? UIFont.systemFont(ofSize: size)
   }
 
-  static func configure(_ textLayer: CATextLayer, fontSize: CGFloat) {
+  @MainActor static func configure(_ textLayer: CATextLayer, fontSize: CGFloat) {
     let font = font(size: fontSize)
     textLayer.contentsScale = UIScreen.main.scale
     textLayer.fontSize = fontSize
@@ -42,8 +42,11 @@ enum DetectionLabelStyle {
     textLayer.masksToBounds = true
   }
 
-  static func attributes(fontSize: CGFloat) -> [NSAttributedString.Key: Any] {
-    [.font: font(size: fontSize)]
+  static func attributes(fontSize: CGFloat, alpha: CGFloat = 1) -> [NSAttributedString.Key: Any] {
+    [
+      .font: font(size: fontSize),
+      .foregroundColor: UIColor.white.withAlphaComponent(alpha),
+    ]
   }
 
   static func size(for label: String, fontSize: CGFloat) -> CGSize {
@@ -54,6 +57,15 @@ enum DetectionLabelStyle {
       context: nil
     )
     return CGSize(width: textRect.width + horizontalPadding, height: textRect.height)
+  }
+
+  static func frame(for label: String, fontSize: CGFloat, anchor: CGPoint) -> CGRect {
+    let textSize = size(for: label, fontSize: fontSize)
+    let origin = CGPoint(
+      x: anchor.x - verticalOffset,
+      y: anchor.y - textSize.height - verticalOffset
+    )
+    return CGRect(origin: origin, size: textSize)
   }
 }
 
@@ -66,6 +78,9 @@ class BoundingBoxView {
   /// The layer that displays the label and confidence score for the detected object.
   let textLayer: CATextLayer
 
+  /// The base font size that can be scaled for external displays.
+  private var baseFontSize: CGFloat = 11
+
   /// Initializes a new BoundingBoxView with configured shape and text layers.
   init() {
     shapeLayer = CAShapeLayer()
@@ -75,7 +90,18 @@ class BoundingBoxView {
 
     textLayer = CATextLayer()
     textLayer.isHidden = true  // Initially hidden; shown with label when a detection occurs
-    DetectionLabelStyle.configure(textLayer, fontSize: 14)
+    DetectionLabelStyle.configure(textLayer, fontSize: baseFontSize)
+  }
+
+  /// Sets the font size for the text layer (useful for external displays).
+  func setFontSize(_ size: CGFloat) {
+    baseFontSize = size
+    DetectionLabelStyle.configure(textLayer, fontSize: size)
+  }
+
+  /// Sets the line width for the bounding box (useful for external displays).
+  func setLineWidth(_ width: CGFloat) {
+    shapeLayer.lineWidth = width
   }
 
   /// Adds the bounding box and text layers to a specified parent layer.
@@ -93,6 +119,7 @@ class BoundingBoxView {
   ///   - alpha: The opacity level for the bounding box stroke and label background.
   ///   - angle: Optional rotation angle in radians for oriented boxes.
   func show(frame: CGRect, label: String, color: UIColor, alpha: CGFloat, angle: CGFloat? = nil) {
+    CATransaction.begin()
     CATransaction.setDisableActions(true)  // Disable implicit animations
 
     let path = UIBezierPath(roundedRect: frame, cornerRadius: 6.0)
@@ -114,6 +141,7 @@ class BoundingBoxView {
     let textSize = DetectionLabelStyle.size(for: label, fontSize: textLayer.fontSize)
     let labelAnchor = angle == nil ? frame.origin : path.bounds.origin
 
+    // Clamp the label into the visible parent layer so off-screen detections still show their label.
     let screenBounds: CGRect
     if let superlayer = shapeLayer.superlayer {
       screenBounds = superlayer.bounds
@@ -151,6 +179,7 @@ class BoundingBoxView {
 
     let textOrigin = CGPoint(x: labelX, y: labelY)
     textLayer.frame = CGRect(origin: textOrigin, size: textSize)  // Set the text layer frame
+    CATransaction.commit()
   }
 
   /// Hides the bounding box and text layers.

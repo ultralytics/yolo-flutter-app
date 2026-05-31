@@ -78,8 +78,6 @@ class YOLOTestHelpers {
               return true;
             case 'setZoomLevel':
               return true;
-            case 'setShowUIControls':
-              return true;
             case 'captureFrame':
               return Uint8List.fromList(List.filled(100, 0));
             case 'checkModelExists':
@@ -254,11 +252,11 @@ class YOLOTestHelpers {
     );
   }
 
-  static List<Point> _keypointsToList(List<double> keypoints) {
-    final points = <Point>[];
+  static List<Keypoint> _keypointsToList(List<double> keypoints) {
+    final points = <Keypoint>[];
     for (int i = 0; i < keypoints.length; i += 3) {
       if (i + 2 < keypoints.length) {
-        points.add(Point(keypoints[i], keypoints[i + 1]));
+        points.add(Keypoint(keypoints[i], keypoints[i + 1]));
       }
     }
     return points;
@@ -446,7 +444,7 @@ class YOLOTestHelpers {
               log.add(call);
               return true;
             },
-            'setShowUIControls': (call) {
+            'setShowOverlays': (call) {
               log.add(call);
               return true;
             },

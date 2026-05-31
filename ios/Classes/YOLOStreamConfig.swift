@@ -4,7 +4,7 @@ import Foundation
 
 /// Configuration class for YOLOView streaming functionality
 /// Controls what data is included in real-time streaming and performance settings
-public struct YOLOStreamConfig {
+public struct YOLOStreamConfig: Sendable {
   // Basic inference data (always useful)
   public let includeDetections: Bool
   public let includeClassifications: Bool

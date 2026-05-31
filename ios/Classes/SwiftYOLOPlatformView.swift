@@ -1,7 +1,9 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import AVFoundation
-import Flutter
+// See YOLOPlugin.swift — `@preconcurrency` keeps Flutter's pre-concurrency globals/types Sendable-clean under
+// Swift 6 strict concurrency.
+@preconcurrency import Flutter
 import UIKit
 
 // Helper extension for Float to Double conversion
@@ -11,8 +13,13 @@ extension Float {
   }
 }
 
+// See YOLOPlugin.swift — `@preconcurrency` on the conformances keeps the (non-isolated) FlutterPlatformView /
+// FlutterStreamHandler protocols from tripping Swift 6 strict-isolation warnings on this `@MainActor` class.
 @MainActor
-public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStreamHandler {
+public final class SwiftYOLOPlatformView: NSObject,
+  @preconcurrency FlutterPlatformView,
+  @preconcurrency FlutterStreamHandler
+{
   private let frame: CGRect
   private let viewId: Int64
   private let messenger: FlutterBinaryMessenger
@@ -32,7 +39,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   private var currentConfidenceThreshold: Double = 0.25
   private var currentIouThreshold: Double = 0.7
   private var currentNumItemsThreshold: Int = 30
-  private var currentShowOverlays: Bool = true
 
   init(
     frame: CGRect,
@@ -76,7 +82,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       let iouThreshold = dict["iouThreshold"] as? Double ?? 0.7
       let numItemsThreshold = dict["numItemsThreshold"] as? Int ?? 30
       let useGpu = dict["useGpu"] as? Bool ?? true
-      let showOverlays = dict["showOverlays"] as? Bool ?? true
 
       // Get lensFacing parameter
       let lensFacingParam = dict["lensFacing"] as? String ?? "back"
@@ -87,7 +92,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       self.currentConfidenceThreshold = confidenceThreshold
       self.currentIouThreshold = iouThreshold
       self.currentNumItemsThreshold = numItemsThreshold
-      self.currentShowOverlays = showOverlays
 
       // Create YOLOView
       yoloView = YOLOView(
@@ -98,12 +102,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         cameraPosition: cameraPosition
       )
 
-      // Hide native UI controls by default
-      yoloView?.showUIControls = false
-
-      // Set overlay visibility
-      yoloView?.showOverlays = showOverlays
-
       // Configure YOLOView streaming functionality
       setupYOLOViewStreaming(args: dict)
 
@@ -113,9 +111,34 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       // Setup method channel handler
       setupMethodChannel()
 
-      // Setup zoom callback
+      // Setup zoom callback — keep the legacy method-channel invocation for existing consumers and also push a typed
+      // event on the event channel so the new Dart-side ZoomIndicator (PR 3) can subscribe.
       yoloView?.onZoomChanged = { [weak self] zoomLevel in
-        self?.methodChannel.invokeMethod("onZoomChanged", arguments: Double(zoomLevel))
+        guard let self = self else { return }
+        self.methodChannel.invokeMethod("onZoomChanged", arguments: Double(zoomLevel))
+        self.sendStreamDataToFlutter([
+          "type": "zoom",
+          "value": Double(zoomLevel),
+        ])
+      }
+
+      // Lens-change callback — emitted by YOLOView either when setLens is
+      // called or when zoom crosses a lens boundary.
+      yoloView?.onLensChanged = { [weak self] label in
+        self?.sendStreamDataToFlutter([
+          "type": "lens",
+          "label": label,
+        ])
+      }
+
+      // Tap-to-focus callback — fired after the native focus/exposure
+      // configuration succeeds so the Dart FocusReticle can animate.
+      yoloView?.onFocusTapped = { [weak self] x, y in
+        self?.sendStreamDataToFlutter([
+          "type": "focus",
+          "x": Double(x),
+          "y": Double(y),
+        ])
       }
 
       // Register this view with the factory
@@ -173,7 +196,7 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       guard let self = self else {
         result(
           FlutterError(
-            code: "not_available", message: "YoloPlatformView was disposed", details: nil))
+            code: "not_available", message: "YOLOPlatformView was disposed", details: nil))
         return
       }
 
@@ -265,36 +288,6 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
               code: "invalid_args", message: "Invalid arguments for setThresholds", details: nil))
         }
 
-      case "setShowUIControls":
-        // Method to toggle native UI controls visibility
-        if let args = call.arguments as? [String: Any],
-          let show = args["show"] as? Bool
-        {
-
-          yoloView?.showUIControls = show
-          result(nil)  // Success
-        } else {
-          result(
-            FlutterError(
-              code: "invalid_args", message: "Invalid arguments for setShowUIControls", details: nil
-            ))
-        }
-
-      case "setShowOverlays":
-        // Method to toggle bounding box overlay visibility
-        if let args = call.arguments as? [String: Any],
-          let show = args["show"] as? Bool
-        {
-          self.currentShowOverlays = show
-          yoloView?.showOverlays = show
-          result(nil)  // Success
-        } else {
-          result(
-            FlutterError(
-              code: "invalid_args", message: "Invalid arguments for setShowOverlays", details: nil
-            ))
-        }
-
       case "switchCamera":
 
         self.yoloView?.switchCameraTapped()
@@ -341,11 +334,38 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
             ))
         }
 
+      case "setShowOverlays":
+        if let args = call.arguments as? [String: Any],
+          let visible = args["visible"] as? Bool
+        {
+          self.yoloView?.showOverlays = visible
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for setShowOverlays",
+              details: nil
+            ))
+        }
+
       case "stop":
         // Method to stop camera and inference
-
         self.stopCamera()
         result(nil)  // Success
+
+      case "pause":
+        // Captures the next frame into the cached share image, then stops
+        // the session — matches upstream YOLO iOS pauseTapped.
+        if let view = self.yoloView {
+          view.pause { result(nil) }
+        } else {
+          result(nil)
+        }
+
+      case "resume":
+        // Resumes from a pause()-induced state, clearing the cached frame.
+        self.yoloView?.resume()
+        result(nil)
 
       case "setModel":
         // Method to dynamically switch models
@@ -381,33 +401,75 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
         }
 
       case "captureFrame":
-        // Method to capture current camera frame with detection overlays
-
-        self.yoloView?.capturePhoto { [weak self] image in
-          if let image = image {
-            // Convert UIImage to byte array (JPEG format)
-            if let imageData = image.jpegData(compressionQuality: 0.9) {
-              // Convert to FlutterStandardTypedData for efficient transfer
-              let flutterData = FlutterStandardTypedData(bytes: imageData)
-              result(flutterData)
-            } else {
-              result(
-                FlutterError(
-                  code: "conversion_failed",
-                  message: "Failed to convert captured image to JPEG data",
-                  details: nil
-                )
-              )
-            }
+        // Legacy alias — always returns the composited share image.
+        self.yoloView?.capturePhoto(withOverlays: true) { image in
+          if let image, let data = image.jpegData(compressionQuality: 0.9) {
+            result(FlutterStandardTypedData(bytes: data))
           } else {
             result(
               FlutterError(
                 code: "capture_failed",
                 message: "Failed to capture photo from camera",
-                details: nil
-              )
-            )
+                details: nil))
           }
+        }
+
+      case "capturePhoto":
+        // Canonical capture endpoint. Honors `withOverlays` (default true): false returns the raw oriented camera frame
+        // for callers that want to do their own annotation. Behavior matches the Android handler.
+        let withOverlays = (call.arguments as? [String: Any])?["withOverlays"] as? Bool ?? true
+        self.yoloView?.capturePhoto(withOverlays: withOverlays) { image in
+          if let image, let data = image.jpegData(compressionQuality: 0.9) {
+            result(FlutterStandardTypedData(bytes: data))
+          } else {
+            result(
+              FlutterError(
+                code: "capture_failed",
+                message: "Failed to capture photo from camera",
+                details: nil))
+          }
+        }
+
+      case "getAvailableLenses":
+        // Enumerate physical lenses for the current camera position.
+        guard let yoloView = self.yoloView else {
+          result([] as [Any])
+          return
+        }
+        let lenses = yoloView.availableLenses().map { lens -> [String: Any] in
+          return [
+            "zoomFactor": Double(lens.zoomFactor),
+            "label": lens.label,
+          ]
+        }
+        result(lenses)
+
+      case "setLens":
+        // Switch to the lens whose zoom factor most closely matches the requested value, then emit a `lens` event.
+        if let args = call.arguments as? [String: Any],
+          let zoomFactor = args["zoomFactor"] as? Double
+        {
+          self.yoloView?.setLens(zoomFactor: CGFloat(zoomFactor))
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for setLens", details: nil))
+        }
+
+      case "tapToFocus":
+        // x, y are normalized 0..1 view-relative coordinates; native sets focusPointOfInterest +
+        // exposurePointOfInterest and emits a `focus` event so the Dart FocusReticle can animate.
+        if let args = call.arguments as? [String: Any],
+          let x = args["x"] as? Double,
+          let y = args["y"] as? Double
+        {
+          self.yoloView?.tapToFocus(x: CGFloat(x), y: CGFloat(y))
+          result(nil)
+        } else {
+          result(
+            FlutterError(
+              code: "invalid_args", message: "Invalid arguments for tapToFocus", details: nil))
         }
 
       // Additional methods can be added here in the future
@@ -484,6 +546,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
     // Clear callbacks to prevent retain cycles
     yoloView?.onDetection = nil
     yoloView?.onZoomChanged = nil
+    yoloView?.onLensChanged = nil
+    yoloView?.onFocusTapped = nil
     yoloView?.setStreamCallback(nil)
 
     // Remove from factory registry
@@ -492,18 +556,20 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
   }
 
   deinit {
-    // Clean up event channel
-    eventSink = nil
-    eventChannel.setStreamHandler(nil)
-
-    // Clean up method channel
-    methodChannel.setMethodCallHandler(nil)
-
-    let yoloViewToClean = yoloView
+    // Flutter calls platform-view dealloc on the main thread, so `MainActor.assumeIsolated` lets us touch the
+    // main-actor-isolated properties (`eventSink`, channels, `yoloView`) without crossing isolation under Swift 6
+    // strict concurrency. Reading `yoloView` then nilling it has to happen inside the same `assumeIsolated` body
+    // because direct access to a main-actor property from a `nonisolated deinit` is an error in Swift 6 mode.
     let viewIdToUnregister = Int(viewId)
     let instanceIdToRemove = flutterViewId
-
-    yoloView = nil
+    let yoloViewToClean: YOLOView? = MainActor.assumeIsolated {
+      eventSink = nil
+      eventChannel.setStreamHandler(nil)
+      methodChannel.setMethodCallHandler(nil)
+      let captured = yoloView
+      yoloView = nil
+      return captured
+    }
 
     Task { @MainActor in
       // Stop the camera capture
@@ -512,6 +578,8 @@ public class SwiftYOLOPlatformView: NSObject, FlutterPlatformView, FlutterStream
       // Clear callbacks to prevent retain cycles
       yoloViewToClean?.onDetection = nil
       yoloViewToClean?.onZoomChanged = nil
+      yoloViewToClean?.onLensChanged = nil
+      yoloViewToClean?.onFocusTapped = nil
       yoloViewToClean?.setStreamCallback(nil)
 
       // Remove from factory registry

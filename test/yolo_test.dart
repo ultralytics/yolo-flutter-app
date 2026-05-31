@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 import 'package:ultralytics_yolo/platform/yolo_platform_interface.dart';
 import 'package:ultralytics_yolo/platform/yolo_platform_impl.dart';
@@ -68,27 +69,110 @@ void main() {
     });
 
     test('official models are available per task', () {
-      expect(YOLO.officialModels(task: YOLOTask.detect), contains('yolo26n'));
-      expect(
-        YOLO.officialModels(task: YOLOTask.segment),
-        everyElement(endsWith('-seg')),
-      );
-      expect(
-        YOLO.officialModels(task: YOLOTask.semantic),
-        everyElement(endsWith('-sem')),
-      );
-      expect(
-        YOLO.officialModels(task: YOLOTask.classify),
-        everyElement(endsWith('-cls')),
-      );
-      expect(
-        YOLO.officialModels(task: YOLOTask.pose),
-        everyElement(endsWith('-pose')),
-      );
-      expect(
-        YOLO.officialModels(task: YOLOTask.obb),
-        everyElement(endsWith('-obb')),
-      );
+      const expected = {
+        YOLOTask.detect: [
+          'yolo26n',
+          'yolo26s',
+          'yolo26m',
+          'yolo26l',
+          'yolo26x',
+        ],
+        YOLOTask.segment: [
+          'yolo26n-seg',
+          'yolo26s-seg',
+          'yolo26m-seg',
+          'yolo26l-seg',
+          'yolo26x-seg',
+        ],
+        YOLOTask.semantic: [
+          'yolo26n-sem',
+          'yolo26s-sem',
+          'yolo26m-sem',
+          'yolo26l-sem',
+          'yolo26x-sem',
+        ],
+        YOLOTask.classify: [
+          'yolo26n-cls',
+          'yolo26s-cls',
+          'yolo26m-cls',
+          'yolo26l-cls',
+          'yolo26x-cls',
+        ],
+        YOLOTask.pose: [
+          'yolo26n-pose',
+          'yolo26s-pose',
+          'yolo26m-pose',
+          'yolo26l-pose',
+          'yolo26x-pose',
+        ],
+        YOLOTask.obb: [
+          'yolo26n-obb',
+          'yolo26s-obb',
+          'yolo26m-obb',
+          'yolo26l-obb',
+          'yolo26x-obb',
+        ],
+      };
+
+      for (final entry in expected.entries) {
+        final yolo26Models = YOLO
+            .officialModels(task: entry.key)
+            .where((id) => id.startsWith('yolo26'))
+            .toList(growable: false);
+        expect(yolo26Models, entry.value);
+      }
+    });
+
+    test('official YOLO26 Android and Apple URLs cover every task and size', () {
+      const expected = [
+        'yolo26n',
+        'yolo26s',
+        'yolo26m',
+        'yolo26l',
+        'yolo26x',
+        'yolo26n-seg',
+        'yolo26s-seg',
+        'yolo26m-seg',
+        'yolo26l-seg',
+        'yolo26x-seg',
+        'yolo26n-sem',
+        'yolo26s-sem',
+        'yolo26m-sem',
+        'yolo26l-sem',
+        'yolo26x-sem',
+        'yolo26n-cls',
+        'yolo26s-cls',
+        'yolo26m-cls',
+        'yolo26l-cls',
+        'yolo26x-cls',
+        'yolo26n-pose',
+        'yolo26s-pose',
+        'yolo26m-pose',
+        'yolo26l-pose',
+        'yolo26x-pose',
+        'yolo26n-obb',
+        'yolo26s-obb',
+        'yolo26m-obb',
+        'yolo26l-obb',
+        'yolo26x-obb',
+      ];
+
+      for (final modelId in expected) {
+        expect(
+          YOLOModelResolver.officialModelDownloadUrlForTesting(
+            modelId,
+            iosLike: false,
+          ),
+          'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5/${modelId}_int8.tflite',
+        );
+        expect(
+          YOLOModelResolver.officialModelDownloadUrlForTesting(
+            modelId,
+            iosLike: true,
+          ),
+          'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/$modelId.mlpackage.zip',
+        );
+      }
     });
 
     test('default official model returns the first supported ID', () {

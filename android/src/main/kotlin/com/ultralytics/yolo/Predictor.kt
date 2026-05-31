@@ -5,7 +5,6 @@ package com.ultralytics.yolo
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.graphics.RectF
-import org.tensorflow.lite.Interpreter
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -37,10 +36,10 @@ interface Predictor {
 abstract class BasePredictor : Predictor {
     override var isUpdating: Boolean = false
     override lateinit var labels: List<String>
-    protected lateinit var interpreter: Interpreter
+    protected lateinit var rtModel: LiteRtModel
     override lateinit var inputSize: Size
     protected lateinit var modelInputSize: Pair<Int, Int>
-    protected fun isInterpreterInitialized() = this::interpreter.isInitialized
+    protected fun isInterpreterInitialized() = this::rtModel.isInitialized
 
     protected var t0: Long = 0L
     protected var t2: Double = 0.0
@@ -54,17 +53,25 @@ abstract class BasePredictor : Predictor {
 
     fun close() {
         if (isInterpreterInitialized()) {
-            interpreter.close()
+            rtModel.close()
         }
     }
 
     protected fun updateTiming() {
         val now = System.nanoTime()
-        val dt = (now - t0) / 1e9
-        t2 = 0.05 * dt + 0.95 * t2
+        val dtMs = (now - t0) / 1_000_000.0
+        t2 = 0.05 * dtMs + 0.95 * t2
         t4 = 0.05 * ((now - t3) / 1e9) + 0.95 * t4
         t3 = now
     }
+
+    protected fun elapsedMsSinceStart(): Double = (System.nanoTime() - t0) / 1_000_000.0
+
+    protected fun labelName(index: Int): String {
+        if (index < 0) return "class $index"
+        return labels.getOrNull(index)?.takeIf { it.isNotBlank() } ?: "class $index"
+    }
+
     override fun setIouThreshold(iou: Double) {
         IOU_THRESHOLD = iou.toFloat()
     }
@@ -197,10 +204,13 @@ abstract class BasePredictor : Predictor {
 
     private fun inputRectFromModelRect(modelRect: RectF, origWidth: Int, origHeight: Int): RectF? {
         val transform = letterboxTransform(origWidth, origHeight) ?: return modelRect
-        val left = ((modelRect.left - transform.padX) / transform.gain).coerceIn(0f, origWidth.toFloat())
-        val top = ((modelRect.top - transform.padY) / transform.gain).coerceIn(0f, origHeight.toFloat())
-        val right = ((modelRect.right - transform.padX) / transform.gain).coerceIn(0f, origWidth.toFloat())
-        val bottom = ((modelRect.bottom - transform.padY) / transform.gain).coerceIn(0f, origHeight.toFloat())
+        // Do NOT clamp to the image bounds: a partially off-frame object has a box that legitimately extends past the
+        // edge, and clamping each side to [0, size] distorts it (e.g. a left edge pinned to 0 shifts the box right /
+        // stretches its width). Keep the true coordinates and let the overlay clip them, matching the iOS app.
+        val left = (modelRect.left - transform.padX) / transform.gain
+        val top = (modelRect.top - transform.padY) / transform.gain
+        val right = (modelRect.right - transform.padX) / transform.gain
+        val bottom = (modelRect.bottom - transform.padY) / transform.gain
         val rect = RectF(min(left, right), min(top, bottom), max(left, right), max(top, bottom))
         return rect.takeIf { it.width() > 0f && it.height() > 0f }
     }

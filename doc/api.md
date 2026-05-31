@@ -29,14 +29,14 @@ class YOLO {
 
 #### Constructor Parameters
 
-| Parameter           | Type                    | Required | Default | Description                                           |
-| ------------------- | ----------------------- | -------- | ------- | ----------------------------------------------------- |
-| `modelPath`         | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL     |
-| `task`              | `YOLOTask?`             | ❌       | `null`  | Type of YOLO task to perform when metadata is missing |
-| `useGpu`            | `bool`                  | ❌       | `true`  | Enable GPU acceleration when supported                |
-| `useMultiInstance`  | `bool`                  | ❌       | `false` | Enable multi-instance support                         |
-| `classifierOptions` | `Map<String, dynamic>?` | ❌       | `null`  | Optional classifier preprocessing and label overrides |
-| `numItemsThreshold` | `int?`                  | ❌       | `30`    | Maximum number of returned detections                 |
+| Parameter           | Type                    | Required | Default | Description                                                                                                 |
+| ------------------- | ----------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| `modelPath`         | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL                                                           |
+| `task`              | `YOLOTask?`             | ❌       | `null`  | Type of YOLO task to perform when metadata is missing                                                       |
+| `useGpu`            | `bool`                  | ❌       | `true`  | Allow GPU acceleration on Android (LiteRT 2.x GPU → CPU ladder); iOS uses Core ML. Set `false` to force CPU |
+| `useMultiInstance`  | `bool`                  | ❌       | `false` | Enable multi-instance support                                                                               |
+| `classifierOptions` | `Map<String, dynamic>?` | ❌       | `null`  | Optional classifier preprocessing and label overrides                                                       |
+| `numItemsThreshold` | `int?`                  | ❌       | `30`    | Maximum number of returned detections                                                                       |
 
 #### Properties
 
@@ -241,14 +241,11 @@ class YOLOView extends StatefulWidget {
     this.onResult,
     this.onPerformanceMetrics,
     this.onStreamingData,
-    this.showNativeUI = false,
     this.onZoomChanged,
     this.streamingConfig,
     this.confidenceThreshold = 0.25,
     this.iouThreshold = 0.7,
     this.useGpu = true,
-    this.showOverlays = true,
-    this.overlayTheme = const YOLOOverlayTheme(),
     this.lensFacing = LensFacing.back,
   }) : super(key: key);
 }
@@ -256,28 +253,23 @@ class YOLOView extends StatefulWidget {
 
 #### Constructor Parameters
 
-| Parameter              | Type                                | Required | Default                    | Description                                       |
-| ---------------------- | ----------------------------------- | -------- | -------------------------- | ------------------------------------------------- |
-| `modelPath`            | `String`                            | ✅       | -                          | Official model ID, local path, asset path, or URL |
-| `task`                 | `YOLOTask?`                         | ❌       | `null`                     | YOLO task type when metadata is missing           |
-| `controller`           | `YOLOViewController?`               | ❌       | `null`                     | Custom view controller                            |
-| `cameraResolution`     | `String`                            | ❌       | `"720p"`                   | Camera resolution                                 |
-| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`                     | Detection results callback                        |
-| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`                     | Performance metrics callback                      |
-| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`                     | Comprehensive streaming callback                  |
-| `showNativeUI`         | `bool`                              | ❌       | `false`                    | Show native camera controls                       |
-| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`                     | Zoom level change callback                        |
-| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`                     | Streaming configuration                           |
-| `confidenceThreshold`  | `double`                            | ❌       | `0.25`                     | Initial confidence threshold for YOLOView         |
-| `iouThreshold`         | `double`                            | ❌       | `0.7`                      | Initial IoU threshold for YOLOView                |
-| `useGpu`               | `bool`                              | ❌       | `true`                     | Enable GPU acceleration for camera inference      |
-| `showOverlays`         | `bool`                              | ❌       | `true`                     | Draw Flutter-side detection overlays              |
-| `overlayTheme`         | `YOLOOverlayTheme`                  | ❌       | `const YOLOOverlayTheme()` | Customize Flutter overlay styling                 |
-| `lensFacing`           | `LensFacing`                        | ❌       | `LensFacing.back`          | Initial camera lens selection                     |
+| Parameter              | Type                                | Required | Default           | Description                                                                               |
+| ---------------------- | ----------------------------------- | -------- | ----------------- | ----------------------------------------------------------------------------------------- |
+| `modelPath`            | `String`                            | ✅       | -                 | Official model ID, local path, asset path, or URL                                         |
+| `task`                 | `YOLOTask?`                         | ❌       | `null`            | YOLO task type when metadata is missing                                                   |
+| `controller`           | `YOLOViewController?`               | ❌       | `null`            | Custom view controller                                                                    |
+| `cameraResolution`     | `String`                            | ❌       | `"720p"`          | Camera resolution                                                                         |
+| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`            | Detection results callback                                                                |
+| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`            | Performance metrics callback                                                              |
+| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`            | Comprehensive streaming callback                                                          |
+| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`            | Zoom level change callback                                                                |
+| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`            | Streaming configuration                                                                   |
+| `confidenceThreshold`  | `double`                            | ❌       | `0.25`            | Initial confidence threshold for YOLOView                                                 |
+| `iouThreshold`         | `double`                            | ❌       | `0.7`             | Initial IoU threshold for YOLOView                                                        |
+| `useGpu`               | `bool`                              | ❌       | `true`            | Allow GPU acceleration on Android (LiteRT 2.x GPU → CPU ladder); set `false` to force CPU |
+| `lensFacing`           | `LensFacing`                        | ❌       | `LensFacing.back` | Initial camera lens selection                                                             |
 
-`LensFacing.backWide` prefers the shortest-focal-length rear camera on Android
-and falls back to the default back camera when the device does not expose a
-wide rear lens. Other platforms treat it as `LensFacing.back`.
+`LensFacing.backWide` prefers the shortest-focal-length rear camera on Android and falls back to the default back camera when the device does not expose a wide rear lens. Other platforms treat it as `LensFacing.back`.
 
 #### Example
 
@@ -291,6 +283,18 @@ YOLOView(
   },
 )
 ```
+
+#### 0.4.0 Migration Notes
+
+`YOLOView` no longer accepts `showOverlays`, `overlayTheme`, or `showNativeUI`. Camera overlay drawing is native-only, and package-provided controls moved out of `YOLOView`.
+
+| Removed API                                | Use instead                                                                                          |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `YOLOOverlay`, `YOLOOverlayTheme`          | Native `YOLOView` overlays, or raw `onResult`/`YOLO.predict()` data for fully custom rendering.      |
+| `YOLOControls`                             | `YOLOShowcase` for the full UI, or exported widgets such as `TaskSegmentedControl` and `LensPicker`. |
+| `YOLOView.showNativeUI`                    | `YOLOShowcase` for built-in controls; bare `YOLOView` plus your own Flutter controls for custom UI.  |
+| `YOLOView.showOverlays`, `overlayTheme`    | No constructor replacement. Native camera overlays are not themed or toggled from Dart.              |
+| `setShowUIControls()`, `setShowOverlays()` | Own the surrounding Flutter controls; `capturePhoto(withOverlays: false)` only affects captures.     |
 
 ---
 
@@ -306,12 +310,15 @@ class YOLOViewController {
 
 #### Properties
 
-| Property              | Type     | Description                            |
-| --------------------- | -------- | -------------------------------------- |
-| `confidenceThreshold` | `double` | Current confidence threshold (0.0-1.0) |
-| `iouThreshold`        | `double` | Current IoU threshold (0.0-1.0)        |
-| `numItemsThreshold`   | `int`    | Maximum number of detections (1-100)   |
-| `isInitialized`       | `bool`   | Whether controller is initialized      |
+| Property              | Type             | Description                                                         |
+| --------------------- | ---------------- | ------------------------------------------------------------------- |
+| `confidenceThreshold` | `double`         | Current confidence threshold (0.0-1.0)                              |
+| `iouThreshold`        | `double`         | Current IoU threshold (0.0-1.0)                                     |
+| `numItemsThreshold`   | `int`            | Maximum number of detections (1-100)                                |
+| `isInitialized`       | `bool`           | Whether controller is initialized                                   |
+| `zoomEvents`          | `Stream<double>` | Broadcast stream of zoom-factor changes emitted by the native layer |
+| `lensEvents`          | `Stream<String>` | Broadcast stream of lens-switch events emitted by the native layer  |
+| `focusEvents`         | `Stream<Offset>` | Broadcast stream of tap-to-focus coordinates (view-relative)        |
 
 #### Methods
 
@@ -451,22 +458,6 @@ Restart the camera session after stopping it.
 Future<void> restartCamera()
 ```
 
-##### `setShowUIControls()`
-
-Show or hide the native camera controls.
-
-```dart
-Future<void> setShowUIControls(bool show)
-```
-
-##### `setShowOverlays()`
-
-Show or hide Flutter-side detection overlays.
-
-```dart
-Future<void> setShowOverlays(bool show)
-```
-
 ##### `setStreamingConfig()`
 
 Configure streaming behavior.
@@ -517,6 +508,121 @@ if (imageData != null) {
 - OBB rotated boxes (for OBB task)
 - Classification results (for classify task)
 
+##### `capturePhoto()`
+
+Capture a composited JPEG of the current camera frame, optionally with native detection overlays drawn in.
+
+```dart
+Future<Uint8List?> capturePhoto({bool withOverlays = true})
+```
+
+**Parameters**: `withOverlays` - Include native detection overlays in the output JPEG (default `true`)
+
+**Returns**: `Future<Uint8List?>` - JPEG image data, or `null` if capture fails
+
+##### `getAvailableLenses()`
+
+Return the list of physical camera lenses available on the device.
+
+```dart
+Future<List<LensInfo>> getAvailableLenses()
+```
+
+**Returns**: `Future<List<LensInfo>>` - Each entry carries a `zoomFactor` (the lens's approximate optical zoom relative to the main sensor) and a human-readable `label`.
+
+##### `setLens()`
+
+Switch to the physical lens whose zoom factor is nearest to the requested value.
+
+```dart
+Future<void> setLens(double zoomFactor)
+```
+
+**Parameters**: `zoomFactor` - Target zoom factor; the nearest available lens is selected.
+
+##### `tapToFocus()`
+
+Request a focus/exposure lock at the given view-relative coordinates.
+
+```dart
+Future<void> tapToFocus(double x, double y)
+```
+
+**Parameters**:
+
+- `x` - Horizontal position in the range 0.0 (left) to 1.0 (right)
+- `y` - Vertical position in the range 0.0 (top) to 1.0 (bottom)
+
+##### `pause()`
+
+Pause the active camera session. On iOS the last frame is kept frozen so `capturePhoto` returns that frame; on Android this is an alias for `stop()`.
+
+```dart
+Future<void> pause()
+```
+
+##### `resume()`
+
+Resume after `pause()`. On iOS the cached share frame is cleared and the session restarts; on Android this is an alias for `restartCamera()`.
+
+```dart
+Future<void> resume()
+```
+
+---
+
+### YOLOShowcase Widget
+
+A Material 3 one-import camera screen that mirrors the layout of the native Ultralytics YOLO iOS app. All 9 exported UI widgets are composed automatically.
+
+```dart
+YOLOShowcase(
+  modelPath: 'yolo26n',
+  onCapture: (bytes) {},
+)
+```
+
+#### Constructor Parameters
+
+| Parameter   | Type                    | Required | Default | Description                                        |
+| ----------- | ----------------------- | -------- | ------- | -------------------------------------------------- |
+| `modelPath` | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL  |
+| `onCapture` | `Function(Uint8List?)?` | ❌       | `null`  | Callback invoked with the JPEG bytes after capture |
+
+Import once and get the full UI:
+
+```dart
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
+
+YOLOShowcase(modelPath: 'yolo26n')
+```
+
+For a custom layout, compose the 9 exported Material widgets around a bare `YOLOView` instead: `TaskSegmentedControl`, `ModelSizeSegmentedControl`, `ThresholdSliderRow`, `LensPicker`, `ZoomIndicator`, `CameraToolbar`, `FocusReticle`, `LogoOverlay`, `PerformanceLabel`.
+
+---
+
+### YOLOModelManager Class
+
+Static class that manages model downloads and caching.
+
+#### Static Properties
+
+##### `downloadProgress`
+
+A broadcast `Stream<DownloadProgress>` that emits fractional progress (0.0–1.0) while an official model asset is downloading.
+
+```dart
+static Stream<DownloadProgress> get downloadProgress
+```
+
+**Example**:
+
+```dart
+YOLOModelManager.downloadProgress.listen((progress) {
+  print('Download: ${(progress.fraction * 100).toStringAsFixed(0)}%');
+});
+```
+
 ---
 
 ### YOLOResult Class
@@ -531,7 +637,7 @@ class YOLOResult {
   final Rect boundingBox;
   final Rect normalizedBox;
   final List<List<double>>? mask;
-  final List<Point>? keypoints;
+  final List<Keypoint>? keypoints;
   final double? angle;
 }
 ```
@@ -546,13 +652,12 @@ class YOLOResult {
 | `boundingBox`   | `Rect`                | Bounding box in pixel coordinates        |
 | `normalizedBox` | `Rect`                | Normalized bounding box (0.0-1.0)        |
 | `mask`          | `List<List<double>>?` | Instance mask data (segment task only)   |
-| `keypoints`     | `List<Point>?`        | Pose keypoints (pose task only)          |
+| `keypoints`     | `List<Keypoint>?`     | Pose keypoints (pose task only)          |
 | `angle`         | `double?`             | OBB rotation angle in radians (OBB only) |
 
 ---
 
-Single-image semantic segmentation returns `YOLODetectionResults.semanticMask`
-with a row-major `classMap`, `width`, and `height`.
+Single-image semantic segmentation returns `YOLODetectionResults.semanticMask` with a row-major `classMap`, `width`, and `height`.
 
 ---
 

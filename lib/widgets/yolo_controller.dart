@@ -1,10 +1,33 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
+
+/// Describes a discoverable camera lens (e.g. ultra-wide, wide, telephoto).
+class LensInfo {
+  const LensInfo({required this.zoomFactor, required this.label});
+
+  /// Zoom factor used to engage this lens (e.g. `0.5`, `1.0`, `2.0`).
+  final double zoomFactor;
+
+  /// Human-readable label such as `Ultra wide camera` or `Telephoto camera`.
+  final String label;
+
+  /// Builds a [LensInfo] from the native method-channel response map.
+  factory LensInfo.fromMap(Map<dynamic, dynamic> map) {
+    final factor = (map['zoomFactor'] as num?)?.toDouble() ?? 1.0;
+    final label = (map['label'] as String?) ?? '';
+    return LensInfo(zoomFactor: factor, label: label);
+  }
+
+  @override
+  String toString() => 'LensInfo(zoomFactor: $zoomFactor, label: $label)';
+}
 
 /// Controls a [YOLOView] imperatively: thresholds, camera, zoom, streaming.
 class YOLOViewController {
@@ -14,10 +37,26 @@ class YOLOViewController {
   double _iouThreshold = 0.7;
   int _numItemsThreshold = 30;
 
+  final StreamController<double> _zoomController =
+      StreamController<double>.broadcast();
+  final StreamController<String> _lensController =
+      StreamController<String>.broadcast();
+  final StreamController<Offset> _focusController =
+      StreamController<Offset>.broadcast();
+
   double get confidenceThreshold => _confidenceThreshold;
   double get iouThreshold => _iouThreshold;
   int get numItemsThreshold => _numItemsThreshold;
   bool get isInitialized => _methodChannel != null && _viewId != null;
+
+  /// Emits the native zoom factor whenever it changes (e.g. via pinch).
+  Stream<double> get zoomEvents => _zoomController.stream;
+
+  /// Emits the label of the currently selected lens whenever it changes.
+  Stream<String> get lensEvents => _lensController.stream;
+
+  /// Emits the normalized (0..1) view-relative tap-to-focus point.
+  Stream<Offset> get focusEvents => _focusController.stream;
 
   YOLOViewController();
 
@@ -92,16 +131,54 @@ class YOLOViewController {
   Future<void> setZoomLevel(double zoomLevel) =>
       _invoke('setZoomLevel', {'zoomLevel': zoomLevel});
 
+  /// Returns the lenses the active device exposes (back camera lens cluster).
+  Future<List<LensInfo>> getAvailableLenses() async {
+    final result = await _invoke<List<dynamic>>('getAvailableLenses');
+    if (result == null) return const <LensInfo>[];
+    return result
+        .whereType<Map>()
+        .map(LensInfo.fromMap)
+        .toList(growable: false);
+  }
+
+  /// Snaps the active camera to the lens whose native zoom factor is [zoomFactor].
+  Future<void> setLens(double zoomFactor) =>
+      _invoke('setLens', {'zoomFactor': zoomFactor});
+
+  /// Requests focus + exposure at the view-relative point ([x], [y] in 0..1).
+  Future<void> tapToFocus(double x, double y) =>
+      _invoke('tapToFocus', {'x': x, 'y': y});
+
+  /// Shows or hides native prediction overlays without changing inference callbacks.
+  Future<void> setShowOverlays(bool visible) =>
+      _invoke('setShowOverlays', {'visible': visible});
+
+  /// Captures a still photo from the live preview.
+  ///
+  /// When [withOverlays] is `true`, the returned JPEG includes the rendered bounding-box overlays composited over the
+  /// camera frame.
+  Future<Uint8List?> capturePhoto({bool withOverlays = true}) =>
+      _invoke<Uint8List>('capturePhoto', {'withOverlays': withOverlays});
+
   Future<void> switchModel(String modelPath, [YOLOTask? task]) async {
-    if (_methodChannel == null || _viewId == null) return;
+    final channel = _methodChannel;
+    if (channel == null || _viewId == null) return;
     final resolvedModel = await YOLOModelResolver.resolve(
       modelPath: modelPath,
       task: task,
     );
-    await _invoke('setModel', {
-      'modelPath': resolvedModel.modelPath,
-      'task': resolvedModel.task.name,
-    });
+    // Call the channel directly (not _invoke) so a native setModel failure propagates: the in-place-switch path in
+    // YOLOView relies on this throwing to revert the target and route to onModelError, instead of silently
+    // committing the new model and firing onModelLoad as if it succeeded.
+    try {
+      await channel.invokeMethod<void>('setModel', {
+        'modelPath': resolvedModel.modelPath,
+        'task': resolvedModel.task.name,
+      });
+    } catch (e) {
+      logInfo('YOLOViewController.setModel failed: $e');
+      rethrow;
+    }
   }
 
   Future<void> setStreamingConfig(YOLOStreamingConfig config) =>
@@ -124,11 +201,50 @@ class YOLOViewController {
 
   Future<void> restartCamera() => _invoke('restartCamera');
 
-  Future<void> setShowUIControls(bool show) =>
-      _invoke('setShowUIControls', {'show': show});
+  /// Pause the preview. On iOS this snapshots the next frame into the native share-image cache before stopping the
+  /// session (so [capturePhoto] after pause returns the frozen frame); on Android it's a `stop()` alias.
+  Future<void> pause() => _invoke('pause');
 
-  Future<void> setShowOverlays(bool show) =>
-      _invoke('setShowOverlays', {'show': show});
+  /// Resume after [pause]. iOS clears the cached share frame and restarts the session; Android aliases to
+  /// `restartCamera()`.
+  Future<void> resume() => _invoke('resume');
 
   Future<Uint8List?> captureFrame() => _invoke<Uint8List>('captureFrame');
+
+  /// Routes a typed native event (`zoom`/`lens`/`focus`) to the matching stream.
+  ///
+  /// Called by `YOLOView` from its event-channel listener; safe to invoke from other native bridges that surface the
+  /// same typed events.
+  void onNativeEvent(Map<dynamic, dynamic> event) {
+    final type = event['type'];
+    if (type is! String) return;
+    switch (type) {
+      case 'zoom':
+        final value = (event['value'] as num?)?.toDouble();
+        if (value != null && !_zoomController.isClosed) {
+          _zoomController.add(value);
+        }
+        break;
+      case 'lens':
+        final label = event['label'];
+        if (label is String && !_lensController.isClosed) {
+          _lensController.add(label);
+        }
+        break;
+      case 'focus':
+        final x = (event['x'] as num?)?.toDouble();
+        final y = (event['y'] as num?)?.toDouble();
+        if (x != null && y != null && !_focusController.isClosed) {
+          _focusController.add(Offset(x, y));
+        }
+        break;
+    }
+  }
+
+  /// Releases the broadcast stream controllers owned by this controller.
+  void dispose() {
+    _zoomController.close();
+    _lensController.close();
+    _focusController.close();
+  }
 }

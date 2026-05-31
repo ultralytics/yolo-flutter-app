@@ -24,21 +24,31 @@ protocol VideoCaptureDelegate: AnyObject {
 }
 
 func bestCaptureDevice(position: AVCaptureDevice.Position) -> AVCaptureDevice? {
-  if UserDefaults.standard.bool(forKey: "use_telephoto"),
-    let device = AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: position)
-  {
-    return device
-  } else if let device = AVCaptureDevice.default(
-    .builtInDualCamera, for: .video, position: position)
-  {
-    return device
-  } else if let device = AVCaptureDevice.default(
-    .builtInWideAngleCamera, for: .video, position: position)
-  {
-    return device
-  } else {
-    return nil
+  // Prefer the virtual multi-camera so the ultra-wide (0.5x) is a constituent of the active device and reachable via
+  // videoZoomFactor — a plain `.builtInWideAngleCamera`/`.builtInDualCamera` has no ultra-wide, so 0.5x is impossible
+  // and only zoom-in (2x/4x) works. Mirrors `yolo-ios-app/Sources/YOLO/VideoCapture.swift#bestCaptureDevice`.
+  let preferredTypes: [AVCaptureDevice.DeviceType] =
+    position == .back
+    ? [.builtInTripleCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera]
+    : [.builtInTrueDepthCamera, .builtInWideAngleCamera]
+
+  for deviceType in preferredTypes {
+    if let device = AVCaptureDevice.default(deviceType, for: .video, position: position) {
+      return device
+    }
   }
+
+  return nil
+}
+
+/// Converts a raw `videoZoomFactor` into the user-facing factor shown in the UI (e.g. raw 1.0 on a device whose widest
+/// lens is the ultra-wide reads as 0.5x). iOS 18+ exposes the per-device multiplier; earlier OSes have no sub-1x
+/// display concept so the raw value is shown as-is. Mirrors `yolo-ios-app/Sources/YOLO/VideoCapture.swift`.
+func displayZoomFactor(_ zoomFactor: CGFloat, for device: AVCaptureDevice) -> CGFloat {
+  if #available(iOS 18.0, *) {
+    return zoomFactor * device.displayVideoZoomFactorMultiplier
+  }
+  return zoomFactor
 }
 
 class VideoCapture: NSObject, @unchecked Sendable {
@@ -49,15 +59,21 @@ class VideoCapture: NSObject, @unchecked Sendable {
   let captureSession = AVCaptureSession()
   var videoInput: AVCaptureDeviceInput? = nil
   let videoOutput = AVCaptureVideoDataOutput()
-  var photoOutput = AVCapturePhotoOutput()
   let cameraQueue = DispatchQueue(label: "camera-queue")
-  var lastCapturedPhoto: UIImage? = nil
   var inferenceOK = true
   var longSide: CGFloat = 3
   var shortSide: CGFloat = 4
   var frameSizeCaptured = false
 
   private var currentBuffer: CVPixelBuffer?
+  // Called with the very next sample buffer rendered through the video output; matches upstream YOLO iOS
+  // `captureNextFrame`. Used by `capturePhoto` so the share-sheet image is a freshly composited live frame (not a
+  // separate AVCapturePhotoOutput still that would be off-axis from the preview).
+  private var frameCaptureCompletion: ((UIImage?) -> Void)?
+  // Monotonic token identifying the in-flight `captureNextFrame` request, so the watchdog only fires the completion it
+  // armed (and not a newer one that replaced it).
+  private var frameCaptureToken: UInt64 = 0
+  private let imageContext = CIContext()
 
   func setUp(
     sessionPreset: AVCaptureSession.Preset = .hd1280x720,
@@ -65,12 +81,39 @@ class VideoCapture: NSObject, @unchecked Sendable {
     videoOrientation: AVCaptureVideoOrientation,
     completion: @escaping (Bool) -> Void
   ) {
-    cameraQueue.async {
-      let success = self.setUpCamera(
-        sessionPreset: sessionPreset, position: position, videoOrientation: videoOrientation)
-      DispatchQueue.main.async {
-        completion(success)
+    // The Flutter plugin doesn't have a host UIViewController that can present a permission prompt, so we trigger the
+    // iOS camera-permission dialog here on the first launch. Without this `setUpCamera` would bail with
+    // `notDetermined` and the live preview would silently never come up. NSCameraUsageDescription must be set in the
+    // host app's Info.plist (it is in the example).
+    // Carry the non-Sendable completion across queue boundaries via SendableBox so Swift 6 strict concurrency doesn't
+    // flag the captures. All invocations land on the main queue. `@Sendable` on `proceed` lets the closure cross into
+    // `AVCaptureDevice.requestAccess`'s `@Sendable` callback below.
+    let completionBox = SendableBox(completion)
+    let proceed: @Sendable () -> Void = { [self] in
+      cameraQueue.async {
+        let success = self.setUpCamera(
+          sessionPreset: sessionPreset, position: position, videoOrientation: videoOrientation)
+        DispatchQueue.main.async {
+          completionBox.value(success)
+        }
       }
+    }
+    switch AVCaptureDevice.authorizationStatus(for: .video) {
+    case .authorized:
+      proceed()
+    case .notDetermined:
+      AVCaptureDevice.requestAccess(for: .video) { granted in
+        if granted {
+          proceed()
+        } else {
+          DispatchQueue.main.async { completionBox.value(false) }
+        }
+      }
+    case .denied, .restricted:
+      NSLog("YOLO VideoCapture: Camera permission denied or restricted. Cannot initialize camera.")
+      DispatchQueue.main.async { completionBox.value(false) }
+    @unknown default:
+      DispatchQueue.main.async { completionBox.value(false) }
     }
   }
 
@@ -138,16 +181,11 @@ class VideoCapture: NSObject, @unchecked Sendable {
     if captureSession.canAddOutput(videoOutput) {
       captureSession.addOutput(videoOutput)
     }
-    if captureSession.canAddOutput(photoOutput) {
-      captureSession.addOutput(photoOutput)
-      photoOutput.isHighResolutionCaptureEnabled = true
-      //            photoOutput.isLivePhotoCaptureEnabled = photoOutput.isLivePhotoCaptureSupported
-    }
 
     let connection = videoOutput.connection(with: AVMediaType.video)
     connection?.videoOrientation = videoOrientation
     if position == .front {
-      connection?.isVideoMirrored = true
+      configureVideoMirroring(connection, isMirrored: true)
     }
 
     // Configure captureDevice
@@ -166,7 +204,9 @@ class VideoCapture: NSObject, @unchecked Sendable {
         device.focusMode = AVCaptureDevice.FocusMode.continuousAutoFocus
         device.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
       }
-      device.exposureMode = AVCaptureDevice.ExposureMode.continuousAutoExposure
+      if device.isExposureModeSupported(.continuousAutoExposure) {
+        device.exposureMode = .continuousAutoExposure
+      }
       device.unlockForConfiguration()
     } catch {
       NSLog("YOLO VideoCapture: device configuration failed: %@", error.localizedDescription)
@@ -187,6 +227,15 @@ class VideoCapture: NSObject, @unchecked Sendable {
   }
 
   func stop() {
+    // Drain any pending `captureNextFrame` completion on the cameraQueue (the same queue that stores it in
+    // captureNextFrame and fires it in captureOutput). Without this, stopping before the next sample buffer arrives
+    // strands the completion forever, hanging the Dart `await` behind pause/capturePhoto.
+    cameraQueue.async { [weak self] in
+      guard let self, let pending = self.frameCaptureCompletion else { return }
+      self.frameCaptureCompletion = nil
+      let completionBox = SendableBox(pending)
+      DispatchQueue.main.async { completionBox.value(nil) }
+    }
     if captureSession.isRunning {
       DispatchQueue.global().async {
         self.captureSession.stopRunning()
@@ -234,13 +283,19 @@ class VideoCapture: NSObject, @unchecked Sendable {
 
     connection.videoOrientation = orientation
     let currentInput = self.captureSession.inputs.first as? AVCaptureDeviceInput
-    if currentInput?.device.position == .front {
-      connection.isVideoMirrored = true
-    } else {
-      connection.isVideoMirrored = false
-    }
+    let isFront = currentInput?.device.position == .front
+    configureVideoMirroring(connection, isMirrored: isFront)
     self.previewLayer?.connection?.videoOrientation = connection.videoOrientation
+    configureVideoMirroring(self.previewLayer?.connection, isMirrored: isFront)
     frameSizeCaptured = false
+  }
+
+  /// Sets video mirroring deterministically — turn OFF automatic mirroring first so the explicit value sticks (iOS
+  /// otherwise re-derives it). Mirrors yolo-ios-app VideoCapture.configureVideoMirroring.
+  private func configureVideoMirroring(_ connection: AVCaptureConnection?, isMirrored: Bool) {
+    guard let connection, connection.isVideoMirroringSupported else { return }
+    connection.automaticallyAdjustsVideoMirroring = false
+    connection.isVideoMirrored = isMirrored
   }
 
   deinit {
@@ -249,42 +304,64 @@ class VideoCapture: NSObject, @unchecked Sendable {
     }
 
     // Remove all inputs and outputs
-    if let inputs = captureSession.inputs as? [AVCaptureInput] {
-      for input in inputs {
-        captureSession.removeInput(input)
-      }
+    for input in captureSession.inputs {
+      captureSession.removeInput(input)
     }
-
-    if let outputs = captureSession.outputs as? [AVCaptureOutput] {
-      for output in outputs {
-        captureSession.removeOutput(output)
-      }
+    for output in captureSession.outputs {
+      captureSession.removeOutput(output)
     }
   }
 }
 
 extension VideoCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
+  /// Request a UIImage of the very next sample buffer rendered through the video output, matching upstream YOLO iOS
+  /// `captureNextFrame`. Completion runs on the main queue. Returns `nil` if the session is stopped or a capture is
+  /// already pending.
+  func captureNextFrame(completion: @escaping (UIImage?) -> Void) {
+    let completionBox = SendableBox(completion)
+    cameraQueue.async { [weak self] in
+      guard let self else { return }
+      guard self.captureSession.isRunning, self.frameCaptureCompletion == nil else {
+        DispatchQueue.main.async { completionBox.value(nil) }
+        return
+      }
+      let pending = completionBox.value
+      self.frameCaptureCompletion = pending
+      self.frameCaptureToken &+= 1
+      let token = self.frameCaptureToken
+      // Defense-in-depth: if no sample buffer arrives within ~1s (e.g. the session is interrupted before the next
+      // frame), fire the still-pending completion with nil so the caller's Dart `await` never hangs.
+      self.cameraQueue.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        guard let self, self.frameCaptureToken == token, let pending = self.frameCaptureCompletion
+        else { return }
+        self.frameCaptureCompletion = nil
+        let completionBox = SendableBox(pending)
+        DispatchQueue.main.async { completionBox.value(nil) }
+      }
+    }
+  }
+
   func captureOutput(
     _ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer,
     from connection: AVCaptureConnection
   ) {
+    let pendingCompletion = frameCaptureCompletion
+    if pendingCompletion != nil { frameCaptureCompletion = nil }
+    defer {
+      if let pendingCompletion {
+        let image = CMSampleBufferGetImageBuffer(sampleBuffer).flatMap { pixelBuffer -> UIImage? in
+          let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+          return imageContext.createCGImage(ciImage, from: ciImage.extent).map {
+            UIImage(cgImage: $0)
+          }
+        }
+        let imageBox = SendableBox(image)
+        let completionBox = SendableBox(pendingCompletion)
+        DispatchQueue.main.async { completionBox.value(imageBox.value) }
+      }
+    }
     guard inferenceOK else { return }
     predictOnFrame(sampleBuffer: sampleBuffer)
-  }
-}
-
-extension VideoCapture: AVCapturePhotoCaptureDelegate {
-  @available(iOS 11.0, *)
-  func photoOutput(
-    _ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?
-  ) {
-    guard let data = photo.fileDataRepresentation(),
-      let image = UIImage(data: data)
-    else {
-      return
-    }
-
-    self.lastCapturedPhoto = image
   }
 }
 

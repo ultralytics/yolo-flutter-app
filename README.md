@@ -52,18 +52,18 @@ The main goal is simple integration: use an official model ID, or drop in your o
 - Production-ready controls for thresholds, GPU use, and streaming
 - YOLO26 and YOLO11 model families supported
 
-| Feature                               | Android | iOS | Details                                                 |
-| ------------------------------------- | ------- | --- | ------------------------------------------------------- |
-| Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores           |
-| Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                   |
-| Semantic Segmentation                 | ✅      | ✅  | Dense class masks for every pixel                       |
-| Image Classification                  | ✅      | ✅  | Top class predictions and scores                        |
-| Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores              |
-| Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                       |
-| Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                    |
-| Single-Image Inference                | ✅      | ✅  | `YOLO` for image bytes                                  |
-| Official Models                       | ✅      | ✅  | Discovery, download, and caching for packaged model IDs |
-| Custom Models                         | ✅      | ✅  | TFLite on Android, Core ML on iOS, metadata-first tasks |
+| Feature                               | Android | iOS | Details                                                          |
+| ------------------------------------- | ------- | --- | ---------------------------------------------------------------- |
+| Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores                    |
+| Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                            |
+| Semantic Segmentation                 | ✅      | ✅  | Dense class masks for every pixel                                |
+| Image Classification                  | ✅      | ✅  | Top class predictions and scores                                 |
+| Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores                       |
+| Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                                |
+| Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                             |
+| Single-Image Inference                | ✅      | ✅  | `YOLO` for image bytes                                           |
+| Official Models                       | ✅      | ✅  | Discovery, download, and caching for packaged model IDs          |
+| Custom Models                         | ✅      | ✅  | LiteRT (TFLite) on Android, Core ML on iOS, metadata-first tasks |
 
 ## ⚡ Quick Start
 
@@ -73,7 +73,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.3.5
+  ultralytics_yolo: ^0.4.0
 ```
 
 ```bash
@@ -113,22 +113,22 @@ The plugin supports three model flows.
 
 ### 1. Official model IDs
 
-Use the default official model or a specific official ID and let the plugin
-handle download and caching:
+Use the default official model or a specific official ID and let the plugin handle download and caching:
 
 ```dart
 final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 ```
 
-Call `YOLO.officialModels()` to see which official IDs are available on the
-current platform. Official assets are downloaded from the canonical `v0.2.0`
-Flutter release on Android and the canonical YOLO iOS `v8.3.0` Core ML release
-on iOS, so package releases do not move model URLs.
+Call `YOLO.officialModels()` to see which official IDs are available on the current platform. Official assets are downloaded on first use and cached in app storage, so the app package does not carry large model files.
 
-Example assets come from the same canonical locations:
+Official assets are maintained as GitHub release assets:
 
-- Android TFLite: [yolo-flutter-app `v0.2.0`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0)
-- iOS Core ML: [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)
+| Platform  | Runtime asset                 | Release                                                                                          |
+| --------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| Android   | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| iOS/macOS | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+
+The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms. These release tags are intentionally pinned for reproducible first-use downloads. See the [model guide](doc/models.md) for the official export matrix, URL patterns, and model properties.
 
 ### 2. Your own exported model
 
@@ -138,7 +138,7 @@ Pass your own exported YOLO model as a local path or Flutter asset path:
 final yolo = YOLO(modelPath: 'assets/models/my-finetuned-model.tflite');
 ```
 
-If the exported model includes metadata, the plugin infers `task` automatically. If metadata is missing, pass `task` explicitly.
+If the exported model includes embedded metadata, the plugin infers `task` and class labels automatically — it reads Ultralytics' appended-ZIP metadata, with a standard TFLite (FlatBuffers) metadata fallback — so drag-and-drop custom models auto-detect. If metadata is missing, pass `task` explicitly.
 
 ```dart
 final yolo = YOLO(
@@ -161,9 +161,7 @@ Pass an `http` or `https` URL and the plugin will download it into app storage b
 | You need the plugin to infer `task` automatically     | Any export with metadata          |
 | You have an older or stripped export without metadata | Custom model plus explicit `task` |
 
-For official models, start with `YOLO.defaultOfficialModel()` or
-`YOLO.officialModels()`. For custom models, start with the exported file you
-actually plan to ship.
+For official models, start with `YOLO.defaultOfficialModel()` or `YOLO.officialModels()`. For custom models, start with the exported file you actually plan to ship.
 
 ## 📥 Drop Your Own Model Into an App
 
@@ -176,19 +174,34 @@ For custom models, keep the app-side setup minimal.
 
 Then point `modelPath` at that file or asset path.
 
-### iOS export note
+### Official asset maintenance
 
-Detection models exported to Core ML must use `nms=True`:
+The Android TFLite release assets are generated by [`scripts/export-tflite-models.py`](scripts/export-tflite-models.py). The script defines the official YOLO26 task/size matrix, int8 export settings, Ultralytics task-specific calibration data, optional one-shot TFLite inference verification, and optional GitHub release upload. By default it reads `ultralytics.cfg.TASK2CALIBRATIONDATA` so each task uses the same canonical calibration dataset as the Ultralytics exporter.
+
+Run it in a Linux Python 3.13 environment:
+
+```bash
+uv venv --python 3.13 .venv
+uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+uv pip install -e "../ultralytics" "tensorflow>2.19.0" "onnx>=1.20.0" "onnxslim>=0.1.82" \
+  "tf_keras>2.19.0" "sng4onnx>=1.0.1" "onnx_graphsurgeon>=0.3.26" \
+  "ai-edge-litert>=1.2.0" "onnxruntime" "protobuf>=6.31.1,<7.0.0" \
+  --extra-index-url https://pypi.ngc.nvidia.com --index-strategy unsafe-best-match
+uv pip uninstall opencv-python
+uv pip install opencv-python-headless
+uv pip install --no-deps "onnx2tf>=2.3.0,<2.3.16"
+uv run python scripts/export-tflite-models.py --verify
+```
+
+Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.3.5` to publish generated `.tflite` assets to the canonical Android release. The matching Core ML assets are generated by `../yolo-ios-app/scripts/export-models.py` and hosted on the iOS `v8.3.0` release.
+
+Android inference runs on [LiteRT](https://ai.google.dev/edge/litert) 2.x through an automatic GPU -> CPU accelerator ladder. int8 assets are the official download artifacts for size, but int8 GPU coverage depends on the device driver and graph; unsupported graphs or ops may fall back to CPU. fp16 non-end-to-end TFLite exports can still be useful for GPU benchmarking on devices whose delegate supports the graph:
 
 ```python
 from ultralytics import YOLO
 
-# Square [640, 640] works best when one model must run in both portrait and landscape.
-# Ultralytics imgsz order is [height, width]; use [640, 384] for portrait-only or [384, 640] for landscape-only.
-YOLO("yolo26n.pt").export(format="coreml", nms=True, imgsz=[640, 640])
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
-
-Other tasks can use the default export settings, with the same square-orientation guidance for `imgsz`.
 
 ## 🎯 Choose The Right API
 
@@ -214,6 +227,28 @@ YOLOView(
 await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 ```
 
+Use `YOLOShowcase` when you want the complete Ultralytics camera UI:
+
+```dart
+YOLOShowcase(
+  modelPath: 'yolo26n',
+  onCapture: (bytes) {},
+)
+```
+
+## 🔄 Migrating From 0.3.x UI APIs
+
+Version 0.4.0 removes the old Dart-side overlay/control layer. Camera detections are rendered natively by `YOLOView`; Flutter now owns only the surrounding app controls.
+
+| Removed 0.3.x API                                | 0.4.0 replacement                                                                                  |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `YOLOOverlay`, `YOLOOverlayTheme`                | Remove these widgets. Use native `YOLOView` overlays, or consume `onResult`/`YOLO.predict()` data. |
+| `YOLOControls`                                   | Use `YOLOShowcase` for the full UI, or compose the exported Material widgets directly.             |
+| `YOLOView.showNativeUI`                          | Use `YOLOShowcase` for built-in controls; use bare `YOLOView` when building your own UI.           |
+| `YOLOView.showOverlays`, `YOLOView.overlayTheme` | No constructor replacement. Camera overlay drawing is native and not themed from Dart.             |
+| `YOLOViewController.setShowUIControls()`         | Show/hide your own Flutter controls around `YOLOView`.                                             |
+| `YOLOViewController.setShowOverlays()`           | No controller replacement. `capturePhoto(withOverlays: false)` only affects captured JPEG output.  |
+
 ## 🧩 Recommended Patterns
 
 | App type                            | Model loading pattern                                                  |
@@ -234,6 +269,7 @@ await controller.switchModel('assets/models/custom.tflite', YOLOTask.detect);
 | **[Usage Guide](doc/usage.md)**               | Common app patterns and examples            |
 | **[API Reference](doc/api.md)**               | Full API surface                            |
 | **[Performance Guide](doc/performance.md)**   | Tuning and performance controls             |
+| **[Performance Record](docs/performance.md)** | On-device benchmark record                  |
 | **[Troubleshooting](doc/troubleshooting.md)** | Common problems and fixes                   |
 
 ## 🤝 Community & Support

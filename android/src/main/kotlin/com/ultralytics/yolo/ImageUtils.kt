@@ -19,6 +19,27 @@ object ImageUtils {
      */
     @JvmStatic
     fun toBitmap(imageProxy: ImageProxy): Bitmap? {
+        // Fast path: CameraX is configured for OUTPUT_IMAGE_FORMAT_RGBA_8888, so the frame is a single RGBA plane we
+        // can copy straight into a Bitmap (~2-5ms). This replaces a YUV->NV21->JPEG-encode@100->JPEG-decode round-trip
+        // that cost ~100ms/frame (~5 FPS).
+        if (imageProxy.format == PixelFormat.RGBA_8888 && imageProxy.planes.size == 1) {
+            val plane = imageProxy.planes[0]
+            val pixelStride = plane.pixelStride
+            val rowStride = plane.rowStride
+            val rowPadding = rowStride - pixelStride * imageProxy.width
+            // When rowStride has padding the buffer is wider than the image; copy at full stride width then crop back.
+            val paddedWidth = imageProxy.width + rowPadding / pixelStride
+            val bitmap = Bitmap.createBitmap(paddedWidth, imageProxy.height, Bitmap.Config.ARGB_8888)
+            plane.buffer.rewind()
+            bitmap.copyPixelsFromBuffer(plane.buffer)
+            return if (rowPadding == 0) {
+                bitmap
+            } else {
+                Bitmap.createBitmap(bitmap, 0, 0, imageProxy.width, imageProxy.height)
+            }
+        }
+
+        // Fallback for YUV_420_888 frames (older config / devices that don't honor the RGBA request).
         val nv21 = yuv420888ToNv21(imageProxy)
         val yuvImage = YuvImage(nv21, ImageFormat.NV21, imageProxy.width, imageProxy.height, null)
         return yuvImageToBitmap(yuvImage)
@@ -182,6 +203,25 @@ object ImageUtils {
             byteBuffer.putFloat(((pixel and 0xFF) - inputMean) / inputStd)
         }
         byteBuffer.rewind()
+    }
+
+    // FloatArray variant for the LiteRT 2.x CompiledModel path (TensorBuffer.writeFloat takes a float[], not a
+    // ByteBuffer). Writes planar-free interleaved RGB, normalized to [0,1] by default. `out` must be width*height*3.
+    @JvmStatic
+    fun copyRgbBitmapToFloatArray(
+        bitmap: Bitmap,
+        out: FloatArray,
+        pixels: IntArray,
+        inputMean: Float = 0f,
+        inputStd: Float = 255f
+    ) {
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        var j = 0
+        for (pixel in pixels) {
+            out[j++] = (((pixel shr 16) and 0xFF) - inputMean) / inputStd
+            out[j++] = (((pixel shr 8) and 0xFF) - inputMean) / inputStd
+            out[j++] = ((pixel and 0xFF) - inputMean) / inputStd
+        }
     }
 
     /**

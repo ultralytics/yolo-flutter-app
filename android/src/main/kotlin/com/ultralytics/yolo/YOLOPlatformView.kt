@@ -60,7 +60,6 @@ class YOLOPlatformView(
         val taskString = creationParams?.get("task") as? String ?: "detect"
         val confidenceParam = creationParams?.get("confidenceThreshold") as? Double ?: 0.25
         val iouParam = creationParams?.get("iouThreshold") as? Double ?: 0.7
-        val showOverlaysParam = creationParams?.get("showOverlays") as? Boolean ?: true
 
         // Parse lensFacing parameter
         val lensFacingParam = creationParams?.get("lensFacing") as? String ?: "back"
@@ -77,7 +76,6 @@ class YOLOPlatformView(
         // Set initial thresholds
         yoloView.setConfidenceThreshold(confidenceParam)
         yoloView.setIouThreshold(iouParam)
-        yoloView.setShowOverlays(showOverlaysParam)
 
         // Set lens facing before initializing camera
         yoloView.setLensFacing(lensFacing, preferWideBackCamera)
@@ -152,7 +150,7 @@ class YOLOPlatformView(
                 includeOBB = streamingConfigParam["includeOBB"] as? Boolean ?: false,
                 includeOriginalImage = streamingConfigParam["includeOriginalImage"] as? Boolean ?: false,
                 maxFPS = (streamingConfigParam["maxFPS"] as? Number)?.toInt(),
-                throttleIntervalMs = (streamingConfigParam["throttleInterval"] as? Number)?.toInt(),
+                throttleIntervalMs = (streamingConfigParam["throttleIntervalMs"] as? Number)?.toInt(),
                 inferenceFrequency = (streamingConfigParam["inferenceFrequency"] as? Number)?.toInt(),
                 skipFrames = (streamingConfigParam["skipFrames"] as? Number)?.toInt()
             )
@@ -172,10 +170,35 @@ class YOLOPlatformView(
         }
         
         yoloView.setStreamConfig(streamConfig)
-        
+
         // Set up streaming callback with resilience
         yoloView.setStreamCallback { streamData ->
             sendStreamDataWithRetry(streamData)
+        }
+
+        // Forward typed events (zoom/lens/focus) onto the same event sink so the Dart controller can route them via the
+        // existing event channel.
+        yoloView.setEventCallback { event ->
+            sendEventOnMain(event)
+        }
+    }
+
+    /**
+     * Posts an event to the main thread and forwards it to the Flutter event sink.
+     * Used for typed `{type:"zoom"|"lens"|"focus", ...}` events.
+     */
+    private fun sendEventOnMain(event: Map<String, Any>) {
+        val send = Runnable {
+            try {
+                streamHandler.sink?.success(event)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending typed event", e)
+            }
+        }
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            send.run()
+        } else {
+            retryHandler.post(send)
         }
     }
     
@@ -261,7 +284,7 @@ class YOLOPlatformView(
                     }
                 } else {
                     // Request Flutter to recreate the event channel
-                    methodChannel?.invokeMethod("reconnectEventChannel", mapOf(
+                    methodChannel?.invokeMethod("recreateEventChannel", mapOf(
                         "viewId" to viewUniqueId,
                         "reason" to "sink_disconnected"
                     ))
@@ -328,15 +351,6 @@ class YOLOPlatformView(
                         result.success(null)
                     } else {
                         result.error("invalid_args", "numItems is required", null)
-                    }
-                }
-                "setShowOverlays" -> {
-                    val show = call.argument<Boolean>("show")
-                    if (show != null) {
-                        yoloView.setShowOverlays(show)
-                        result.success(null)
-                    } else {
-                        result.error("invalid_args", "show is required", null)
                     }
                 }
                 "setThresholds" -> {
@@ -408,7 +422,7 @@ class YOLOPlatformView(
                             includeOBB = configMap["includeOBB"] as? Boolean ?: false,
                             includeOriginalImage = configMap["includeOriginalImage"] as? Boolean ?: false,
                             maxFPS = (configMap["maxFPS"] as? Number)?.toInt(),
-                            throttleIntervalMs = (configMap["throttleInterval"] as? Number)?.toInt(),
+                            throttleIntervalMs = (configMap["throttleIntervalMs"] as? Number)?.toInt(),
                             inferenceFrequency = (configMap["inferenceFrequency"] as? Number)?.toInt(),
                             skipFrames = (configMap["skipFrames"] as? Number)?.toInt()
                         )
@@ -418,11 +432,32 @@ class YOLOPlatformView(
                         result.error("invalid_args", "Invalid streaming config", null)
                     }
                 }
+                "setShowOverlays" -> {
+                    val visible = call.argument<Boolean>("visible")
+                    if (visible != null) {
+                        yoloView.setShowOverlays(visible)
+                        result.success(null)
+                    } else {
+                        result.error("invalid_args", "visible is required", null)
+                    }
+                }
                 "stop" -> {
                     yoloView.stop()
                     result.success(null)
                 }
                 "restartCamera" -> {
+                    yoloView.startCamera()
+                    result.success(null)
+                }
+                // pause/resume mirror the iOS paused-frame semantics. Android doesn't snapshot a share frame on pause
+                // (capturePhoto uses the live preview snapshot). pause only unbinds the camera use-cases; it must NOT
+                // call stop(), which closes the predictor and would make resume()'s startCamera() a no-op (it early-
+                // returns while predictor == null).
+                "pause" -> {
+                    yoloView.pauseCamera()
+                    result.success(null)
+                }
+                "resume" -> {
                     yoloView.startCamera()
                     result.success(null)
                 }
@@ -439,10 +474,44 @@ class YOLOPlatformView(
                     startStreaming()
                     result.success(null)
                 }
-                "setShowUIControls" -> {
-                    val show = call.argument<Boolean>("show") ?: false
-                    yoloView.setShowUIControls(show)
-                    result.success(null)
+                "getAvailableLenses" -> {
+                    val lenses = yoloView.enumerateLenses()
+                    val payload = lenses.map { lens ->
+                        mapOf<String, Any>(
+                            "zoomFactor" to lens.zoomFactor,
+                            "label" to lens.label
+                        )
+                    }
+                    result.success(payload)
+                }
+                "setLens" -> {
+                    val zoomFactor = call.argument<Double>("zoomFactor")
+                    if (zoomFactor == null) {
+                        result.error("invalid_args", "zoomFactor is required", null)
+                    } else {
+                        yoloView.setLens(zoomFactor)
+                        result.success(null)
+                    }
+                }
+                "tapToFocus" -> {
+                    val x = call.argument<Double>("x")
+                    val y = call.argument<Double>("y")
+                    if (x == null || y == null) {
+                        result.error("invalid_args", "x and y are required", null)
+                    } else {
+                        yoloView.tapToFocus(x, y)
+                        result.success(null)
+                    }
+                }
+                "capturePhoto" -> {
+                    val withOverlays = call.argument<Boolean>("withOverlays") ?: true
+                    yoloView.capturePhoto(withOverlays) { bytes ->
+                        if (bytes != null) {
+                            result.success(bytes)
+                        } else {
+                            result.error("capture_failed", "Failed to capture photo", null)
+                        }
+                    }
                 }
                 else -> {
                     result.notImplemented()
@@ -463,10 +532,14 @@ class YOLOPlatformView(
 
         try {
             yoloView.stop()
+            // Detach from the lifecycle so the Activity doesn't retain this disposed view (and won't fire
+            // onStart/onResume into it after disposal).
+            yoloView.detachLifecycle()
             // Clear callbacks by setting them to empty implementations
             yoloView.setStreamCallback { }
             yoloView.setOnInferenceCallback { }
             yoloView.setOnModelLoadCallback { }
+            yoloView.setEventCallback(null)
         } catch (e: Exception) {
             Log.e(TAG, "Error during disposal", e)
         }

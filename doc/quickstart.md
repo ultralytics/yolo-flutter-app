@@ -35,7 +35,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.3.5
+  ultralytics_yolo: ^0.4.0
   image_picker: ^1.2.1 # For image selection
 ```
 
@@ -59,7 +59,13 @@ Custom local models are still supported:
 - Android native assets: place `.tflite` files in **android/app/src/main/assets/**
 - Flutter assets: place `.tflite` on Android or `.mlpackage.zip` on iOS in `assets/models/` and use that asset path directly
 
-If your custom model metadata does not include `task`, pass it explicitly.
+Task and labels are auto-detected from the model's embedded metadata. If your custom model has no `task` in its metadata, pass it explicitly.
+
+Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core ML. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; unsupported graphs or ops may fall back to CPU. fp16 non-end-to-end exports are useful for GPU benchmarking:
+
+```python
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
+```
 
 ## ⚡ Step 4: Minimal Detection Code
 
@@ -67,7 +73,7 @@ Replace `lib/main.dart` with this complete working example:
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:ultralytics_yolo/yolo.dart';
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -198,7 +204,7 @@ You now have a working YOLO object detection app! The app will:
 Want real-time detection? Add the YOLOView widget:
 
 ```dart
-import 'package:ultralytics_yolo/yolo_view.dart';
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 // Replace the Column with:
 YOLOView(
@@ -270,6 +276,10 @@ final classifications = await classifier.predict(imageBytes);
 
 - Run `flutter clean && flutter pub get`
 - Check minimum SDK versions in installation guide
+
+**Slow detections on Android?**
+
+- Keep `useGpu: true` and verify LiteRT delegate placement in device logs; benchmark fp16 non-end-to-end exports when comparing GPU paths.
 
 ## 📚 Learn More
 

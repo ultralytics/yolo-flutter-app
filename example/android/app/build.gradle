@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.ultralytics.yolo_example"
+    namespace = "com.ultralytics.yolo"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,10 +20,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.ultralytics.yolo_example"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "com.ultralytics.yolo"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -32,7 +29,6 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.debug
             
@@ -49,3 +45,14 @@ android {
 flutter {
     source = "../.."
 }
+
+// Bundle the nano YOLO models into the app at build time. They are NOT committed to git (large binaries, gitignored);
+// this fetches them into example/assets/models/ before assets are merged so the app ships with them by default. The
+// resolver checks assets/models/ before downloading, so a bundled model means no first-run network fetch. Best-effort:
+// the script always exits 0, so an offline build still succeeds and simply falls back to the runtime download.
+tasks.register("fetchBundledModels", Exec) {
+    workingDir = rootProject.projectDir
+    commandLine "bash", "${rootProject.projectDir}/../../scripts/fetch_bundled_models.sh", "android"
+    ignoreExitValue = true
+}
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn("fetchBundledModels") }

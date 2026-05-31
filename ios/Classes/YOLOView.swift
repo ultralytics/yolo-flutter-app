@@ -16,6 +16,30 @@ import AVFoundation
 import UIKit
 import Vision
 
+/// Maps a rect normalized to `imageSize` into on-screen view coordinates under an aspect-fill (`resizeAspectFill`)
+/// preview: scale the image by `max(viewW/imgW, viewH/imgH)`, center it, and crop. Inverts exactly what the camera
+/// preview layer does, so overlays line up with the live image regardless of camera/preview aspect ratio. Ported from
+/// `yolo-ios-app/Sources/YOLO/YOLOView.swift#aspectFillDisplayRect`.
+func aspectFillDisplayRect(for normalizedRect: CGRect, imageSize: CGSize, viewSize: CGSize)
+  -> CGRect
+{
+  guard imageSize.width > 0, imageSize.height > 0, viewSize.width > 0, viewSize.height > 0 else {
+    return .zero
+  }
+  let scale = max(viewSize.width / imageSize.width, viewSize.height / imageSize.height)
+  let scaledImageSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+  let offset = CGPoint(
+    x: (scaledImageSize.width - viewSize.width) / 2,
+    y: (scaledImageSize.height - viewSize.height) / 2
+  )
+  return CGRect(
+    x: normalizedRect.minX * imageSize.width * scale - offset.x,
+    y: normalizedRect.minY * imageSize.height * scale - offset.y,
+    width: normalizedRect.width * imageSize.width * scale,
+    height: normalizedRect.height * imageSize.height * scale
+  )
+}
+
 /// A UIView component that provides real-time object detection, segmentation, and pose estimation capabilities.
 @MainActor
 public class YOLOView: UIView, VideoCaptureDelegate {
@@ -58,6 +82,12 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       }
     }
 
+    if !_showOverlays {
+      clearPredictionOverlays()
+      self.videoCapture.predictor.isUpdating = false
+      return
+    }
+
     if task == .segment || task == .semantic {
       DispatchQueue.main.async {
         let maskImage =
@@ -68,7 +98,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
           maskLayer.isHidden = false
 
-          maskLayer.frame = self.overlayLayer.bounds
+          // Fit the mask to the true aspect-fill image rect (from the actual frame size), not a hardcoded-ratio
+          // overlay rect, so the mask registers with the preview. Mirrors yolo-ios-app YOLOView.
+          maskLayer.frame = self.imageFrameInOverlay(for: result.orig_shape)
           maskLayer.contents = maskImage
 
           self.videoCapture.predictor.isUpdating = false
@@ -88,10 +120,23 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         confsList.append(keypoint.conf)
       }
       guard let poseLayer = poseLayer else { return }
+      // Position + size the pose layer to the true aspect-fill image rect (with the crop offset baked into its
+      // origin), then draw keypoints normalized to that rect — so keypoints register with the person and share the
+      // preview's coordinate space. Mirrors yolo-ios-app YOLOView.
+      let poseFrame = imageFrameInOverlay(for: result.orig_shape)
+      poseLayer.frame = poseFrame
       drawKeypoints(
         keypointsList: keypointList, confsList: confsList, boundingBoxes: result.boxes,
-        on: poseLayer, imageViewSize: overlayLayer.frame.size, originalImageSize: result.orig_shape)
+        on: poseLayer, imageViewSize: poseFrame.size, originalImageSize: result.orig_shape)
     }
+  }
+
+  /// The aspect-fill rect (in view coordinates) that the full camera image of `imageSize` occupies under the preview's
+  /// `resizeAspectFill`. Used to position/size the pose and mask overlay layers. Mirrors yolo-ios-app YOLOView.
+  func imageFrameInOverlay(for imageSize: CGSize) -> CGRect {
+    return aspectFillDisplayRect(
+      for: CGRect(x: 0, y: 0, width: 1, height: 1),
+      imageSize: imageSize, viewSize: bounds.size)
   }
 
   var onDetection: ((YOLOResult) -> Void)?
@@ -166,18 +211,41 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     get { return _showOverlays }
     set {
       _showOverlays = newValue
+      if !newValue {
+        clearPredictionOverlays()
+      }
     }
   }
 
   private let minimumZoom: CGFloat = 1.0
   private let maximumZoom: CGFloat = 10.0
   private var lastZoomFactor: CGFloat = 1.0
+  /// Cached frame captured at pause so `capturePhoto` after `pause()` returns the paused frame instead of asking a
+  /// stopped session for a new buffer. Matches upstream YOLO iOS pause/share semantics.
+  private var pausedShareImage: UIImage?
 
   /// Callback for zoom level changes
   public var onZoomChanged: ((CGFloat) -> Void)?
 
+  /// Callback for lens changes (emitted when the active lens label changes
+  /// either via `setLens` or because zoom crossed a lens boundary).
+  public var onLensChanged: ((String) -> Void)?
+
+  /// Callback for tap-to-focus events (normalized 0..1 view-relative coords).
+  public var onFocusTapped: ((CGFloat, CGFloat) -> Void)?
+
   public var capturedImage: UIImage?
-  private var photoCaptureCompletion: ((UIImage?) -> Void)?
+
+  // Lens-snap state (ported from yolo-ios-app YOLOView.swift:1157-1185).
+  private let physicalLensTypes: [AVCaptureDevice.DeviceType] = [
+    .builtInUltraWideCamera,
+    .builtInWideAngleCamera,
+    .builtInTelephotoCamera,
+  ]
+  private var currentLensLabel: String = ""
+
+  // Camera-flip blur transition (ported from yolo-ios-app YOLOView.swift:1036-1060).
+  private weak var cameraTransitionView: UIView?
 
   public init(
     frame: CGRect,
@@ -218,6 +286,26 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
+  // MARK: - Predictor cache
+  //
+  // Recently-loaded predictors kept in memory so switching back to a model is instant (no CoreML re-load). Bounded by
+  // `predictorCacheLimit` to cap memory. All access is on the main thread (setModel and BasePredictor.create's
+  // completion both run on main), so no extra synchronization is needed.
+  private var predictorCache: [String: Predictor] = [:]
+  private var predictorCacheOrder: [String] = []  // LRU: oldest first, newest last
+  private let predictorCacheLimit = 3
+
+  private func cachePredictor(_ predictor: Predictor, forKey key: String) {
+    predictorCache[key] = predictor
+    predictorCacheOrder.removeAll { $0 == key }
+    predictorCacheOrder.append(key)
+    while predictorCacheOrder.count > predictorCacheLimit {
+      // The current predictor is always newest (just touched), so it is never the eviction target.
+      let evicted = predictorCacheOrder.removeFirst()
+      predictorCache.removeValue(forKey: evicted)
+    }
+  }
+
   public func setModel(
     modelPathOrName: String,
     task: YOLOTask,
@@ -228,10 +316,6 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     boundingBoxViews.forEach { box in
       box.hide()
     }
-    removeClassificationLayers()
-
-    self.task = task
-    setupSublayers()
 
     var modelURL: URL?
     let lowercasedPath = modelPathOrName.lowercased()
@@ -271,13 +355,25 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     modelName = unwrappedModelURL.deletingPathExtension().lastPathComponent
 
-    // Common success handling for all tasks
-    func handleSuccess(predictor: Predictor) {
-      // Release old predictor before setting new one to prevent memory leak
-      if self.videoCapture.predictor != nil {
-        self.videoCapture.predictor = nil
-      }
+    // Cache key for the loaded predictor — reusing an already-instantiated predictor makes switching back to a model
+    // instant instead of re-compiling/loading CoreML every time.
+    let cacheKey = "\(unwrappedModelURL.path)|\(task)|\(useGpu)"
 
+    // Common success handling for all tasks. Keep weak self because model creation can outlive the view during rapid
+    // switches or teardown.
+    let handleSuccess: (Predictor) -> Void = { [weak self] predictor in
+      // Always reply, even if the view was deallocated mid-load: `completion` is caller-owned (it doesn't capture
+      // self), and a dropped reply permanently stalls the Dart serialized model-switch chain.
+      guard let self else {
+        completion?(.success(()))
+        return
+      }
+      // Switch the task and rebuild the overlay sublayers only now that a predictor exists. Doing this up front would
+      // strand the new task's sublayers over the previous predictor when a load fails (handleFailure) or the model is
+      // missing; keeping it here leaves the previously working task/predictor untouched on those paths.
+      self.task = task
+      self.removeClassificationLayers()
+      self.setupSublayers()
       self.videoCapture.predictor = predictor
 
       // Set stream configuration for original image capture
@@ -285,25 +381,42 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         basePredictor.streamConfig = self.streamConfig
       }
 
+      self.cachePredictor(predictor, forKey: cacheKey)
       self.activityIndicator.stopAnimating()
       self.labelName.text = modelName
       completion?(.success(()))
     }
 
     // Common failure handling for all tasks
-    func handleFailure(_ error: Error) {
+    let handleFailure: (Error) -> Void = { [weak self] error in
+      // Always reply so the Dart switch chain doesn't stall if the view deallocated mid-load (see handleSuccess).
+      guard let self else {
+        completion?(.failure(error))
+        return
+      }
       NSLog("YOLOView: Failed to load model: %@", String(describing: error))
       self.activityIndicator.stopAnimating()
       completion?(.failure(error))
     }
 
+    // Fast path: the predictor is already loaded — reuse it (re-applying the current thresholds) for an instant switch.
+    if let cached = predictorCache[cacheKey] {
+      if let basePredictor = cached as? BasePredictor {
+        basePredictor.setConfidenceThreshold(confidence: Double(sliderConf.value))
+        basePredictor.setIouThreshold(iou: Double(sliderIoU.value))
+        basePredictor.setNumItemsThreshold(numItems: Int(sliderNumItems.value))
+      }
+      handleSuccess(cached)
+      return
+    }
+
     switch task {
     case .classify:
       Classifier.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        [weak self] result in
+        result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }
@@ -311,10 +424,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     case .segment:
       Segmenter.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        [weak self] result in
+        result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }
@@ -324,21 +437,21 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       SemanticSegmenter.create(
         unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu
       ) {
-        [weak self] result in
+        result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }
       }
 
     case .pose:
-      PoseEstimater.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        [weak self] result in
+      PoseEstimator.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
+        result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }
@@ -346,10 +459,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     case .obb:
       ObbDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        [weak self] result in
+        result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }
@@ -358,10 +471,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     default:
       ObjectDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu)
       {
-        [weak self] result in
+        result in
         switch result {
         case .success(let predictor):
-          handleSuccess(predictor: predictor)
+          handleSuccess(predictor)
         case .failure(let error):
           handleFailure(error)
         }
@@ -418,7 +531,20 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     videoCapture.predictor = nil
   }
 
+  /// Pause the camera session, first snapshotting the next frame into `pausedShareImage` so `capturePhoto` can return
+  /// it without re-running the session. Mirrors upstream YOLO iOS `pauseTapped`.
+  public func pause(completion: (() -> Void)? = nil) {
+    videoCapture.captureNextFrame { [weak self] image in
+      self?.pausedShareImage = image
+      self?.videoCapture.stop()
+      completion?()
+    }
+  }
+
+  /// Resume after `pause()`; clears the cached share frame and restarts the session. Use this instead of
+  /// `restartCamera()` when the session was paused via `pause()`.
   public func resume() {
+    pausedShareImage = nil
     videoCapture.start()
   }
 
@@ -431,30 +557,13 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   func setupOverlayLayer() {
-    let width = self.bounds.width
-    let height = self.bounds.height
+    // overlayLayer fills the view (origin 0,0) so its sublayers (mask/pose) can use the view-coordinate frames produced
+    // by imageFrameInOverlay/aspectFillDisplayRect and register with the live preview. The previous margin-offset frame
+    // (derived from a hardcoded 4:3/16:9 ratio) shifted every pose skeleton and segmentation mask by that margin.
+    // Mirrors yolo-ios-app (overlayLayer.frame = bounds).
+    self.overlayLayer.frame = self.bounds
 
-    var ratio: CGFloat = 1.0
-    if videoCapture.captureSession.sessionPreset == .photo {
-      ratio = (4.0 / 3.0)
-    } else {
-      ratio = (16.0 / 9.0)
-    }
-    var offSet = CGFloat.zero
-    var margin = CGFloat.zero
-    if self.bounds.width < self.bounds.height {
-      offSet = height / ratio
-      margin = (offSet - self.bounds.width) / 2
-      self.overlayLayer.frame = CGRect(
-        x: -margin, y: 0, width: offSet, height: self.bounds.height)
-    } else {
-      offSet = width / ratio
-      margin = (offSet - self.bounds.height) / 2
-      self.overlayLayer.frame = CGRect(
-        x: 0, y: -margin, width: self.bounds.width, height: offSet)
-    }
-
-    // Update mask layer frame to match overlay layer bounds
+    // Update mask layer frame to match overlay layer bounds (re-set per-frame from imageFrameInOverlay during render).
     if let maskLayer = self.maskLayer {
       maskLayer.frame = self.overlayLayer.bounds
     }
@@ -520,206 +629,33 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   }
 
   func showBoxes(predictions: YOLOResult) {
+    // Single preset-agnostic, orientation-agnostic path: map each box's top-left-origin `xywhn` through the same
+    // aspect-fill transform the preview uses (and that showOBBs/pose/masks already use). Replaces the legacy
+    // portrait/landscape ratio + double y-flip + VNImageRectForNormalizedRect code, which only lined up when the live
+    // preset's aspect ratio matched a hardcoded 4:3/16:9 constant. Mirrors yolo-ios-app YOLOView.showBoxes.
+    let resultCount = predictions.boxes.count
+    let maxVisible = min(resultCount, 50, boundingBoxViews.count)
+    let viewSize = bounds.size
 
-    let width = self.bounds.width
-    let height = self.bounds.height
-    var resultCount = 0
+    if showUIControls {
+      self.labelSliderNumItems.text =
+        String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
+    }
 
-    resultCount = predictions.boxes.count
-
-    if UIDevice.current.orientation == .portrait {
-
-      var ratio: CGFloat = 1.0
-
-      if videoCapture.captureSession.sessionPreset == .photo {
-        ratio = (height / width) / (4.0 / 3.0)
-      } else {
-        ratio = (height / width) / (16.0 / 9.0)
+    for i in 0..<boundingBoxViews.count {
+      guard i < maxVisible, _showOverlays else {
+        boundingBoxViews[i].hide()
+        continue
       }
-
-      if showUIControls {
-        self.labelSliderNumItems.text =
-          String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
-      }
-      for i in 0..<boundingBoxViews.count {
-        if i < (resultCount) && i < 50 {
-          var rect = CGRect.zero
-          var label = ""
-          var boxColor: UIColor = .white
-          var confidence: CGFloat = 0
-          var alpha: CGFloat = 0.9
-          var bestClass = ""
-
-          switch task {
-          case .detect:
-            let prediction = predictions.boxes[i]
-            rect = CGRect(
-              x: prediction.xywhn.minX, y: 1 - prediction.xywhn.maxY, width: prediction.xywhn.width,
-              height: prediction.xywhn.height)
-            bestClass = prediction.cls
-            confidence = CGFloat(prediction.conf)
-            let colorIndex = prediction.index % ultralyticsColors.count
-            boxColor = ultralyticsColors[colorIndex]
-            label = DetectionLabelStyle.text(className: bestClass, confidence: confidence)
-            alpha = DetectionLabelStyle.alpha(confidence: confidence)
-          default:
-            let prediction = predictions.boxes[i]
-            rect = prediction.xywhn
-            bestClass = prediction.cls
-            confidence = CGFloat(prediction.conf)
-            label = DetectionLabelStyle.text(className: bestClass, confidence: confidence)
-            let colorIndex = prediction.index % ultralyticsColors.count
-            boxColor = ultralyticsColors[colorIndex]
-            alpha = DetectionLabelStyle.alpha(confidence: confidence)
-
-          }
-          var displayRect = rect
-          switch UIDevice.current.orientation {
-          case .portraitUpsideDown:
-            displayRect = CGRect(
-              x: 1.0 - rect.origin.x - rect.width,
-              y: 1.0 - rect.origin.y - rect.height,
-              width: rect.width,
-              height: rect.height)
-          case .landscapeLeft:
-            displayRect = CGRect(
-              x: rect.origin.x,
-              y: rect.origin.y,
-              width: rect.width,
-              height: rect.height)
-          case .landscapeRight:
-            displayRect = CGRect(
-              x: rect.origin.x,
-              y: rect.origin.y,
-              width: rect.width,
-              height: rect.height)
-          case .unknown:
-            fallthrough
-          default: break
-          }
-          if ratio >= 1 {
-            let offset = (1 - ratio) * (0.5 - displayRect.minX)
-            if task == .detect {
-              let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: offset, y: -1)
-              displayRect = displayRect.applying(transform)
-            } else {
-              let transform = CGAffineTransform(translationX: offset, y: 0)
-              displayRect = displayRect.applying(transform)
-            }
-            displayRect.size.width *= ratio
-          } else {
-            if task == .detect {
-              let offset = (ratio - 1) * (0.5 - displayRect.maxY)
-
-              let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: offset - 1)
-              displayRect = displayRect.applying(transform)
-            } else {
-              let offset = (ratio - 1) * (0.5 - displayRect.minY)
-              let transform = CGAffineTransform(translationX: 0, y: offset)
-              displayRect = displayRect.applying(transform)
-            }
-            ratio = (height / width) / (3.0 / 4.0)
-            displayRect.size.height /= ratio
-          }
-          displayRect = VNImageRectForNormalizedRect(displayRect, Int(width), Int(height))
-
-          if _showOverlays {
-            boundingBoxViews[i].show(
-              frame: displayRect, label: label, color: boxColor, alpha: alpha)
-          } else {
-            boundingBoxViews[i].hide()
-          }
-
-        } else {
-          boundingBoxViews[i].hide()
-        }
-      }
-    } else {
-      resultCount = predictions.boxes.count
-      if showUIControls {
-        self.labelSliderNumItems.text =
-          String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
-      }
-
-      let frameAspectRatio = videoCapture.longSide / videoCapture.shortSide
-      let viewAspectRatio = width / height
-      var scaleX: CGFloat = 1.0
-      var scaleY: CGFloat = 1.0
-      var offsetX: CGFloat = 0.0
-      var offsetY: CGFloat = 0.0
-
-      if frameAspectRatio > viewAspectRatio {
-        scaleY = height / videoCapture.shortSide
-        scaleX = scaleY
-        offsetX = (videoCapture.longSide * scaleX - width) / 2
-      } else {
-        scaleX = width / videoCapture.longSide
-        scaleY = scaleX
-        offsetY = (videoCapture.shortSide * scaleY - height) / 2
-      }
-
-      for i in 0..<boundingBoxViews.count {
-        if i < resultCount && i < 50 {
-          var rect = CGRect.zero
-          var label = ""
-          var boxColor: UIColor = .white
-          var confidence: CGFloat = 0
-          var alpha: CGFloat = 0.9
-          var bestClass = ""
-
-          switch task {
-          case .detect:
-            let prediction = predictions.boxes[i]
-            // For the detect task, invert y using "1 - maxY" as before
-            rect = CGRect(
-              x: prediction.xywhn.minX,
-              y: 1 - prediction.xywhn.maxY,
-              width: prediction.xywhn.width,
-              height: prediction.xywhn.height
-            )
-            bestClass = prediction.cls
-            confidence = CGFloat(prediction.conf)
-
-          default:
-            let prediction = predictions.boxes[i]
-            rect = CGRect(
-              x: prediction.xywhn.minX,
-              y: 1 - prediction.xywhn.maxY,
-              width: prediction.xywhn.width,
-              height: prediction.xywhn.height
-            )
-            bestClass = prediction.cls
-            confidence = CGFloat(prediction.conf)
-          }
-
-          let colorIndex = predictions.boxes[i].index % ultralyticsColors.count
-          boxColor = ultralyticsColors[colorIndex]
-          label = DetectionLabelStyle.text(className: bestClass, confidence: confidence)
-          alpha = DetectionLabelStyle.alpha(confidence: confidence)
-
-          rect.origin.x = rect.origin.x * videoCapture.longSide * scaleX - offsetX
-          rect.origin.y =
-            height
-            - (rect.origin.y * videoCapture.shortSide * scaleY
-              - offsetY
-              + rect.size.height * videoCapture.shortSide * scaleY)
-          rect.size.width *= videoCapture.longSide * scaleX
-          rect.size.height *= videoCapture.shortSide * scaleY
-
-          if _showOverlays {
-            boundingBoxViews[i].show(
-              frame: rect,
-              label: label,
-              color: boxColor,
-              alpha: alpha
-            )
-          } else {
-            boundingBoxViews[i].hide()
-          }
-        } else {
-          boundingBoxViews[i].hide()
-        }
-      }
+      let prediction = predictions.boxes[i]
+      let rect = aspectFillDisplayRect(
+        for: prediction.xywhn, imageSize: predictions.orig_shape, viewSize: viewSize)
+      let confidence = CGFloat(prediction.conf)
+      boundingBoxViews[i].show(
+        frame: rect,
+        label: DetectionLabelStyle.text(className: prediction.cls, confidence: confidence),
+        color: ultralyticsColors[prediction.index % ultralyticsColors.count],
+        alpha: DetectionLabelStyle.alpha(confidence: confidence))
     }
   }
 
@@ -730,7 +666,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         String(resultCount) + " items (max " + String(Int(sliderNumItems.value)) + ")"
     }
 
-    let overlayFrame = overlayLayer.frame
+    let viewSize = bounds.size
     for i in 0..<boundingBoxViews.count {
       guard i < resultCount && i < 50 else {
         boundingBoxViews[i].hide()
@@ -740,11 +676,15 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       let detection = predictions.obb[i]
       let box = detection.box
       let confidence = CGFloat(detection.confidence)
-      let rect = CGRect(
-        x: overlayFrame.minX + CGFloat(box.cx - box.w / 2) * overlayFrame.width,
-        y: overlayFrame.minY + CGFloat(box.cy - box.h / 2) * overlayFrame.height,
-        width: CGFloat(box.w) * overlayFrame.width,
-        height: CGFloat(box.h) * overlayFrame.height
+      // Map the normalized OBB rect through the same aspect-fill transform the preview uses. A naive scale by the raw
+      // view dimensions stretches w/h by different factors (wrong aspect) and ignores the aspect-fill crop offset
+      // (mis-centered — the center can land on a box edge). Mirrors yolo-ios-app YOLOView.showOBBs.
+      let rect = aspectFillDisplayRect(
+        for: CGRect(
+          x: CGFloat(box.cx - box.w / 2), y: CGFloat(box.cy - box.h / 2),
+          width: CGFloat(box.w), height: CGFloat(box.h)),
+        imageSize: predictions.orig_shape,
+        viewSize: viewSize
       )
       if _showOverlays {
         boundingBoxViews[i].show(
@@ -766,6 +706,14 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         layer.removeFromSuperlayer()
       }
     }
+  }
+
+  func clearPredictionOverlays() {
+    boundingBoxViews.forEach { $0.hide() }
+    removeClassificationLayers()
+    maskLayer?.isHidden = true
+    maskLayer?.contents = nil
+    removeAllSubLayers(parentLayer: poseLayer)
   }
 
   func overlayYOLOClassificationsCALayer(on view: UIView, result: YOLOResult) {
@@ -900,8 +848,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     toolbar.addSubview(playButton)
     toolbar.addSubview(pauseButton)
     toolbar.addSubview(switchCameraButton)
-
-    self.addGestureRecognizer(UIPinchGestureRecognizer(target: self, action: #selector(pinch)))
+    // Dart owns gestures (pinch + tap) via Flutter GestureDetector in YOLOShowcase;
+    // native is setter-only. Do not attach UIPinchGestureRecognizer here.
   }
 
   /// Update the visibility of UI controls based on the showUIControls flag
@@ -1168,45 +1116,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
-  @objc func pinch(_ pinch: UIPinchGestureRecognizer) {
-    guard let device = videoCapture.captureDevice else { return }
-
-    // Return zoom value between the minimum and maximum zoom values
-    func minMaxZoom(_ factor: CGFloat) -> CGFloat {
-      return min(min(max(factor, minimumZoom), maximumZoom), device.activeFormat.videoMaxZoomFactor)
-    }
-
-    func update(scale factor: CGFloat) {
-      do {
-        try device.lockForConfiguration()
-        defer {
-          device.unlockForConfiguration()
-        }
-        device.videoZoomFactor = factor
-      } catch {
-        NSLog("YOLOView: %@", error.localizedDescription)
-      }
-    }
-
-    let newScaleFactor = minMaxZoom(pinch.scale * lastZoomFactor)
-    switch pinch.state {
-    case .began, .changed:
-      update(scale: newScaleFactor)
-      self.labelZoom.text = String(format: "%.2fx", newScaleFactor)
-      self.labelZoom.font = UIFont.preferredFont(forTextStyle: .title2)
-      // Notify zoom change
-      onZoomChanged?(newScaleFactor)
-    case .ended:
-      lastZoomFactor = minMaxZoom(newScaleFactor)
-      update(scale: lastZoomFactor)
-      self.labelZoom.font = UIFont.preferredFont(forTextStyle: .body)
-      // Notify final zoom level
-      onZoomChanged?(lastZoomFactor)
-    default: break
-    }
-  }
-
-  /// Set the camera zoom level programmatically
+  /// Set the camera zoom level programmatically. `zoomLevel` is a user-facing display factor (matching the lens chips
+  /// and pinch HUD); it is converted to the device's raw `videoZoomFactor` before being applied, so 0.5 reaches the
+  /// ultra-wide on a virtual multi-camera rather than clamping to the wide lens.
   public func setZoomLevel(_ zoomLevel: CGFloat) {
     guard let device = videoCapture.captureDevice else { return }
 
@@ -1215,7 +1127,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       return min(min(max(factor, minimumZoom), maximumZoom), device.activeFormat.videoMaxZoomFactor)
     }
 
-    let newZoomFactor = minMaxZoom(zoomLevel)
+    let multiplier = displayZoomFactor(1.0, for: device)
+    let rawTarget = multiplier > 0 ? zoomLevel / multiplier : zoomLevel
+    let newZoomFactor = minMaxZoom(rawTarget)
 
     do {
       try device.lockForConfiguration()
@@ -1225,13 +1139,294 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       device.videoZoomFactor = newZoomFactor
       lastZoomFactor = newZoomFactor
 
-      // Update zoom label
-      self.labelZoom.text = String(format: "%.1fx", newZoomFactor)
+      // Update zoom label (display factor)
+      let display = displayZoomFactor(newZoomFactor, for: device)
+      self.labelZoom.text = String(format: "%.1fx", display)
 
-      // Notify zoom change
-      onZoomChanged?(newZoomFactor)
+      // Notify zoom change (display factor)
+      onZoomChanged?(display)
+
+      // Emit a lens-change event if the active lens (per the lens-snap math)
+      // changed as a result of this zoom step.
+      updateSelectedLensLabel(rawZoomFactor: newZoomFactor, device: device)
     } catch {
       NSLog("YOLOView: Failed to set zoom level: %@", error.localizedDescription)
+    }
+  }
+
+  // MARK: - Multi-lens support
+  //
+  // Port of the lens enumeration + lens-snap math from `yolo-ios-app/Sources/YOLO/YOLOView.swift:1157-1185` and the
+  // device discovery in `VideoCapture.swift:32-45`. Setters only — Dart owns gestures; this class never attaches a
+  // pinch/tap recognizer.
+
+  /// Returns the physical lens devices available for the active camera position (back: ultra-wide / wide / telephoto,
+  /// front: a single device). Each entry carries the user-facing `zoomFactor` shown on the lens chips (e.g. 0.5 / 1 / 2)
+  /// plus the `rawZoom` `videoZoomFactor` that actually selects that constituent lens on the active (virtual) device.
+  /// The two differ on a virtual multi-camera: raw 1.0 ultra-wide reads as 0.5x. Without this split the chips would
+  /// show the raw factors (1 / 2 / ...) and the ultra-wide would have no 0.5x entry.
+  public func availableLenses() -> [(zoomFactor: CGFloat, rawZoom: CGFloat, label: String)] {
+    let position = videoCapture.captureDevice?.position ?? .back
+    let activeDevice = videoCapture.captureDevice
+
+    if position == .front {
+      guard let device = activeDevice else { return [] }
+      return [(1.0, 1.0, lensLabel(for: device))]
+    }
+
+    let discovery = AVCaptureDevice.DiscoverySession(
+      deviceTypes: physicalLensTypes,
+      mediaType: .video,
+      position: position
+    )
+
+    let devices = discovery.devices.sorted { lensSortOrder($0) < lensSortOrder($1) }
+    return devices.map { lens -> (zoomFactor: CGFloat, rawZoom: CGFloat, label: String) in
+      let raw = zoomFactor(for: lens, on: activeDevice) ?? fallbackZoomFactor(for: lens)
+      let display =
+        activeDevice.map { displayZoomFactor(raw, for: $0) } ?? fallbackZoomFactor(for: lens)
+      return (display, raw, lensLabel(for: lens))
+    }
+  }
+
+  /// Switch to the physical lens whose zoom factor most closely matches `zoomFactor` (e.g. 0.5 / 1 / 2). Bypasses the
+  /// 1.0 minimum used by `setZoomLevel` so the ultra-wide (0.5x) is reachable. Updates the zoom label, fires
+  /// `onZoomChanged`, and emits a `lens` event so the Dart lens picker can sync.
+  public func setLens(zoomFactor desired: CGFloat) {
+    let lenses = availableLenses()
+    guard !lenses.isEmpty else { return }
+
+    // `desired` is a user-facing display factor (0.5 / 1 / 2). Snap to the lens whose display factor is closest, then
+    // apply that lens's RAW videoZoomFactor — the virtual device auto-selects the matching constituent. Setting the
+    // display factor directly would land on the wrong lens (raw 0.5 clamps to 1.0 = ultra-wide for every chip).
+    let best = lenses.min(by: { abs($0.zoomFactor - desired) < abs($1.zoomFactor - desired) })
+    guard let target = best, let device = videoCapture.captureDevice else { return }
+
+    let clamped = min(
+      max(target.rawZoom, device.minAvailableVideoZoomFactor),
+      device.maxAvailableVideoZoomFactor
+    )
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+      device.videoZoomFactor = clamped
+      lastZoomFactor = clamped
+      let display = displayZoomFactor(clamped, for: device)
+      self.labelZoom.text = String(format: "%.1fx", display)
+      onZoomChanged?(display)
+    } catch {
+      NSLog("YOLOView: setLens failed: %@", error.localizedDescription)
+      return
+    }
+
+    // Always emit `lens` for an explicit setLens call so the Dart UI can
+    // confirm selection — even when the lens didn't actually change.
+    currentLensLabel = target.label
+    onLensChanged?(target.label)
+  }
+
+  /// Set focus + exposure at a normalized 0..1 view-relative coordinate. Dart-side gesture handlers call this; no
+  /// native recognizer is attached to the view.
+  ///
+  /// `focusPointOfInterest`/`exposurePointOfInterest` live in the capture device's coordinate space (aspect-fill
+  /// cropped, orientation-baked). View-relative input must therefore be routed through the preview layer's
+  /// `captureDevicePointConverted(fromLayerPoint:)` — without that hop a portrait device focuses well off the tap
+  /// location.
+  public func tapToFocus(x: CGFloat, y: CGFloat) {
+    guard let device = videoCapture.captureDevice else { return }
+    let viewX = max(0, min(1, x))
+    let viewY = max(0, min(1, y))
+
+    // Map 0..1 view coords → preview layer point → capture device point. Falls back to the raw view-relative point if
+    // the preview layer is not attached yet (early-frame race), which is the same behavior as iOS before iOS 11
+    // introduced the converter.
+    let devicePoint: CGPoint
+    if let preview = videoCapture.previewLayer, preview.bounds.width > 0, preview.bounds.height > 0
+    {
+      let layerPoint = CGPoint(
+        x: viewX * preview.bounds.width,
+        y: viewY * preview.bounds.height)
+      devicePoint = preview.captureDevicePointConverted(fromLayerPoint: layerPoint)
+    } else {
+      devicePoint = CGPoint(x: viewX, y: viewY)
+    }
+
+    do {
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+
+      if device.isFocusPointOfInterestSupported,
+        device.isFocusModeSupported(.autoFocus)
+      {
+        device.focusPointOfInterest = devicePoint
+        device.focusMode = .autoFocus
+      }
+      if device.isExposurePointOfInterestSupported,
+        device.isExposureModeSupported(.autoExpose)
+      {
+        device.exposurePointOfInterest = devicePoint
+        device.exposureMode = .autoExpose
+      }
+      // Notify Dart with the original view-relative coords so the FocusReticle pulses where the user actually tapped.
+      onFocusTapped?(viewX, viewY)
+    } catch {
+      NSLog("YOLOView: tapToFocus failed: %@", error.localizedDescription)
+    }
+  }
+
+  /// Returns the user-facing label of the currently selected lens for the active camera position. Useful for callers
+  /// that want to seed Dart state on first frame.
+  public func currentLens() -> String {
+    if !currentLensLabel.isEmpty { return currentLensLabel }
+    guard let device = videoCapture.captureDevice else { return "" }
+    return lensLabel(for: device)
+  }
+
+  /// Port of `YOLOView.updateSelectedLens` (yolo-ios-app:1157-1185). Picks the largest-zoom physical lens whose
+  /// threshold is <= `rawZoomFactor`, falling back to the smallest available lens. Emits `onLensChanged` when the
+  /// label transitions to a new value.
+  private func updateSelectedLensLabel(rawZoomFactor: CGFloat, device: AVCaptureDevice) {
+    guard device.position == .back else {
+      // Front camera: a single device.
+      let label = lensLabel(for: device)
+      if label != currentLensLabel {
+        currentLensLabel = label
+        onLensChanged?(label)
+      }
+      return
+    }
+
+    let discovery = AVCaptureDevice.DiscoverySession(
+      deviceTypes: physicalLensTypes,
+      mediaType: .video,
+      position: .back
+    )
+
+    let lensZooms = discovery.devices.compactMap {
+      (lens: AVCaptureDevice) -> (device: AVCaptureDevice, zoom: CGFloat)? in
+      guard physicalLensTypes.contains(lens.deviceType) else { return nil }
+      let zoom = zoomFactor(for: lens, on: device) ?? fallbackZoomFactor(for: lens)
+      return (lens, zoom)
+    }.sorted { $0.zoom < $1.zoom }
+
+    guard !lensZooms.isEmpty else { return }
+    let selected =
+      lensZooms.last(where: { rawZoomFactor >= $0.zoom - 0.01 })?.device
+      ?? lensZooms.first?.device
+    guard let selected else { return }
+
+    let label = lensLabel(for: selected)
+    if label != currentLensLabel {
+      currentLensLabel = label
+      onLensChanged?(label)
+    }
+  }
+
+  /// Lens-label mapping mirroring upstream `lensCaption`.
+  private func lensLabel(for device: AVCaptureDevice) -> String {
+    if device.position == .front { return "Front camera" }
+    switch device.deviceType {
+    case .builtInUltraWideCamera: return "Ultra wide camera"
+    case .builtInWideAngleCamera: return "Wide camera"
+    case .builtInTelephotoCamera: return "Telephoto camera"
+    default: return device.localizedName
+    }
+  }
+
+  private func lensSortOrder(_ device: AVCaptureDevice) -> Int {
+    switch device.deviceType {
+    case .builtInUltraWideCamera: return 0
+    case .builtInWideAngleCamera: return 1
+    case .builtInTelephotoCamera: return 2
+    default: return 3
+    }
+  }
+
+  /// Per-lens fallback zoom factor when the active device is not a virtual multi-lens device (matches the upstream
+  /// `fallbackLensTitle` numeric values: 0.5 / 1 / 2).
+  private func fallbackZoomFactor(for device: AVCaptureDevice) -> CGFloat {
+    switch device.deviceType {
+    case .builtInUltraWideCamera: return 0.5
+    case .builtInWideAngleCamera: return 1.0
+    case .builtInTelephotoCamera: return 2.0
+    default: return 1.0
+    }
+  }
+
+  /// Port of upstream `VideoCapture.swift:62-84` — computes the raw zoom factor on `virtualDevice` that selects the
+  /// constituent lens `lensDevice`.
+  private func zoomFactor(
+    for lensDevice: AVCaptureDevice, on virtualDevice: AVCaptureDevice?
+  ) -> CGFloat? {
+    guard let virtualDevice, lensDevice.position == virtualDevice.position else { return nil }
+    let constituent = virtualDevice.constituentDevices
+      .filter { physicalLensTypes.contains($0.deviceType) }
+      .sorted { lensSortOrder($0) < lensSortOrder($1) }
+    guard constituent.count > 1 else { return nil }
+
+    let lensIndex =
+      constituent.firstIndex { $0.uniqueID == lensDevice.uniqueID }
+      ?? constituent.firstIndex { $0.deviceType == lensDevice.deviceType }
+    guard let lensIndex else { return nil }
+
+    let switchOverZoomFactors = virtualDevice.virtualDeviceSwitchOverVideoZoomFactors.map {
+      CGFloat(truncating: $0)
+    }
+    let zoomFactors = [virtualDevice.minAvailableVideoZoomFactor] + switchOverZoomFactors
+    guard lensIndex < zoomFactors.count else { return nil }
+
+    return min(
+      max(zoomFactors[lensIndex], virtualDevice.minAvailableVideoZoomFactor),
+      virtualDevice.maxAvailableVideoZoomFactor
+    )
+  }
+
+  // MARK: - Camera-flip blur transition
+  //
+  // Ported from `yolo-ios-app/Sources/YOLO/YOLOView.swift:1036-1069`. Adds a snapshot + UIVisualEffectView over the
+  // preview while the camera session reconfigures, then fades it out.
+
+  private func showCameraTransition() {
+    cameraTransitionView?.removeFromSuperview()
+
+    let transitionView = UIView(frame: bounds)
+    transitionView.isUserInteractionEnabled = false
+    transitionView.backgroundColor = .black
+    transitionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+    if let snapshot = snapshotView(afterScreenUpdates: false) {
+      snapshot.frame = transitionView.bounds
+      snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+      transitionView.addSubview(snapshot)
+    }
+
+    let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+    blurView.frame = transitionView.bounds
+    blurView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    transitionView.addSubview(blurView)
+
+    // Insert below the top-bar label so any Flutter-side overlays still feel
+    // pinned, but above the preview + bounding boxes.
+    if labelName.superview === self {
+      insertSubview(transitionView, belowSubview: labelName)
+    } else {
+      addSubview(transitionView)
+    }
+    cameraTransitionView = transitionView
+  }
+
+  private func hideCameraTransition() {
+    guard let transitionView = cameraTransitionView else { return }
+    cameraTransitionView = nil
+    UIView.animate(
+      withDuration: 0.18,
+      delay: 0.06,
+      options: [.beginFromCurrentState, .curveEaseOut]
+    ) {
+      transitionView.alpha = 0
+    } completion: { _ in
+      transitionView.removeFromSuperview()
     }
   }
 
@@ -1276,11 +1471,16 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       return
     }
 
+    // Visual polish: snapshot+blur the preview while the session
+    // reconfigures (port of yolo-ios-app YOLOView.swift:1036-1060).
+    showCameraTransition()
+
     self.videoCapture.captureSession.beginConfiguration()
     guard let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput
     else {
       NSLog("YOLOView: No current camera input to remove")
       self.videoCapture.captureSession.commitConfiguration()
+      hideCameraTransition()
       return
     }
 
@@ -1294,29 +1494,66 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       NSLog(
         "YOLOView: No camera device available for position: %@",
         String(describing: nextCameraPosition))
+      // currentInput was already removed above; re-add it so the session isn't left with no camera input.
+      if self.videoCapture.captureSession.canAddInput(currentInput) {
+        self.videoCapture.captureSession.addInput(currentInput)
+      }
       self.videoCapture.captureSession.commitConfiguration()
+      hideCameraTransition()
       return
     }
 
     guard let videoInput1 = try? AVCaptureDeviceInput(device: newCameraDevice) else {
       NSLog("YOLOView: Failed to create AVCaptureDeviceInput for camera switch")
+      // currentInput was already removed above; re-add it so the session isn't left with no camera input.
+      if self.videoCapture.captureSession.canAddInput(currentInput) {
+        self.videoCapture.captureSession.addInput(currentInput)
+      }
       self.videoCapture.captureSession.commitConfiguration()
+      hideCameraTransition()
       return
     }
 
-    self.videoCapture.captureSession.addInput(videoInput1)
-    self.videoCapture.updateVideoOrientation(orientation: currentVideoOrientation())
+    if self.videoCapture.captureSession.canAddInput(videoInput1) {
+      self.videoCapture.captureSession.addInput(videoInput1)
+      self.videoCapture.captureDevice = newCameraDevice
+      self.videoCapture.updateVideoOrientation(orientation: currentVideoOrientation())
 
-    self.videoCapture.captureSession.commitConfiguration()
+      self.videoCapture.captureSession.commitConfiguration()
+
+      // Reset lens label cache so the next zoom step (or a getAvailableLenses
+      // poll from Dart) reports the new position's lens.
+      currentLensLabel = ""
+      lastZoomFactor = 1.0
+    } else {
+      // The new camera input can't be attached — restore the previous one so the session isn't left with no video
+      // input (which would freeze the preview). The old input was removed above, so re-add it before committing.
+      NSLog("YOLOView: Cannot add input for camera switch; restoring previous camera")
+      if self.videoCapture.captureSession.canAddInput(currentInput) {
+        self.videoCapture.captureSession.addInput(currentInput)
+      }
+      self.videoCapture.captureSession.commitConfiguration()
+    }
+
+    hideCameraTransition()
   }
 
-  public func capturePhoto(completion: @escaping (UIImage?) -> Void) {
-    self.photoCaptureCompletion = completion
-    let settings = AVCapturePhotoSettings()
-    usleep(20_000)  // short 10 ms delay to allow camera to focus
-    self.videoCapture.photoOutput.capturePhoto(
-      with: settings, delegate: self as AVCapturePhotoCaptureDelegate
-    )
+  /// Capture a share image. When `withOverlays` is true the next live frame (or the paused-share frame when the
+  /// session is stopped) is composited with the current bounding-box / mask / pose layers via `renderShareImage`. When
+  /// false the raw oriented camera frame is returned so callers can do their own annotation. Matches upstream YOLO iOS
+  /// `capturePhoto` and the Android `capturePhoto(withOverlays)` contract.
+  public func capturePhoto(withOverlays: Bool, completion: @escaping (UIImage?) -> Void) {
+    if let pausedShareImage, !videoCapture.captureSession.isRunning {
+      completion(withOverlays ? renderShareImage(pausedShareImage) : pausedShareImage)
+      return
+    }
+    videoCapture.captureNextFrame { [weak self] image in
+      guard let self, let image else {
+        completion(nil)
+        return
+      }
+      completion(withOverlays ? self.renderShareImage(image) : image)
+    }
   }
 
   public func setInferenceFlag(ok: Bool) {
@@ -1333,153 +1570,138 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     // Release predictor to prevent memory leak
     videoCapture.predictor = nil
 
-    // Clear all callbacks to prevent retain cycles
-    onDetection = nil
-    onStream = nil
-    onZoomChanged = nil
+    // UIView deinit runs on the main thread; `assumeIsolated` lets us clear the main-actor-isolated callbacks
+    // without crossing isolation under Swift 6 strict concurrency.
+    MainActor.assumeIsolated {
+      onDetection = nil
+      onStream = nil
+      onZoomChanged = nil
+      onLensChanged = nil
+      onFocusTapped = nil
+    }
 
     // Remove notification observers
     NotificationCenter.default.removeObserver(self)
   }
 }
 
-extension YOLOView: AVCapturePhotoCaptureDelegate {
-  public func photoOutput(
-    _ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?
-  ) {
-    if let error = error {
-      NSLog("YOLOView: Photo capture error: %@", error.localizedDescription)
+extension YOLOView {
+  /// Composites bounding boxes (and mask/pose overlays when present) on top of a freshly captured frame via
+  /// `drawHierarchy`. Mirrors upstream YOLO iOS `renderShareImage`. Mutates the layer hierarchy transiently and
+  /// restores it before returning.
+  fileprivate func renderShareImage(_ image: UIImage) -> UIImage? {
+    var isCameraFront = false
+    if let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput,
+      currentInput.device.position == .front
+    {
+      isCameraFront = true
     }
-    if let dataImage = photo.fileDataRepresentation() {
-      let dataProvider = CGDataProvider(data: dataImage as CFData)
-      let cgImageRef: CGImage! = CGImage(
-        jpegDataProviderSource: dataProvider!, decode: nil, shouldInterpolate: true,
-        intent: .defaultIntent)
-      var isCameraFront = false
-      if let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput,
-        currentInput.device.position == .front
-      {
-        isCameraFront = true
-      }
-      var orientation: CGImagePropertyOrientation = isCameraFront ? .leftMirrored : .right
-      switch UIDevice.current.orientation {
-      case .landscapeLeft:
-        orientation = isCameraFront ? .downMirrored : .up
-      case .landscapeRight:
-        orientation = isCameraFront ? .upMirrored : .down
-      default:
-        break
-      }
-      var image = UIImage(cgImage: cgImageRef, scale: 0.5, orientation: .right)
-      if let orientedCIImage = CIImage(image: image)?.oriented(orientation),
-        let cgImage = CIContext().createCGImage(orientedCIImage, from: orientedCIImage.extent)
-      {
-        image = UIImage(cgImage: cgImage)
-      }
-      let imageView = UIImageView(image: image)
-      imageView.contentMode = .scaleAspectFill
-      imageView.frame = self.frame
-      let imageLayer = imageView.layer
-      self.layer.insertSublayer(imageLayer, above: videoCapture.previewLayer)
+    var orientation: CGImagePropertyOrientation = isCameraFront ? .leftMirrored : .right
+    switch UIDevice.current.orientation {
+    case .landscapeLeft:
+      orientation = isCameraFront ? .downMirrored : .up
+    case .landscapeRight:
+      orientation = isCameraFront ? .upMirrored : .down
+    default:
+      break
+    }
+    var oriented = image
+    if let orientedCIImage = CIImage(image: image)?.oriented(orientation),
+      let cgImage = CIContext().createCGImage(orientedCIImage, from: orientedCIImage.extent)
+    {
+      oriented = UIImage(cgImage: cgImage)
+    }
 
-      // Add mask layer if present (for segmentation task)
-      var tempMaskLayer: CALayer?
-      if let maskLayer = self.maskLayer, !maskLayer.isHidden {
-        // Create a temporary copy of the mask layer for capture
-        let tempLayer = CALayer()
-        // Calculate the correct frame relative to the main view
-        let overlayFrame = self.overlayLayer.frame
-        let maskFrame = maskLayer.frame
+    let imageView = UIImageView(image: oriented)
+    imageView.contentMode = .scaleAspectFill
+    imageView.frame = self.frame
+    let imageLayer = imageView.layer
+    self.layer.insertSublayer(imageLayer, above: videoCapture.previewLayer)
 
-        // Adjust mask frame to be relative to the main view, not overlayLayer
-        tempLayer.frame = CGRect(
-          x: overlayFrame.origin.x + maskFrame.origin.x,
-          y: overlayFrame.origin.y + maskFrame.origin.y,
-          width: maskFrame.width,
-          height: maskFrame.height
-        )
-        tempLayer.contents = maskLayer.contents
-        tempLayer.contentsGravity = maskLayer.contentsGravity
-        tempLayer.contentsRect = maskLayer.contentsRect
-        tempLayer.contentsCenter = maskLayer.contentsCenter
-        tempLayer.opacity = maskLayer.opacity
-        tempLayer.compositingFilter = maskLayer.compositingFilter
-        tempLayer.transform = maskLayer.transform
-        tempLayer.masksToBounds = maskLayer.masksToBounds
-        self.layer.insertSublayer(tempLayer, above: imageLayer)
-        tempMaskLayer = tempLayer
-      }
+    var tempMaskLayer: CALayer?
+    if let maskLayer = self.maskLayer, !maskLayer.isHidden {
+      let tempLayer = CALayer()
+      let overlayFrame = self.overlayLayer.frame
+      let maskFrame = maskLayer.frame
+      tempLayer.frame = CGRect(
+        x: overlayFrame.origin.x + maskFrame.origin.x,
+        y: overlayFrame.origin.y + maskFrame.origin.y,
+        width: maskFrame.width,
+        height: maskFrame.height
+      )
+      tempLayer.contents = maskLayer.contents
+      tempLayer.contentsGravity = maskLayer.contentsGravity
+      tempLayer.contentsRect = maskLayer.contentsRect
+      tempLayer.contentsCenter = maskLayer.contentsCenter
+      tempLayer.opacity = maskLayer.opacity
+      tempLayer.compositingFilter = maskLayer.compositingFilter
+      tempLayer.transform = maskLayer.transform
+      tempLayer.masksToBounds = maskLayer.masksToBounds
+      self.layer.insertSublayer(tempLayer, above: imageLayer)
+      tempMaskLayer = tempLayer
+    }
 
-      // Add pose layer if present (for pose task)
-      var tempPoseLayer: CALayer?
-      if let poseLayer = self.poseLayer {
-        // Create a temporary copy of the pose layer including all sublayers
-        let tempLayer = CALayer()
-        let overlayFrame = self.overlayLayer.frame
-
-        // Set frame relative to main view
-        tempLayer.frame = CGRect(
-          x: overlayFrame.origin.x,
-          y: overlayFrame.origin.y,
-          width: overlayFrame.width,
-          height: overlayFrame.height
-        )
-        tempLayer.opacity = poseLayer.opacity
-
-        // Copy all sublayers (keypoints and skeleton lines)
-        if let sublayers = poseLayer.sublayers {
-          for sublayer in sublayers {
-            let copyLayer = CALayer()
-            copyLayer.frame = sublayer.frame
-            copyLayer.backgroundColor = sublayer.backgroundColor
-            copyLayer.cornerRadius = sublayer.cornerRadius
-            copyLayer.opacity = sublayer.opacity
-
-            // If it's a shape layer (for lines), copy the path
-            if let shapeLayer = sublayer as? CAShapeLayer {
-              let copyShapeLayer = CAShapeLayer()
-              copyShapeLayer.frame = shapeLayer.frame
-              copyShapeLayer.path = shapeLayer.path
-              copyShapeLayer.strokeColor = shapeLayer.strokeColor
-              copyShapeLayer.lineWidth = shapeLayer.lineWidth
-              copyShapeLayer.fillColor = shapeLayer.fillColor
-              copyShapeLayer.opacity = shapeLayer.opacity
-              tempLayer.addSublayer(copyShapeLayer)
-            } else {
-              tempLayer.addSublayer(copyLayer)
-            }
+    var tempPoseLayer: CALayer?
+    if let poseLayer = self.poseLayer {
+      let tempLayer = CALayer()
+      // poseLayer now occupies the aspect-fill image rect (not the full overlay), and overlayLayer is at the view
+      // origin, so the captured-image copy must sit at poseLayer's own frame to match the live keypoints.
+      let poseFrame = poseLayer.frame
+      tempLayer.frame = CGRect(
+        x: poseFrame.origin.x,
+        y: poseFrame.origin.y,
+        width: poseFrame.width,
+        height: poseFrame.height
+      )
+      tempLayer.opacity = poseLayer.opacity
+      if let sublayers = poseLayer.sublayers {
+        for sublayer in sublayers {
+          let copyLayer = CALayer()
+          copyLayer.frame = sublayer.frame
+          copyLayer.backgroundColor = sublayer.backgroundColor
+          copyLayer.cornerRadius = sublayer.cornerRadius
+          copyLayer.opacity = sublayer.opacity
+          if let shapeLayer = sublayer as? CAShapeLayer {
+            let copyShapeLayer = CAShapeLayer()
+            copyShapeLayer.frame = shapeLayer.frame
+            copyShapeLayer.path = shapeLayer.path
+            copyShapeLayer.strokeColor = shapeLayer.strokeColor
+            copyShapeLayer.lineWidth = shapeLayer.lineWidth
+            copyShapeLayer.fillColor = shapeLayer.fillColor
+            copyShapeLayer.opacity = shapeLayer.opacity
+            tempLayer.addSublayer(copyShapeLayer)
+          } else {
+            tempLayer.addSublayer(copyLayer)
           }
         }
-
-        self.layer.insertSublayer(tempLayer, above: imageLayer)
-        tempPoseLayer = tempLayer
       }
-
-      var tempViews = [UIView]()
-      let boundingBoxInfos = makeBoundingBoxInfos(from: boundingBoxViews)
-      for info in boundingBoxInfos where !info.isHidden {
-        let boxView = createBoxView(from: info)
-        boxView.frame = info.rect
-
-        self.addSubview(boxView)
-        tempViews.append(boxView)
-      }
-      let bounds = UIScreen.main.bounds
-      UIGraphicsBeginImageContextWithOptions(bounds.size, true, 0.0)
-      self.drawHierarchy(in: bounds, afterScreenUpdates: true)
-      let img = UIGraphicsGetImageFromCurrentImageContext()
-      UIGraphicsEndImageContext()
-
-      // Clean up temporary layers and views
-      imageLayer.removeFromSuperlayer()
-      tempMaskLayer?.removeFromSuperlayer()
-      tempPoseLayer?.removeFromSuperlayer()
-      for v in tempViews {
-        v.removeFromSuperview()
-      }
-      photoCaptureCompletion?(img)
-      photoCaptureCompletion = nil
+      self.layer.insertSublayer(tempLayer, above: imageLayer)
+      tempPoseLayer = tempLayer
     }
+
+    var tempViews = [UIView]()
+    let boundingBoxInfos = makeBoundingBoxInfos(from: boundingBoxViews)
+    for info in boundingBoxInfos where !info.isHidden {
+      let boxView = createBoxView(from: info)
+      boxView.frame = info.rect
+      self.addSubview(boxView)
+      tempViews.append(boxView)
+    }
+
+    // Snapshot the YOLOView's own bounds — UIScreen.main.bounds would crop the wrong rect under split view, embedded
+    // layouts, or any non-fullscreen host and would misalign overlays in the shared image.
+    let bounds = self.bounds
+    UIGraphicsBeginImageContextWithOptions(bounds.size, true, 0.0)
+    drawHierarchy(in: bounds, afterScreenUpdates: true)
+    let snapshot = UIGraphicsGetImageFromCurrentImageContext()
+    UIGraphicsEndImageContext()
+
+    imageLayer.removeFromSuperlayer()
+    tempMaskLayer?.removeFromSuperlayer()
+    tempPoseLayer?.removeFromSuperlayer()
+    for v in tempViews { v.removeFromSuperview() }
+
+    return snapshot
   }
 
   // MARK: - Streaming Functionality
@@ -1602,10 +1824,15 @@ extension YOLOView: AVCapturePhotoCaptureDelegate {
       var detections: [[String: Any]] = []
 
       if config.includePoses && !result.keypointsList.isEmpty && result.boxes.isEmpty {
-        for (poseIndex, keypoints) in result.keypointsList.enumerated() {
+        for (_, keypoints) in result.keypointsList.enumerated() {
           var detection: [String: Any] = [:]
           detection["classIndex"] = 0
-          detection["className"] = "person"
+          let className = result.names.first?.trimmingCharacters(in: .whitespacesAndNewlines)
+          if let className, !className.isEmpty {
+            detection["className"] = className
+          } else {
+            detection["className"] = "class 0"
+          }
           detection["confidence"] = 1.0
           var minX = Float.greatestFiniteMagnitude
           var minY = Float.greatestFiniteMagnitude

@@ -62,6 +62,8 @@ Good defaults:
 - disable masks unless you actually render them
 - disable `includeOriginalImage` unless you consume full frame bytes
 
+For the detailed experiment log that mirrors the iOS app's canonical performance record, see [`../docs/performance.md`](../docs/performance.md).
+
 ## 🖥️ GPU vs CPU
 
 `useGpu` defaults to `true`, but CPU can be the better choice on unstable devices:
@@ -73,9 +75,21 @@ final yolo = YOLO(
 );
 ```
 
+On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles compatible graphs for the GPU, while unsupported graphs or ops may fall back to XNNPACK CPU. (iOS uses Core ML.)
+
+The official YOLO26 int8 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph. For example, a Galaxy S26 compiled `yolo26n_int8.tflite` fully with the OpenCL delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran at about **15 FPS / 32 ms** in the live camera example app. Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
+
+fp16 non-end-to-end TFLite exports are still useful for GPU benchmarking:
+
+```python
+from ultralytics import YOLO
+
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
+```
+
 Use CPU when:
 
-- device-specific GPU delegates are unstable
+- device-specific GPU paths are unstable
 - startup reliability matters more than peak throughput
 - you are debugging model-load failures
 
@@ -122,5 +136,5 @@ Measure:
 - Start with `yolo26n`.
 - Prefer metadata-carrying official models or exports.
 - Cap streaming frame rate before trying to micro-optimize code.
-- Disable GPU on problematic devices instead of layering in workarounds.
+- On Android, keep `useGpu: true` for the automatic LiteRT GPU -> CPU ladder, and verify actual delegate placement on target devices.
 - Benchmark the actual export you plan to ship.

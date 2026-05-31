@@ -2,19 +2,26 @@
 
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo_example/presentation/screens/camera_inference_screen.dart';
+import 'package:ultralytics_yolo_example/presentation/screens/single_image_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const YOLOExampleApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class YOLOExampleApp extends StatelessWidget {
+  const YOLOExampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       title: 'Ultralytics YOLO',
-      home: CameraInferenceScreen(),
+      themeMode: ThemeMode.dark,
+      theme: ThemeData.dark(useMaterial3: true),
+      initialRoute: '/',
+      routes: {
+        '/': (_) => const CameraInferenceScreen(),
+        '/single': (_) => const SingleImageScreen(),
+      },
     );
   }
 }

@@ -14,6 +14,14 @@ import 'package:integration_test/integration_test.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 import 'package:ultralytics_yolo/platform/yolo_platform_interface.dart';
 
+class _FakeYOLOPlatform extends YOLOPlatform {
+  @override
+  Future<String?> getPlatformVersion() async => 'test-platform';
+
+  @override
+  Future<void> setModel(int viewId, String modelPath, String task) async {}
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -31,6 +39,8 @@ void main() {
   });
 
   testWidgets('getPlatformVersion test', (WidgetTester tester) async {
+    YOLOPlatform.instance = _FakeYOLOPlatform();
+
     final String? version = await YOLOPlatform.instance.getPlatformVersion();
     // The version string depends on the host platform running the test, so
     // just assert that some non-empty string is returned.

@@ -55,6 +55,22 @@ void main() {
       expect(manager, isNotNull);
     });
 
+    test('download progress stream broadcasts clamped progress', () async {
+      final events = <DownloadProgress>[];
+      final subscription = YOLOModelManager.downloadProgress.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      YOLOModelManager.emitProgress('yolo26n', -0.5);
+      YOLOModelManager.emitProgress('yolo26n', 1.5);
+
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events, hasLength(2));
+      expect(events.first.modelId, 'yolo26n');
+      expect(events.first.fraction, 0);
+      expect(events.last.fraction, 1);
+    });
+
     test('initializeInstance for non-default instance', () async {
       final manager = YOLOModelManager(
         channel: mockChannel,

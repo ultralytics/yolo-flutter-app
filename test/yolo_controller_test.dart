@@ -98,10 +98,86 @@ void main() {
         arguments: {'zoomLevel': 2.0},
       );
 
+      await controller.setShowOverlays(false);
+      YOLOTestHelpers.assertMethodCalled(
+        log,
+        'setShowOverlays',
+        arguments: {'visible': false},
+      );
+
       // Test capture frame
       final result = await controller.captureFrame();
       expect(result, isA<Uint8List>());
       YOLOTestHelpers.assertMethodCalled(log, 'captureFrame');
+    });
+
+    test('lens, focus, and photo methods invoke platform channel', () async {
+      final calls = <MethodCall>[];
+      const channel = MethodChannel('yolo_controller_methods_test');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            calls.add(call);
+            switch (call.method) {
+              case 'getAvailableLenses':
+                return [
+                  {'zoomFactor': 0.5, 'label': 'Ultra wide camera'},
+                  {'zoomFactor': 1, 'label': 'Wide camera'},
+                ];
+              case 'capturePhoto':
+                return Uint8List.fromList([1, 2, 3]);
+              default:
+                return true;
+            }
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+
+      controller.init(channel, 7);
+      final lenses = await controller.getAvailableLenses();
+      await controller.setLens(0.5);
+      await controller.tapToFocus(0.25, 0.75);
+      final photo = await controller.capturePhoto(withOverlays: false);
+
+      expect(lenses, hasLength(2));
+      expect(lenses.first.zoomFactor, 0.5);
+      expect(lenses.first.label, 'Ultra wide camera');
+      expect(photo, orderedEquals([1, 2, 3]));
+      YOLOTestHelpers.assertMethodCalled(calls, 'getAvailableLenses');
+      YOLOTestHelpers.assertMethodCalled(
+        calls,
+        'setLens',
+        arguments: {'zoomFactor': 0.5},
+      );
+      YOLOTestHelpers.assertMethodCalled(
+        calls,
+        'tapToFocus',
+        arguments: {'x': 0.25, 'y': 0.75},
+      );
+      YOLOTestHelpers.assertMethodCalled(
+        calls,
+        'capturePhoto',
+        arguments: {'withOverlays': false},
+      );
+    });
+
+    test('native camera events are routed to streams', () async {
+      final zoom = expectLater(controller.zoomEvents, emits(2.5));
+      final lens = expectLater(
+        controller.lensEvents,
+        emits('Telephoto camera'),
+      );
+      final focus = expectLater(
+        controller.focusEvents,
+        emits(const Offset(0.2, 0.8)),
+      );
+
+      controller.onNativeEvent({'type': 'zoom', 'value': 2.5});
+      controller.onNativeEvent({'type': 'lens', 'label': 'Telephoto camera'});
+      controller.onNativeEvent({'type': 'focus', 'x': 0.2, 'y': 0.8});
+
+      await Future.wait([zoom, lens, focus]);
     });
 
     test('methods handle uninitialized channel gracefully', () async {
@@ -144,6 +220,27 @@ void main() {
       await expectLater(
         controller.switchModel('test_model.tflite', YOLOTask.detect),
         throwsA(isA<ModelLoadingException>()),
+      );
+    });
+
+    test('switchModel propagates native setModel failures', () async {
+      // Unlike the fire-and-forget controls (which swallow native errors), a setModel failure must surface so
+      // YOLOView can revert the switch target and route to onModelError instead of committing the new model.
+      final setup = YOLOTestHelpers.createYOLOTestSetup(
+        customResponses: {
+          'setModel': (_) => throw PlatformException(
+            code: 'ERROR',
+            message: 'native setModel failed',
+          ),
+        },
+      );
+      mockChannel = setup.$1;
+      log = setup.$2;
+      controller.init(mockChannel, 1);
+
+      await expectLater(
+        controller.switchModel('test_model.tflite', YOLOTask.detect),
+        throwsA(isA<PlatformException>()),
       );
     });
   });

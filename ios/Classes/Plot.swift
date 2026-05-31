@@ -91,12 +91,13 @@ let skeleton = [
   [5, 7],
 ]
 
-/// Calculate smart label position that ensures the label stays within screen bounds
+/// Calculate smart label position that ensures the label stays within screen bounds.
+///
 /// - Parameters:
-///   - boxRect: The bounding box rectangle
-///   - labelSize: The size of the label
-///   - screenSize: The size of the screen/image
-/// - Returns: The adjusted rectangle for the label
+///   - boxRect: The bounding box rectangle.
+///   - labelSize: The size of the label.
+///   - screenSize: The size of the screen/image.
+/// - Returns: The adjusted rectangle for the label.
 func calculateSmartLabelRect(boxRect: CGRect, labelSize: CGSize, screenSize: CGSize) -> CGRect {
   // Initial position: above the box
   var labelX = boxRect.minX
@@ -130,62 +131,130 @@ func calculateSmartLabelRect(boxRect: CGRect, labelSize: CGSize, screenSize: CGS
   return CGRect(x: labelX, y: labelY, width: labelSize.width, height: labelSize.height)
 }
 
-public func drawYOLODetections(on ciImage: CIImage, result: YOLOResult) -> UIImage {
+/// Executes `body` inside a bitmap graphics context rendered at pixel scale.
+///
+/// Flips the y-axis so drawing matches UIKit's top-left origin and draws `cgImage` as the
+/// background. The same boilerplate appeared across every `draw…` visualization helper.
+private func renderWithBackground(
+  _ ciImage: CIImage,
+  targetSize: CGSize? = nil,
+  _ body: (CGContext, CGSize) -> Void
+) -> UIImage? {
   let context = CIContext(options: nil)
-  guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-    return UIImage()
+  let extent = ciImage.extent
+  guard let cgImage = context.createCGImage(ciImage, from: extent) else {
+    return nil
   }
-  let width = cgImage.width
-  let height = cgImage.height
-  let imageSize = CGSize(width: width, height: height)
-  UIGraphicsBeginImageContextWithOptions(imageSize, false, 1.0)
-  guard let drawContext = UIGraphicsGetCurrentContext() else {
-    UIGraphicsEndImageContext()
-    return UIImage()
-  }
+  let size = targetSize ?? CGSize(width: cgImage.width, height: cgImage.height)
+  UIGraphicsBeginImageContextWithOptions(size, false, 1.0)
+  defer { UIGraphicsEndImageContext() }
+  guard let drawContext = UIGraphicsGetCurrentContext() else { return nil }
+
   drawContext.saveGState()
-  drawContext.translateBy(x: 0, y: CGFloat(height))
+  drawContext.translateBy(x: 0, y: size.height)
   drawContext.scaleBy(x: 1, y: -1)
-  drawContext.draw(cgImage, in: CGRect(origin: .zero, size: imageSize))
+  drawContext.draw(cgImage, in: CGRect(origin: .zero, size: size))
   drawContext.restoreGState()
-  for box in result.boxes {
-    let colorIndex = box.index % ultralyticsColors.count
-    let color = ultralyticsColors[colorIndex]
-    let lineWidth = CGFloat(width) * 0.01
-    drawContext.setStrokeColor(color.cgColor)
-    drawContext.setLineWidth(lineWidth)
-    let rect = box.xywh
-    // Draw rounded rectangle with corner radius
-    let cornerRadius: CGFloat = 12.0
-    let path = UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius)
-    drawContext.addPath(path.cgPath)
-    drawContext.strokePath()
-    let confidencePercent = Int(box.conf * 100)
-    let labelText = "\(box.cls) \(confidencePercent)%"
-    let font = UIFont.systemFont(ofSize: CGFloat(width) * 0.03, weight: .semibold)
-    let attrs: [NSAttributedString.Key: Any] = [
-      .font: font,
-      .foregroundColor: UIColor.white,
-    ]
-    let textSize = labelText.size(withAttributes: attrs)
-    let labelWidth = textSize.width + 10
-    let labelHeight = textSize.height + 4
-    let labelSize = CGSize(width: labelWidth, height: labelHeight)
 
-    let labelRect = calculateSmartLabelRect(
-      boxRect: rect, labelSize: labelSize, screenSize: imageSize)
+  body(drawContext, size)
+  return UIGraphicsGetImageFromCurrentImageContext()
+}
 
-    drawContext.setFillColor(color.cgColor)
-    drawContext.fill(labelRect)
-    let textPoint = CGPoint(
-      x: labelRect.origin.x + 5,
-      y: labelRect.origin.y + (labelHeight - textSize.height) / 2
-    )
-    labelText.draw(at: textPoint, withAttributes: attrs)
+/// Draws a filled rounded-rect label background with centered text using `DetectionLabelStyle`.
+///
+/// When `imageSize` is provided the label rect is clamped to `[0, 0, imageSize.width, imageSize.height]` so boxes near
+/// the top/left edge don't end up with the badge cropped off the canvas (the upstream `DetectionLabelStyle.frame`
+/// always places the badge above/left of the anchor and is unaware of image bounds). Live overlays pass `nil` and rely
+/// on the platform-view's own clipping.
+private func drawDetectionLabel(
+  _ labelText: String,
+  in ctx: CGContext,
+  fontSize: CGFloat,
+  color: UIColor,
+  alpha: CGFloat,
+  anchor: CGPoint,
+  cornerRadius: CGFloat,
+  imageSize: CGSize? = nil
+) {
+  var labelRect = DetectionLabelStyle.frame(for: labelText, fontSize: fontSize, anchor: anchor)
+  if let imageSize {
+    labelRect = clampLabelRect(labelRect, in: imageSize, anchor: anchor)
   }
-  let drawnImage = UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
-  UIGraphicsEndImageContext()
-  return drawnImage
+  ctx.setFillColor(color.withAlphaComponent(alpha).cgColor)
+  let labelPath = UIBezierPath(
+    roundedRect: labelRect,
+    cornerRadius: min(DetectionLabelStyle.cornerRadius, cornerRadius)
+  )
+  ctx.addPath(labelPath.cgPath)
+  ctx.fillPath()
+
+  let textSize = labelText.size(withAttributes: DetectionLabelStyle.attributes(fontSize: fontSize))
+  let textPoint = CGPoint(
+    x: labelRect.origin.x + DetectionLabelStyle.horizontalPadding / 2,
+    y: labelRect.origin.y + (labelRect.height - textSize.height) / 2
+  )
+  labelText.draw(
+    at: textPoint,
+    withAttributes: DetectionLabelStyle.attributes(fontSize: fontSize, alpha: alpha)
+  )
+}
+
+/// Keeps `labelRect` inside the image: if it would clip off the top it flips below `anchor`, if it would clip off the
+/// right/bottom it slides back in, and if it would clip off the left it left-aligns to 0.
+private func clampLabelRect(_ rect: CGRect, in imageSize: CGSize, anchor: CGPoint) -> CGRect {
+  var origin = rect.origin
+  if origin.y < 0 { origin.y = anchor.y }
+  if origin.x < 0 { origin.x = 0 }
+  if origin.x + rect.width > imageSize.width { origin.x = max(0, imageSize.width - rect.width) }
+  if origin.y + rect.height > imageSize.height { origin.y = max(0, imageSize.height - rect.height) }
+  return CGRect(origin: origin, size: rect.size)
+}
+
+/// Stroked label + box drawing shared by the detection/pose/segmentation renderers.
+///
+/// - Parameter rounded: pass `true` for the "rounded corner" style used by pose/segment
+///   overlays, and `false` for the straight-corner style used by raw detections.
+private func drawBoxLabel(
+  _ box: Box,
+  in ctx: CGContext,
+  imageSize: CGSize,
+  rounded: Bool
+) {
+  let color = ultralyticsColors[box.index % ultralyticsColors.count]
+  ctx.setStrokeColor(color.cgColor)
+  let lineWidth = max(imageSize.width, imageSize.height) / 200
+  ctx.setLineWidth(lineWidth)
+
+  let rect = box.xywh
+  if rounded {
+    let cornerRadius = max(min(rect.width, rect.height) * 0.05, 2.0)
+    let boxPath = UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius)
+    ctx.addPath(boxPath.cgPath)
+    ctx.strokePath()
+  } else {
+    ctx.stroke(rect)
+  }
+
+  let fontSize = max(imageSize.width, imageSize.height) / 50
+  let labelText = DetectionLabelStyle.text(className: box.cls, confidence: CGFloat(box.conf))
+  drawDetectionLabel(
+    labelText,
+    in: ctx,
+    fontSize: fontSize,
+    color: color,
+    alpha: 1,
+    anchor: rect.origin,
+    cornerRadius: max(min(rect.width, rect.height) * 0.05, 2.0),
+    imageSize: imageSize
+  )
+}
+
+public func drawYOLODetections(on ciImage: CIImage, result: YOLOResult) -> UIImage {
+  renderWithBackground(ciImage) { ctx, size in
+    for box in result.boxes {
+      drawBoxLabel(box, in: ctx, imageSize: size, rounded: false)
+    }
+  } ?? UIImage()
 }
 
 private func maskContentRect(
@@ -263,8 +332,10 @@ func generateCombinedMaskImage(
   for i in 0..<N {
     let (_, _, _, coeffsMLArray) = detectedObjects[i]
     let coeffsPtr = coeffsMLArray.dataPointer.assumingMemoryBound(to: Float.self)
-    // Row i of matrix A: write to coeffsArray[i*C .. i*C + C-1]
-    for c in 0..<maskChannels {
+    // Row i of matrix A: write to coeffsArray[i*C .. i*C + C-1]. Clamp to the coefficient array's actual length so a
+    // model whose per-detection mask-coeff count differs from the proto channel count can't read out of bounds.
+    let available = min(maskChannels, coeffsMLArray.count)
+    for c in 0..<available {
       coeffsArray[i * maskChannels + c] = coeffsPtr[c]
     }
   }
@@ -315,7 +386,7 @@ func generateCombinedMaskImage(
   }
 
   // 9) Compose according to sort order
-  for (originalIndex, box, classID, score) in sortedObjects {
+  for (originalIndex, box, classID, _) in sortedObjects {
     // Convert boundingBox to mask coordinate system
     let minX = Int(Float(box.minX) * scaleX)
     let minY = Int(Float(box.minY) * scaleY)
@@ -331,7 +402,9 @@ func generateCombinedMaskImage(
 
     // Get class color
     let _colorIndex = classID % ultralyticsColors.count
-    let color = ultralyticsColors[_colorIndex].toRGBComponents()!
+    guard let color = ultralyticsColors[_colorIndex].toRGBComponents() else {
+      continue
+    }
     let r = UInt8(color.red)
     let g = UInt8(color.green)
     let b = UInt8(color.blue)
@@ -455,65 +528,40 @@ func composeImageWithMask(
 }
 
 public func drawYOLOClassifications(on ciImage: CIImage, result: YOLOResult) -> UIImage {
-  let context = CIContext(options: nil)
-  guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-    return UIImage()
-  }
-  let width = cgImage.width
-  let height = cgImage.height
-  let imageSize = CGSize(width: width, height: height)
-  UIGraphicsBeginImageContextWithOptions(imageSize, false, 1.0)
-  guard let drawContext = UIGraphicsGetCurrentContext() else {
-    UIGraphicsEndImageContext()
-    return UIImage()
-  }
-  drawContext.saveGState()
-  drawContext.translateBy(x: 0, y: CGFloat(height))
-  drawContext.scaleBy(x: 1, y: -1)
-  drawContext.draw(cgImage, in: CGRect(origin: .zero, size: imageSize))
-  drawContext.restoreGState()
-  guard let top5 = result.probs?.top5Labels else {
-    return UIImage(ciImage: ciImage)
-  }
-  for (i, candidate) in top5.enumerated() {
-    var colorIndex = 0
-    if let index = result.names.firstIndex(of: candidate) {
-      colorIndex = index % ultralyticsColors.count
-    }
-    let color = ultralyticsColors[colorIndex]
-    let fontSize = CGFloat(width) * 0.03
-    let labelText = DetectionLabelStyle.text(
-      className: candidate,
-      confidence: CGFloat(result.probs!.top5Confs[i])
-    )
-    let attrs: [NSAttributedString.Key: Any] = [
-      .font: DetectionLabelStyle.font(size: fontSize),
-      .foregroundColor: UIColor.white,
-    ]
-    let labelSize = DetectionLabelStyle.size(for: labelText, fontSize: fontSize)
-    let labelRect = CGRect(
-      x: fontSize,
-      y: fontSize + (fontSize * 1.5 * CGFloat(i)),
-      width: labelSize.width,
-      height: labelSize.height
-    )
+  guard let top5 = result.probs?.top5Labels else { return UIImage(ciImage: ciImage) }
 
-    drawContext.setFillColor(color.cgColor)
-    let labelPath = UIBezierPath(
-      roundedRect: labelRect,
-      cornerRadius: DetectionLabelStyle.cornerRadius
-    )
-    drawContext.addPath(labelPath.cgPath)
-    drawContext.fillPath()
-    let textPoint = CGPoint(
-      x: labelRect.origin.x + DetectionLabelStyle.horizontalPadding / 2,
-      y: labelRect.origin.y
-    )
-    labelText.draw(at: textPoint, withAttributes: attrs)
-  }
-  let drawnImage = UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
-  UIGraphicsEndImageContext()
-  return drawnImage
+  return renderWithBackground(ciImage) { ctx, size in
+    let fontSize = max(size.width, size.height) / 50
+    let labelMargin = fontSize / 2
+
+    for (i, candidate) in top5.enumerated() {
+      let colorIndex = (result.names.firstIndex(of: candidate) ?? 0) % ultralyticsColors.count
+      let color = ultralyticsColors[colorIndex]
+      let labelText = DetectionLabelStyle.text(
+        className: candidate,
+        confidence: CGFloat(result.probs?.top5Confs[i] ?? 0)
+      )
+      let textSize = DetectionLabelStyle.size(for: labelText, fontSize: fontSize)
+      let labelRect = CGRect(
+        x: labelMargin,
+        y: labelMargin + (textSize.height + labelMargin) * CGFloat(i),
+        width: textSize.width,
+        height: textSize.height)
+
+      ctx.setFillColor(color.cgColor)
+      let labelPath = UIBezierPath(
+        roundedRect: labelRect,
+        cornerRadius: DetectionLabelStyle.cornerRadius
+      )
+      ctx.addPath(labelPath.cgPath)
+      ctx.fillPath()
+      let textPoint = CGPoint(
+        x: labelRect.origin.x + DetectionLabelStyle.horizontalPadding / 2,
+        y: labelRect.origin.y)
+      labelText.draw(
+        at: textPoint, withAttributes: DetectionLabelStyle.attributes(fontSize: fontSize))
+    }
+  } ?? UIImage()
 }
 
 extension UIColor {
@@ -547,7 +595,10 @@ func drawKeypoints(
   confThreshold: Float = 0.25,
   drawSkeleton: Bool = true
 ) {
-  let _radius = max(originalImageSize.width, originalImageSize.height) / 300
+  // Scale the keypoint radius (and, via radius * 0.4, the skeleton line width) by the on-screen VIEW size, not the
+  // original image size — matches yolo-ios-app/Sources/YOLO/Plot.swift#drawKeypoints. The image-size/300 formula
+  // rendered points/lines far too small relative to the displayed preview.
+  let _radius = max(imageViewSize.width, imageViewSize.height) / 100
   for (i, keypoints) in keypointsList.enumerated() {
     drawSinglePersonKeypoints(
       keypoints: keypoints, confs: confsList[i], boundingBox: boundingBoxes[i],
@@ -573,12 +624,12 @@ func drawSinglePersonKeypoints(
   drawSkeleton: Bool
 ) {
   let lineWidth = radius * 0.4
-  let scaleXToView = Float(imageViewSize.width / originalImageSize.width)
-  let scaleYToView = Float(imageViewSize.height / originalImageSize.height)
 
-  var points: [(CGPoint, Float)] = Array(repeating: (CGPoint.zero, 0), count: 17)
+  // Dynamic keypoint count support
+  let numKeypoints = keypoints.count
+  var points: [(CGPoint, Float)] = Array(repeating: (CGPoint.zero, 0), count: numKeypoints)
 
-  for i in 0..<17 {
+  for i in 0..<numKeypoints {
     let x = keypoints[i].x * Float(imageViewSize.width)
     let y = keypoints[i].y * Float(imageViewSize.height)
     let conf = confs[i]
@@ -591,27 +642,35 @@ func drawSinglePersonKeypoints(
     {
       points[i] = (point, conf)
 
-      drawCircle(on: layer, at: point, radius: radius, color: kptColorIndices[i])
+      // Use modulo to cycle through available colors for any number of keypoints
+      let colorIndex = i < kptColorIndices.count ? kptColorIndices[i] : i % posePalette.count
+      drawCircle(on: layer, at: point, radius: radius, color: colorIndex)
     }
   }
 
   if drawSkeleton {
-    for (index, bone) in skeleton.enumerated() {
-      let (startIdx, endIdx) = (bone[0] - 1, bone[1] - 1)
+    // Only draw skeleton if we have the standard 17 keypoints
+    // For other keypoint counts, skeleton connectivity would need model-specific configuration
+    if numKeypoints == 17 {
+      for (index, bone) in skeleton.enumerated() {
+        let (startIdx, endIdx) = (bone[0] - 1, bone[1] - 1)
 
-      guard startIdx < points.count, endIdx < points.count else {
-        continue
-      }
+        guard startIdx < points.count, endIdx < points.count else {
+          continue
+        }
 
-      let startPoint = points[startIdx].0
-      let endPoint = points[endIdx].0
-      let startConf = points[startIdx].1
-      let endConf = points[endIdx].1
+        let startPoint = points[startIdx].0
+        let endPoint = points[endIdx].0
+        let startConf = points[startIdx].1
+        let endConf = points[endIdx].1
 
-      if startConf >= confThreshold && endConf >= confThreshold {
-        drawLine(
-          on: layer, from: startPoint, to: endPoint, color: limbColorIndices[index],
-          lineWidth: lineWidth)
+        if startConf >= confThreshold && endConf >= confThreshold {
+          let limbColorIndex =
+            index < limbColorIndices.count ? limbColorIndices[index] : index % posePalette.count
+          drawLine(
+            on: layer, from: startPoint, to: endPoint, color: limbColorIndex,
+            lineWidth: lineWidth)
+        }
       }
     }
   }
@@ -644,7 +703,8 @@ func drawLine(
   path.addLine(to: end)
 
   lineLayer.path = path.cgPath
-  lineLayer.lineWidth = lineWidth
+  // Ensure minimum line width for visibility
+  lineLayer.lineWidth = max(lineWidth, 1.5)
 
   let color = posePalette[index].map { $0 / 255.0 }
   lineLayer.strokeColor =
@@ -663,92 +723,24 @@ func drawPoseOnCIImage(
   confThreshold: Float = 0.25,
   drawSkeleton: Bool = true
 ) -> UIImage? {
-  let _radius = max(originalImageSize.width, originalImageSize.height) / 300
-  let context = CIContext(options: nil)
-  guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-    return nil
-  }
-
-  let renderedWidth = cgImage.width
-  let renderedHeight = cgImage.height
-  let renderedSize = CGSize(width: renderedWidth, height: renderedHeight)
-
-  UIGraphicsBeginImageContextWithOptions(renderedSize, false, 0.0)
-  guard let currentContext = UIGraphicsGetCurrentContext() else {
-    return nil
-  }
-
-  UIImage(cgImage: cgImage).draw(in: CGRect(origin: .zero, size: renderedSize))
-
-  // Draw bounding boxes first
-
-  for box in boundingBoxes {
-    let colorIndex = box.index % ultralyticsColors.count
-    let color = ultralyticsColors[colorIndex]
-    let lineWidth = renderedSize.width * 0.01
-    currentContext.setStrokeColor(color.cgColor)
-    currentContext.setLineWidth(lineWidth)
-
-    let rect = box.xywh
-    let cornerRadius: CGFloat = 12.0
-    let path = UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius)
-    currentContext.addPath(path.cgPath)
-    currentContext.strokePath()
-
-    // Draw label
-    let confidencePercent = Int(box.conf * 100)
-    let labelText = "\(box.cls) \(confidencePercent)%"
-    let font = UIFont.systemFont(ofSize: renderedSize.width * 0.03, weight: .semibold)
-    let attrs: [NSAttributedString.Key: Any] = [
-      .font: font,
-      .foregroundColor: UIColor.white,
-    ]
-    let textSize = labelText.size(withAttributes: attrs)
-    let labelWidth = textSize.width + 10
-    let labelHeight = textSize.height + 4
-    var labelRect = CGRect(
-      x: rect.minX,
-      y: rect.minY - labelHeight,
-      width: labelWidth,
-      height: labelHeight
-    )
-    if labelRect.minY < 0 {
-      labelRect.origin.y = rect.minY
+  renderWithBackground(ciImage) { ctx, size in
+    for box in boundingBoxes {
+      drawBoxLabel(box, in: ctx, imageSize: size, rounded: true)
     }
-
-    currentContext.setFillColor(color.cgColor)
-    currentContext.fill(labelRect)
-    let textPoint = CGPoint(
-      x: labelRect.origin.x + 5,
-      y: labelRect.origin.y + (labelHeight - textSize.height) / 2
-    )
-    labelText.draw(at: textPoint, withAttributes: attrs)
+    let poseLayer = CALayer()
+    poseLayer.frame = CGRect(origin: .zero, size: size)
+    drawKeypoints(
+      keypointsList: keypointsList,
+      confsList: confsList,
+      boundingBoxes: boundingBoxes,
+      on: poseLayer,
+      imageViewSize: size,
+      originalImageSize: originalImageSize,
+      radius: radius,
+      confThreshold: confThreshold,
+      drawSkeleton: drawSkeleton)
+    poseLayer.render(in: ctx)
   }
-
-  // Then draw keypoints on top
-  let rootLayer = CALayer()
-  rootLayer.frame = CGRect(origin: .zero, size: renderedSize)
-
-  drawKeypoints(
-    keypointsList: keypointsList,
-    confsList: confsList,
-    boundingBoxes: boundingBoxes,
-    on: rootLayer,
-    imageViewSize: renderedSize,
-    originalImageSize: originalImageSize,
-    radius: _radius,
-    confThreshold: confThreshold,
-    drawSkeleton: drawSkeleton
-  )
-
-  // Composite rootLayer into the current context
-  rootLayer.render(in: currentContext)
-
-  // 4. Get the rendered result as a UIImage
-  let finalImage = UIGraphicsGetImageFromCurrentImageContext()
-  UIGraphicsEndImageContext()
-
-  return finalImage
 }
 
 func drawOBBsOnCIImage(
@@ -756,113 +748,81 @@ func drawOBBsOnCIImage(
   obbDetections: [OBBResult],
   targetSize: CGSize? = nil
 ) -> UIImage? {
+  renderWithBackground(ciImage, targetSize: targetSize) { ctx, size in
+    let lineWidth: CGFloat = max(size.width, size.height) / 200
+    let fontSize = max(size.width, size.height) / 50
+    ctx.setLineWidth(lineWidth)
 
-  let context = CIContext(options: nil)
-  let extent = ciImage.extent
-  guard let cgImage = context.createCGImage(ciImage, from: extent) else {
-    return nil
-  }
+    for detection in obbDetections {
+      let color = ultralyticsColors[detection.index % ultralyticsColors.count]
+      ctx.setStrokeColor(color.cgColor)
 
-  let lineWidth: CGFloat = max(extent.width, extent.height) / 500
-  let fontSize = max(extent.width, extent.height) / 70
-  let outputSize = targetSize ?? CGSize(width: extent.width, height: extent.height)
+      // Plugin's `toPolygon(in:)` returns normalized corners; scale them to output pixels here.
+      let normalizedCorners = detection.box.toPolygon(in: size)
+      let corners = normalizedCorners.map {
+        CGPoint(x: $0.x * size.width, y: $0.y * size.height)
+      }
+      ctx.beginPath()
+      for (i, corner) in corners.enumerated() {
+        i == 0 ? ctx.move(to: corner) : ctx.addLine(to: corner)
+      }
+      ctx.closePath()
+      ctx.strokePath()
 
-  UIGraphicsBeginImageContextWithOptions(outputSize, false, 1.0)
-  guard let cgContext = UIGraphicsGetCurrentContext() else {
-    UIGraphicsEndImageContext()
-    return nil
-  }
-
-  let baseImage = UIImage(cgImage: cgImage)
-  baseImage.draw(in: CGRect(origin: .zero, size: outputSize))
-  cgContext.setLineWidth(lineWidth)
-
-  for detection in obbDetections {
-    let colorIndex = detection.index % ultralyticsColors.count
-    let color = ultralyticsColors[colorIndex]
-    cgContext.setStrokeColor(color.cgColor)
-
-    let corners = detection.box.toPolygon(in: CGSize(width: extent.width, height: extent.height))
-
-    cgContext.beginPath()
-    for (i, corner) in corners.enumerated() {
-      let px = corner.x * outputSize.width
-      let py = corner.y * outputSize.height
-      if i == 0 {
-        cgContext.move(to: CGPoint(x: px, y: py))
-      } else {
-        cgContext.addLine(to: CGPoint(x: px, y: py))
+      if let first = corners.first {
+        drawDetectionLabel(
+          DetectionLabelStyle.text(
+            className: detection.cls,
+            confidence: CGFloat(detection.confidence)
+          ),
+          in: ctx,
+          fontSize: fontSize,
+          color: color,
+          alpha: 1,
+          anchor: first,
+          cornerRadius: DetectionLabelStyle.cornerRadius,
+          imageSize: size
+        )
       }
     }
-    cgContext.closePath()
-    cgContext.strokePath()
-
-    let labelText = DetectionLabelStyle.text(
-      className: detection.cls,
-      confidence: CGFloat(detection.confidence)
-    )
-    let attrs: [NSAttributedString.Key: Any] = [
-      .font: UIFont.systemFont(ofSize: fontSize),
-      .foregroundColor: UIColor.white,
-    ]
-    let textSize = (labelText as NSString).size(withAttributes: attrs)
-    let labelPadding: CGFloat = 8
-    let labelSize = CGSize(
-      width: textSize.width + labelPadding * 2, height: textSize.height + labelPadding)
-
-    // Find bounding box of the OBB polygon
-    let minX = corners.map { $0.x * outputSize.width }.min() ?? 0
-    let maxX = corners.map { $0.x * outputSize.width }.max() ?? 0
-    let minY = corners.map { $0.y * outputSize.height }.min() ?? 0
-    let maxY = corners.map { $0.y * outputSize.height }.max() ?? 0
-    let obbBounds = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-
-    // Calculate smart label position
-    let labelRect = calculateSmartLabelRect(
-      boxRect: obbBounds, labelSize: labelSize, screenSize: outputSize)
-
-    // Draw label background
-    cgContext.setFillColor(color.withAlphaComponent(0.7).cgColor)
-    let labelPath = UIBezierPath(
-      roundedRect: labelRect,
-      cornerRadius: DetectionLabelStyle.cornerRadius
-    )
-    cgContext.addPath(labelPath.cgPath)
-    cgContext.fillPath()
-
-    // Draw label text
-    let textPoint = CGPoint(
-      x: labelRect.origin.x + labelPadding, y: labelRect.origin.y + labelPadding / 2)
-    (labelText as NSString).draw(at: textPoint, withAttributes: attrs)
   }
-
-  let drawnImage = UIGraphicsGetImageFromCurrentImageContext()
-  UIGraphicsEndImageContext()
-
-  return drawnImage
 }
 
+/// Renders segmentation masks plus rounded bounding boxes onto the source image.
+public func drawYOLOSegmentationWithBoxes(
+  ciImage: CIImage,
+  boxes: [Box],
+  maskImage: CGImage?
+) -> UIImage? {
+  renderWithBackground(ciImage) { ctx, size in
+    if let maskImage = maskImage {
+      ctx.saveGState()
+      ctx.setAlpha(0.5)
+      // Flip to match the background orientation applied by renderWithBackground.
+      ctx.translateBy(x: 0, y: size.height)
+      ctx.scaleBy(x: 1, y: -1)
+      ctx.draw(maskImage, in: CGRect(origin: .zero, size: size))
+      ctx.restoreGState()
+    }
+    for box in boxes {
+      drawBoxLabel(box, in: ctx, imageSize: size, rounded: true)
+    }
+  }
+}
+
+/// Renders a semantic segmentation color map onto the source image.
 func drawYOLOSemanticSegmentation(
   ciImage: CIImage,
   semanticMask: CGImage?
 ) -> UIImage? {
-  let context = CIContext(options: nil)
-  guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-    return nil
+  renderWithBackground(ciImage) { ctx, size in
+    if let semanticMask = semanticMask {
+      ctx.saveGState()
+      ctx.setAlpha(0.5)
+      ctx.translateBy(x: 0, y: size.height)
+      ctx.scaleBy(x: 1, y: -1)
+      ctx.draw(semanticMask, in: CGRect(origin: .zero, size: size))
+      ctx.restoreGState()
+    }
   }
-  let size = CGSize(width: cgImage.width, height: cgImage.height)
-  UIGraphicsBeginImageContextWithOptions(size, false, 1.0)
-  defer { UIGraphicsEndImageContext() }
-  guard let cgContext = UIGraphicsGetCurrentContext() else { return nil }
-
-  cgContext.saveGState()
-  cgContext.translateBy(x: 0, y: size.height)
-  cgContext.scaleBy(x: 1, y: -1)
-  cgContext.draw(cgImage, in: CGRect(origin: .zero, size: size))
-  if let semanticMask {
-    cgContext.setAlpha(0.5)
-    cgContext.draw(semanticMask, in: CGRect(origin: .zero, size: size))
-  }
-  cgContext.restoreGState()
-  return UIGraphicsGetImageFromCurrentImageContext()
 }

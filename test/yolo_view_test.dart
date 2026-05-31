@@ -145,7 +145,6 @@ void main() {
             cameraResolution: '1080p',
             onResult: (results) {},
             onPerformanceMetrics: (metrics) {},
-            showNativeUI: true,
           ),
         ),
       );
@@ -320,20 +319,6 @@ void main() {
       }
     });
 
-    testWidgets('handles showNativeUI parameter', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: YOLOView(
-            modelPath: 'test_model.tflite',
-            task: YOLOTask.detect,
-            showNativeUI: true,
-          ),
-        ),
-      );
-
-      expect(find.byType(YOLOView), findsOneWidget);
-    });
-
     group('lensFacing parameter', () {
       test('YOLOView defaults to LensFacing.back', () {
         const widget = YOLOView(
@@ -467,7 +452,6 @@ void main() {
               lensFacing: LensFacing.front,
               confidenceThreshold: 0.7,
               iouThreshold: 0.5,
-              showOverlays: false,
             ),
           ),
         );
@@ -477,7 +461,6 @@ void main() {
         expect(yoloView.lensFacing, LensFacing.front);
         expect(yoloView.confidenceThreshold, 0.7);
         expect(yoloView.iouThreshold, 0.5);
-        expect(yoloView.showOverlays, false);
       });
     });
   });

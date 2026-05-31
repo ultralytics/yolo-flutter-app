@@ -1,3 +1,25 @@
+## 0.4.0
+
+- **Feature**: Add `YOLOShowcase` — a Material 3 one-import camera screen that mirrors the layout of the native Ultralytics YOLO iOS app (top model name + FPS, task and model-size segmented controls, threshold sliders, multi-lens picker, zoom indicator, share/flip/play-pause toolbar, plugin-bundled logo, animated tap-to-focus reticle).
+- **Feature**: Ship 9 individual Material 3 widgets that `YOLOShowcase` composes, all exported from `package:ultralytics_yolo/ultralytics_yolo.dart`: `TaskSegmentedControl`, `ModelSizeSegmentedControl`, `ThresholdSliderRow`, `LensPicker`, `ZoomIndicator`, `CameraToolbar`, `FocusReticle`, `LogoOverlay`, `PerformanceLabel`. Build your own layout by composing them directly.
+- **Feature**: New `YOLOViewController` methods on iOS + Android: `getAvailableLenses()` returns the device's ultra-wide / wide / telephoto lens info, `setLens(zoomFactor)` switches to the nearest lens, `tapToFocus(x, y)` focuses at view-relative coordinates, `capturePhoto({withOverlays})` returns a composited JPEG. New broadcast streams `zoomEvents`, `lensEvents`, `focusEvents` reflect native state changes.
+- **Feature**: `YOLOModelManager.downloadProgress` exposes a `Stream<DownloadProgress>` of model-download fractions; `ModelSizeSegmentedControl` renders a `LinearProgressIndicator` overlay on the actively-downloading chip.
+- **Enhancement**: Native iOS camera-flip plays a `UIVisualEffectView` blur transition matching the iOS showcase app. Pinch-driven zoom on both platforms auto-snaps to the nearest physical lens and emits the new `lens` event for the Dart layer.
+- **Enhancement**: Plugin now bundles `assets/ultralytics_yolo_logotype.png` and `assets/focus_reticle.png` so consumers no longer need to copy them.
+- **Enhancement**: Replace the third-party ZIP package used for iOS `.mlpackage.zip` extraction with a hardened internal extractor that validates central-directory metadata, CRC-32 checksums, unsafe paths, unsupported ZIP features, and implausible decompression sizes.
+- **Feature**: Migrate Android inference to LiteRT 2.x (`com.google.ai.edge.litert:litert:2.1.5`, Google's rebrand of TensorFlow Lite) via the `CompiledModel` API, with an automatic GPU → CPU accelerator ladder: compatible graphs compile for the GPU, while unsupported graphs or ops may fall back to XNNPACK on CPU. NNAPI is no longer used (Google deprecated it and it was slower on modern devices). iOS continues to use Core ML.
+- **Feature**: Add a fp16, non-end-to-end TFLite path for Android GPU benchmarking — export with `half=True, nms=False` to get fp16 weights and a raw detection head the GPU accelerator can compile (the plugin runs NMS on CPU in well under a millisecond). Official int8 assets remain the canonical downloads; int8 GPU coverage is device and graph dependent, so verify delegate placement on the target device.
+- **Breaking**: Android now requires `minSdkVersion 23` because LiteRT 2.x declares API 23 as its minimum supported Android level.
+- **Feature**: Auto-detect `task` and class labels for custom models from embedded model metadata — Ultralytics' appended-ZIP, with a standard TFLite (FlatBuffers) metadata fallback — so drag-and-drop custom models resolve their task and labels without explicit configuration.
+- **Enhancement**: Ship consumer ProGuard/R8 keep rules so release builds don't strip LiteRT classes; consumers get this automatically.
+- **Enhancement**: Convert camera frames to RGBA per frame instead of round-tripping through JPEG, removing a per-frame encode/decode cost on Android.
+- **Enhancement**: Keep startup on the platform's automatic native launch screen and let `YOLOShowcase` own only the in-app loading state.
+- **Enhancement**: Add an adaptive Android launcher icon.
+- **Bug Fix**: Clip off-screen detection boxes to the view bounds on Android instead of shifting them back on-screen.
+- **Breaking**: Removed `YOLOOverlay`, `YOLOOverlayTheme`, and `YOLOControls`. Bounding-box rendering is now native-only — drop any Dart-side `YOLOOverlay()` widgets you held.
+- **Breaking**: Removed `YOLOView.showOverlays`, `YOLOView.overlayTheme`, and `YOLOView.showNativeUI` constructor parameters. Use `YOLOShowcase` for the full UI, or compose individual widgets over a bare `YOLOView`.
+- **Breaking**: Removed `YOLOViewController.setShowUIControls` and `setShowOverlays`. They were companions to the removed `YOLOView` parameters above.
+
 ## 0.3.5
 
 - **Feature**: Add YOLO26 semantic segmentation support on Android and iOS with official `yolo26*-sem` model IDs.

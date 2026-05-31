@@ -18,7 +18,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.3.5 # Latest version
+  ultralytics_yolo: ^0.4.0 # Latest version
 ```
 
 Run the installation command:
@@ -72,7 +72,7 @@ android {
     compileSdkVersion 36
 
     defaultConfig {
-        minSdkVersion 21  // Minimum API level 21 required
+        minSdkVersion 23  // Minimum API level 23 required
         targetSdkVersion 36
     }
 }
@@ -87,12 +87,17 @@ Add permissions to `android/app/src/main/AndroidManifest.xml`:
 <uses-permission android:name="android.permission.CAMERA" />
 ```
 
-#### 3. ProGuard Configuration (Release Builds)
+#### 3. ProGuard / R8 Configuration (Release Builds)
 
-For release builds, add to `android/app/proguard-rules.pro`:
+The plugin ships consumer R8 rules that keep the LiteRT 2.x classes (`com.google.ai.edge.litert.**`) and metadata classes its native code reaches via JNI/reflection, so a standard release build needs no extra configuration.
+
+If you use a custom R8 setup that strips these rules, the app can crash on model load (or report no detections) in release builds. In that case add to `android/app/proguard-rules.pro`:
 
 ```pro
 # android/app/proguard-rules.pro
+-keep class com.google.ai.edge.litert.** { *; }
+-keep interface com.google.ai.edge.litert.** { *; }
+-dontwarn com.google.ai.edge.litert.**
 -keep class org.tensorflow.** { *; }
 -keep class com.ultralytics.** { *; }
 -dontwarn org.tensorflow.**
@@ -123,7 +128,7 @@ Create a simple test to verify everything works:
 ```dart
 // lib/test_yolo.dart
 import 'package:flutter/material.dart';
-import 'package:ultralytics_yolo/yolo.dart';
+import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 class TestYOLO extends StatelessWidget {
   @override
@@ -163,19 +168,19 @@ class TestYOLO extends StatelessWidget {
 
 ### iOS Optimization
 
-Enable Metal Performance Shaders in `ios/Runner/Info.plist`:
-
-```xml
-<!-- ios/Runner/Info.plist -->
-<key>UIRequiredDeviceCapabilities</key>
-<array>
-    <string>metal</string>
-</array>
-```
+iOS inference runs on Core ML, which automatically uses the Neural Engine and GPU when available, so no extra configuration is required. Ship a Core ML model (`.mlpackage`/`.mlmodel`, or `.mlpackage.zip` in Flutter assets) and run on a real device for accurate performance.
 
 ### Android Optimization
 
-For better performance on Android, consider enabling:
+Android inference runs on LiteRT 2.x via `CompiledModel`, which automatically tries a GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; unsupported graphs or ops may fall back to CPU. Confirm actual delegate placement from device logs. fp16, non-end-to-end exports are still useful for GPU benchmarking:
+
+```python
+YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
+```
+
+Keep `useGpu: true` for the automatic LiteRT GPU -> CPU ladder. See the [Performance Guide](performance.md) and [Performance Record](../docs/performance.md) for the current device results.
+
+You can also restrict native ABIs:
 
 ```gradle
 // android/app/build.gradle
@@ -199,16 +204,16 @@ android {
 ### Production Setup
 
 - Optimize model size vs accuracy trade-offs
-- Enable ProGuard/R8 code shrinking
+- Enable ProGuard/R8 code shrinking (the plugin's consumer rules keep LiteRT classes automatically)
 - Test memory usage under load
-- Consider model quantization
+- On Android, keep `useGpu: true` for the LiteRT GPU -> CPU ladder and verify delegate placement on target devices
 
 ## 📋 Requirements Summary
 
 | Platform    | Minimum Version | Recommended   |
 | ----------- | --------------- | ------------- |
 | **iOS**     | 13.0+           | 14.0+         |
-| **Android** | API 21+         | API 28+       |
+| **Android** | API 23+         | API 28+       |
 | **Flutter** | 3.32.1+         | Latest stable |
 | **Dart**    | 3.8.1+          | Latest stable |
 

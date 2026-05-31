@@ -1,13 +1,16 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'dart:async';
 import 'dart:io';
 
-import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
+import 'package:ultralytics_yolo/core/yolo_model_manager.dart';
 import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
+import 'package:ultralytics_yolo/utils/mini_zip.dart';
 
 class _OfficialModelArtifact {
   const _OfficialModelArtifact({
@@ -36,132 +39,91 @@ class YOLOResolvedModel {
 }
 
 class YOLOModelResolver {
+  // Pinned release assets provide reproducible first-use downloads. Update these constants, docs, and URL tests together
+  // when the official model asset set moves to a new release.
   static const String _androidModelReleaseBaseUrl =
-      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0';
+      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5';
   static const String _iosModelReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
 
-  static const List<_OfficialModelArtifact> _officialModels = [
-    _OfficialModelArtifact(
-      id: 'yolo26n',
-      task: YOLOTask.detect,
-      androidAssetName: 'yolo26n_int8.tflite',
-      iosArchiveName: 'yolo26n.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26s',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo26s.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26m',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo26m.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26l',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo26l.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26x',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo26x.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26n-seg',
-      task: YOLOTask.segment,
-      androidAssetName: 'yolo26n-seg_int8.tflite',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26n-sem',
-      task: YOLOTask.semantic,
-      androidAssetName: 'yolo26n-sem_int8.tflite',
-      iosArchiveName: 'yolo26n-sem.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26s-sem',
-      task: YOLOTask.semantic,
-      iosArchiveName: 'yolo26s-sem.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26m-sem',
-      task: YOLOTask.semantic,
-      iosArchiveName: 'yolo26m-sem.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26l-sem',
-      task: YOLOTask.semantic,
-      iosArchiveName: 'yolo26l-sem.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26x-sem',
-      task: YOLOTask.semantic,
-      iosArchiveName: 'yolo26x-sem.mlpackage.zip',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26n-cls',
-      task: YOLOTask.classify,
-      androidAssetName: 'yolo26n-cls_int8.tflite',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26n-pose',
-      task: YOLOTask.pose,
-      androidAssetName: 'yolo26n-pose_int8.tflite',
-    ),
-    _OfficialModelArtifact(
-      id: 'yolo26n-obb',
-      task: YOLOTask.obb,
-      androidAssetName: 'yolo26n-obb_int8.tflite',
-    ),
-    _OfficialModelArtifact(
+  static const List<String> _yolo26Sizes = ['n', 's', 'm', 'l', 'x'];
+  static const List<({YOLOTask task, String suffix})> _yolo26Tasks = [
+    (task: YOLOTask.detect, suffix: ''),
+    (task: YOLOTask.segment, suffix: '-seg'),
+    (task: YOLOTask.semantic, suffix: '-sem'),
+    (task: YOLOTask.classify, suffix: '-cls'),
+    (task: YOLOTask.pose, suffix: '-pose'),
+    (task: YOLOTask.obb, suffix: '-obb'),
+  ];
+
+  // Canonical YOLO26 task x size matrix. Keep generated so the app, docs, and export script all represent the same
+  // 6-task x 5-size official asset set.
+  static final List<_OfficialModelArtifact> _officialModels = [
+    for (final task in _yolo26Tasks)
+      for (final size in _yolo26Sizes)
+        _yolo26Artifact(task: task.task, size: size, suffix: task.suffix),
+    const _OfficialModelArtifact(
       id: 'yolo11n',
       task: YOLOTask.detect,
       androidAssetName: 'yolo11n.tflite',
       iosArchiveName: 'yolo11n.mlpackage.zip',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11s',
       task: YOLOTask.detect,
       iosArchiveName: 'yolo11s.mlpackage.zip',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11m',
       task: YOLOTask.detect,
       iosArchiveName: 'yolo11m.mlpackage.zip',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11l',
       task: YOLOTask.detect,
       iosArchiveName: 'yolo11l.mlpackage.zip',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11x',
       task: YOLOTask.detect,
       iosArchiveName: 'yolo11x.mlpackage.zip',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11n-seg',
       task: YOLOTask.segment,
       androidAssetName: 'yolo11n-seg.tflite',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11n-cls',
       task: YOLOTask.classify,
       androidAssetName: 'yolo11n-cls.tflite',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11n-pose',
       task: YOLOTask.pose,
       androidAssetName: 'yolo11n-pose.tflite',
     ),
-    _OfficialModelArtifact(
+    const _OfficialModelArtifact(
       id: 'yolo11n-obb',
       task: YOLOTask.obb,
       androidAssetName: 'yolo11n-obb.tflite',
     ),
   ];
+
+  static _OfficialModelArtifact _yolo26Artifact({
+    required YOLOTask task,
+    required String size,
+    required String suffix,
+  }) {
+    final id = 'yolo26$size$suffix';
+    return _OfficialModelArtifact(
+      id: id,
+      task: task,
+      androidAssetName: '${id}_int8.tflite',
+      iosArchiveName: '$id.mlpackage.zip',
+    );
+  }
 
   static List<String> officialModels({YOLOTask? task}) {
     return _officialModels
@@ -178,6 +140,23 @@ class YOLOModelResolver {
 
   static bool isOfficialModel(String source) =>
       _officialModelForId(_normalizeOfficialModelId(source)) != null;
+
+  @visibleForTesting
+  static String? officialModelDownloadUrlForTesting(
+    String modelId, {
+    required bool iosLike,
+  }) {
+    final artifact = _officialModelForId(modelId);
+    if (artifact == null) return null;
+    if (iosLike) {
+      final archiveName = artifact.iosArchiveName;
+      return archiveName == null
+          ? null
+          : '$_iosModelReleaseBaseUrl/$archiveName';
+    }
+    final assetName = artifact.androidAssetName;
+    return assetName == null ? null : '$_androidModelReleaseBaseUrl/$assetName';
+  }
 
   static Future<YOLOResolvedModel> resolve({
     required String modelPath,
@@ -223,6 +202,7 @@ class YOLOModelResolver {
 
   static Future<String> _resolvePath(String source) async {
     final officialId = _normalizeOfficialModelId(source);
+
     if (_officialModelForId(officialId) != null) {
       return _resolveOfficialModel(officialId!);
     }
@@ -277,6 +257,25 @@ class YOLOModelResolver {
         : _resolveAndroidOfficialModel(artifact);
   }
 
+  /// Whether official [modelId] is already cached on disk (downloaded + extracted) WITHOUT downloading it. UIs use this
+  /// to show a "downloaded" state — the native `checkModelExists` only knows about bundle/asset paths, not the
+  /// resolver's app-documents download cache, so it falsely reports downloaded official models as missing. Returns
+  /// `false` for unknown ids or platforms where the artifact isn't published.
+  static Future<bool> isOfficialModelCached(String modelId) async {
+    final artifact = _officialModelForId(modelId);
+    if (artifact == null) return false;
+    final directory = await getApplicationDocumentsDirectory();
+    if (_isIosLikePlatform) {
+      if (artifact.iosArchiveName == null) return false;
+      return _hasValidMlPackage(
+        Directory('${directory.path}/${artifact.id}.mlpackage'),
+      );
+    }
+    final filename = artifact.androidAssetName;
+    if (filename == null) return false;
+    return File('${directory.path}/$filename').existsSync();
+  }
+
   static Future<String> _resolveAndroidOfficialModel(
     _OfficialModelArtifact artifact,
   ) async {
@@ -294,7 +293,11 @@ class YOLOModelResolver {
       return modelFile.path;
     }
 
-    await _downloadToFile('$_androidModelReleaseBaseUrl/$filename', modelFile);
+    await _downloadToFile(
+      '$_androidModelReleaseBaseUrl/$filename',
+      modelFile,
+      progressId: artifact.id,
+    );
     return modelFile.path;
   }
 
@@ -322,7 +325,11 @@ class YOLOModelResolver {
     }
 
     final archiveFile = File('${directory.path}/$archiveName');
-    await _downloadToFile('$_iosModelReleaseBaseUrl/$archiveName', archiveFile);
+    await _downloadToFile(
+      '$_iosModelReleaseBaseUrl/$archiveName',
+      archiveFile,
+      progressId: artifact.id,
+    );
     return _extractMlPackageArchiveFile(archiveFile, archiveName, modelDir);
   }
 
@@ -335,13 +342,17 @@ class YOLOModelResolver {
       final targetDir = Directory('${documents.path}/$modelName.mlpackage');
       if (await _hasValidMlPackage(targetDir)) return targetDir.path;
       final archiveFile = File('${documents.path}/$fileName');
-      await _downloadToFile(uri.toString(), archiveFile);
+      await _downloadToFile(uri.toString(), archiveFile, progressId: modelName);
       return _extractMlPackageArchiveFile(archiveFile, fileName, targetDir);
     }
 
     final file = File('${documents.path}/$fileName');
     if (file.existsSync()) return file.path;
-    await _downloadToFile(uri.toString(), file);
+    await _downloadToFile(
+      uri.toString(),
+      file,
+      progressId: _normalizeOfficialModelId(fileName),
+    );
     return file.path;
   }
 
@@ -403,7 +414,11 @@ class YOLOModelResolver {
     }
   }
 
-  static Future<void> _downloadToFile(String url, File targetFile) async {
+  static Future<void> _downloadToFile(
+    String url,
+    File targetFile, {
+    String? progressId,
+  }) async {
     targetFile.parent.createSync(recursive: true);
     final client = HttpClient();
     final temporaryFile = File('${targetFile.path}.download');
@@ -418,16 +433,57 @@ class YOLOModelResolver {
           'Failed to download model from $url (HTTP ${response.statusCode}).',
         );
       }
+
+      // Stream bytes to disk so we can tally `received / contentLength` and surface progress through
+      // `YOLOModelManager.emitProgress`. `pipe` would block progress reporting until completion.
+      final totalBytes = response.contentLength;
+      var receivedBytes = 0;
+      double lastFraction = -1;
+
+      if (progressId != null) {
+        YOLOModelManager.emitProgress(progressId, 0);
+      }
+
       final sink = temporaryFile.openWrite();
       try {
-        await response.pipe(sink);
+        await response.forEach((chunk) {
+          sink.add(chunk);
+          if (progressId == null || totalBytes <= 0) return;
+          receivedBytes += chunk.length;
+          // Cap the in-flight fraction at 0.99 so listeners never observe `1.0` from the streaming loop — the terminal
+          // emit at `1.0` is reserved for the post-rename success path so a chip never lights up "downloaded" for a
+          // transfer that turns out to be 0-byte / corrupt.
+          final fraction = (receivedBytes / totalBytes).clamp(0.0, 0.99);
+          // Throttle to ~1% steps to avoid flooding the stream on fast links.
+          if (fraction - lastFraction >= 0.01) {
+            lastFraction = fraction;
+            YOLOModelManager.emitProgress(progressId, fraction);
+          }
+        });
       } finally {
         await sink.close();
       }
+
+      // Some endpoints (e.g. GitHub release redirects that resolve to a 200 with no body, or chunked-encoding
+      // responses that completed with zero chunks) leave the `.download` file in a state where openWrite + close
+      // never materialised a real file on disk. Fall through to renameSync would then throw `PathNotFoundException`
+      // with errno=2, which is confusing for users — surface a clean ModelLoadingException instead. We deliberately
+      // delay the terminal `emitProgress(1)` until AFTER the file has been validated and renamed so a listener that
+      // marks the chip "downloaded" never sees success for a failed transfer.
+      if (!temporaryFile.existsSync() || temporaryFile.lengthSync() == 0) {
+        throw ModelLoadingException(
+          'Downloaded 0 bytes for $url. The asset may be missing from the release.',
+        );
+      }
+
       if (targetFile.existsSync()) {
         targetFile.deleteSync();
       }
       temporaryFile.renameSync(targetFile.path);
+
+      if (progressId != null) {
+        YOLOModelManager.emitProgress(progressId, 1);
+      }
     } catch (_) {
       if (temporaryFile.existsSync()) {
         temporaryFile.deleteSync();
@@ -469,54 +525,17 @@ class YOLOModelResolver {
     Directory targetDir,
   ) async {
     try {
-      final archive = ZipDecoder().decodeBytes(bytes);
       if (targetDir.existsSync()) {
         targetDir.deleteSync(recursive: true);
       }
       targetDir.createSync(recursive: true);
 
-      String? prefix;
-      if (archive.files.isNotEmpty) {
-        final first = archive.files.first.name;
-        if (first.contains('/') &&
-            first.split('/').first.endsWith('.mlpackage')) {
-          final topLevelDir = first.split('/').first;
-          if (archive.files.every(
-            (file) =>
-                file.name.startsWith('$topLevelDir/') ||
-                file.name == topLevelDir,
-          )) {
-            prefix = '$topLevelDir/';
-          }
-        }
-      }
-
-      for (final file in archive) {
-        var relativePath = file.name.replaceAll('\\', '/');
-        if (prefix != null) {
-          if (relativePath.startsWith(prefix)) {
-            relativePath = relativePath.substring(prefix.length);
-          } else if (relativePath == prefix.replaceAll('/', '')) {
-            continue;
-          }
-        }
-        if (relativePath.isEmpty || !file.isFile) continue;
-        final rootPath = targetDir.absolute.path;
-        final rootPrefix = rootPath.endsWith(Platform.pathSeparator)
-            ? rootPath
-            : '$rootPath${Platform.pathSeparator}';
-        final normalizedOutputPath = targetDir.uri
-            .resolve(relativePath)
-            .toFilePath();
-        if (!normalizedOutputPath.startsWith(rootPrefix)) {
-          throw ModelLoadingException(
-            'Invalid archive entry outside target directory: $relativePath',
-          );
-        }
-        final outputFile = File(normalizedOutputPath);
-        outputFile.parent.createSync(recursive: true);
-        outputFile.writeAsBytesSync(file.content as List<int>, flush: true);
-      }
+      MiniZip.extractBytes(
+        bytes,
+        destination: targetDir,
+        stripTopLevelDirectoryEndingWith: '.mlpackage',
+        skip: (path) => path.startsWith('__MACOSX/') || path.contains('/._'),
+      );
 
       return await _hasValidMlPackage(targetDir) ? targetDir.path : null;
     } catch (_) {

@@ -1,5 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+export 'core/yolo_model_manager.dart' show DownloadProgress;
 export 'models/yolo_exceptions.dart';
 export 'models/yolo_result.dart';
 export 'models/yolo_task.dart';
@@ -13,5 +14,14 @@ export 'platform/yolo_platform_impl.dart';
 export 'platform/yolo_platform_interface.dart';
 export 'utils/error_handler.dart';
 export 'utils/map_converter.dart';
-export 'widgets/yolo_controller.dart' show YOLOViewController;
-export 'widgets/yolo_overlay.dart' show YOLOOverlay, YOLOOverlayTheme;
+export 'widgets/camera_toolbar.dart';
+export 'widgets/focus_reticle.dart';
+export 'widgets/lens_picker.dart';
+export 'widgets/logo_overlay.dart';
+export 'widgets/model_size_segmented_control.dart';
+export 'widgets/performance_label.dart';
+export 'widgets/task_segmented_control.dart';
+export 'widgets/threshold_slider_row.dart';
+export 'widgets/yolo_controller.dart' show YOLOViewController, LensInfo;
+export 'widgets/yolo_showcase.dart';
+export 'widgets/zoom_indicator.dart';

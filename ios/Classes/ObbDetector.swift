@@ -48,7 +48,10 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
         let limitedResults = Array(nmsResults.prefix(numItemsThreshold))
 
         for result in limitedResults {
-          let box = result.box
+          // Un-letterbox the model-input-normalized OBB back to original-frame-normalized coords (matches what
+          // detect does via inputRect). Without this, scaleFit padding offsets/scales the box. Mirrors
+          // yolo-ios-app ObbDetector.buildResults.
+          let box = inputOBB(fromModelOBB: result.box)
           let score = result.score
           let clsIdx = labelName(for: result.cls)
           let obbResult = OBBResult(box: box, confidence: score, cls: clsIdx, index: result.cls)
@@ -81,7 +84,7 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
     let imageWidth = image.extent.width
     let imageHeight = image.extent.height
     self.inputSize = CGSize(width: imageWidth, height: imageHeight)
-    var result = YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
+    let result = YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
 
     do {
       try requestHandler.perform([request])
@@ -96,8 +99,9 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
           )
 
           var obbResults: [OBBResult] = []
-          for result in nmsResults {
-            let box = result.box
+          for result in nmsResults.prefix(numItemsThreshold) {
+            // Un-letterbox to original-frame-normalized coords (see processObservations).
+            let box = inputOBB(fromModelOBB: result.box)
             let score = result.score
             let clsIdx = labelName(for: result.cls)
             let obbResult = OBBResult(box: box, confidence: score, cls: clsIdx, index: result.cls)
@@ -119,14 +123,60 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
 
   fileprivate let lockQueue = DispatchQueue(label: "com.ultralytics.yolo.obbLock")
 
+  /// Processes YOLO26 end2end OBB output `[1, max_det, 7]` where each detection is `[cx, cy, w, h, conf, class_id,
+  /// angle]` in pixel coords (center-based xywh from `dist2rbox`, angle in radians). NMS is already applied by the
+  /// model, so this only thresholds. Ported from `yolo-ios-app/Sources/YOLO/ObbDetector.swift`.
+  private func postProcessEnd2EndOBB(
+    feature: MLMultiArray,
+    shape: [Int],
+    confidenceThreshold: Float
+  ) -> [(box: OBB, score: Float, cls: Int)] {
+    let numDetections = shape[1]
+    let numFields = shape[2]
+    let strides = feature.strides.map { $0.intValue }
+    let pointer = feature.dataPointer.assumingMemoryBound(to: Float.self)
+    let detStride = strides[1]
+    let fieldStride = strides[2]
+    let inputW = Float(modelInputSize.width)
+    let inputH = Float(modelInputSize.height)
+
+    var results: [(box: OBB, score: Float, cls: Int)] = []
+    for i in 0..<numDetections {
+      let base = i * detStride
+      let conf = pointer[base + 4 * fieldStride]
+      guard conf > confidenceThreshold else { continue }
+
+      let cx = pointer[base] / inputW
+      let cy = pointer[base + fieldStride] / inputH
+      let w = pointer[base + 2 * fieldStride] / inputW
+      let h = pointer[base + 3 * fieldStride] / inputH
+      let classId = numFields > 6 ? Int(pointer[base + 5 * fieldStride]) : 0
+      let angle = pointer[base + (numFields - 1) * fieldStride]
+
+      results.append(
+        (box: OBB(cx: cx, cy: cy, w: w, h: h, angle: angle), score: conf, cls: classId))
+    }
+    return results
+  }
+
   func postProcessOBB(
     feature: MLMultiArray,
     confidenceThreshold: Float,
     iouThreshold: Float
   ) -> [(box: OBB, score: Float, cls: Int)] {
+    let shape = feature.shape.map { $0.intValue }
+    guard shape.count == 3 else { return [] }
 
-    let shape1 = feature.shape[1].intValue
-    let numAnchors = feature.shape[2].intValue
+    // YOLO26 end2end OBB output is [1, max_det, 7] = (x, y, w, h, conf, class_id, angle), where shape[2] < shape[1].
+    // Traditional OBB output is [1, 4+nc+1, num_anchors], where shape[2] > shape[1]. Without this branch the YOLO26
+    // format was parsed as traditional, producing the garbage/flashing boxes.
+    if shape[2] < shape[1] {
+      return postProcessEnd2EndOBB(
+        feature: feature, shape: shape, confidenceThreshold: confidenceThreshold)
+    }
+
+    let shape1 = shape[1]
+    let numAnchors = shape[2]
     let numClasses = shape1 - 5  // (4 + numClasses + 1) = shape1
 
     let pointer = feature.dataPointer.bindMemory(
@@ -142,32 +192,40 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
     }
     var rawDetections = [Detection?](repeating: nil, count: numAnchors)
 
-    // 1) Parallel-extract predictions
-    DispatchQueue.concurrentPerform(iterations: numAnchors) { i in
-      let cx = pointer[i] / inputW
-      let cy = pointer[numAnchors + i] / inputH
-      let w = pointer[2 * numAnchors + i] / inputW
-      let h = pointer[3 * numAnchors + i] / inputH
+    // 1) Parallel-extract predictions. Each iteration writes to a unique `i` index, so the parallel mutation is
+    // race-free. SendableBox wrappers carry the raw MLMultiArray pointer and the mutable buffer across
+    // `DispatchQueue.concurrentPerform`'s `@Sendable` boundary; the box is `@unchecked Sendable` because we hold the
+    // uniqueness invariant ourselves rather than relying on the type system.
+    rawDetections.withUnsafeMutableBufferPointer { buffer in
+      let pointerBox = SendableBox(pointer)
+      let bufferBox = SendableBox(buffer)
+      DispatchQueue.concurrentPerform(iterations: numAnchors) { i in
+        let p = pointerBox.value
+        let cx = p[i] / inputW
+        let cy = p[numAnchors + i] / inputH
+        let w = p[2 * numAnchors + i] / inputW
+        let h = p[3 * numAnchors + i] / inputH
 
-      // Find best class & score
-      var bestScore: Float = 0
-      var bestClass: Int = 0
-      for c in 0..<numClasses {
-        let sc = pointer[(4 + c) * numAnchors + i]
-        if sc > bestScore {
-          bestScore = sc
-          bestClass = c
+        // Find best class & score
+        var bestScore: Float = 0
+        var bestClass: Int = 0
+        for c in 0..<numClasses {
+          let sc = p[(4 + c) * numAnchors + i]
+          if sc > bestScore {
+            bestScore = sc
+            bestClass = c
+          }
         }
-      }
 
-      // Angle is the last channel
-      let angleIndex = (4 + numClasses) * numAnchors + i
-      let angle = pointer[angleIndex]
+        // Angle is the last channel
+        let angleIndex = (4 + numClasses) * numAnchors + i
+        let angle = p[angleIndex]
 
-      // Threshold
-      if bestScore > confidenceThreshold {
-        let obb = OBB(cx: cx, cy: cy, w: w, h: h, angle: angle)
-        rawDetections[i] = Detection(obb: obb, score: bestScore, cls: bestClass)
+        // Threshold
+        if bestScore > confidenceThreshold {
+          let obb = OBB(cx: cx, cy: cy, w: w, h: h, angle: angle)
+          bufferBox.value[i] = Detection(obb: obb, score: bestScore, cls: bestClass)
+        }
       }
     }
 
@@ -181,12 +239,14 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
       scores: scores,
       iouThreshold: iouThreshold)
 
-    // 3) Build final
+    // 3) Build final — return RAW model-input-normalized boxes (like postProcessEnd2EndOBB). The single inputOBB
+    // un-letterbox happens in the callers (processObservations/predictOnImage); applying it here too double-transformed
+    // the traditional path. Matches yolo-ios-app (postProcessOBB returns raw; buildResults applies inputOBB once).
     var results = [(box: OBB, score: Float, cls: Int)]()
     results.reserveCapacity(keep.count)
     for idx in keep {
       let d = detections[idx]
-      results.append((inputOBB(fromModelOBB: d.obb), d.score, d.cls))
+      results.append((d.obb, d.score, d.cls))
     }
     return results
   }

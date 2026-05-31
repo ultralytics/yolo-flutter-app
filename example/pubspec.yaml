@@ -3,7 +3,7 @@
 name: ultralytics_yolo_example
 description: "Demonstrates how to use the ultralytics_yolo plugin."
 publish_to: "none"
-version: 0.1.0+1
+version: 0.4.0+1
 
 environment:
   sdk: ^3.8.1
@@ -13,8 +13,12 @@ dependencies:
   cupertino_icons: ^1.0.9
   flutter:
     sdk: flutter
-  flutter_launcher_icons: ^0.14.4
   image_picker: ^1.2.1
+  path_provider: ^2.1.5
+  # Pinned to ^12.x: share_plus 13.x ships a Swift Package umbrella that fails framework module verification under
+  # Xcode 26.5 ("'Flutter/Flutter.h' file not found", "double-quoted include in framework header"). Revisit once the
+  # upstream package re-publishes with a compatible module map.
+  share_plus: ^12.0.0
   ultralytics_yolo:
     path: ../
 
@@ -29,12 +33,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/
     - assets/models/
-    - assets/logo.png
-    - assets/applogo.png
-
-flutter_launcher_icons:
-  android: true
-  ios: true
-  image_path: "assets/applogo.png"

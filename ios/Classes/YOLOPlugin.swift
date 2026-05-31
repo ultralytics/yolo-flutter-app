@@ -1,15 +1,31 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import CoreML
-import Flutter
+// `@preconcurrency` keeps Flutter's pre-concurrency globals (`FlutterMethodNotImplemented`) and types from triggering
+// "shared mutable state" / "Sendable" warnings under Swift 6 strict concurrency.
+@preconcurrency import Flutter
 import UIKit
 
+// Sendable shim that carries a non-Sendable value across queue boundaries. Used to hand `FlutterResult` (a
+// non-Sendable `(Any?) -> Void` closure) and `[String: Any]` payloads into the background `inspectModel` dispatch
+// without tripping Swift 6 "capture of non-Sendable in @Sendable closure" warnings. The box is read on a single
+// queue, so the unchecked conformance is safe.
+final class SendableBox<T>: @unchecked Sendable {
+  let value: T
+  init(_ value: T) { self.value = value }
+}
+
+// `@preconcurrency` on the `FlutterPlugin` conformance opts the protocol into Swift 6 strict-isolation back-compat —
+// the FlutterPlugin protocol predates Swift concurrency and isn't `@MainActor`-isolated. Without this annotation
+// Xcode 26.5 prints "Conformance crosses into main actor-isolated code and can cause data races" for our
+// `@MainActor` class. `@unchecked Sendable` lets the inspectModel background dispatch capture `self`; the methods
+// it invokes (`checkModelExists`, `inspectModel`, `parseLabels`) are `nonisolated` and read no mutable state.
 @MainActor
-public class YOLOPlugin: NSObject, FlutterPlugin {
-  // Dictionary to store channels for each instance
-  private static var instanceChannels: [String: FlutterMethodChannel] = [:]
-  // Store the registrar for creating new channels
-  private static var pluginRegistrar: FlutterPluginRegistrar?
+public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @unchecked Sendable {
+  // Static channel-registry and registrar storage live on the main actor with the class. `@MainActor` here is
+  // redundant with the class default but explicit so the intent is obvious to a reader scanning for global state.
+  @MainActor private static var instanceChannels: [String: FlutterMethodChannel] = [:]
+  @MainActor private static var pluginRegistrar: FlutterPluginRegistrar?
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     // Store the registrar for later use
@@ -39,15 +55,15 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
     }
   }
 
-  private func checkModelExists(modelPath: String) -> [String: Any] {
+  // `nonisolated static` so [`inspectModel`] can use it from a background queue without crossing main-actor
+  // isolation or capturing the `@MainActor` `self`.
+  nonisolated private static func checkModelExists(modelPath: String) -> [String: Any] {
     let fileManager = FileManager.default
     var resultMap: [String: Any] = [
       "exists": false,
       "path": modelPath,
       "location": "unknown",
     ]
-
-    let lowercasedPath = modelPath.lowercased()
 
     if modelPath.hasPrefix("/") {
       if fileManager.fileExists(atPath: modelPath) {
@@ -141,7 +157,10 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
     ]
   }
 
-  private func inspectModel(modelPath: String) throws -> [String: Any] {
+  // `nonisolated static` so we can dispatch the heavy MLModel.compileModel + load off the main thread without
+  // crossing `@MainActor` or capturing `self`. `checkModelExists` and `parseLabels` below are pure (no main-actor
+  // state), so calling them from a background queue is safe.
+  nonisolated static func inspectModel(modelPath: String) throws -> [String: Any] {
     let checkResult = checkModelExists(modelPath: modelPath)
     let resolvedPath = (checkResult["absolutePath"] as? String) ?? modelPath
     let url = URL(fileURLWithPath: resolvedPath)
@@ -188,7 +207,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
     return result
   }
 
-  private func parseLabels(from userDefined: [String: String]) -> [String] {
+  nonisolated private static func parseLabels(from userDefined: [String: String]) -> [String] {
     if let labelsData = userDefined["classes"] {
       return
         labelsData
@@ -370,7 +389,7 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           return
         }
 
-        let checkResult = checkModelExists(modelPath: modelPath)
+        let checkResult = YOLOPlugin.checkModelExists(modelPath: modelPath)
         result(checkResult)
 
       case "getStoragePaths":
@@ -388,16 +407,29 @@ public class YOLOPlugin: NSObject, FlutterPlugin {
           return
         }
 
-        do {
-          result(try inspectModel(modelPath: modelPath))
-        } catch {
-          result(
-            FlutterError(
-              code: "MODEL_INSPECTION_FAILED",
-              message: error.localizedDescription,
-              details: nil
-            )
-          )
+        // MLModel.compileModel / MLModel(contentsOf:) read from disk and load the model into the ANE/GPU; running
+        // them on the main thread stalls the UI long enough that iOS prints "This method should not be called on
+        // the main thread as it may lead to UI unresponsiveness." Hop off-main, hop back to deliver the result.
+        // SendableBox carries the non-Sendable Flutter closure and `[String: Any]` payload across the queue
+        // boundary; both boxes are read on the main queue only.
+        let resultBox = SendableBox(result)
+        let pathCopy = modelPath
+        DispatchQueue.global(qos: .userInitiated).async {
+          do {
+            let info = try YOLOPlugin.inspectModel(modelPath: pathCopy)
+            let infoBox = SendableBox(info)
+            DispatchQueue.main.async { resultBox.value(infoBox.value) }
+          } catch {
+            DispatchQueue.main.async {
+              resultBox.value(
+                FlutterError(
+                  code: "MODEL_INSPECTION_FAILED",
+                  message: error.localizedDescription,
+                  details: nil
+                )
+              )
+            }
+          }
         }
 
       case "setModel":

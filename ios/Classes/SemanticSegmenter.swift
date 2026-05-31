@@ -67,20 +67,60 @@ class SemanticSegmenter: BasePredictor, @unchecked Sendable {
     let outputHeight = Int(outputRect.height)
     guard outputWidth > 0, outputHeight > 0 else { return nil }
 
-    var classMap = [Int](repeating: 0, count: outputWidth * outputHeight)
-    var pixels = [UInt8](repeating: 0, count: outputWidth * outputHeight * 4)
-    let colors = semanticColors(classCount: classCount)
+    let pointer = logits.dataPointer.assumingMemoryBound(to: Float.self)
+    let outCount = outputWidth * outputHeight
+    var classMap = [Int](repeating: 0, count: outCount)
+    var pixels = Data(count: outCount * 4)
+    // A single-channel mask is foreground/background: allocate 2 colors (0 = background, 1 = foreground) and threshold
+    // each pixel, instead of painting the whole frame as class 0. Mirrors yolo-ios-app SemanticSegmenter.
+    let colors = semanticColors(classCount: classCount == 1 ? 2 : classCount)
+    let binaryThreshold: Float =
+      classCount == 1 ? singleChannelThreshold(pointer, count: logits.count) : 0
+    let classStride = isNCHW ? strides[1] : strides[3]
+    let rowStride = isNCHW ? strides[2] : strides[1]
+    let colStride = isNCHW ? strides[3] : strides[2]
 
-    for y in 0..<outputHeight {
-      let sourceY = y + outputY
-      for x in 0..<outputWidth {
-        let sourceX = x + outputX
-        let classIndex = bestClass(
-          logits: logits, strides: strides, classCount: classCount,
-          x: sourceX, y: sourceY, isNCHW: isNCHW)
-        let outputIndex = y * outputWidth + x
-        classMap[outputIndex] = classIndex
-        writeColor(colors[classIndex], into: &pixels, at: outputIndex * 4)
+    // Phase 1 — argmax over classes into `classMap`, iterating class-major: for each class plane sweep the output
+    // pixels, keeping a running best score/index. For NCHW (the YOLO export layout) each plane is contiguous, so
+    // reads stay sequential — far cheaper than a per-pixel inner loop over classes, which reads H*W apart. Ties
+    // keep the lowest class index (argmax semantics). Strides keep it correct for an NHWC layout too.
+    // Mirrors yolo-ios-app SemanticSegmenter.
+    if classCount == 1 {
+      for y in 0..<outputHeight {
+        let srcRow = (y + outputY) * rowStride + outputX * colStride
+        let outRow = y * outputWidth
+        for x in 0..<outputWidth {
+          classMap[outRow + x] = pointer[srcRow + x * colStride] > binaryThreshold ? 1 : 0
+        }
+      }
+    } else {
+      var best = [Float](repeating: -.greatestFiniteMagnitude, count: outCount)
+      classMap.withUnsafeMutableBufferPointer { cm in
+        best.withUnsafeMutableBufferPointer { bb in
+          for c in 0..<classCount {
+            let classBase = c * classStride
+            for y in 0..<outputHeight {
+              let srcRow = classBase + (y + outputY) * rowStride + outputX * colStride
+              let outRow = y * outputWidth
+              for x in 0..<outputWidth {
+                let score = pointer[srcRow + x * colStride]
+                let oi = outRow + x
+                if score > bb[oi] {
+                  bb[oi] = score
+                  cm[oi] = c
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Phase 2 — paint the RGBA buffer from the resolved class map in one sequential sweep.
+    pixels.withUnsafeMutableBytes { rawBuffer in
+      let pixelBuffer = rawBuffer.bindMemory(to: UInt8.self)
+      for i in 0..<outCount {
+        writeColor(colors[classMap[i]], into: pixelBuffer, at: i * 4)
       }
     }
 
@@ -91,63 +131,17 @@ class SemanticSegmenter: BasePredictor, @unchecked Sendable {
       maskImage: makeImage(fromRGBA: pixels, width: outputWidth, height: outputHeight))
   }
 
-  private func bestClass(
-    logits: MLMultiArray,
-    strides: [Int],
-    classCount: Int,
-    x: Int,
-    y: Int,
-    isNCHW: Bool
-  ) -> Int {
-    if classCount == 1 { return 0 }
-
-    var bestIndex = 0
-    var bestScore = -Float.greatestFiniteMagnitude
-    for classIndex in 0..<classCount {
-      let score = value(
-        in: logits, strides: strides, classIndex: classIndex, x: x, y: y, isNCHW: isNCHW)
-      if score > bestScore {
-        bestScore = score
-        bestIndex = classIndex
-      }
+  /// Min/max scan to decide the binary cutoff: probability-like outputs (in [0,1]) threshold at 0.5, raw logits at 0.
+  /// Mirrors yolo-ios-app SemanticSegmenter.singleChannelThreshold.
+  private func singleChannelThreshold(_ pointer: UnsafeMutablePointer<Float>, count: Int) -> Float {
+    var minValue = Float.greatestFiniteMagnitude
+    var maxValue = -Float.greatestFiniteMagnitude
+    for index in 0..<count {
+      let value = pointer[index]
+      minValue = min(minValue, value)
+      maxValue = max(maxValue, value)
     }
-    return bestIndex
-  }
-
-  private func value(
-    in logits: MLMultiArray,
-    strides: [Int],
-    classIndex: Int,
-    x: Int,
-    y: Int,
-    isNCHW: Bool
-  ) -> Float {
-    let offset =
-      isNCHW
-      ? classIndex * strides[1] + y * strides[2] + x * strides[3]
-      : y * strides[1] + x * strides[2] + classIndex * strides[3]
-    return value(in: logits, at: offset, classIndex: classIndex, x: x, y: y, isNCHW: isNCHW)
-  }
-
-  private func value(
-    in logits: MLMultiArray,
-    at offset: Int,
-    classIndex: Int,
-    x: Int,
-    y: Int,
-    isNCHW: Bool
-  ) -> Float {
-    switch logits.dataType {
-    case .float32:
-      return logits.dataPointer.assumingMemoryBound(to: Float.self)[offset]
-    case .double:
-      return Float(logits.dataPointer.assumingMemoryBound(to: Double.self)[offset])
-    case .int32:
-      return Float(logits.dataPointer.assumingMemoryBound(to: Int32.self)[offset])
-    default:
-      let indexes = isNCHW ? [0, classIndex, y, x] : [0, y, x, classIndex]
-      return logits[indexes.map { NSNumber(value: $0) }].floatValue
-    }
+    return minValue >= 0 && maxValue <= 1 ? 0.5 : 0
   }
 
   private func semanticColors(classCount: Int) -> [(red: UInt8, green: UInt8, blue: UInt8)] {
@@ -168,7 +162,9 @@ class SemanticSegmenter: BasePredictor, @unchecked Sendable {
   }
 
   private func writeColor(
-    _ color: (red: UInt8, green: UInt8, blue: UInt8), into pixels: inout [UInt8], at offset: Int
+    _ color: (red: UInt8, green: UInt8, blue: UInt8),
+    into pixels: UnsafeMutableBufferPointer<UInt8>,
+    at offset: Int
   ) {
     pixels[offset] = color.red
     pixels[offset + 1] = color.green
@@ -176,9 +172,8 @@ class SemanticSegmenter: BasePredictor, @unchecked Sendable {
     pixels[offset + 3] = 255
   }
 
-  private func makeImage(fromRGBA pixels: [UInt8], width: Int, height: Int) -> CGImage? {
-    let data = Data(pixels)
-    guard let provider = CGDataProvider(data: data as CFData) else { return nil }
+  private func makeImage(fromRGBA pixels: Data, width: Int, height: Int) -> CGImage? {
+    guard let provider = CGDataProvider(data: pixels as CFData) else { return nil }
     return CGImage(
       width: width,
       height: height,

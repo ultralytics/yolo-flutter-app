@@ -4,6 +4,9 @@ example/test/widget_test.dart
 # Development files
 .idea/
 .vscode/
+PLAN.md
+Screenshot*.png
+example/lib/widget_previews.dart
 **/ios/Flutter/.last_build_id
 **/ios/Flutter/ephemeral/
 **/ios/Pods/
@@ -12,9 +15,14 @@ example/test/widget_test.dart
 **/android/gradle/wrapper/
 **/android/.gradle
 **/android/captures/
+# Tracked symlink for local plugin development; pub follows it and duplicates the plugin under example/android.
+example/android/ultralytics_yolo_plugin
 
 # Generated files
 coverage/
+exports/
+**/__pycache__/
+**/*.pyc
 **/doc/api/
 **/.dart_tool/
 **/build/
@@ -32,6 +40,7 @@ hello_yolo/
 **/*.zip
 
 # Development documents and notes
+docs/
 CLAUDE.md
 fix_summary.md
 MISSING_FEATURES.md

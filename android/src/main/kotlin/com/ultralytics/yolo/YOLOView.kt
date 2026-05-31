@@ -12,13 +12,14 @@ import android.util.Log
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.Toast
-import android.view.ScaleGestureDetector
 import android.hardware.camera2.CameraCharacteristics
 import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.core.*
 import androidx.camera.core.Camera
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import android.util.SizeF
+import kotlin.math.abs
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -32,7 +33,18 @@ import android.widget.TextView
 import android.view.Gravity
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import android.content.res.Configuration
+
+/**
+ * Describes a back-camera lens with its equivalent zoom factor relative to the main wide-angle lens (1.0x). Used by
+ * `getAvailableLenses` to populate the Dart lens picker.
+ */
+data class LensInfo(
+    val zoomFactor: Double,
+    val label: String,
+    val cameraInfo: CameraInfo? = null
+)
 
 class YOLOView @JvmOverloads constructor(
     context: Context,
@@ -174,6 +186,23 @@ class YOLOView @JvmOverloads constructor(
         this.streamCallback = callback
     }
 
+    // Generic event callback used to forward {type:"zoom"|"lens"|"focus", ...} maps to the Flutter event sink without
+    // coupling YOLOView to a Flutter type.
+    private var eventCallback: ((Map<String, Any>) -> Unit)? = null
+
+    /** Set a callback that receives typed events (zoom/lens/focus) for the Flutter event sink. */
+    fun setEventCallback(callback: ((Map<String, Any>) -> Unit)?) {
+        this.eventCallback = callback
+    }
+
+    private fun emitEvent(event: Map<String, Any>) {
+        try {
+            eventCallback?.invoke(event)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error emitting event", e)
+        }
+    }
+
     // Callback to notify model load completion
     private var modelLoadCallback: ((Boolean) -> Unit)? = null
 
@@ -206,17 +235,40 @@ class YOLOView @JvmOverloads constructor(
     // New fields for proper teardown:
     private var cameraExecutor: ExecutorService? = null
     private var imageAnalysisUseCase: ImageAnalysis? = null
+
+    // Bumped on every camera (re)bind. A rebind path (lens snap / camera flip / resume) shuts down the old executor
+    // without awaiting it, so an in-flight analyzer frame on the old thread can still be running when the new analyzer
+    // goes live; stale frames check this and bail so two predict() calls never overlap on the non-thread-safe predictor.
+    private val cameraGeneration = AtomicInteger(0)
     
     // Flag to track if the view is stopped/disposed to prevent race conditions
     @Volatile
-    private var isStopped = false    
+    private var isStopped = false
+
+    // Distinguishes an intentional Dart-driven pause (pauseCamera) from a lifecycle stop. Both set isStopped, but a
+    // lifecycle onStart/onResume must NOT auto-restart the camera while the app explicitly paused it.
+    @Volatile
+    private var intentionallyPaused = false
 
     // Zoom related
     private var currentZoomRatio = 1.0f
     private var minZoomRatio = 1.0f
     private var maxZoomRatio = 10.0f
-    private lateinit var scaleGestureDetector: ScaleGestureDetector
     var onZoomChanged: ((Float) -> Unit)? = null
+
+    // Multi-lens enumeration / selection
+    private var cachedLenses: List<LensInfo> = emptyList()
+    private var selectedLensZoomFactor: Double? = null
+    private var selectedLensCameraInfo: CameraInfo? = null
+    private var selectedLensLabel: String? = null
+    // Effective zoom (relative to the wide-camera 1.0x reference) to emit after the next `startCamera()` rebind.
+    // `startCamera()` resets physical zoom to 1.0x, but on a non-wide lens the user-facing effective zoom equals the
+    // lens reference factor (e.g. 0.5x on ultra-wide, 2.0x on telephoto). Without this the ZoomIndicator/LensPicker
+    // would snap back to 1.0x after every lens change.
+    private var pendingEffectiveZoomToEmit: Double? = null
+
+    // Optional ImageCapture use-case (bound alongside Preview+Analysis when supported)
+    private var imageCaptureUseCase: ImageCapture? = null
 
     // detection thresholds (can be changed externally via setters)
     private var confidenceThreshold = 0.25  // initial value
@@ -321,25 +373,8 @@ class YOLOView @JvmOverloads constructor(
         }
         addView(confidenceLabel)
         confidenceLabel.elevation = 1000f
-        
-        // Initialize scale gesture detector for pinch-to-zoom
-        scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            override fun onScale(detector: ScaleGestureDetector): Boolean {
-                val scale = detector.scaleFactor
-                val newZoomRatio = currentZoomRatio * scale
-                
-                // Clamp zoom ratio between min and max
-                val clampedZoomRatio = newZoomRatio.coerceIn(minZoomRatio, camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: maxZoomRatio)
-                
-                camera?.cameraControl?.setZoomRatio(clampedZoomRatio)
-                currentZoomRatio = clampedZoomRatio
-                
-                // Notify zoom change
-                onZoomChanged?.invoke(currentZoomRatio)
-                
-                return true
-            }
-        })
+        // Dart owns gestures (pinch + tap) via Flutter GestureDetector in YOLOShowcase; native is setter-only. Do not
+        // attach ScaleGestureDetector here.
     }
 
     // region threshold setters
@@ -367,6 +402,12 @@ class YOLOView @JvmOverloads constructor(
     
     fun setShowOverlays(show: Boolean) {
         showOverlays = show
+        if (!show) {
+            inferenceResult = null
+        }
+        post {
+            overlayView.invalidate()
+        }
     }
     
     fun setShowUIControls(show: Boolean) {
@@ -378,16 +419,67 @@ class YOLOView @JvmOverloads constructor(
         confidenceLabel.visibility = visibility
     }
     
+    /**
+     * Apply an *effective* zoom (relative to the wide-camera 1.0x reference). The physical setZoomRatio applied to the
+     * underlying camera is `effective / selectedLensZoomFactor`, so on telephoto the same effective 2.0x produces
+     * physical 1.0x (the tele's native FOV). Auto lens snap happens here before the digital zoom is applied.
+     */
     fun setZoomLevel(zoomLevel: Float) {
+        // First check whether the effective zoom should switch us to a different physical lens. `maybeSnapLensForZoom`
+        // will rebind and emit the post-rebind zoom event itself; bail out so we don't apply digital zoom to the old
+        // lens that's about to die.
+        if (maybeSnapLensForZoom(zoomLevel.toDouble())) return
+
         camera?.let { cam: Camera ->
-            // Clamp zoom level between min and max
-            val clampedZoomRatio = zoomLevel.coerceIn(minZoomRatio, cam.cameraInfo.zoomState.value?.maxZoomRatio ?: maxZoomRatio)
-            
-            cam.cameraControl.setZoomRatio(clampedZoomRatio)
-            currentZoomRatio = clampedZoomRatio
-            
-            // Notify zoom change
-            onZoomChanged?.invoke(currentZoomRatio)
+            val lensFactor = (selectedLensZoomFactor ?: 1.0).toFloat()
+            val physical = (zoomLevel / lensFactor).coerceIn(
+                minZoomRatio,
+                cam.cameraInfo.zoomState.value?.maxZoomRatio ?: maxZoomRatio
+            )
+            cam.cameraControl.setZoomRatio(physical)
+            currentZoomRatio = physical
+
+            val effective = (physical * lensFactor).toDouble()
+
+            // Notify zoom change (legacy callback uses physical ratio).
+            onZoomChanged?.invoke(physical)
+
+            // Dart-side ZoomIndicator consumes effective zoom so the value is consistent across lens switches.
+            emitEvent(mapOf("type" to "zoom", "value" to effective))
+        }
+    }
+
+    /**
+     * If the requested effective zoom maps onto a different physical back-camera lens than the currently selected one,
+     * switch CameraSelector and emit a `lens` event. Returns `true` when a snap was triggered (callers should not also
+     * apply digital zoom on the about-to-rebind lens). Same thresholds as iOS upstream `updateSelectedLens` (largest
+     * lens whose zoomFactor is <= requested wins; ties broken by the smallest lens).
+     */
+    private fun maybeSnapLensForZoom(zoomFactor: Double): Boolean {
+        if (lensFacing != CameraSelector.LENS_FACING_BACK) return false
+        val lenses = cachedLenses.filter { it.cameraInfo != null }
+        if (lenses.size < 2) return false
+
+        val sorted = lenses.sortedBy { it.zoomFactor }
+        val target = sorted.lastOrNull { zoomFactor >= it.zoomFactor - 0.01 } ?: sorted.first()
+
+        // Skip rebind if we're already on the target lens. When `selectedLensCameraInfo` is null (first frame after the
+        // back camera bound), fall back to identifying the lens by matching cameraInfo against the currently-bound
+        // camera so a first pinch on the wide lens doesn't trigger an unnecessary rebind.
+        val currentInfo = selectedLensCameraInfo ?: camera?.cameraInfo
+        if (currentInfo == target.cameraInfo) return false
+
+        try {
+            // Preserve the user-requested effective zoom across the rebind: the new lens starts at physical 1.0x =
+            // effective `target.zoomFactor`, which is the same FOV the user was pinching toward.
+            pendingEffectiveZoomToEmit = target.zoomFactor
+            switchToLens(target)
+            emitEvent(mapOf("type" to "lens", "label" to target.label))
+            return true
+        } catch (e: Exception) {
+            Log.w(TAG, "Lens snap to ${target.label} failed", e)
+            pendingEffectiveZoomToEmit = null
+            return false
         }
     }
 
@@ -403,16 +495,88 @@ class YOLOView @JvmOverloads constructor(
 
     // region Model / Task
 
+    // Recently-loaded predictors kept in memory so switching back to a model is instant instead of re-building the
+    // TFLite interpreter every time. Bounded by predictorCacheLimit to cap memory. Accessed on the main thread
+    // (setModel is called from the platform channel; cache writes happen inside post {}).
+    private val predictorCache = HashMap<String, Predictor>()
+    private val predictorCacheOrder = ArrayList<String>()  // LRU: oldest first, newest last
+    private val predictorCacheLimit = 3
+
+    private fun cachePredictor(key: String, predictor: Predictor) {
+        val previous = predictorCache.put(key, predictor)
+        if (previous != null && previous !== predictor) {
+            closePredictor(previous)
+        }
+        predictorCacheOrder.remove(key)
+        predictorCacheOrder.add(key)
+        while (predictorCacheOrder.size > predictorCacheLimit) {
+            // The current predictor is always newest (just touched), so it is never the eviction target.
+            val evictedKey = predictorCacheOrder.removeAt(0)
+            val evictedPredictor = predictorCache.remove(evictedKey)
+            if (evictedPredictor != null && evictedPredictor !== predictor) {
+                closePredictor(evictedPredictor)
+            }
+        }
+    }
+
+    private fun closePredictor(predictor: Predictor) {
+        // Cache eviction/replacement runs on the main thread, but onFrame() calls predict() on this predictor on the
+        // camera executor thread. Defer the close onto that same single thread so the native interpreter is never freed
+        // while a frame is still mid-predict() (use-after-free). When no executor is live (e.g. during stop()) close
+        // directly — stop() drains the executor before closing, so no inference can be in flight there.
+        val exec = cameraExecutor
+        if (exec != null && !exec.isShutdown) {
+            exec.execute {
+                try {
+                    (predictor as? BasePredictor)?.close()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error closing cached predictor", e)
+                }
+            }
+        } else {
+            try {
+                (predictor as? BasePredictor)?.close()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error closing cached predictor", e)
+            }
+        }
+    }
+
     fun setModel(modelPath: String, task: YOLOTask, useGpu: Boolean = true, callback: ((Boolean) -> Unit)? = null) {
+        val cacheKey = "$modelPath|$task|$useGpu"
+        inferenceResult = null
+        post {
+            overlayView.invalidate()
+        }
+
+        // Fast path: reuse an already-loaded predictor (re-applying the current thresholds) for an instant switch.
+        predictorCache[cacheKey]?.let { cached ->
+            cached.setConfidenceThreshold(confidenceThreshold)
+            cached.setIouThreshold(iouThreshold)
+            cached.setNumItemsThreshold(numItemsThreshold)
+            post {
+                this.task = task
+                this.predictor = cached
+                this.modelName = modelPath.substringAfterLast("/")
+                cachePredictor(cacheKey, cached)
+                modelLoadCallback?.invoke(true)
+                callback?.invoke(true)
+                if (allPermissionsGranted() && lifecycleOwner != null && (camera == null || isStopped)) {
+                    startCamera()
+                }
+            }
+            return
+        }
+
         Executors.newSingleThreadExecutor().execute {
             try {
                 val newPredictor = when (task) {
-                    YOLOTask.DETECT -> ObjectDetector(context = context, modelPath = modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
-                    YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
-                    YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
-                    YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
-                    YOLOTask.POSE -> PoseEstimator(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
-                    YOLOTask.OBB -> ObbDetector(context, modelPath, labels = loadLabels(modelPath), useGpu = useGpu)
+                    YOLOTask.DETECT -> ObjectDetector(context = context, modelPath = modelPath, labels = emptyList(), useGpu = useGpu)
+                    YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels = emptyList(), useGpu = useGpu)
+                    YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels = emptyList(), useGpu = useGpu)
+                    YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels = emptyList(), useGpu = useGpu)
+                    YOLOTask.POSE -> PoseEstimator(context, modelPath, labels = emptyList(), useGpu = useGpu)
+                    YOLOTask.OBB -> ObbDetector(context, modelPath, labels = emptyList(), useGpu = useGpu)
                 }
 
                 // Apply thresholds to all predictor types
@@ -426,6 +590,7 @@ class YOLOView @JvmOverloads constructor(
                     this.task = task
                     this.predictor = newPredictor
                     this.modelName = modelPath.substringAfterLast("/")
+                    cachePredictor(cacheKey, newPredictor)
                     modelLoadCallback?.invoke(true)
                     callback?.invoke(true)
                     // Ensure camera starts after model loads if it's not already running
@@ -434,39 +599,20 @@ class YOLOView @JvmOverloads constructor(
                     }
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to load model: $modelPath. Camera will run without inference.", e)
+                Log.w(TAG, "Failed to load model: $modelPath. Keeping the previously loaded model if one is present.", e)
                 post {
-                    // Clear predictor so the camera can keep running until a valid model is set
-                    this.predictor = null
-                    this.modelName = "No Model"
+                    // The new predictor was built into a local and never assigned, so the previously loaded model is
+                    // untouched. Only drop inference when there is nothing to fall back to (an initial-load failure);
+                    // for an in-place switch failure keep the previous predictor running so the camera doesn't
+                    // silently stop detecting while the UI reverts to the still-loaded model.
+                    if (this.predictor == null) {
+                        this.modelName = "No Model"
+                    }
                     modelLoadCallback?.invoke(false)
                     callback?.invoke(false)
                 }
             }
         }
-    }
-
-    private fun loadLabels(modelPath: String): List<String> {
-        // Try to load labels from model metadata first
-        val loadedLabels = YOLOFileUtils.loadLabelsFromAppendedZip(context, modelPath)
-        if (loadedLabels != null) {
-            return loadedLabels
-        }
-
-        // Return COCO dataset's 80 classes as a fallback
-        // This is much more complete than the previous 7-class hardcoded list
-        return listOf(
-            "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
-            "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog",
-            "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
-            "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite",
-            "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle",
-            "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich",
-            "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
-            "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote",
-            "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book",
-            "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
-        )
     }
 
     // endregion
@@ -475,11 +621,50 @@ class YOLOView @JvmOverloads constructor(
      * Called when a LifecycleOwner is available for camera operations
      */
     fun onLifecycleOwnerAvailable(owner: LifecycleOwner) {
+        // Detach from any previous owner before re-registering so a re-attach (or owner change) can't leave a stale
+        // observer wired to this view, and so disposal can fully release it.
+        this.lifecycleOwner?.lifecycle?.removeObserver(this)
         this.lifecycleOwner = owner
         owner.lifecycle.addObserver(this)
-        
+
         if (allPermissionsGranted() && (camera == null || isStopped)) {
             startCamera()
+        }
+    }
+
+    /**
+     * Detach from the lifecycle owner. Called on platform-view disposal so the Activity's lifecycle no longer holds a
+     * strong reference to this (now-dead) view — otherwise a later onStart/onResume would invoke startCamera() on it.
+     */
+    fun detachLifecycle() {
+        lifecycleOwner?.lifecycle?.removeObserver(this)
+        lifecycleOwner = null
+    }
+
+    /**
+     * Pause the camera pipeline without tearing down the predictor.
+     *
+     * The "pause" method channel call routes here (not [stop]) so that "resume" -> [startCamera] can rebind: [stop]
+     * closes and nulls the predictor, and [startCamera] early-returns while `predictor == null`, which would otherwise
+     * leave the preview dead after a single pause/resume cycle. This only unbinds the camera use-cases and clears the
+     * analyzer; the predictor, callbacks and cache stay intact for an instant resume.
+     */
+    fun pauseCamera() {
+        isStopped = true
+        intentionallyPaused = true
+        try {
+            imageAnalysisUseCase?.clearAnalyzer()
+            if (::cameraProviderFuture.isInitialized) {
+                try {
+                    cameraProviderFuture.get(1, TimeUnit.SECONDS).unbindAll()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error unbinding camera on pause", e)
+                }
+            }
+            previewUseCase?.setSurfaceProvider(null)
+            camera = null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during camera pause", e)
         }
     }
     
@@ -519,13 +704,50 @@ class YOLOView @JvmOverloads constructor(
     }
 
     fun startCamera() {
+        // Defer binding the camera until a model is loaded. Otherwise the preview starts on view-attach and the heavy
+        // first GPU model compile runs while the preview is live, disrupting it. With this guard the camera binds
+        // exactly once, from setModel's callback after the predictor is ready. setModel re-invokes startCamera once it
+        // sets predictor.
+        if (predictor == null) {
+            return
+        }
         isStopped = false
+        // An explicit start/resume clears the intentional-pause flag so lifecycle events resume the camera again.
+        intentionallyPaused = false
 
         try {
             cameraProviderFuture = ProcessCameraProvider.getInstance(context)
             cameraProviderFuture.addListener({
                 try {
                     val cameraProvider = cameraProviderFuture.get()
+
+                    // Stale-listener guard: if pauseCamera()/stop() ran after this listener was posted but before it
+                    // fired (e.g. rapid pause during model load), bail so we don't rebind a camera that was just stopped.
+                    if (isStopped) {
+                        return@addListener
+                    }
+
+                    // Tear down the previous analyzer + executor before rebinding. Rebind paths (setLens/auto-snap,
+                    // switchCamera, setLensFacing, onStart/onResume) reach startCamera() without going through stop(),
+                    // and each call builds a fresh ImageAnalysis + executor below. Without this, the old executor's
+                    // non-daemon analyzer thread and the old ImageAnalysis analyzer would be orphaned on every rebind.
+                    imageAnalysisUseCase?.clearAnalyzer()
+                    // Drain the old executor (not just shutdown) so any frame already inside onFrame()/predict() on the
+                    // previous analyzer thread finishes before the new analyzer binds — the generation guard below only
+                    // stops not-yet-started frames, and the predictor is not thread-safe. We're on the camera-provider
+                    // listener thread here, not the analyzer thread, so awaiting does not self-deadlock.
+                    cameraExecutor?.let { exec ->
+                        exec.shutdown()
+                        try {
+                            if (!exec.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+                                exec.shutdownNow()
+                            }
+                        } catch (e: InterruptedException) {
+                            exec.shutdownNow()
+                            Thread.currentThread().interrupt()
+                        }
+                    }
+                    cameraExecutor = null
 
                     previewUseCase = Preview.Builder()
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
@@ -534,10 +756,20 @@ class YOLOView @JvmOverloads constructor(
                     imageAnalysisUseCase = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                        // Ask CameraX for RGBA frames so toBitmap() is a direct buffer copy. The default YUV_420_888
+                        // forced a per-frame JPEG encode@100 + decode round-trip (~100ms/frame, ~5 FPS).
+                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                         .build()
 
                     cameraExecutor = Executors.newSingleThreadExecutor()
+                    val myGeneration = cameraGeneration.incrementAndGet()
                     imageAnalysisUseCase!!.setAnalyzer(cameraExecutor!!) { imageProxy ->
+                        // Drop frames from a superseded binding: the old executor may still deliver one in-flight frame
+                        // after a rebind, and overlapping predict() calls on the shared predictor are not thread-safe.
+                        if (myGeneration != cameraGeneration.get()) {
+                            imageProxy.close()
+                            return@setAnalyzer
+                        }
                         onFrame(imageProxy)
                     }
 
@@ -552,12 +784,35 @@ class YOLOView @JvmOverloads constructor(
                             return@addListener
                         }
 
-                        camera = cameraProvider.bindToLifecycle(
-                            owner,
-                            cameraSelector,
-                            previewUseCase,
-                            imageAnalysisUseCase  // the field, not a local val
-                        )
+                        // Refresh lens enumeration once we have a camera provider.
+                        cachedLenses = computeLensInfos(cameraProvider)
+
+                        // Preferred path: bind Preview + ImageAnalysis + ImageCapture so capturePhoto() can grab a
+                        // full-resolution still. Some low-tier devices cannot bind three use-cases simultaneously; in
+                        // that case fall back to Preview + ImageAnalysis only and rely on captureFrame() for snapshots.
+                        imageCaptureUseCase = ImageCapture.Builder()
+                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                            .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                            .build()
+
+                        camera = try {
+                            cameraProvider.bindToLifecycle(
+                                owner,
+                                cameraSelector,
+                                previewUseCase,
+                                imageAnalysisUseCase,
+                                imageCaptureUseCase
+                            )
+                        } catch (e: IllegalArgumentException) {
+                            Log.w(TAG, "Three-use-case binding failed, falling back without ImageCapture", e)
+                            imageCaptureUseCase = null
+                            cameraProvider.bindToLifecycle(
+                                owner,
+                                cameraSelector,
+                                previewUseCase,
+                                imageAnalysisUseCase
+                            )
+                        }
 
                         // Reset zoom to 1.0x when camera starts
                         currentZoomRatio = 1.0f
@@ -571,6 +826,27 @@ class YOLOView @JvmOverloads constructor(
                             minZoomRatio = cameraInfo.zoomState.value?.minZoomRatio ?: 1.0f
                             maxZoomRatio = cameraInfo.zoomState.value?.maxZoomRatio ?: 1.0f
                             currentZoomRatio = cameraInfo.zoomState.value?.zoomRatio ?: 1.0f
+
+                            // Sync the lens tracking state with whatever lens we actually bound to so the first pinch
+                            // on the wide lens doesn't think it needs to rebind. Default the selectedLensZoomFactor to
+                            // 1.0 (the wide reference) when we can't identify the bound camera in `cachedLenses` (e.g.
+                            // front-camera path).
+                            val bound = cachedLenses.firstOrNull { it.cameraInfo == cameraInfo }
+                            if (bound != null) {
+                                selectedLensCameraInfo = bound.cameraInfo
+                                selectedLensZoomFactor = bound.zoomFactor
+                                selectedLensLabel = bound.label
+                            } else if (selectedLensZoomFactor == null) {
+                                selectedLensZoomFactor = 1.0
+                            }
+
+                            // setLens() / auto-snap stashes the effective zoom that should appear in Dart after the
+                            // rebind; emit it now so the ZoomIndicator/LensPicker stay consistent across the change.
+                            pendingEffectiveZoomToEmit?.let { effective ->
+                                pendingEffectiveZoomToEmit = null
+                                emitEvent(mapOf("type" to "zoom", "value" to effective))
+                                onZoomChanged?.invoke(currentZoomRatio)
+                            }
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Use case binding failed", e)
@@ -585,6 +861,17 @@ class YOLOView @JvmOverloads constructor(
     }
 
     private fun buildCameraSelector(cameraProvider: ProcessCameraProvider): CameraSelector {
+        // If the caller explicitly picked a lens via setLens(), honor it (back-camera only).
+        if (lensFacing == CameraSelector.LENS_FACING_BACK) {
+            selectedLensCameraInfo?.let { target ->
+                if (cameraProvider.availableCameraInfos.contains(target)) {
+                    return CameraSelector.Builder()
+                        .addCameraFilter { infos -> infos.filter { it == target } }
+                        .build()
+                }
+            }
+        }
+
         if (lensFacing != CameraSelector.LENS_FACING_BACK || !preferWideBackCamera) {
             return CameraSelector.Builder()
                 .requireLensFacing(lensFacing)
@@ -632,6 +919,10 @@ class YOLOView @JvmOverloads constructor(
 
     fun switchCamera() {
         preferWideBackCamera = false
+        // Clear any sticky lens selection when the user explicitly flips cameras.
+        selectedLensCameraInfo = null
+        selectedLensZoomFactor = null
+        selectedLensLabel = null
         lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
             CameraSelector.LENS_FACING_FRONT
         } else {
@@ -641,13 +932,308 @@ class YOLOView @JvmOverloads constructor(
     }
 
     // endregion
+
+    // region multi-lens / focus / capture (Dart-driven setters)
+
+    /**
+     * Enumerate back-facing physical lenses with an equivalent zoom factor relative to
+     * the main wide-angle (1.0x). Mirrors the iOS app's `AVCaptureDevice.DiscoverySession`
+     * output. If the device exposes only one back camera, returns a single "Default" entry.
+     */
+    fun enumerateLenses(): List<LensInfo> {
+        if (cachedLenses.isNotEmpty()) return cachedLenses
+        return try {
+            val provider = ProcessCameraProvider.getInstance(context).get(1, TimeUnit.SECONDS)
+            computeLensInfos(provider).also { cachedLenses = it }
+        } catch (e: Exception) {
+            Log.w(TAG, "enumerateLenses: cameraProvider unavailable", e)
+            emptyList()
+        }
+    }
+
+    private fun computeLensInfos(cameraProvider: ProcessCameraProvider): List<LensInfo> {
+        // Read focal lengths + sensor size per back-facing camera and convert to a 35mm-equivalent focal length so we
+        // can classify each lens absolutely (ultra-wide / wide / telephoto) rather than by relative ordering. That
+        // ordering-based heuristic breaks on common 2-camera devices (ultra-wide + wide phones like the Pixel A
+        // series): treating the shortest focal as 1.0x mislabels the ultra-wide as main and the main as telephoto.
+        data class Raw(val info: CameraInfo, val focalLength: Float, val sensorWidth: Float)
+
+        val raws = cameraProvider.availableCameraInfos.mapNotNull { info ->
+            try {
+                val c2 = Camera2CameraInfo.from(info)
+                val facing = c2.getCameraCharacteristic(CameraCharacteristics.LENS_FACING)
+                if (facing != CameraCharacteristics.LENS_FACING_BACK) return@mapNotNull null
+                val focal = c2.getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+                    ?.minOrNull() ?: return@mapNotNull null
+                val sensor: SizeF? = c2.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
+                Raw(info, focal, sensor?.width ?: 0f)
+            } catch (e: Exception) {
+                Log.w(TAG, "computeLensInfos: skipping camera with unreadable metadata", e)
+                null
+            }
+        }
+
+        if (raws.isEmpty()) return emptyList()
+        if (raws.size == 1) {
+            return listOf(LensInfo(zoomFactor = 1.0, label = "Default", cameraInfo = raws[0].info))
+        }
+
+        // Convert each lens's focal length to a 35mm-equivalent by scaling against the full-frame sensor width (36mm).
+        // When sensor width is unavailable we fall back to a synthetic equivalent based on raw focal length × a
+        // typical smartphone crop factor (~7.0). Phone lens equivalents land roughly:
+        //   ultra-wide: 13-20mm   wide: 22-32mm   telephoto: 50mm+
+        fun equiv(raw: Raw): Float {
+            val sensorWidth = raw.sensorWidth
+            return if (sensorWidth > 0f) raw.focalLength * 36f / sensorWidth
+            else raw.focalLength * 7f
+        }
+
+        val withEquiv = raws.map { it to equiv(it) }
+        // Identify the main (wide) lens: closest to the 26mm ideal among lenses that aren't obviously ultra-wide. If
+        // every lens is ultra-wide-ish, pick the longest focal as main.
+        val mainRaw = withEquiv
+            .filter { (_, e) -> e >= 21f }
+            .minByOrNull { (_, e) -> abs(e - 26f) }
+            ?.first
+            ?: withEquiv.maxByOrNull { it.second }!!.first
+        val mainEquiv = equiv(mainRaw)
+
+        return withEquiv.sortedBy { it.second }.map { (raw, equivMm) ->
+            when {
+                raw === mainRaw -> LensInfo(zoomFactor = 1.0, label = "Wide camera", cameraInfo = raw.info)
+                equivMm < mainEquiv - 4f -> {
+                    // Ultra-wide. iOS exposes these as 0.5x relative to the main lens.
+                    val zoom = (equivMm.toDouble() / mainEquiv.toDouble()).coerceAtLeast(0.1)
+                    val rounded = if (abs(zoom - 0.5) < 0.15) 0.5 else zoom
+                    LensInfo(zoomFactor = rounded, label = "Ultra wide camera", cameraInfo = raw.info)
+                }
+                else -> {
+                    val zoom = equivMm.toDouble() / mainEquiv.toDouble()
+                    LensInfo(zoomFactor = zoom, label = "Telephoto camera", cameraInfo = raw.info)
+                }
+            }
+        }
+    }
+
+    /**
+     * Switch the active back-camera lens to the one whose computed zoom factor is closest
+     * to [zoomFactor]. Emits a `{type:"lens",label}` event on the existing event sink.
+     */
+    fun setLens(zoomFactor: Double) {
+        val lenses = if (cachedLenses.isEmpty()) enumerateLenses() else cachedLenses
+        if (lenses.isEmpty()) return
+        val target = lenses.minByOrNull { abs(it.zoomFactor - zoomFactor) } ?: return
+        // After the rebind the new lens starts at physical 1.0x; that maps to effective `target.zoomFactor`
+        // (e.g. 0.5x on ultra-wide, 2.0x on tele) which is exactly what the user asked for.
+        pendingEffectiveZoomToEmit = target.zoomFactor
+        switchToLens(target)
+        emitEvent(mapOf("type" to "lens", "label" to target.label))
+    }
+
+    private fun switchToLens(target: LensInfo) {
+        selectedLensCameraInfo = target.cameraInfo
+        selectedLensZoomFactor = target.zoomFactor
+        selectedLensLabel = target.label
+        // Switching lenses always means we're staying on the back side.
+        lensFacing = CameraSelector.LENS_FACING_BACK
+        preferWideBackCamera = false
+        // Rebind so the new CameraSelector is honored.
+        startCamera()
+    }
+
+    /**
+     * Tap-to-focus. [x] and [y] are normalized view-relative coordinates in 0..1. Builds a FocusMeteringAction via the
+     * PreviewView's MeteringPointFactory and triggers AF/AE. Emits `{type:"focus",x,y}` when the future completes
+     * successfully so the Dart `FocusReticle` can animate.
+     */
+    fun tapToFocus(x: Double, y: Double) {
+        val cam = camera ?: return
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        val nx = x.toFloat().coerceIn(0f, 1f)
+        val ny = y.toFloat().coerceIn(0f, 1f)
+        try {
+            val factory = previewView.meteringPointFactory
+            val point = factory.createPoint(nx * w, ny * h)
+            val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+                .setAutoCancelDuration(3, TimeUnit.SECONDS)
+                .build()
+            val future = cam.cameraControl.startFocusAndMetering(action)
+            future.addListener({
+                try {
+                    val result = future.get()
+                    if (result.isFocusSuccessful) {
+                        post {
+                            emitEvent(mapOf("type" to "focus", "x" to nx.toDouble(), "y" to ny.toDouble()))
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "tapToFocus: focus future failed", e)
+                }
+            }, ContextCompat.getMainExecutor(context))
+        } catch (e: Exception) {
+            Log.e(TAG, "tapToFocus failed", e)
+        }
+    }
+
+    /**
+     * Capture a still photo. Preferred path uses the bound ImageCapture use-case so we get a full-resolution JPEG; if
+     * [withOverlays] is true the current overlay bitmap is composited on top of the still before re-encoding. If
+     * ImageCapture binding isn't available (e.g. three-use-case bind failed), falls back to [captureFrame] which
+     * snapshots the preview + overlay composite.
+     */
+    fun capturePhoto(withOverlays: Boolean = true, callback: (ByteArray?) -> Unit) {
+        val ic = imageCaptureUseCase
+        if (ic == null) {
+            // Three-use-case bind failed at startup; honor withOverlays via captureFrame's matching flag so callers
+            // asking for a raw photo don't silently get an annotated one.
+            callback(captureFrame(withOverlays))
+            return
+        }
+        try {
+            ic.takePicture(
+                ContextCompat.getMainExecutor(context),
+                object : ImageCapture.OnImageCapturedCallback() {
+                    override fun onCaptureSuccess(image: ImageProxy) {
+                        try {
+                            // Carry the capture rotation + mirroring forward; ImageCapture hands us a JPEG that is not
+                            // yet rotated for portrait sensors, and on the front camera we also need to flip
+                            // horizontally before re-encoding. Without this every portrait share ends up sideways.
+                            val rotationDegrees = image.imageInfo.rotationDegrees
+                            val isFront = lensFacing == CameraSelector.LENS_FACING_FRONT
+                            val jpegBytes = imageProxyToJpegBytes(image)
+                            if (jpegBytes == null) {
+                                callback(captureFrame(withOverlays))
+                                return
+                            }
+                            if (!withOverlays) {
+                                callback(normalizeJpegOrientation(jpegBytes, rotationDegrees, isFront) ?: jpegBytes)
+                                return
+                            }
+                            // Composite the current overlay bitmap on top of the still.
+                            val composed = compositeOverlayOnJpeg(jpegBytes, rotationDegrees, isFront)
+                            callback(composed ?: jpegBytes)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "capturePhoto: error processing capture", e)
+                            callback(captureFrame(withOverlays))
+                        } finally {
+                            image.close()
+                        }
+                    }
+
+                    override fun onError(exception: ImageCaptureException) {
+                        Log.w(TAG, "capturePhoto: ImageCapture failed, falling back to captureFrame", exception)
+                        callback(captureFrame(withOverlays))
+                    }
+                }
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "capturePhoto: takePicture threw, falling back", e)
+            callback(captureFrame(withOverlays))
+        }
+    }
+
+    private fun imageProxyToJpegBytes(image: ImageProxy): ByteArray? {
+        return try {
+            val plane = image.planes[0]
+            val buffer = plane.buffer
+            val bytes = ByteArray(buffer.remaining())
+            buffer.get(bytes)
+            // ImageCapture (JPEG format) hands us a JPEG buffer directly.
+            if (image.format == ImageFormat.JPEG || image.format == 256 /* JPEG */) {
+                bytes
+            } else {
+                // Fallback: convert via Bitmap (rare path).
+                val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+                try {
+                    val out = java.io.ByteArrayOutputStream()
+                    bmp.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                    out.toByteArray()
+                } finally {
+                    bmp.recycle()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "imageProxyToJpegBytes failed", e)
+            null
+        }
+    }
+
+    private fun compositeOverlayOnJpeg(jpegBytes: ByteArray, rotationDegrees: Int, isFront: Boolean): ByteArray? {
+        return try {
+            val decoded = BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size) ?: return null
+            // Apply the capture orientation (and mirror for the front camera) BEFORE compositing — the overlay is
+            // drawn in display coordinates, so the still bitmap has to be in the same upright orientation or boxes land
+            // at the wrong positions and the shared JPEG ends up sideways.
+            val still = applyOrientation(decoded, rotationDegrees, isFront)
+            if (still !== decoded) decoded.recycle()
+            // Render overlay onto a bitmap sized to match the upright still.
+            val composite = Bitmap.createBitmap(still.width, still.height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(composite)
+            canvas.drawBitmap(still, 0f, 0f, null)
+            // Capture the overlay at its current view size and scale it to the still.
+            val overlayBitmap = Bitmap.createBitmap(
+                overlayView.width.coerceAtLeast(1),
+                overlayView.height.coerceAtLeast(1),
+                Bitmap.Config.ARGB_8888,
+            )
+            overlayView.draw(Canvas(overlayBitmap))
+            val matrix = Matrix().apply {
+                setScale(still.width.toFloat() / overlayBitmap.width, still.height.toFloat() / overlayBitmap.height)
+            }
+            canvas.drawBitmap(overlayBitmap, matrix, null)
+            val out = java.io.ByteArrayOutputStream()
+            composite.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            still.recycle()
+            overlayBitmap.recycle()
+            composite.recycle()
+            out.toByteArray()
+        } catch (e: Exception) {
+            Log.e(TAG, "compositeOverlayOnJpeg failed", e)
+            null
+        }
+    }
+
+    /** Decode + rotate/mirror a JPEG to the display-correct orientation, then re-encode. */
+    private fun normalizeJpegOrientation(jpegBytes: ByteArray, rotationDegrees: Int, isFront: Boolean): ByteArray? {
+        if (rotationDegrees == 0 && !isFront) return jpegBytes
+        return try {
+            val decoded = BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size) ?: return null
+            val oriented = applyOrientation(decoded, rotationDegrees, isFront)
+            if (oriented === decoded) {
+                jpegBytes
+            } else {
+                val out = java.io.ByteArrayOutputStream()
+                oriented.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                decoded.recycle()
+                oriented.recycle()
+                out.toByteArray()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "normalizeJpegOrientation failed", e)
+            null
+        }
+    }
+
+    /** Rotate `bitmap` clockwise by `rotationDegrees`, mirroring horizontally when `isFront` is true. */
+    private fun applyOrientation(bitmap: Bitmap, rotationDegrees: Int, isFront: Boolean): Bitmap {
+        if (rotationDegrees == 0 && !isFront) return bitmap
+        val matrix = Matrix().apply {
+            if (rotationDegrees != 0) postRotate(rotationDegrees.toFloat())
+            if (isFront) postScale(-1f, 1f)
+        }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+    // endregion
     
     // Lifecycle methods from DefaultLifecycleObserver
     override fun onStart(owner: LifecycleOwner) {
         if (allPermissionsGranted()) {
-            // Always restart camera on start if it's stopped or null
-            // This ensures camera resumes when navigating back
-            if (isStopped || camera == null) {
+            // Restart the camera on start if it was stopped by a lifecycle event (e.g. navigating back), but NOT if the
+            // Dart layer intentionally paused it — that pause must hold until an explicit resume.
+            if (!intentionallyPaused && (isStopped || camera == null)) {
                 startCamera()
             }
         }
@@ -655,8 +1241,8 @@ class YOLOView @JvmOverloads constructor(
 
     override fun onResume(owner: LifecycleOwner) {
         if (allPermissionsGranted()) {
-            // Double-check camera is running on resume
-            if (isStopped || camera == null) {
+            // Double-check camera is running on resume, unless the Dart layer intentionally paused it.
+            if (!intentionallyPaused && (isStopped || camera == null)) {
                 startCamera()
             }
         }
@@ -909,29 +1495,10 @@ class YOLOView @JvmOverloads constructor(
                         var top = box.xywh.top * scale + dy
                         var right = box.xywh.right * scale + dx
                         var bottom = box.xywh.bottom * scale + dy
-                        
-                        // Ensure coordinates are within view bounds and maintain aspect ratio
-                        val boxWidth = right - left
-                        val boxHeight = bottom - top
-                        
-                        // Adjust coordinates to maintain aspect ratio and stay within bounds
-                        if (left < 0) {
-                            left = 0f
-                            right = left + boxWidth
-                        }
-                        if (right > vw) {
-                            right = vw.toFloat()
-                            left = right - boxWidth
-                        }
-                        if (top < 0) {
-                            top = 0f
-                            bottom = top + boxHeight
-                        }
-                        if (bottom > vh) {
-                            bottom = vh.toFloat()
-                            top = bottom - boxHeight
-                        }
-                        
+                        // Draw at the box's true position and let the canvas clip whatever falls outside the view. Do
+                        // NOT pin an edge to the bound while keeping the width — that shifts a partially off-screen box
+                        // inward (a left edge clamped to 0 pushes the right edge too far right, and vice versa).
+
                         // Flip horizontally for front camera (DETECT task)
                         if (isFrontCamera) {
                             val flippedLeft = vw - right
@@ -1201,49 +1768,6 @@ class YOLOView @JvmOverloads constructor(
         }
     }
     
-    // Scale listener for pinch-to-zoom
-    private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
-            // Show zoom label when pinch starts (only if UI controls are not permanently shown)
-            if (!showUIControls) {
-                zoomLabel.visibility = View.VISIBLE
-            }
-            return true
-        }
-        
-        override fun onScale(detector: ScaleGestureDetector): Boolean {
-            val scaleFactor = detector.scaleFactor
-            val newZoomRatio = currentZoomRatio * scaleFactor
-            
-            // Clamp zoom within min/max bounds
-            val clampedZoom = newZoomRatio.coerceIn(minZoomRatio, maxZoomRatio)
-            
-            // Apply zoom to camera
-            camera?.cameraControl?.setZoomRatio(clampedZoom)
-            currentZoomRatio = clampedZoom
-            
-            // Update zoom label
-            zoomLabel.text = String.format("%.1fx", currentZoomRatio)
-            
-            return true
-        }
-        
-        override fun onScaleEnd(detector: ScaleGestureDetector) {
-            // Hide zoom label after 2 seconds (only if UI controls are not permanently shown)
-            if (!showUIControls) {
-                zoomLabel.postDelayed({
-                    zoomLabel.visibility = View.GONE
-                }, 2000)
-            }
-        }
-    }
-    
-    // Touch event handling for pinch-to-zoom
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        scaleGestureDetector.onTouchEvent(event)
-        return true
-    }
-    
     // region Streaming functionality
     
     /**
@@ -1387,7 +1911,7 @@ class YOLOView @JvmOverloads constructor(
                 for ((poseIndex, keypoints) in result.keypointsList.withIndex()) {
                     val detection = HashMap<String, Any>()
                     detection["classIndex"] = 0
-                    detection["className"] = "person"
+                    detection["className"] = result.names.getOrNull(0)?.takeIf { it.isNotBlank() } ?: "class 0"
                     detection["confidence"] = 1.0
                     var minX = Float.MAX_VALUE
                     var minY = Float.MAX_VALUE
@@ -1638,10 +2162,11 @@ class YOLOView @JvmOverloads constructor(
     // endregion
     
     /**
-     * Capture current camera frame with detection overlays
-     * Returns the captured image as a ByteArray (JPEG format)
+     * Capture current camera frame. When [withOverlays] is true the overlay bitmap (bounding boxes / mask / pose) is
+     * composited on top of the preview snapshot before encoding. Used as the fallback path when [capturePhoto]'s
+     * preferred ImageCapture binding is unavailable. Returns the captured image as a ByteArray (JPEG format).
      */
-    fun captureFrame(): ByteArray? {
+    fun captureFrame(withOverlays: Boolean = true): ByteArray? {
         try {
             // Create bitmap to hold the captured frame
             val width = width
@@ -1688,8 +2213,11 @@ class YOLOView @JvmOverloads constructor(
                 }
             }
             
-            // Always draw the overlay on top
-            overlayView.draw(canvas)
+            // Conditionally draw the overlay on top — callers asking for a raw photo (e.g.
+            // capturePhoto(withOverlays=false) hitting the fallback path) get the unannotated preview snapshot.
+            if (withOverlays) {
+                overlayView.draw(canvas)
+            }
             
             // Convert bitmap to JPEG byte array
             val outputStream = java.io.ByteArrayOutputStream()
@@ -1713,6 +2241,8 @@ class YOLOView @JvmOverloads constructor(
     fun stop() {
         // Set stopped flag first to prevent new frames from being processed
         isStopped = true
+        // A full teardown is not an intentional pause; a later lifecycle restart should rebind normally.
+        intentionallyPaused = false
 
         try {
             imageAnalysisUseCase?.clearAnalyzer()
@@ -1726,6 +2256,7 @@ class YOLOView @JvmOverloads constructor(
             }
 
             imageAnalysisUseCase = null
+            imageCaptureUseCase = null
 
             previewUseCase?.setSurfaceProvider(null)
             previewUseCase = null
@@ -1750,12 +2281,26 @@ class YOLOView @JvmOverloads constructor(
 
             camera = null
             
-            // Close predictor safely - ensure no inference is running
+            // Close the active predictor AND release every other cached predictor (prior setModel() instances), so a
+            // disposed view doesn't leak their native LiteRT interpreters / tensor buffers. Closing also makes a later
+            // same-key setModel() fast path unable to serve a now-closed instance (use-after-close).
+            val closing = predictor
             try {
-                (predictor as? BasePredictor)?.close()
+                (closing as? BasePredictor)?.close()
             } catch (e: Exception) {
                 Log.e(TAG, "Error closing predictor", e)
             }
+            for (cached in predictorCache.values) {
+                if (cached !== closing) {
+                    try {
+                        (cached as? BasePredictor)?.close()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error closing cached predictor", e)
+                    }
+                }
+            }
+            predictorCache.clear()
+            predictorCacheOrder.clear()
             predictor = null
             inferenceCallback = null
             streamCallback = null

@@ -13,7 +13,6 @@ import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:ultralytics_yolo/utils/map_converter.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
-import 'package:ultralytics_yolo/widgets/yolo_overlay.dart';
 
 /// Enum for camera lens selection.
 enum LensFacing {
@@ -33,14 +32,23 @@ class YOLOView extends StatefulWidget {
   final Function(List<YOLOResult>)? onResult;
   final Function(YOLOPerformanceMetrics)? onPerformanceMetrics;
   final Function(Map<String, dynamic>)? onStreamingData;
-  final bool showNativeUI;
   final Function(double zoomLevel)? onZoomChanged;
+
+  /// Called when an in-place model switch fails while a previously loaded model is still running natively. Carries the
+  /// `modelPath`/`task` of the request that failed so the host can ignore stale failures and only react to the request
+  /// that matches its current selection. Lets the host clear transient UI without the view tearing itself down into a
+  /// full-screen error.
+  final void Function(Object error, String modelPath, YOLOTask? task)?
+  onModelError;
+
+  /// Called after a model is successfully loaded (initial load) or switched in place (native `setModel` succeeded).
+  /// Carries the loaded `modelPath`/`task` so the host can record exactly which model is running rather than reading
+  /// its (possibly already-changed) optimistic selection.
+  final void Function(String modelPath, YOLOTask? task)? onModelLoad;
   final YOLOStreamingConfig? streamingConfig;
   final double confidenceThreshold;
   final double iouThreshold;
   final bool useGpu;
-  final bool showOverlays;
-  final YOLOOverlayTheme overlayTheme;
   final LensFacing lensFacing;
 
   const YOLOView({
@@ -52,14 +60,13 @@ class YOLOView extends StatefulWidget {
     this.onResult,
     this.onPerformanceMetrics,
     this.onStreamingData,
-    this.showNativeUI = false,
     this.onZoomChanged,
+    this.onModelError,
+    this.onModelLoad,
     this.streamingConfig,
     this.confidenceThreshold = 0.25,
     this.iouThreshold = 0.7,
     this.useGpu = true,
-    this.showOverlays = true,
-    this.overlayTheme = const YOLOOverlayTheme(),
     this.lensFacing = LensFacing.back,
   });
 
@@ -69,6 +76,7 @@ class YOLOView extends StatefulWidget {
 
 class _YOLOViewState extends State<YOLOView> {
   late YOLOViewController _effectiveController;
+  bool _ownsController = false;
   late MethodChannel _methodChannel;
   late EventChannel _resultEventChannel;
   StreamSubscription<dynamic>? _resultSubscription;
@@ -76,9 +84,19 @@ class _YOLOViewState extends State<YOLOView> {
   Object? _resolutionError;
   int _resolutionRequestId = 0;
 
+  // Serializes native `switchModel` calls. Each setModel completes asynchronously on the native side (Android spins a
+  // fresh executor, iOS model creation is async), so two overlapping calls could finish out of order and leave native
+  // state behind the latest selection. Chaining them — and skipping any request superseded before its turn — keeps the
+  // most recently requested model as the last one actually applied.
+  Future<void> _nativeSwitchChain = Future<void>.value();
+
+  // The model the native side was last asked to load (or settled on after a failed switch reverted it). Tracks native
+  // intent independently of `_resolvedModel`, which is committed only after a switch succeeds and therefore lags an
+  // in-flight switch. Used to decide whether a native switch is actually needed and to dedupe redundant reloads.
+  YOLOResolvedModel? _nativeSwitchTarget;
+
   final String _viewId = UniqueKey().toString();
   int? _platformViewId;
-  List<YOLOResult> _currentDetections = [];
 
   @override
   void initState() {
@@ -89,7 +107,13 @@ class _YOLOViewState extends State<YOLOView> {
   }
 
   void _setupController() {
-    _effectiveController = widget.controller ?? YOLOViewController();
+    if (widget.controller != null) {
+      _effectiveController = widget.controller!;
+      _ownsController = false;
+    } else {
+      _effectiveController = YOLOViewController();
+      _ownsController = true;
+    }
   }
 
   void _setupChannels() {
@@ -98,12 +122,8 @@ class _YOLOViewState extends State<YOLOView> {
   }
 
   void _subscribeToResults() {
-    if (widget.onResult == null &&
-        widget.onPerformanceMetrics == null &&
-        widget.onStreamingData == null) {
-      return;
-    }
-
+    // Subscribe unconditionally — the controller's zoom/lens/focus streams ride the same event channel as detection
+    // results, so consumers that only listen via the controller still need an active subscription.
     _resultSubscription = _resultEventChannel.receiveBroadcastStream().listen(
       _handleEvent,
       onError: (error, stackTrace) {
@@ -128,6 +148,13 @@ class _YOLOViewState extends State<YOLOView> {
   void _handleEvent(dynamic event) {
     if (event is! Map) return;
 
+    // Typed native events (`zoom`, `lens`, `focus`) coexist with detection payloads on the same channel; dispatch them
+    // to the controller's streams before falling through to detection/performance handling.
+    if (event['type'] is String) {
+      _effectiveController.onNativeEvent(event);
+      return;
+    }
+
     if (widget.onStreamingData != null) {
       try {
         final streamData = MapConverter.convertToTypedMap(event);
@@ -145,21 +172,7 @@ class _YOLOViewState extends State<YOLOView> {
     if (widget.onResult == null || !event.containsKey('detections')) return;
 
     try {
-      final results = _parseDetectionResults(event);
-
-      if (widget.showOverlays && widget.onResult != null) {
-        if (_currentDetections.isNotEmpty) {
-          setState(() {
-            _currentDetections = [];
-          });
-        }
-      } else {
-        setState(() {
-          _currentDetections = results;
-        });
-      }
-
-      widget.onResult!(results);
+      widget.onResult!(_parseDetectionResults(event));
     } catch (e) {
       logInfo('YOLOView: Error parsing detection results: $e');
     }
@@ -228,29 +241,73 @@ class _YOLOViewState extends State<YOLOView> {
       );
       if (!mounted || requestId != _resolutionRequestId) return;
 
-      final previousResolvedModel = _resolvedModel;
-      final didChange =
-          previousResolvedModel?.modelPath != resolvedModel.modelPath ||
-          previousResolvedModel?.task != resolvedModel.task;
-
-      setState(() {
-        _resolvedModel = resolvedModel;
-      });
-
-      if (switchExisting && didChange && _platformViewId != null) {
-        await _effectiveController.switchModel(
-          resolvedModel.modelPath,
-          resolvedModel.task,
-        );
+      if (switchExisting && _platformViewId != null) {
+        // Run the native switch AND the `_resolvedModel` commit inside the serialized chain so overlapping requests
+        // apply strictly in order. The decision to hit the native side compares against `_nativeSwitchTarget` (what
+        // native was last asked / settled on), NOT `_resolvedModel` — `_resolvedModel` is committed only after a
+        // successful switch, so it lags an in-flight switch and would wrongly skip re-applying the latest selection
+        // (e.g. switch to `s` in flight, user taps back to `n`). A request superseded before its turn skips the
+        // native call so the latest selection always wins.
+        final pending = _nativeSwitchChain.then((_) async {
+          if (!mounted || requestId != _resolutionRequestId) return;
+          final alreadyTargeting =
+              _nativeSwitchTarget?.modelPath == resolvedModel.modelPath &&
+              _nativeSwitchTarget?.task == resolvedModel.task;
+          if (!alreadyTargeting) {
+            // Switch BEFORE committing `_resolvedModel`. On failure the native side keeps the previously loaded model
+            // (verified on both platforms), so restore the intent and rethrow — the catch keeps the live camera.
+            final previousTarget = _nativeSwitchTarget;
+            _nativeSwitchTarget = resolvedModel;
+            try {
+              await _effectiveController.switchModel(
+                resolvedModel.modelPath,
+                resolvedModel.task,
+              );
+            } catch (_) {
+              _nativeSwitchTarget = previousTarget;
+              rethrow;
+            }
+          }
+          if (!mounted || requestId != _resolutionRequestId) return;
+          setState(() {
+            _resolvedModel = resolvedModel;
+          });
+          widget.onModelLoad?.call(modelPath, task);
+        });
+        // Keep the chain alive past a failed/superseded switch so later requests still run after this one.
+        _nativeSwitchChain = pending.catchError((_) {});
+        await pending; // surface this request's own native failure to the catch below
+      } else {
+        // Initial load / pre-platform-view: no native switch happens here (creationParams carry the model). Commit
+        // directly and record it as the native target so the first in-place switch compares against the right model.
+        setState(() {
+          _resolvedModel = resolvedModel;
+        });
+        _nativeSwitchTarget = resolvedModel;
+        widget.onModelLoad?.call(modelPath, task);
       }
     } catch (error) {
       if (!mounted || requestId != _resolutionRequestId) return;
-      setState(() {
-        _resolutionError = error;
-        if (!switchExisting) {
+      if (switchExisting && _resolvedModel != null) {
+        // An in-place switch failed (e.g. the requested model isn't published at the release tag yet, or the device
+        // went offline mid-download) but the previously loaded model is still running natively. Keep the live camera
+        // and report the failure out-of-band instead of tearing the view down into a full-screen error.
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            library: 'ultralytics_yolo',
+            context: ErrorDescription('switching model to $modelPath'),
+          ),
+        );
+        widget.onModelError?.call(error, modelPath, task);
+      } else {
+        logInfo('YOLOView: Failed to load model $modelPath: $error');
+        setState(() {
+          _resolutionError = error;
           _resolvedModel = null;
-        }
-      });
+        });
+        widget.onModelError?.call(error, modelPath, task);
+      }
     }
   }
 
@@ -260,7 +317,12 @@ class _YOLOViewState extends State<YOLOView> {
 
     // Handle controller changes
     if (oldWidget.controller != widget.controller) {
+      final previousController = _effectiveController;
+      final previouslyOwned = _ownsController;
       _setupController();
+      if (previouslyOwned && previousController != _effectiveController) {
+        previousController.dispose();
+      }
     }
 
     // Handle callback changes
@@ -276,22 +338,6 @@ class _YOLOViewState extends State<YOLOView> {
       _subscribeToResults();
     }
 
-    if (!oldWidget.showOverlays &&
-        widget.showOverlays &&
-        widget.onResult != null) {
-      setState(() {
-        _currentDetections = [];
-      });
-    }
-
-    if (oldWidget.onResult == null &&
-        widget.onResult != null &&
-        widget.showOverlays) {
-      setState(() {
-        _currentDetections = [];
-      });
-    }
-
     // Handle model or task changes
     if (oldWidget.modelPath != widget.modelPath ||
         oldWidget.task != widget.task) {
@@ -304,6 +350,9 @@ class _YOLOViewState extends State<YOLOView> {
     _effectiveController.stop();
     _resultSubscription?.cancel();
     _methodChannel.setMethodCallHandler(null);
+    if (_ownsController) {
+      _effectiveController.dispose();
+    }
 
     if (_platformViewId != null) {
       ChannelConfig.createSingleImageChannel()
@@ -321,28 +370,53 @@ class _YOLOViewState extends State<YOLOView> {
       return const Center(child: Text('Platform not supported for YOLOView'));
     }
     if (_resolutionError != null) {
-      return Center(child: Text('Failed to load model: $_resolutionError'));
+      // Show a neutral message on the same dark veil as the loading state — never surface the raw exception to users.
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Unable to load the model. Please try again.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+        ),
+      );
     }
     if (_resolvedModel == null) {
-      return const Center(child: CircularProgressIndicator());
+      // Match the in-app model-loading veil so the first load and subsequent switches look consistent.
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              SizedBox(height: 14),
+              Text(
+                'Loading model…',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
-    return Stack(
-      children: [
-        _buildCameraView(),
-
-        if (widget.showOverlays && _currentDetections.isNotEmpty)
-          YOLOOverlay(
-            detections: _currentDetections,
-            showConfidence: true,
-            showClassName: true,
-            theme: widget.overlayTheme,
-            onDetectionTap: (detection) {
-              logInfo('YOLOView: Detection tapped: ${detection.className}');
-            },
-          ),
-      ],
-    );
+    return _buildCameraView();
   }
 
   Widget _buildCameraView() {
@@ -380,7 +454,6 @@ class _YOLOViewState extends State<YOLOView> {
       'numItemsThreshold': _effectiveController.numItemsThreshold,
       'viewId': _viewId,
       'useGpu': widget.useGpu,
-      'showOverlays': widget.showOverlays,
       'lensFacing': widget.lensFacing.name,
     };
 
@@ -423,19 +496,12 @@ class _YOLOViewState extends State<YOLOView> {
     _platformViewId = id;
     _effectiveController.init(_methodChannel, id);
     _methodChannel.setMethodCallHandler(_handleMethodCall);
-    _methodChannel.invokeMethod('setShowUIControls', {
-      'show': widget.showNativeUI,
-    });
 
     if (widget.streamingConfig != null) {
       _effectiveController.setStreamingConfig(widget.streamingConfig!);
     }
 
-    if (widget.onResult != null ||
-        widget.onPerformanceMetrics != null ||
-        widget.onStreamingData != null) {
-      _subscribeToResults();
-    }
+    _subscribeToResults();
   }
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
@@ -477,6 +543,6 @@ class _YOLOViewState extends State<YOLOView> {
   Future<void> switchCamera() => _effectiveController.switchCamera();
   Future<void> setZoomLevel(double zoomLevel) =>
       _effectiveController.setZoomLevel(zoomLevel);
-  Future<void> setShowOverlays(bool show) =>
-      _effectiveController.setShowOverlays(show);
+  Future<void> setShowOverlays(bool visible) =>
+      _effectiveController.setShowOverlays(visible);
 }

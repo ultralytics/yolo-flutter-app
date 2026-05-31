@@ -10,7 +10,6 @@ import android.util.Log
 import androidx.camera.core.ImageProxy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.tensorflow.lite.Interpreter
 import java.io.IOException
 import java.net.URL
 import kotlin.math.max
@@ -29,38 +28,16 @@ class YOLO(
 ) {
     private val TAG = "YOLO"
 
-    // The underlying predictor that will be initialized based on the task
-    /**
-     * Create optimized TFLite Interpreter options
-     */
-    /**
-     * Create custom options for TFLite interpreters
-     * Note: each predictor will handle these options differently
-     */
-    private fun createCustomOptions(): Interpreter.Options? {
-        return try {
-            Interpreter.Options().apply {
-                // Use all available CPU cores for maximum parallelism
-                setNumThreads(Runtime.getRuntime().availableProcessors())
-                
-                // Allow FP16 precision for faster computation
-                setAllowFp16PrecisionForFp32(true)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error creating interpreter options: ${e.message}")
-            null
-        }
-    }
-
+    // The underlying predictor that will be initialized based on the task. LiteRT 2.x CompiledModel handles thread/
+    // accelerator configuration internally (see LiteRtModel), so there are no per-interpreter options to pass.
     private val predictor: Predictor by lazy {
-        val options = createCustomOptions()
         when (task) {
-            YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
-            YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
-            YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels, useGpu, customOptions = options)
-            YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu, options, classifierOptions)
-            YOLOTask.POSE -> PoseEstimator(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
-            YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold, customOptions = options)
+            YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
+            YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
+            YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels, useGpu)
+            YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu, classifierOptions)
+            YOLOTask.POSE -> PoseEstimator(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
+            YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
         }
     }
 

@@ -11,7 +11,9 @@
 //  and single image analysis, converting the Vision API's normalized coordinates to image coordinates,
 //  and packaging the results in the standardized YOLOResult format. It includes performance monitoring
 //  for inference time and frame rate, and offers runtime adjustable parameters such as confidence
-//  threshold and IoU threshold for non-maximum suppression.
+//  threshold and IoU threshold for non-maximum suppression. It supports both the traditional Vision
+//  NMS pipeline (YOLO11, returning VNRecognizedObjectObservation) and NMS-free end2end models (YOLO26,
+//  returning raw MLMultiArray tensors), as well as traditional raw tensors decoded with Swift-side NMS.
 
 import CoreML
 import Foundation
@@ -27,7 +29,7 @@ import Vision
 ///
 /// - Note: Object detection models output rectangular bounding boxes around detected objects.
 /// - SeeAlso: `Segmenter` for models that produce pixel-level masks for objects.
-class ObjectDetector: BasePredictor {
+class ObjectDetector: BasePredictor, @unchecked Sendable {
 
   /// Sets the confidence threshold and updates the model's feature provider.
   ///
@@ -37,8 +39,10 @@ class ObjectDetector: BasePredictor {
   /// - Parameter confidence: The new confidence threshold value (0.0 to 1.0).
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
+    // Force IoU = 1.0 for NMS-free (YOLO26) models so Vision's NMS doesn't suppress the model's own decoding — same as
+    // the create()-time seed, which this setter would otherwise clobber on the first threshold update.
     detector.featureProvider = ThresholdProvider(
-      iouThreshold: iouThreshold, confidenceThreshold: confidenceThreshold)
+      iouThreshold: requiresNMS ? iouThreshold : 1.0, confidenceThreshold: confidenceThreshold)
   }
 
   /// Sets the IoU threshold and updates the model's feature provider.
@@ -50,7 +54,7 @@ class ObjectDetector: BasePredictor {
   override func setIouThreshold(iou: Double) {
     iouThreshold = iou
     detector.featureProvider = ThresholdProvider(
-      iouThreshold: iouThreshold, confidenceThreshold: confidenceThreshold)
+      iouThreshold: requiresNMS ? iouThreshold : 1.0, confidenceThreshold: confidenceThreshold)
   }
 
   /// Processes the results from the Vision framework's object detection request.
@@ -110,6 +114,10 @@ class ObjectDetector: BasePredictor {
     return result
   }
 
+  /// Decodes detection boxes from a completed Vision request.
+  ///
+  /// Handles both NMS-pipelined models (`VNRecognizedObjectObservation`, e.g. YOLO11) and NMS-free models
+  /// (`VNCoreMLFeatureValueObservation` raw tensors, e.g. YOLO26).
   private func decodeBoxes(from request: VNRequest) -> [Box] {
     if let results = request.results as? [VNRecognizedObjectObservation] {
       return decodeRecognizedBoxes(results)
@@ -117,11 +125,12 @@ class ObjectDetector: BasePredictor {
     if let results = request.results as? [VNCoreMLFeatureValueObservation],
       let prediction = results.first?.featureValue.multiArrayValue
     {
-      return decodeEndToEndBoxes(prediction)
+      return processRawResults(prediction)
     }
     return []
   }
 
+  /// Decodes boxes from Vision's built-in NMS pipeline (`VNRecognizedObjectObservation`, e.g. YOLO11).
   private func decodeRecognizedBoxes(_ results: [VNRecognizedObjectObservation]) -> [Box] {
     var boxes = [Box]()
     boxes.reserveCapacity(min(results.count, numItemsThreshold))
@@ -141,35 +150,132 @@ class ObjectDetector: BasePredictor {
     return boxes
   }
 
-  private func decodeEndToEndBoxes(_ prediction: MLMultiArray) -> [Box] {
-    let shape = prediction.shape.map { $0.intValue }
-    guard shape.count == 3, shape[2] < shape[1], shape[2] >= 6 else { return [] }
+  // MARK: - Raw tensor processing (NMS-free YOLO26 + traditional)
 
+  /// Dispatches a raw `MLMultiArray` tensor to the appropriate decoder based on output shape (end2end vs traditional).
+  ///
+  /// - Parameter prediction: The raw MLMultiArray output from the model.
+  /// - Returns: An array of detected boxes.
+  private func processRawResults(_ prediction: MLMultiArray) -> [Box] {
+    let shape = prediction.shape.map { $0.intValue }
+    guard shape.count == 3 else { return [] }
     let strides = prediction.strides.map { $0.intValue }
     let pointer = prediction.dataPointer.assumingMemoryBound(to: Float.self)
+    let confThreshold = Float(confidenceThreshold)
+
+    // Detect format: end2end [1, max_det, 6] vs traditional [1, 4+nc, num_anchors]
+    let isEnd2End = shape[2] < shape[1]
+    if isEnd2End {
+      return processEnd2EndResults(
+        pointer: pointer, shape: shape, strides: strides, confThreshold: confThreshold)
+    } else {
+      return processTraditionalResults(
+        pointer: pointer, shape: shape, strides: strides, confThreshold: confThreshold)
+    }
+  }
+
+  /// Processes YOLO26 end2end output: [1, max_det, 6] = [x1, y1, x2, y2, conf, class_id] (xyxy pixel coords).
+  ///
+  /// - Parameters:
+  ///   - pointer: Pointer to the raw float data.
+  ///   - shape: The tensor shape [1, max_det, 6].
+  ///   - strides: The tensor strides for correct indexing.
+  ///   - confThreshold: Minimum confidence to include a detection.
+  /// - Returns: An array of detected boxes.
+  private func processEnd2EndResults(
+    pointer: UnsafeMutablePointer<Float>, shape: [Int], strides: [Int],
+    confThreshold: Float
+  ) -> [Box] {
+    let numDetections = shape[1]
+    let numFields = shape[2]
     let detStride = strides[1]
     let fieldStride = strides[2]
     var boxes = [Box]()
 
-    for i in 0..<shape[1] {
+    for i in 0..<numDetections {
       let base = i * detStride
-      let confidence = pointer[base + 4 * fieldStride]
-      guard confidence > Float(confidenceThreshold) else { continue }
+      let conf = pointer[base + 4 * fieldStride]
+      guard conf > confThreshold else { continue }
 
       let x1 = CGFloat(pointer[base])
       let y1 = CGFloat(pointer[base + fieldStride])
       let x2 = CGFloat(pointer[base + 2 * fieldStride])
       let y2 = CGFloat(pointer[base + 3 * fieldStride])
-      let classIndex = Int(pointer[base + 5 * fieldStride])
+      let classIndex = numFields > 5 ? Int(pointer[base + 5 * fieldStride]) : 0
+
       let imageRect = inputRect(
         fromModelRect: CGRect(x: x1, y: y1, width: x2 - x1, height: y2 - y1))
-      let label = labelName(for: classIndex)
+      let normalizedBox = normalizedRect(fromInputRect: imageRect)
+      let label = classIndex < labels.count ? labels[classIndex] : "\(classIndex)"
 
       boxes.append(
-        Box(
-          index: classIndex, cls: label, conf: confidence, xywh: imageRect,
-          xywhn: normalizedRect(fromInputRect: imageRect)))
+        Box(index: classIndex, cls: label, conf: conf, xywh: imageRect, xywhn: normalizedBox))
       if boxes.count >= numItemsThreshold { break }
+    }
+    return boxes
+  }
+
+  /// Processes traditional YOLO output: [1, 4+nc, num_anchors] in xywh format, requiring Swift NMS.
+  ///
+  /// - Parameters:
+  ///   - pointer: Pointer to the raw float data.
+  ///   - shape: The tensor shape [1, 4+nc, num_anchors].
+  ///   - strides: The tensor strides for correct indexing.
+  ///   - confThreshold: Minimum confidence to include a detection.
+  /// - Returns: An array of detected boxes after non-maximum suppression.
+  private func processTraditionalResults(
+    pointer: UnsafeMutablePointer<Float>, shape: [Int], strides: [Int],
+    confThreshold: Float
+  ) -> [Box] {
+    let numFeatures = shape[1]
+    let numAnchors = shape[2]
+    let numClasses = numFeatures - 4
+    let iouThresh = Float(iouThreshold)
+    let featureStride = strides[1]
+    let anchorStride = strides[2]
+
+    var candidateBoxes = [CGRect]()
+    var candidateScores = [Float]()
+    var candidateClasses = [Int]()
+
+    for j in 0..<numAnchors {
+      let anchorOffset = j * anchorStride
+      var bestScore: Float = 0
+      var bestClass = 0
+      for c in 0..<numClasses {
+        let score = pointer[(4 + c) * featureStride + anchorOffset]
+        if score > bestScore {
+          bestScore = score
+          bestClass = c
+        }
+      }
+      guard bestScore > confThreshold else { continue }
+
+      let x = pointer[anchorOffset]
+      let y = pointer[featureStride + anchorOffset]
+      let w = pointer[2 * featureStride + anchorOffset]
+      let h = pointer[3 * featureStride + anchorOffset]
+      candidateBoxes.append(
+        CGRect(x: CGFloat(x - w / 2), y: CGFloat(y - h / 2), width: CGFloat(w), height: CGFloat(h))
+      )
+      candidateScores.append(bestScore)
+      candidateClasses.append(bestClass)
+    }
+
+    let selectedIndices = nonMaxSuppression(
+      boxes: candidateBoxes, scores: candidateScores, threshold: iouThresh)
+
+    var boxes = [Box]()
+    for i in selectedIndices.prefix(numItemsThreshold) {
+      let rect = candidateBoxes[i]
+      let imageRect = inputRect(fromModelRect: rect)
+      let normalizedBox = normalizedRect(fromInputRect: imageRect)
+      let classIndex = candidateClasses[i]
+      let label = classIndex < labels.count ? labels[classIndex] : "\(classIndex)"
+      boxes.append(
+        Box(
+          index: classIndex, cls: label, conf: candidateScores[i], xywh: imageRect,
+          xywhn: normalizedBox))
     }
     return boxes
   }

@@ -44,6 +44,10 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   /// The class labels used by the model for categorizing detections.
   public var labels = [String]()
 
+  /// Whether the model needs external NMS. NMS-free exports (YOLO26) set metadata `nms = false`; for those the Vision
+  /// ThresholdProvider IoU is forced to 1.0 so the built-in NMS-free decoding isn't suppressed. Mirrors yolo-ios-app.
+  public private(set) var requiresNMS: Bool = true
+
   /// The current pixel buffer being processed (used for camera frame processing).
   var currentBuffer: CVPixelBuffer?
 
@@ -92,11 +96,11 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   }
 
   func labelName(for index: Int) -> String {
-    guard index >= 0 else { return "class_\(index)" }
-    guard index < labels.count else { return "class_\(index)" }
+    guard index >= 0 else { return "class \(index)" }
+    guard index < labels.count else { return "class \(index)" }
 
     let label = labels[index].trimmingCharacters(in: .whitespacesAndNewlines)
-    return label.isEmpty ? "class_\(index)" : label
+    return label.isEmpty ? "class \(index)" : label
   }
 
   private static func parseLabels(from userDefined: [String: String]) -> [String] {
@@ -180,6 +184,9 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     let predictor = Self.init()
     predictor.numItemsThreshold = numItemsThreshold
 
+    // Carry the non-Sendable completion across queue boundaries via SendableBox so Swift 6 strict concurrency
+    // doesn't flag the main-queue dispatch below; all invocations land on the main queue.
+    let completionBox = SendableBox(completion)
     // Kick off the expensive loading on a background thread
     DispatchQueue.global(qos: .userInitiated).async {
       do {
@@ -189,19 +196,17 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         let config = MLModelConfiguration()
 
         if useGpu {
-          // Enable GPU acceleration
-          config.computeUnits = .all
-        } else {
-          // Avoid GPU while keeping Neural Engine acceleration available.
+          // Pin inference to the Apple Neural Engine (with CPU) rather than `.all`. In a live camera app `.all` is no
+          // faster and is jitterier because the GPU is already busy compositing the preview and overlays; the conv
+          // backbone belongs on the ANE. Mirrors yolo-ios-app PR #246 (verified on a physical iPhone there).
           if #available(iOS 16.0, *) {
             config.computeUnits = .cpuAndNeuralEngine
           } else {
-            config.computeUnits = .cpuOnly
+            config.computeUnits = .all
           }
-        }
-
-        if #available(iOS 17.0, *) {
-          config.setValue(1, forKey: "experimentalMLE5EngineUsage")
+        } else {
+          // Avoid the Neural Engine/GPU entirely.
+          config.computeUnits = .cpuOnly
         }
 
         let mlModel: MLModel
@@ -220,12 +225,21 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         // only keep labels on nested models, and hard-failing here leaves the predictor nil.
         predictor.labels = userDefined.map(Self.parseLabels(from:)) ?? []
 
+        // Detect NMS-free models (YOLO26): metadata `nms` == "false".
+        if let nmsValue = userDefined?["nms"] {
+          predictor.requiresNMS = (nmsValue.lowercased() != "false")
+        }
+
         // (3) Store model input size
         predictor.modelInputSize = predictor.getModelInputSize(for: mlModel)
 
         // (4) Create VNCoreMLModel, VNCoreMLRequest, etc.
         predictor.detector = try VNCoreMLModel(for: mlModel)
-        predictor.detector.featureProvider = ThresholdProvider()
+        // Seed the model's threshold inputs at load (NMS-free models force IoU = 1.0 so their decoding isn't
+        // suppressed). Previously a bare ThresholdProvider() left default thresholds until the user moved a slider.
+        let seedIou = predictor.requiresNMS ? predictor.iouThreshold : 1.0
+        predictor.detector.featureProvider = ThresholdProvider(
+          iouThreshold: seedIou, confidenceThreshold: predictor.confidenceThreshold)
         predictor.visionRequest = {
           let request = VNCoreMLRequest(
             model: predictor.detector,
@@ -247,13 +261,15 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         predictor.isModelLoaded = true
 
         // Finally, call the completion on the main thread
+        let predictorBox = SendableBox(predictor)
         DispatchQueue.main.async {
-          completion(.success(predictor))
+          completionBox.value(.success(predictorBox.value))
         }
       } catch {
         // If anything goes wrong, call completion with the error
+        let errorBox = SendableBox(error)
         DispatchQueue.main.async {
-          completion(.failure(error))
+          completionBox.value(.failure(errorBox.value))
         }
       }
     }

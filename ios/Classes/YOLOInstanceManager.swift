@@ -61,7 +61,9 @@ class YOLOInstanceManager {
 
     let resolvedModelPath = resolveModelPath(modelName)
 
-    YOLO(resolvedModelPath, task: task, useGpu: useGpu, numItemsThreshold: numItemsThreshold) {
+    // YOLO retains itself through its load-completion closure until the model finishes loading, so silencing the
+    // "Result of 'YOLO' initializer is unused" warning by binding to `_` is sufficient.
+    _ = YOLO(resolvedModelPath, task: task, useGpu: useGpu, numItemsThreshold: numItemsThreshold) {
       [weak self] result in
       guard let self = self else { return }
 
@@ -156,8 +158,6 @@ class YOLOInstanceManager {
     if modelPath.hasPrefix("/") {
       return modelPath
     }
-
-    let fileManager = FileManager.default
 
     if modelPath.contains("/") {
       let components = modelPath.components(separatedBy: "/")
@@ -266,7 +266,7 @@ class YOLOInstanceManager {
 
     // Convert boxes to Flutter format
     for box in result.boxes {
-      var boxDict: [String: Any] = [
+      let boxDict: [String: Any] = [
         "class": box.cls,
         "className": box.cls,  // Add className for compatibility with YOLOResult
         "confidence": box.conf,

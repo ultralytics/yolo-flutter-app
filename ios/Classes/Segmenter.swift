@@ -14,10 +14,30 @@
 //  The results include both bounding boxes and pixel-level masks that can be overlaid on images.
 
 import Accelerate
-import CoreML
+// `@preconcurrency` suppresses the cascade of Swift-6 Sendable warnings from MLMultiArray captures inside the
+// confidenceMaskBuffer pipeline; CoreML hasn't audited those types yet.
+@preconcurrency import CoreML
 import Foundation
 import UIKit
 import Vision
+
+/// Thread-safe accumulator that lets the `DispatchQueue.concurrentPerform` body in `postProcessSegment` append
+/// result tuples without tripping Swift 6 "mutation of captured var" warnings. Stores non-Sendable MLMultiArray
+/// values, so unchecked-Sendable + NSLock provides the synchronization the compiler can't otherwise verify.
+private final class _SegmenterResultAccumulator: @unchecked Sendable {
+  private let lock = NSLock()
+  private var values: [(CGRect, Int, Float, MLMultiArray)] = []
+  func append(_ value: (CGRect, Int, Float, MLMultiArray)) {
+    lock.lock()
+    values.append(value)
+    lock.unlock()
+  }
+  var snapshot: [(CGRect, Int, Float, MLMultiArray)] {
+    lock.lock()
+    defer { lock.unlock() }
+    return values
+  }
+}
 
 /// Specialized predictor for YOLO segmentation models that identify objects and their pixel-level masks.
 class Segmenter: BasePredictor, @unchecked Sendable {
@@ -45,7 +65,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         let out1 = results[1].featureValue.multiArrayValue
       else { return }
       let out0dim = checkShapeDimensions(of: out0)
-      let out1dim = checkShapeDimensions(of: out1)
+      _ = checkShapeDimensions(of: out1)
       if out0dim == 4 {
         masks = out0
         pred = out1
@@ -76,11 +96,16 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         alphas.append(alpha)
       }
 
+      // SendableBox wraps the non-Sendable MLMultiArray + Box-list captures so Swift 6 strict concurrency lets the
+      // dispatch closure carry them onto the global queue.
+      let masksBox = SendableBox(masks)
+      let boxesBox = SendableBox(boxes)
+      let detectionsBox = SendableBox(limitedDetections)
       DispatchQueue.global(qos: .userInitiated).async {
         guard
           let processedMasks = generateCombinedMaskImage(
-            detectedObjects: limitedDetections,
-            protos: masks,
+            detectedObjects: detectionsBox.value,
+            protos: masksBox.value,
             inputWidth: self.modelInputSize.width,
             inputHeight: self.modelInputSize.height,
             threshold: 0.5,
@@ -91,12 +116,13 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           DispatchQueue.main.async { self.isUpdating = false }
           return
         }
-        var maskResults = Masks(masks: processedMasks.1, combinedMask: processedMasks.0)
+        let maskResults = Masks(masks: processedMasks.1, combinedMask: processedMasks.0)
 
         let timing = self.updateTiming()
 
         var result = YOLOResult(
-          orig_shape: self.inputSize, boxes: boxes, masks: maskResults, speed: timing.speed,
+          orig_shape: self.inputSize, boxes: boxesBox.value, masks: maskResults,
+          speed: timing.speed,
           fps: timing.fps, names: self.labels)
 
         if let originalImageData = self.originalImageData {
@@ -115,8 +141,6 @@ class Segmenter: BasePredictor, @unchecked Sendable {
       let emptyResult = YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
       return emptyResult
     }
-    var boxes = [Box]()
-
     let imageWidth = image.extent.width
     let imageHeight = image.extent.height
     self.inputSize = CGSize(width: imageWidth, height: imageHeight)
@@ -135,7 +159,7 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           let out1 = results[1].featureValue.multiArrayValue
         else { return YOLOResult(orig_shape: .zero, boxes: [], speed: 0, names: labels) }
         let out0dim = checkShapeDimensions(of: out0)
-        let out1dim = checkShapeDimensions(of: out1)
+        _ = checkShapeDimensions(of: out1)
         if out0dim == 4 {
           masks = out0
           pred = out1
@@ -143,14 +167,11 @@ class Segmenter: BasePredictor, @unchecked Sendable {
           masks = out1
           pred = out0
         }
-        let a = Date()
 
         let detectedObjects = postProcessSegment(
           feature: pred, confidenceThreshold: Float(confidenceThreshold),
           iouThreshold: Float(iouThreshold))
         var boxes: [Box] = []
-        var colorMasks: [CGImage?] = []
-        var alhaMasks: [CGImage?] = []
         var alphas = [CGFloat]()
         for p in detectedObjects {
           let box = p.0
@@ -227,12 +248,13 @@ class Segmenter: BasePredictor, @unchecked Sendable {
     let maskConfidenceLength = 32
     let numClasses = numFeatures - boxFeatureLength - maskConfidenceLength
 
-    var results = [(CGRect, Int, Float, MLMultiArray)]()
+    // NSLock-protected accumulator wraps the non-Sendable result tuples so the `DispatchQueue.concurrentPerform`
+    // body below can append safely without tripping Swift 6 "mutation of captured var in concurrently-executing
+    // code" warnings.
+    let resultsAcc = _SegmenterResultAccumulator()
 
     let featurePointer = feature.dataPointer.assumingMemoryBound(to: Float.self)
     let pointerWrapper = FloatPointerWrapper(featurePointer)
-
-    let resultsQueue = DispatchQueue(label: "resultsQueue", attributes: .concurrent)
 
     DispatchQueue.concurrentPerform(iterations: numAnchors) { j in
       // Use pointerWrapper here
@@ -275,15 +297,11 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         }
 
         let result = (boundingBox, Int(maxClassIndex), maxClassValue, maskProbs)
-
-        resultsQueue.async(flags: .barrier) {
-          results.append(result)
-        }
+        resultsAcc.append(result)
       }
     }
 
-    resultsQueue.sync(flags: .barrier) {}
-
+    let results = resultsAcc.snapshot
     var selectedBoxesAndFeatures = [(CGRect, Int, Float, MLMultiArray)]()
 
     for classIndex in 0..<numClasses {

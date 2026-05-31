@@ -11,6 +11,7 @@
 .cxx
 CLAUDE.md
 .CLAUDE.md
+PLAN.md
 migrate_working_dir/
 LICENSE.txt
 
@@ -38,10 +39,19 @@ build/
 **/linux/flutter/ephemeral/
 **/windows/flutter/ephemeral/
 
-# Model files
+# Model files — NEVER commit model weights (they bloat git history and break pub publish validation).
 **/*.tflite
 **/*.mlmodel
+**/*.mlmodelc
 **/*.mlpackage
+**/*.mlpackage.zip
+**/*.pt
+**/*.onnx
+**/*.pb
+**/*.engine
+**/*.torchscript
+**/*_saved_model/
+exports/
 
 # Coverage
 coverage/
@@ -92,3 +102,9 @@ threshold_test_sample/
 
 # FVM Version Cache
 .fvm/
+
+# Dev-only widget previews (per-developer scratch)
+example/lib/widget_previews.dart
+
+# Local dev screenshots
+Screenshot*.png
