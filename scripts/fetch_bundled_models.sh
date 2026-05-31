@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 #
 # Download the nano (n) YOLO26 models into the example app's asset folder at build time so the app ships with them by
 # default. The models are NOT committed to git (they are large binaries, gitignored via *.tflite / *.mlpackage.zip);
