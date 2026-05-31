@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.ultralytics.yolo_example"
+    namespace = "com.ultralytics.yolo"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.ultralytics.yolo_example"
+        applicationId = "com.ultralytics.yolo"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

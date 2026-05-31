@@ -8,7 +8,7 @@ Canonical record of the on-device profiling behind the Ultralytics YOLO Flutter 
 ## Test Setup
 
 - **Device (ground truth):** Samsung Galaxy S26 (`SM S9420`), Android 16 / API 36.
-- **Build:** Flutter example debug APK, package `com.ultralytics.yolo_example`.
+- **Build:** Flutter example debug APK, package `com.ultralytics.yolo`.
 - **Model:** `yolo26n_int8.tflite`, official YOLO26 detect asset, 640x640 input, `int8=True`, `nms=False`, `end2end=False`.
 - **Runtime:** Android LiteRT 2.x `CompiledModel` with `useGpu: true`.
 - **UI:** `YOLOShowcase` real-time camera view with the default task/size controls and threshold sliders.
