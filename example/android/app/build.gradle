@@ -5,6 +5,12 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
 android {
     namespace = "com.ultralytics.yolo"
     compileSdk = flutter.compileSdkVersion
@@ -27,12 +33,18 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        release {
+            keyAlias = keystoreProperties["keyAlias"] ?: System.getenv("ANDROID_KEY_ALIAS")
+            keyPassword = keystoreProperties["keyPassword"] ?: System.getenv("ANDROID_KEY_PASSWORD")
+            storeFile = keystoreProperties["storeFile"] ? rootProject.file(keystoreProperties["storeFile"]) : null
+            storePassword = keystoreProperties["storePassword"] ?: System.getenv("ANDROID_STORE_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
-            
-            // Add ProGuard rules
+            signingConfig = signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
