@@ -60,6 +60,28 @@ Observed app-level result:
 
 **Conclusion:** Keep official Android assets as int8 TFLite for download size and confirm GPU placement per device from LiteRT logs. Do not assume int8 means CPU-only on current LiteRT, and do not assume all int8 graphs receive the same GPU coverage: driver support is device-dependent, and unsupported graphs or ops may fall back to CPU.
 
+## Experiment: Segment and Semantic Post-Processing
+
+**Q:** Beyond the GPU forward pass, where does per-frame time go for the segment and semantic tasks?
+
+**A:** Both predictors reshaped the entire flat model output into jagged nested arrays every frame, then re-read it during post-processing (segment: the ~1M-float detection head plus the ~0.8M-float mask proto; semantic: the whole `[1, H, W, C]` map, re-read three levels deep during per-pixel argmax). The reshape ran before any useful work.
+
+**Shipped:** Both predictors index the flat `run()` output in place (no per-frame reshape allocation or copy) and walk contiguous memory: the segment proto mask matmul iterates channels contiguously, and the semantic argmax reads one cache line per pixel for the NHWC layout. Output is bit-identical (verified `diff=0` against the old kernels on a standalone benchmark).
+
+**Result:** A host-JVM microbenchmark of the changed loops showed ~1.8-2.1x on the semantic argmax and ~1.55x on the segment proto matmul plus detection indexing; the removed per-frame reshape copy is additional savings on top. On the Galaxy S26 (GPU, bundled nano models) segment `yolo26n-seg` ran ~25 FPS / ~30 ms and semantic `yolo26n-sem` ~20-22 FPS / ~43 ms, both with correct mask overlays and no crashes.
+
+**Conclusion:** Keep model outputs flat and index by stride, and confirm output equivalence with an explicit diff when refactoring post-processing. This brings Android to parity with the iOS SDK, whose Swift decode reads `MLMultiArray` through a raw `Float` pointer and bulk-copies mask rows ([yolo-ios-app](https://github.com/ultralytics/yolo-ios-app) PR #246).
+
+## Experiment: Bundling Nano Models at Build Time
+
+**Q:** Can the app ship with the nano models so common tasks work offline on first launch (and so segment/semantic can be profiled on a device with no network)?
+
+**A:** Yes. `scripts/fetch_bundled_models.sh` downloads the six nano YOLO26 models into `example/assets/models/` at build time, wired into the Android Gradle `preBuild` and an iOS run-script build phase. The files stay gitignored and are never committed. `YOLOModelResolver` already checks `assets/models/` before a network download, so a bundled model means no first-run fetch. The download is best-effort (always exits `0`) so offline builds still succeed, and it is **skipped under CI** (`CI` / `GITHUB_ACTIONS`) so GitHub builds stay fast and off the network — CI exercises the runtime-download fallback instead.
+
+**Shipped:** Local and release builds bundle `yolo26n` for all six tasks; larger sizes still download on demand. This supersedes the earlier temporary "bundle for local validation" workaround.
+
+**Conclusion:** Build-time bundling removes first-run download latency for the default models and makes on-device profiling reproducible without network access, while CI keeps using the runtime path.
+
 ## Experiment: Release Download vs. Local Validation
 
 **Q:** Did first-use model download fail because of the Flutter resolver?
@@ -73,7 +95,7 @@ SocketException: Failed host lookup: 'github.com'
 
 The app UI correctly showed the resolver failure. To validate the camera/inference path independent of device DNS, the same `yolo26n_int8.tflite` release asset was temporarily bundled into the ignored example asset directory for a local debug build. With that asset present, the app loaded the model, started CameraX, compiled LiteRT on GPU, and displayed live inference.
 
-**Conclusion:** Autodownload requires normal device DNS/network access to GitHub release assets. Local bundled assets are useful for validation, but official models should remain release-hosted and downloaded/cached on first use.
+**Conclusion:** Autodownload requires normal device DNS/network access to GitHub release assets. The nano models are now bundled into the example app at build time for local/release builds (see "Bundling Nano Models at Build Time"); larger sizes remain release-hosted and downloaded/cached on first use.
 
 ## Experiment: Model Availability UI
 
@@ -89,6 +111,8 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 - Android export settings: `int8=True`, `nms=False`, `end2end=False`; classify `imgsz=224`, all other tasks `imgsz=640`; calibration from `ultralytics.cfg.TASK2CALIBRATIONDATA`.
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
 - Example UI: Flutter overlay owns loading state after native splash removal; controls expose all six tasks and all five model sizes.
+- Bundled models: local/release builds fetch the six `yolo26n` nano models into `example/assets/models/` at build time (gitignored, not committed; skipped under CI), so nano tasks work offline with no first-run download; larger sizes download on demand.
+- iOS runtime: Core ML pinned to `.cpuAndNeuralEngine` (Neural Engine + CPU), not `.all` — avoids GPU contention with the live preview/overlay compositing.
 
 ## Open Levers
 
@@ -97,3 +121,4 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 - **FP16 benchmark:** Compare non-end-to-end fp16 TFLite exports against the official int8 assets on devices where both compile on GPU.
 - **Camera preset tuning:** Measure CameraX target resolution and analyzer throughput separately from model processing.
 - **Frame-rate policy:** Explore explicit camera frame duration / analyzer throttling for latency vs. thermal tradeoffs.
+- **iOS post-processing port:** The iOS SDK further reduced segment/semantic decode with raw `MLMultiArray` pointer reads and `[Float]` mask coefficients (yolo-ios-app PR #246); mirror any remaining hot-loop `NSNumber` reads in the plugin's `ios/Classes/*.swift` if profiling shows them.
