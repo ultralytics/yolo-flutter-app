@@ -637,7 +637,7 @@ class YOLOResult {
   final Rect boundingBox;
   final Rect normalizedBox;
   final List<List<double>>? mask;
-  final List<Point>? keypoints;
+  final List<Keypoint>? keypoints;
   final double? angle;
 }
 ```
@@ -652,7 +652,7 @@ class YOLOResult {
 | `boundingBox`   | `Rect`                | Bounding box in pixel coordinates        |
 | `normalizedBox` | `Rect`                | Normalized bounding box (0.0-1.0)        |
 | `mask`          | `List<List<double>>?` | Instance mask data (segment task only)   |
-| `keypoints`     | `List<Point>?`        | Pose keypoints (pose task only)          |
+| `keypoints`     | `List<Keypoint>?`     | Pose keypoints (pose task only)          |
 | `angle`         | `double?`             | OBB rotation angle in radians (OBB only) |
 
 ---
