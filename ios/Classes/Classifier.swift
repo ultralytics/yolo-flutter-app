@@ -13,6 +13,7 @@
 //  VNClassificationObservation result types. The implementation extracts both the top prediction
 //  and the top 5 predictions with their confidence scores, enabling rich user feedback.
 
+import Accelerate
 import Foundation
 import UIKit
 import Vision
@@ -21,15 +22,6 @@ import Vision
 class Classifier: BasePredictor, @unchecked Sendable {
 
   override var imageCropAndScaleOption: VNImageCropAndScaleOption { .centerCrop }
-
-  /// Numerically stable softmax (max-subtraction) converting raw class logits to probabilities that sum to 1.
-  static func softmax(_ logits: [Double]) -> [Double] {
-    guard let maxLogit = logits.max() else { return logits }
-    let exps = logits.map { exp($0 - maxLogit) }
-    let sum = exps.reduce(0, +)
-    guard sum > 0 else { return logits }
-    return exps.map { $0 / sum }
-  }
 
   override func setConfidenceThreshold(confidence: Double) {
     confidenceThreshold = confidence
@@ -45,74 +37,7 @@ class Classifier: BasePredictor, @unchecked Sendable {
   }
 
   override func processObservations(for request: VNRequest, error: Error?) {
-    let imageWidth = inputSize.width
-    let imageHeight = inputSize.height
-    self.inputSize = CGSize(width: imageWidth, height: imageHeight)
-    var probs = Probs(top1Label: "", top5Labels: [], top1Conf: 0, top5Confs: [])
-
-    if let observation = request.results as? [VNCoreMLFeatureValueObservation] {
-
-      let multiArray = observation.first?.featureValue.multiArrayValue
-
-      if let multiArray = multiArray {
-        var rawValues = [Double]()
-        for i in 0..<multiArray.count {
-          rawValues.append(multiArray[i].doubleValue)
-        }
-        // Ultralytics `-cls` CoreML models emit raw logits; apply softmax so the reported confidences are real
-        // probabilities in [0,1] (matches yolo-ios-app Classifier). Without it the overlay showed nonsense like
-        // "cat 873%". Argmax ordering is unchanged since softmax is monotonic.
-        let valuesArray = Self.softmax(rawValues)
-
-        var indexedMap = [Int: Double]()
-        for (index, value) in valuesArray.enumerated() {
-          indexedMap[index] = value
-        }
-
-        let sortedMap = indexedMap.sorted { $0.value > $1.value }
-
-        // top1
-        if let (topIndex, topScore) = sortedMap.first {
-          let top1Label = labelName(for: topIndex)
-          let top1Conf = Float(topScore)
-          probs.top1Label = top1Label
-          probs.top1Conf = top1Conf
-        }
-
-        // top5
-        let topObservations = sortedMap.prefix(5)
-        var top5Labels: [String] = []
-        var top5Confs: [Float] = []
-
-        for (index, value) in topObservations {
-          top5Labels.append(labelName(for: index))
-          top5Confs.append(Float(value))
-        }
-
-        probs.top5Labels = top5Labels
-        probs.top5Confs = top5Confs
-      }
-    } else if let observations = request.results as? [VNClassificationObservation] {
-      var top1 = ""
-      var top1Conf: Float = 0
-      var top5: [String] = []
-      var top5Confs: [Float] = []
-
-      let candidateNumber = min(5, observations.count)
-      if let topObservation = observations.first {
-        top1 = topObservation.identifier
-        top1Conf = Float(topObservation.confidence)
-      }
-      for i in 0..<candidateNumber {
-        let observation = observations[i]
-        let label = observation.identifier
-        let confidence: Float = Float(observation.confidence)
-        top5Confs.append(confidence)
-        top5.append(label)
-      }
-      probs = Probs(top1Label: top1, top5Labels: top5, top1Conf: top1Conf, top5Confs: top5Confs)
-    }
-
+    let probs = extractProbs(from: request)
     let timing = updateTiming()
     var result = YOLOResult(
       orig_shape: inputSize, boxes: [], probs: probs, speed: timing.speed, fps: timing.fps,
@@ -120,99 +45,109 @@ class Classifier: BasePredictor, @unchecked Sendable {
 
     if let originalImageData = self.originalImageData {
       result.originalImage = UIImage(data: originalImageData)
-
     }
 
     self.currentOnResultsListener?.on(result: result)
-
   }
 
   override func predictOnImage(image: CIImage) -> YOLOResult {
     let requestHandler = VNImageRequestHandler(ciImage: image, options: [:])
     guard let request = visionRequest else {
-      let emptyResult = YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
-      return emptyResult
+      return YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
     }
 
-    let imageWidth = image.extent.width
-    let imageHeight = image.extent.height
-    self.inputSize = CGSize(width: imageWidth, height: imageHeight)
+    self.inputSize = CGSize(width: image.extent.width, height: image.extent.height)
     var probs = Probs(top1Label: "", top5Labels: [], top1Conf: 0, top5Confs: [])
     do {
       try requestHandler.perform([request])
-      if let observation = request.results as? [VNCoreMLFeatureValueObservation] {
-        _ = [[String: Any]]()
-
-        let multiArray = observation.first?.featureValue.multiArrayValue
-
-        if let multiArray = multiArray {
-          var rawValues = [Double]()
-          for i in 0..<multiArray.count {
-            rawValues.append(multiArray[i].doubleValue)
-          }
-          // Softmax the raw logits so confidences are real probabilities (see processObservations).
-          let valuesArray = Self.softmax(rawValues)
-
-          var indexedMap = [Int: Double]()
-          for (index, value) in valuesArray.enumerated() {
-            indexedMap[index] = value
-          }
-
-          let sortedMap = indexedMap.sorted { $0.value > $1.value }
-
-          // top1
-          if let (topIndex, topScore) = sortedMap.first {
-            let top1Label = labelName(for: topIndex)
-            let top1Conf = Float(topScore)
-            probs.top1Label = top1Label
-            probs.top1Conf = top1Conf
-          }
-
-          // top5
-          let topObservations = sortedMap.prefix(5)
-          var top5Labels: [String] = []
-          var top5Confs: [Float] = []
-
-          for (index, value) in topObservations {
-            top5Labels.append(labelName(for: index))
-            top5Confs.append(Float(value))
-          }
-
-          probs.top5Labels = top5Labels
-          probs.top5Confs = top5Confs
-        }
-      } else if let observations = request.results as? [VNClassificationObservation] {
-        var top1 = ""
-        var top1Conf: Float = 0
-        var top5: [String] = []
-        var top5Confs: [Float] = []
-
-        var candidateNumber = 5
-        if observations.count < candidateNumber {
-          candidateNumber = observations.count
-        }
-        if let topObservation = observations.first {
-          top1 = topObservation.identifier
-          top1Conf = Float(topObservation.confidence)
-        }
-        for i in 0..<candidateNumber {
-          let observation = observations[i]
-          let label = observation.identifier
-          let confidence: Float = Float(observation.confidence)
-          top5Confs.append(confidence)
-          top5.append(label)
-        }
-        probs = Probs(top1Label: top1, top5Labels: top5, top1Conf: top1Conf, top5Confs: top5Confs)
-      }
-
+      probs = extractProbs(from: request)
     } catch {
       NSLog("YOLO Classifier error: %@", String(describing: error))
     }
 
     var result = YOLOResult(
       orig_shape: inputSize, boxes: [], probs: probs, speed: t1, names: labels)
-    let annotatedImage = drawYOLOClassifications(on: image, result: result)
-    result.annotatedImage = annotatedImage
+    result.annotatedImage = drawYOLOClassifications(on: image, result: result)
     return result
+  }
+
+  /// Extracts top-1 and top-5 probabilities from a Vision request result, handling both
+  /// `VNCoreMLFeatureValueObservation` (raw logits requiring softmax) and `VNClassificationObservation` (already
+  /// normalized scores). Mirrors yolo-ios-app Classifier.
+  private func extractProbs(from request: VNRequest) -> Probs {
+    if let observations = request.results as? [VNCoreMLFeatureValueObservation],
+      let multiArray = observations.first?.featureValue.multiArrayValue
+    {
+      return softmaxProbs(from: multiArray)
+    }
+    if let observations = request.results as? [VNClassificationObservation] {
+      let top = observations.prefix(5)
+      return Probs(
+        top1Label: observations.first?.identifier ?? "",
+        top5Labels: top.map { $0.identifier },
+        top1Conf: Float(observations.first?.confidence ?? 0),
+        top5Confs: top.map { Float($0.confidence) }
+      )
+    }
+    return Probs(top1Label: "", top5Labels: [], top1Conf: 0, top5Confs: [])
+  }
+
+  /// Applies a numerically stable softmax to raw class logits and returns the top-1/top-5 probabilities.
+  ///
+  /// Ultralytics `-cls` CoreML models emit raw logits; softmax turns them into real probabilities in [0,1] (without
+  /// it the overlay showed values like "cat 873%"). Uses Accelerate (vDSP) for the softmax and a single linear pass
+  /// with a tiny sorted insertion buffer for the top-5 — this avoids the O(n log n) sort and the per-frame
+  /// tuple-array allocation the previous implementation paid on every classification. Argmax ordering is unchanged.
+  func softmaxProbs(from multiArray: MLMultiArray) -> Probs {
+    let count = multiArray.count
+    var logits = [Float](repeating: 0, count: count)
+    if multiArray.dataType == .float32, multiArray.strides.last?.intValue == 1 {
+      let src = multiArray.dataPointer.assumingMemoryBound(to: Float.self)
+      logits.withUnsafeMutableBufferPointer { $0.baseAddress!.update(from: src, count: count) }
+    } else {
+      for i in 0..<count { logits[i] = multiArray[i].floatValue }
+    }
+
+    var output = [Float](repeating: 0, count: count)
+    var maxLogit: Float = 0
+    vDSP_maxv(logits, 1, &maxLogit, vDSP_Length(count))
+    var negMax = -maxLogit
+    vDSP_vsadd(logits, 1, &negMax, &output, 1, vDSP_Length(count))
+    var n = Int32(count)
+    vvexpf(&output, output, &n)
+    var sum: Float = 0
+    vDSP_sve(output, 1, &sum, vDSP_Length(count))
+    if sum > 0 {
+      vDSP_vsdiv(output, 1, &sum, &output, 1, vDSP_Length(count))
+    }
+
+    // Top-5 via one linear pass into a small sorted buffer. Equal scores resolve to the lower class index.
+    let k = min(5, count)
+    var topIdx = [Int](repeating: -1, count: k)
+    var topVal = [Float](repeating: -.greatestFiniteMagnitude, count: k)
+    for i in 0..<count {
+      let v = output[i]
+      if v <= topVal[k - 1] { continue }
+      var p = k - 1
+      while p > 0 && v > topVal[p - 1] {
+        topVal[p] = topVal[p - 1]
+        topIdx[p] = topIdx[p - 1]
+        p -= 1
+      }
+      topVal[p] = v
+      topIdx[p] = i
+    }
+    var topLabels = [String]()
+    var topConfs = [Float]()
+    for j in 0..<k where topIdx[j] >= 0 && topIdx[j] < labels.count {
+      topLabels.append(labels[topIdx[j]])
+      topConfs.append(topVal[j])
+    }
+    return Probs(
+      top1Label: topLabels.first ?? "",
+      top5Labels: topLabels,
+      top1Conf: topConfs.first ?? 0,
+      top5Confs: topConfs
+    )
   }
 }
