@@ -32,10 +32,6 @@ class Segmenter(
     private lateinit var inputBitmap: Bitmap
     private lateinit var intValues: IntArray
 
-    // Reuse output arrays to reduce allocations
-    private lateinit var output0: Array<Array<FloatArray>>
-    private lateinit var output1: Array<Array<Array<FloatArray>>>
-
     // CompiledModel output indices: detection head (rank-3) and mask proto (rank-4) may be returned in either order.
     private var detOutIndex = 0
     private var maskOutIndex = 1
@@ -64,25 +60,20 @@ class Segmenter(
         val out0Shape = dims.getOrNull(detOutIndex) ?: IntArray(0)
         val out1Shape = dims.getOrNull(maskOutIndex) ?: IntArray(0)
 
-        // Initialize output0 buffer (traditional [1,116,2100] or end-to-end [1,300,38])
-        val batch0 = out0Shape[0]
+        // Detection head shape (traditional [1,116,2100] or end-to-end [1,300,38]); kept flat and indexed in place.
         isEndToEnd = out0Shape[2] < out0Shape[1] && out0Shape[2] >= 6
         if (isEndToEnd) {
             out0NumAnchors = out0Shape[1]
             out0NumFeatures = out0Shape[2]
-            output0 = Array(batch0) { Array(out0NumAnchors) { FloatArray(out0NumFeatures) } }
         } else {
             out0NumFeatures = out0Shape[1]
             out0NumAnchors = out0Shape[2]
-            output0 = Array(batch0) { Array(out0NumFeatures) { FloatArray(out0NumAnchors) } }
         }
 
-        // Initialize output1 buffer (example: [1,80,80,32])
-        val batch1 = out1Shape[0]
+        // Mask proto shape (example: [1,80,80,32]); kept flat and indexed in place.
         maskH = out1Shape[1]
         maskW = out1Shape[2]
         maskC = out1Shape[3]
-        output1 = Array(batch1) { Array(maskH) { Array(maskW) { FloatArray(maskC) } } }
 
         floatInput = FloatArray(inWidth * inHeight * 3)
         inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
@@ -130,32 +121,12 @@ class Segmenter(
             )
         }
 
-        // Reshape detection head (rank 3) into output0[0].
+        // Index the flat run() outputs directly — no per-frame reshape into jagged nested arrays.
         val detFlat = outs[detOutIndex]
-        val o0 = output0[0]
-        var i0 = 0
-        for (r in o0.indices) {
-            val row = o0[r]
-            for (c in row.indices) {
-                row[c] = detFlat[i0++]
-            }
-        }
-        // Reshape mask proto (rank 4) into output1[0].
         val maskFlat = outs[maskOutIndex]
-        val o1 = output1[0]
-        var i1 = 0
-        for (h in o1.indices) {
-            val plane = o1[h]
-            for (w in plane.indices) {
-                val cell = plane[w]
-                for (c in cell.indices) {
-                    cell[c] = maskFlat[i1++]
-                }
-            }
-        }
         // (4) Post-processing (box + mask)
         val rawDetections = postProcessSegment(
-            feature = output0[0],
+            detFlat = detFlat,
             numAnchors = out0NumAnchors,
             confidenceThreshold = CONFIDENCE_THRESHOLD,
             iouThreshold = IOU_THRESHOLD
@@ -176,7 +147,7 @@ class Segmenter(
 
         val (combinedMask, probMasks) = generateCombinedMaskImage(
             detections = maskDetections,
-            protos = output1[0],
+            protoFlat = maskFlat,
             maskW = maskW,
             maskH = maskH,
             origWidth = origWidth,
@@ -197,45 +168,44 @@ class Segmenter(
     }
 
     private fun postProcessSegment(
-        feature: Array<FloatArray>,
+        detFlat: FloatArray,
         numAnchors: Int,
         confidenceThreshold: Float,
         iouThreshold: Float
     ): List<Detection> {
         if (isEndToEnd) {
-            return postProcessEndToEndSegment(feature, confidenceThreshold)
+            return postProcessEndToEndSegment(detFlat, confidenceThreshold)
         }
 
-        // Add performance measurement
-        val startTime = android.os.SystemClock.elapsedRealtimeNanos()
-
+        // The detection head is flat in feature-major order: feature[f][anchor] == detFlat[f * numAnchors + anchor].
         // Estimated capacity for results list to reduce reallocations
         val estimatedCapacity = (numAnchors * 0.05).toInt() // Assume ~5% will pass threshold
         val results = ArrayList<Detection>(estimatedCapacity)
 
         // Apply early filtering - Optimization: early pruning strategy
         val earlyThreshold = confidenceThreshold * 0.8f // Slightly lower threshold for first pass
+        val classBase = 4 * numAnchors
 
         for (j in 0 until numAnchors) {
             // Check all classes instead of just first 3 to avoid bias
             var quickMaxScore = 0f
             for (c in 0 until numClasses) {
-                quickMaxScore = max(quickMaxScore, feature[4 + c][j])
+                quickMaxScore = max(quickMaxScore, detFlat[classBase + c * numAnchors + j])
             }
 
             // Skip further processing if clearly below threshold
             if (quickMaxScore < earlyThreshold) continue
 
             // Continue with full processing for potential detections
-            val cx = feature[0][j]
-            val cy = feature[1][j]
-            val w = feature[2][j]
-            val h = feature[3][j]
+            val cx = detFlat[j]
+            val cy = detFlat[numAnchors + j]
+            val w = detFlat[2 * numAnchors + j]
+            val h = detFlat[3 * numAnchors + j]
             var maxScore = 0f
             var maxClassIdx = 0
 
             for (c in 0 until numClasses) {
-                val score = feature[4 + c][j]
+                val score = detFlat[classBase + c * numAnchors + j]
                 if (score > maxScore) {
                     maxScore = score
                     maxClassIdx = c
@@ -244,9 +214,9 @@ class Segmenter(
 
             if (maxScore >= confidenceThreshold) {
                 val maskCoeffs = FloatArray(maskConfidenceLength)
-                val base = 4 + numClasses
+                val base = (4 + numClasses) * numAnchors
                 for (m in 0 until maskConfidenceLength) {
-                    maskCoeffs[m] = feature[base + m][j]
+                    maskCoeffs[m] = detFlat[base + m * numAnchors + j]
                 }
                 val left = cx - w / 2f
                 val top = cy - h / 2f
@@ -278,25 +248,27 @@ class Segmenter(
     }
 
     private fun postProcessEndToEndSegment(
-        feature: Array<FloatArray>,
+        detFlat: FloatArray,
         confidenceThreshold: Float
     ): List<Detection> {
         val detections = mutableListOf<Detection>()
-        val fieldCount = if (feature.isNotEmpty()) feature[0].size else 0
+        // End-to-end head is anchor-major: feature[anchor][field] == detFlat[anchor * out0NumFeatures + field].
+        val fieldCount = out0NumFeatures
         val maskStart = if (fieldCount > 5) 6 else 5
 
         for (j in 0 until out0NumAnchors) {
-            val confidence = feature[j][4]
+            val o = j * out0NumFeatures
+            val confidence = detFlat[o + 4]
             if (confidence < confidenceThreshold) continue
 
             val maskCoeffs = FloatArray(maskConfidenceLength)
             for (m in 0 until min(maskConfidenceLength, fieldCount - maskStart)) {
-                maskCoeffs[m] = feature[j][maskStart + m]
+                maskCoeffs[m] = detFlat[o + maskStart + m]
             }
             detections.add(
                 Detection(
-                    RectF(feature[j][0], feature[j][1], feature[j][2], feature[j][3]),
-                    if (fieldCount > 5) feature[j][5].toInt() else 0,
+                    RectF(detFlat[o], detFlat[o + 1], detFlat[o + 2], detFlat[o + 3]),
+                    if (fieldCount > 5) detFlat[o + 5].toInt() else 0,
                     confidence,
                     maskCoeffs
                 )
@@ -319,7 +291,7 @@ class Segmenter(
 
     private fun generateCombinedMaskImage(
         detections: List<Detection>,
-        protos: Array<Array<FloatArray>>,
+        protoFlat: FloatArray,
         maskW: Int,
         maskH: Int,
         origWidth: Int,
@@ -333,11 +305,15 @@ class Segmenter(
         detections.forEach { det ->
             val color = ultralyticsColors[det.cls % ultralyticsColors.size]
             val pm = Array(maskH) { FloatArray(maskW) }
+            // proto is HWC flat: protos[y][x][c] == protoFlat[(y * maskW + x) * maskC + c]. Walking c contiguously
+            // keeps each coeff dot-product on one cache line.
             for (y in 0 until maskH) {
+                val rowBase = y * maskW
                 for (x in 0 until maskW) {
+                    val base = (rowBase + x) * maskC
                     var v = 0f
                     for (c in 0 until maskConfidenceLength) {
-                        v += det.maskCoeffs[c] * protos[y][x][c]
+                        v += det.maskCoeffs[c] * protoFlat[base + c]
                     }
                     pm[y][x] = v
                 }

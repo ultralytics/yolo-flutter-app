@@ -18,7 +18,9 @@ class SemanticSegmenter(
     private lateinit var floatInput: FloatArray
     private lateinit var inputBitmap: Bitmap
     private lateinit var intValues: IntArray
-    private lateinit var outputFloat: Array<Array<Array<FloatArray>>>
+    // The model output kept FLAT (the [1,A,B,C] tensor row-major). Indexing it directly avoids copying the whole
+    // output into a jagged Array<Array<Array<FloatArray>>> every frame and re-reading it during argmax.
+    private var flatOutput: FloatArray = FloatArray(0)
     private lateinit var outputShape: IntArray
     private var colorCache = IntArray(0)
 
@@ -37,9 +39,6 @@ class SemanticSegmenter(
         outputShape = rtModel.outputDims.getOrNull(0) ?: IntArray(0)
         require(outputShape.size == 4 && outputShape[0] == 1) {
             "Semantic output tensor shape not supported: ${outputShape.joinToString()}"
-        }
-        outputFloat = Array(outputShape[0]) {
-            Array(outputShape[1]) { Array(outputShape[2]) { FloatArray(outputShape[3]) } }
         }
 
         floatInput = FloatArray(inWidth * inHeight * 3)
@@ -66,19 +65,8 @@ class SemanticSegmenter(
         )
         ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
 
-        // Reshape the flat float output into outputFloat[0].
-        val flat = rtModel.run(floatInput)[0]
-        val o = outputFloat[0]
-        var idx = 0
-        for (a in o.indices) {
-            val plane = o[a]
-            for (b in plane.indices) {
-                val cell = plane[b]
-                for (c in cell.indices) {
-                    cell[c] = flat[idx++]
-                }
-            }
-        }
+        // Keep the model output flat; postProcessSemantic indexes it directly (no per-frame reshape copy).
+        flatOutput = rtModel.run(floatInput)[0]
         val semanticMask = postProcessSemantic(origWidth, origHeight)
         val annotatedImage = drawSemanticOverlay(bitmap, semanticMask)
         updateTiming()
@@ -113,11 +101,44 @@ class SemanticSegmenter(
         val classMap = IntArray(width * height)
         val pixels = IntArray(width * height)
         val colors = semanticColors(classCount)
+        val out = flatOutput
+        val plane = maskWidth * maskHeight
+        // Strides into the flat [1, d1, d2, d3] output. NCHW: out[(cls*maskHeight + y)*maskWidth + x] — the class
+        // stride jumps a whole plane (unavoidable for that layout). NHWC: out[(y*maskWidth + x)*classCount + cls] —
+        // classes are contiguous, so argmax walks one cache line per pixel.
         for (y in 0 until height) {
             val sourceY = y + top
             for (x in 0 until width) {
                 val sourceX = x + left
-                val classIndex = bestClass(classCount, sourceX, sourceY, isNCHW)
+                val classIndex = if (classCount == 1) {
+                    0
+                } else if (isNCHW) {
+                    val planeOffset = sourceY * maskWidth + sourceX
+                    var bestIndex = 0
+                    var bestScore = out[planeOffset]
+                    var off = planeOffset + plane
+                    for (c in 1 until classCount) {
+                        val score = out[off]
+                        if (score > bestScore) {
+                            bestScore = score
+                            bestIndex = c
+                        }
+                        off += plane
+                    }
+                    bestIndex
+                } else {
+                    val base = (sourceY * maskWidth + sourceX) * classCount
+                    var bestIndex = 0
+                    var bestScore = out[base]
+                    for (c in 1 until classCount) {
+                        val score = out[base + c]
+                        if (score > bestScore) {
+                            bestScore = score
+                            bestIndex = c
+                        }
+                    }
+                    bestIndex
+                }
                 val outputIndex = y * width + x
                 classMap[outputIndex] = classIndex
                 pixels[outputIndex] = colors[classIndex]
@@ -127,26 +148,6 @@ class SemanticSegmenter(
         val maskImage = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         maskImage.setPixels(pixels, 0, width, 0, 0, width, height)
         return SemanticMask(classMap.toList(), width, height, maskImage)
-    }
-
-    private fun bestClass(
-        classCount: Int,
-        x: Int,
-        y: Int,
-        isNCHW: Boolean
-    ): Int {
-        if (classCount == 1) return 0
-
-        var bestIndex = 0
-        var bestScore = -Float.MAX_VALUE
-        for (classIndex in 0 until classCount) {
-            val score = if (isNCHW) outputFloat[0][classIndex][y][x] else outputFloat[0][y][x][classIndex]
-            if (score > bestScore) {
-                bestScore = score
-                bestIndex = classIndex
-            }
-        }
-        return bestIndex
     }
 
     private fun semanticColors(classCount: Int): IntArray {
