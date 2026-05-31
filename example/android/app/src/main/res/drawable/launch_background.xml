@@ -2,9 +2,7 @@
 <!-- Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license -->
 
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <bitmap android:gravity="fill" android:src="@drawable/background"/>
-    </item>
+    <item android:drawable="@android:color/white"/>
     <item>
         <bitmap android:gravity="center" android:src="@drawable/splash"/>
     </item>

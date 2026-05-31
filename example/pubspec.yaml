@@ -37,7 +37,6 @@ flutter:
   assets:
     - assets/
     - assets/models/
-    - assets/applogo.png
 
 flutter_launcher_icons:
   android: true
@@ -48,11 +47,11 @@ flutter_launcher_icons:
   adaptive_icon_foreground: "assets/applogo.png"
   remove_alpha_ios: true
 
-# Splash screen (logotype on white, matching the iOS LaunchScreen). Android 12+ shows the centered icon form (platform
-# constraint) on white; the Flutter showcase owns the in-app model-loading overlay after launch.
+# Splash screen (logotype on white, matching the iOS LaunchScreen). Modern Android launch screens mask the animated
+# icon into a rounded square, so that slot uses the square app icon with generated padding to avoid clipping.
 flutter_native_splash:
   color: "#ffffff"
-  image: assets/ultralytics_yolo_logotype.png
+  image: ../assets/ultralytics_yolo_logotype.png
   android_12:
     color: "#ffffff"
-    image: assets/ultralytics_yolo_logotype.png
+    image: assets/applogo.png

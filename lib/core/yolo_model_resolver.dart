@@ -3,7 +3,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -11,6 +10,7 @@ import 'package:ultralytics_yolo/config/channel_config.dart';
 import 'package:ultralytics_yolo/core/yolo_model_manager.dart';
 import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
+import 'package:ultralytics_yolo/utils/mini_zip.dart';
 
 class _OfficialModelArtifact {
   const _OfficialModelArtifact({
@@ -525,54 +525,17 @@ class YOLOModelResolver {
     Directory targetDir,
   ) async {
     try {
-      final archive = ZipDecoder().decodeBytes(bytes);
       if (targetDir.existsSync()) {
         targetDir.deleteSync(recursive: true);
       }
       targetDir.createSync(recursive: true);
 
-      String? prefix;
-      if (archive.files.isNotEmpty) {
-        final first = archive.files.first.name;
-        if (first.contains('/') &&
-            first.split('/').first.endsWith('.mlpackage')) {
-          final topLevelDir = first.split('/').first;
-          if (archive.files.every(
-            (file) =>
-                file.name.startsWith('$topLevelDir/') ||
-                file.name == topLevelDir,
-          )) {
-            prefix = '$topLevelDir/';
-          }
-        }
-      }
-
-      for (final file in archive) {
-        var relativePath = file.name.replaceAll('\\', '/');
-        if (prefix != null) {
-          if (relativePath.startsWith(prefix)) {
-            relativePath = relativePath.substring(prefix.length);
-          } else if (relativePath == prefix.replaceAll('/', '')) {
-            continue;
-          }
-        }
-        if (relativePath.isEmpty || !file.isFile) continue;
-        final rootPath = targetDir.absolute.path;
-        final rootPrefix = rootPath.endsWith(Platform.pathSeparator)
-            ? rootPath
-            : '$rootPath${Platform.pathSeparator}';
-        final normalizedOutputPath = targetDir.uri
-            .resolve(relativePath)
-            .toFilePath();
-        if (!normalizedOutputPath.startsWith(rootPrefix)) {
-          throw ModelLoadingException(
-            'Invalid archive entry outside target directory: $relativePath',
-          );
-        }
-        final outputFile = File(normalizedOutputPath);
-        outputFile.parent.createSync(recursive: true);
-        outputFile.writeAsBytesSync(file.content as List<int>, flush: true);
-      }
+      MiniZip.extractBytes(
+        bytes,
+        destination: targetDir,
+        stripTopLevelDirectoryEndingWith: '.mlpackage',
+        skip: (path) => path.startsWith('__MACOSX/') || path.contains('/._'),
+      );
 
       return await _hasValidMlPackage(targetDir) ? targetDir.path : null;
     } catch (_) {
