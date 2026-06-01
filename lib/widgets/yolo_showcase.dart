@@ -543,12 +543,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                     subtitle: Text(resource.subtitle),
                     trailing: const Icon(Icons.open_in_new, size: 18),
                     onTap: () {
-                      unawaited(
-                        launchUrl(
-                          Uri.parse(resource.url),
-                          mode: LaunchMode.externalApplication,
-                        ),
-                      );
+                      unawaited(_openInfoUrl(resource.url));
                     },
                   ),
               ],
@@ -557,6 +552,19 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         },
       ),
     );
+  }
+
+  Future<void> _openInfoUrl(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) debugPrint('Unable to open $uri');
+    } catch (error) {
+      debugPrint('Unable to open $uri: $error');
+    }
   }
 
   void _onScaleStart(ScaleStartDetails _) {
