@@ -118,7 +118,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
           title: 'Ultralytics Docs',
           subtitle: 'Training, prediction, export, and deployment guides.',
           icon: Icons.menu_book_outlined,
-          url: 'https://docs.ultralytics.com/',
+          url: 'https://docs.ultralytics.com',
         ),
         (
           title: 'YOLO Models',
