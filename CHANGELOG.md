@@ -1,3 +1,13 @@
+## 0.4.2
+
+- **Bug Fix**: Improve Android physical camera selection so telephoto lenses remain selectable on logical multi-camera
+  devices.
+- **Enhancement**: Add the expanded YOLOShowcase info screen with Ultralytics resources, licensing, and package details.
+- **Enhancement**: Make YOLOShowcase model downloads cancellable and restore the running model cleanly after cancellation
+  or orientation changes.
+- **Enhancement**: Refine YOLOShowcase landscape spacing and slider-label alignment while preserving portrait layout.
+- **Documentation**: Normalize Ultralytics docs, license, and project links.
+
 ## 0.4.1
 
 - **Enhancement**: Enable Android edge-to-edge handling in the example app for Android 15+ Play Store compatibility.

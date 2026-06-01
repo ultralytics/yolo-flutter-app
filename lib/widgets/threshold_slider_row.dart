@@ -90,14 +90,16 @@ class ThresholdSliderRow extends StatelessWidget {
             fontWeight: FontWeight.w400,
           ),
         ),
-        const SizedBox(height: 1),
         // The slider track occupies the left `sliderWidthFactor` of the width; the Spacer fills the rest. A Row fills
         // its width (unlike FractionallySizedBox, which shrink-wrapped and let the whole row get center-aligned).
-        Row(
-          children: [
-            Expanded(flex: leftFlex, child: slider),
-            if (rightFlex > 0) Spacer(flex: rightFlex),
-          ],
+        Transform.translate(
+          offset: const Offset(0, -6),
+          child: Row(
+            children: [
+              Expanded(flex: leftFlex, child: slider),
+              if (rightFlex > 0) Spacer(flex: rightFlex),
+            ],
+          ),
         ),
       ],
     );

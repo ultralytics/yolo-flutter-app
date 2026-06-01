@@ -666,6 +666,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final viewSize = Size(constraints.maxWidth, constraints.maxHeight);
+            final isLandscape = constraints.maxWidth > constraints.maxHeight;
             // Cache for the focus-stream listener (registered in initState, fires later — needs a synchronous
             // view-size lookup).
             _viewSize = viewSize;
@@ -727,10 +728,10 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                 ),
                 // Ultralytics logotype, bottom-right — matches `Main.storyboard` logoImage (frame x215 y625 w159 h67
                 // on a 393x852 canvas, anchored bottom-right ~19pt from the edge, sitting above the toolbar).
-                const Positioned(
+                Positioned(
                   right: 19,
-                  bottom: 160,
-                  child: LogoOverlay(width: 159),
+                  bottom: isLandscape ? 100 : 160,
+                  child: const LogoOverlay(width: 159),
                 ),
                 Positioned.fill(
                   child: AnimatedSwitcher(
@@ -911,19 +912,20 @@ class _ShowcaseOverlay extends StatelessWidget {
   // iOS YOLOView ports — kept as constants so the layout reads like the Swift source.
   static const double _sidePadding = 20;
   static const double _topGap = 8;
-  static const double _sliderRowGap = 8;
+  static const double _sliderRowGap = 2;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isLandscape = constraints.maxWidth > constraints.maxHeight;
-        return SafeArea(
-          top: !isLandscape,
-          bottom: defaultTargetPlatform == TargetPlatform.android,
-          child: isLandscape ? _buildLandscape(constraints) : _buildPortrait(),
-        );
-      },
+    final topInset = MediaQuery.paddingOf(context).top;
+    return SafeArea(
+      bottom: defaultTargetPlatform == TargetPlatform.android,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return constraints.maxWidth > constraints.maxHeight
+              ? _buildLandscape(constraints, topInset)
+              : _buildPortrait();
+        },
+      ),
     );
   }
 
@@ -960,7 +962,7 @@ class _ShowcaseOverlay extends StatelessWidget {
     );
   }
 
-  Widget _buildLandscape(BoxConstraints constraints) {
+  Widget _buildLandscape(BoxConstraints constraints, double topInset) {
     final topWidth = (constraints.maxWidth * 0.62).clamp(360.0, 620.0);
     final sliderWidth = (constraints.maxWidth * 0.28).clamp(220.0, 300.0);
     final hasLenses = lenses.isNotEmpty;
@@ -969,14 +971,17 @@ class _ShowcaseOverlay extends StatelessWidget {
       children: [
         Align(
           alignment: Alignment.topCenter,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: SizedBox(width: topWidth, child: _topControls()),
+          child: Transform.translate(
+            offset: Offset(0, -topInset),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: SizedBox(width: topWidth, child: _topControls()),
+            ),
           ),
         ),
         Positioned(
           left: _sidePadding,
-          bottom: CameraToolbar.height + (hasLenses ? 54 : 10),
+          bottom: CameraToolbar.height + (hasLenses ? 18 : 0),
           width: sliderWidth,
           child: _thresholdControls(sliderWidthFactor: 1),
         ),
