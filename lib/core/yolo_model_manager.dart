@@ -31,6 +31,13 @@ class YOLOModelManager {
   // singleton because downloads are global (one URL, one filesystem path) and the resolver is also stateless.
   static final StreamController<DownloadProgress> _downloadProgressController =
       StreamController<DownloadProgress>.broadcast();
+  static final Set<String> _cancelledDownloads = <String>{};
+  static final Map<
+    String,
+    ({Object token, void Function() cancel, bool cancelled})
+  >
+  _downloadCancelers =
+      <String, ({Object token, void Function() cancel, bool cancelled})>{};
 
   /// Stream of in-flight model-download progress events.
   static Stream<DownloadProgress> get downloadProgress =>
@@ -43,6 +50,47 @@ class YOLOModelManager {
     _downloadProgressController.add(
       DownloadProgress(modelId: modelId, fraction: fraction.clamp(0.0, 1.0)),
     );
+  }
+
+  static void clearDownloadCancellation(String modelId) {
+    _cancelledDownloads.remove(modelId);
+  }
+
+  static Object registerDownload(String modelId, void Function() cancel) {
+    final token = Object();
+    final cancelled = _cancelledDownloads.remove(modelId);
+    _downloadCancelers[modelId] = (
+      token: token,
+      cancel: cancel,
+      cancelled: cancelled,
+    );
+    if (cancelled) cancel();
+    return token;
+  }
+
+  static void cancelDownload(String modelId) {
+    final download = _downloadCancelers[modelId];
+    if (download == null) {
+      _cancelledDownloads.add(modelId);
+      return;
+    }
+    _downloadCancelers[modelId] = (
+      token: download.token,
+      cancel: download.cancel,
+      cancelled: true,
+    );
+    download.cancel();
+  }
+
+  static bool isDownloadCancelled(String modelId, Object token) {
+    final download = _downloadCancelers[modelId];
+    return download?.token == token && download?.cancelled == true;
+  }
+
+  static void finishDownload(String modelId, Object token) {
+    if (_downloadCancelers[modelId]?.token == token) {
+      _downloadCancelers.remove(modelId);
+    }
   }
 
   final MethodChannel _channel;
