@@ -915,15 +915,15 @@ class _ShowcaseOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: defaultTargetPlatform == TargetPlatform.android,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return constraints.maxWidth > constraints.maxHeight
-              ? _buildLandscape(constraints)
-              : _buildPortrait();
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isLandscape = constraints.maxWidth > constraints.maxHeight;
+        return SafeArea(
+          top: !isLandscape,
+          bottom: defaultTargetPlatform == TargetPlatform.android,
+          child: isLandscape ? _buildLandscape(constraints) : _buildPortrait(),
+        );
+      },
     );
   }
 
