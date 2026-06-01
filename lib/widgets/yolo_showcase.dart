@@ -112,6 +112,34 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   StreamSubscription<Offset>? _focusSub;
   StreamSubscription<DownloadProgress>? _progressSub;
 
+  static const _infoResources =
+      <({String title, String subtitle, IconData icon, String url})>[
+        (
+          title: 'Ultralytics Docs',
+          subtitle: 'Training, prediction, export, and deployment guides.',
+          icon: Icons.menu_book_outlined,
+          url: 'https://docs.ultralytics.com',
+        ),
+        (
+          title: 'YOLO Models',
+          subtitle: 'Explore YOLO26 tasks, sizes, and performance.',
+          icon: Icons.view_in_ar_outlined,
+          url: 'https://platform.ultralytics.com/ultralytics/yolo26',
+        ),
+        (
+          title: 'GitHub',
+          subtitle: 'Source code, releases, and open-source tools.',
+          icon: Icons.code,
+          url: 'https://github.com/ultralytics/ultralytics',
+        ),
+        (
+          title: 'Licensing',
+          subtitle: 'AGPL-3.0 and Enterprise License options.',
+          icon: Icons.description_outlined,
+          url: 'https://www.ultralytics.com/licensing',
+        ),
+      ];
+
   @override
   void initState() {
     super.initState();
@@ -477,9 +505,56 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       showModalBottomSheet<void>(
         context: context,
         showDragHandle: true,
-        isScrollControlled: true,
-        backgroundColor: const Color(0xFF111214),
-        builder: (_) => const _YOLOInfoSheet(),
+        builder: (sheetContext) {
+          return SafeArea(
+            top: false,
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+              children: [
+                const ListTile(
+                  leading: Icon(Icons.center_focus_strong),
+                  title: Text('Ultralytics YOLO'),
+                  subtitle: Text('Real-time AI vision on-device'),
+                ),
+                const ListTile(
+                  title: Text('The App'),
+                  subtitle: Text(
+                    'Try detection, segmentation, classification, pose estimation, and oriented bounding box models directly on-device.',
+                  ),
+                ),
+                const ListTile(
+                  title: Text('YOLO Models'),
+                  subtitle: Text(
+                    'Compare nano models bundled with the app and larger official models downloaded when selected.',
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    'Continue Learning',
+                    style: Theme.of(sheetContext).textTheme.titleMedium,
+                  ),
+                ),
+                for (final resource in _infoResources)
+                  ListTile(
+                    leading: Icon(resource.icon),
+                    title: Text(resource.title),
+                    subtitle: Text(resource.subtitle),
+                    trailing: const Icon(Icons.open_in_new, size: 18),
+                    onTap: () {
+                      unawaited(
+                        launchUrl(
+                          Uri.parse(resource.url),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -626,165 +701,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         ),
       ),
     );
-  }
-}
-
-class _YOLOInfoSheet extends StatelessWidget {
-  const _YOLOInfoSheet();
-
-  static const _resources =
-      <({String title, String subtitle, IconData icon, String url})>[
-        (
-          title: 'Ultralytics Docs',
-          subtitle: 'Training, prediction, export, and deployment guides.',
-          icon: Icons.menu_book_outlined,
-          url: 'https://docs.ultralytics.com',
-        ),
-        (
-          title: 'YOLO Models',
-          subtitle: 'Explore YOLO26 tasks, sizes, and performance.',
-          icon: Icons.view_in_ar_outlined,
-          url: 'https://platform.ultralytics.com/ultralytics/yolo26',
-        ),
-        (
-          title: 'GitHub',
-          subtitle: 'Source code, releases, and open-source tools.',
-          icon: Icons.code,
-          url: 'https://github.com/ultralytics/ultralytics',
-        ),
-        (
-          title: 'Licensing',
-          subtitle: 'AGPL-3.0 and Enterprise License options.',
-          icon: Icons.description_outlined,
-          url: 'https://www.ultralytics.com/licensing',
-        ),
-      ];
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Icon(Icons.center_focus_strong, color: Colors.blue, size: 44),
-            const SizedBox(height: 8),
-            Text(
-              'Ultralytics YOLO',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Real-time AI vision on-device',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.white.withValues(alpha: 0.68),
-              ),
-            ),
-            const SizedBox(height: 22),
-            _section(
-              context,
-              'The App',
-              'Ultralytics YOLO runs real-time computer vision on your device. Use it to try detection, segmentation, classification, pose estimation, and oriented bounding box models directly on-device.',
-            ),
-            const SizedBox(height: 18),
-            _section(
-              context,
-              'YOLO Models',
-              'YOLO models are fast vision models built for practical inference. This app includes nano models for each task and can download larger official models when selected, so you can compare speed and detail on your own device.',
-            ),
-            const SizedBox(height: 22),
-            Text(
-              'Continue Learning',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 10),
-            for (final resource in _resources) _resourceTile(resource),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _section(BuildContext context, String title, String body) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          body,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Colors.white.withValues(alpha: 0.68),
-            height: 1.35,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _resourceTile(
-    ({String title, String subtitle, IconData icon, String url}) resource,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 6,
-          ),
-          leading: Icon(resource.icon, color: Colors.blue),
-          title: Text(
-            resource.title,
-            style: const TextStyle(
-              color: Colors.blue,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          subtitle: Text(
-            resource.subtitle,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.66)),
-          ),
-          trailing: const Icon(
-            Icons.open_in_new,
-            color: Colors.white54,
-            size: 18,
-          ),
-          onTap: () => _openUrl(resource.url),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openUrl(String url) async {
-    final target = Uri.parse(url);
-    try {
-      final launched = await launchUrl(
-        target,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched) debugPrint('Unable to open $target');
-    } catch (error) {
-      debugPrint('Unable to open $target: $error');
-    }
   }
 }
 
