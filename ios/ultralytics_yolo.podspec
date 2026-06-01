@@ -1,5 +1,5 @@
 #
-# To learn more about a Podspec see http://guides.cocoapods.org/syntax/podspec.html.
+# To learn more about a Podspec see https://guides.cocoapods.org/syntax/podspec.html.
 # Run `pod lib lint yolo.podspec` to validate before publishing.
 #
 Pod::Spec.new do |s|
@@ -26,6 +26,6 @@ Flutter plugin for YOLO (You Only Look Once) models, supporting object detection
   # If your plugin requires a privacy manifest, for example if it uses any
   # required reason APIs, update the PrivacyInfo.xcprivacy file to describe your
   # plugin's privacy impact, and then uncomment this line. For more information,
-  # see https://developer.apple.com/documentation/bundleresources/privacy_manifest_files
+  # see https://developer.apple.com/documentation/bundleresources/privacy-manifest-files
   s.resource_bundles = {'ultralytics_yolo_privacy' => ['Resources/PrivacyInfo.xcprivacy']}
 end
