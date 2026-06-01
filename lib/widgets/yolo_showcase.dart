@@ -502,15 +502,13 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   void _showInfoSheet(BuildContext context) {
     HapticFeedback.selectionClick();
     unawaited(
-      showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
-        builder: (sheetContext) {
-          return SafeArea(
-            top: false,
-            child: ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (pageContext) => Scaffold(
+            appBar: AppBar(title: const Text('About YOLO')),
+            body: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
               children: [
                 const ListTile(
                   leading: Icon(Icons.center_focus_strong),
@@ -533,13 +531,16 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Text(
                     'Continue Learning',
-                    style: Theme.of(sheetContext).textTheme.titleMedium,
+                    style: Theme.of(pageContext).textTheme.titleMedium,
                   ),
                 ),
                 for (final resource in _infoResources)
                   ListTile(
-                    leading: Icon(resource.icon),
-                    title: Text(resource.title),
+                    leading: Icon(resource.icon, color: Colors.blue),
+                    title: Text(
+                      resource.title,
+                      style: const TextStyle(color: Colors.blue),
+                    ),
                     subtitle: Text(resource.subtitle),
                     trailing: const Icon(Icons.open_in_new, size: 18),
                     onTap: () {
@@ -548,8 +549,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   ),
               ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
