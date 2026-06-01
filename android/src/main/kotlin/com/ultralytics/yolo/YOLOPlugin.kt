@@ -304,7 +304,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                   }
   
                   // Classification response following Results.summary() format
-                  // Reference: https://docs.ultralytics.com/reference/engine/results/
+                  // Reference: https://docs.ultralytics.com/reference/engine/results
                   response["classification"] = mapOf(
                     "name" to probs.top1Label,
                     "class" to probs.top1Index,

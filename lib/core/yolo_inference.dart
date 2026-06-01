@@ -182,7 +182,7 @@ class YOLOInference {
       final classificationMap = MapConverter.convertToTypedMap(classification);
 
       // Use Results.summary() format: {name, class, confidence}
-      // Reference: https://docs.ultralytics.com/reference/engine/results/
+      // Reference: https://docs.ultralytics.com/reference/engine/results
       final detection = <String, dynamic>{
         'classIndex': classificationMap['class'] ?? 0,
         'className': classificationMap['name'] ?? '',

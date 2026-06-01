@@ -318,7 +318,7 @@ class YOLOInstanceManager {
 
     // Classification - probs
     // Use Results.summary() format: {name, class, confidence}
-    // Reference: https://docs.ultralytics.com/reference/engine/results/
+    // Reference: https://docs.ultralytics.com/reference/engine/results
     if let probs = result.probs {
       resultDict["classification"] = [
         "name": probs.top1Label,
