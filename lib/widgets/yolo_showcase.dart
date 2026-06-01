@@ -112,6 +112,34 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   StreamSubscription<Offset>? _focusSub;
   StreamSubscription<DownloadProgress>? _progressSub;
 
+  static const _infoResources =
+      <({String title, String subtitle, IconData icon, String url})>[
+        (
+          title: 'Ultralytics Docs',
+          subtitle: 'Training, prediction, export, and deployment guides.',
+          icon: Icons.menu_book_outlined,
+          url: 'https://docs.ultralytics.com',
+        ),
+        (
+          title: 'YOLO Models',
+          subtitle: 'Explore YOLO26 tasks, sizes, and performance.',
+          icon: Icons.view_in_ar_outlined,
+          url: 'https://platform.ultralytics.com/ultralytics/yolo26',
+        ),
+        (
+          title: 'GitHub',
+          subtitle: 'Source code, releases, and open-source tools.',
+          icon: Icons.code,
+          url: 'https://github.com/ultralytics/ultralytics',
+        ),
+        (
+          title: 'Licensing',
+          subtitle: 'AGPL-3.0 and Enterprise License options.',
+          icon: Icons.description_outlined,
+          url: 'https://www.ultralytics.com/license',
+        ),
+      ];
+
   @override
   void initState() {
     super.initState();
@@ -296,9 +324,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     final present = <String>{};
     for (final size in supported) {
       final id = _composeModelId(task: task, size: size);
-      // Use the resolver's download cache (app-documents) — `YOLO.checkModelExists` only sees bundle/asset paths and
-      // wrongly reports already-downloaded official models as missing, so the ↓ arrow never cleared.
-      if (await YOLOModelResolver.isOfficialModelCached(id)) present.add(size);
+      if (await YOLOModelResolver.isOfficialModelAvailableLocally(id)) {
+        present.add(size);
+      }
     }
     return present;
   }
@@ -385,6 +413,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (task == _currentTask) return;
     HapticFeedback.selectionClick();
     final targetSize = _clampSizeToSupported(_currentSize, task);
+    YOLOModelManager.clearDownloadCancellation(
+      _composeModelId(task: task, size: targetSize),
+    );
     _suppressInferenceForModelSwitch();
     setState(() {
       _currentTask = task;
@@ -400,6 +431,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _loadingStatusText = _loadingTextFor(task, targetSize);
       _isModelLoading = true;
     });
+    unawaited(_updateTargetDownloadState(task, targetSize));
     unawaited(_refreshAvailableSizes(task));
     // The `setState` above changes `YOLOView`'s `modelPath`/`task`, so its `didUpdateWidget` performs the single
     // resolve + native `switchModel`. Don't switch here too — that double-resolves and can race the download.
@@ -415,6 +447,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (size == _currentSize) return;
     HapticFeedback.selectionClick();
     final isCached = _availableSizes.contains(size);
+    YOLOModelManager.clearDownloadCancellation(
+      _composeModelId(task: _currentTask, size: size),
+    );
     _suppressInferenceForModelSwitch();
     setState(() {
       _currentSize = size;
@@ -428,6 +463,41 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _isModelLoading = true;
     });
     // `YOLOView.didUpdateWidget` handles the resolve + native switch off the changed `modelPath` prop (see above).
+  }
+
+  Future<void> _updateTargetDownloadState(YOLOTask task, String size) async {
+    final local = await YOLOModelResolver.isOfficialModelAvailableLocally(
+      _composeModelId(task: task, size: size),
+    );
+    if (!mounted ||
+        !_isModelLoading ||
+        _currentTask != task ||
+        _currentSize != size) {
+      return;
+    }
+    setState(() {
+      _downloadingSize = local ? null : size;
+      _downloadFraction = local ? null : 0;
+      _loadingStatusText = local
+          ? _loadingTextFor(task, size)
+          : _loadingTextFor(task, size, progress: 0);
+    });
+  }
+
+  void _cancelModelSwitch() {
+    if (!_isModelLoading) return;
+    YOLOModelManager.cancelDownload(_currentModelId);
+    setState(() {
+      _currentTask = _runningTask;
+      _currentSize = _runningSize;
+      _isModelLoading = false;
+      _downloadingSize = null;
+      _downloadFraction = null;
+      _loadingStatusText = null;
+      _modelErrorMessage = null;
+    });
+    _restoreInferenceAfterModelSwitch();
+    unawaited(_refreshAvailableSizes(_runningTask));
   }
 
   void _suppressInferenceForModelSwitch() {
@@ -471,9 +541,64 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (bytes != null) widget.onCapture?.call(bytes);
   }
 
-  Future<void> _openUltralyticsWebsite() async {
+  void _showInfoSheet(BuildContext context) {
     HapticFeedback.selectionClick();
-    final uri = Uri.parse('https://www.ultralytics.com');
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (pageContext) => Scaffold(
+            appBar: AppBar(title: const Text('About YOLO')),
+            body: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              children: [
+                const ListTile(
+                  leading: Icon(Icons.center_focus_strong),
+                  title: Text('Ultralytics YOLO'),
+                  subtitle: Text('Real-time AI vision on-device'),
+                ),
+                const ListTile(
+                  title: Text('The App'),
+                  subtitle: Text(
+                    'Try detection, segmentation, classification, pose estimation, and oriented bounding box models directly on-device.',
+                  ),
+                ),
+                const ListTile(
+                  title: Text('YOLO Models'),
+                  subtitle: Text(
+                    'Compare nano models bundled with the app and larger official models downloaded when selected.',
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    'Continue Learning',
+                    style: Theme.of(pageContext).textTheme.titleMedium,
+                  ),
+                ),
+                for (final resource in _infoResources)
+                  ListTile(
+                    leading: Icon(resource.icon, color: Colors.blue),
+                    title: Text(
+                      resource.title,
+                      style: const TextStyle(color: Colors.blue),
+                    ),
+                    subtitle: Text(resource.subtitle),
+                    trailing: const Icon(Icons.open_in_new, size: 18),
+                    onTap: () {
+                      unawaited(_openInfoUrl(resource.url));
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openInfoUrl(String url) async {
+    final uri = Uri.parse(url);
     try {
       final launched = await launchUrl(
         uri,
@@ -541,6 +666,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final viewSize = Size(constraints.maxWidth, constraints.maxHeight);
+            final isLandscape = constraints.maxWidth > constraints.maxHeight;
             // Cache for the focus-stream listener (registered in initState, fires later — needs a synchronous
             // view-size lookup).
             _viewSize = viewSize;
@@ -598,14 +724,14 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   onPlayPause: _onPlayPause,
                   onSwitchCamera: () => unawaited(_onSwitchCamera()),
                   onShare: () => unawaited(_onShare()),
-                  onInfo: () => unawaited(_openUltralyticsWebsite()),
+                  onInfo: () => _showInfoSheet(context),
                 ),
                 // Ultralytics logotype, bottom-right — matches `Main.storyboard` logoImage (frame x215 y625 w159 h67
                 // on a 393x852 canvas, anchored bottom-right ~19pt from the edge, sitting above the toolbar).
-                const Positioned(
+                Positioned(
                   right: 19,
-                  bottom: 160,
-                  child: LogoOverlay(width: 159),
+                  bottom: isLandscape ? 100 : 160,
+                  child: const LogoOverlay(width: 159),
                 ),
                 Positioned.fill(
                   child: AnimatedSwitcher(
@@ -617,6 +743,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                         ? _ModelSwitchLoadingOverlay(
                             statusText: _loadingStatusText,
                             progress: _downloadFraction,
+                            onCancel: _downloadingSize == null
+                                ? null
+                                : _cancelModelSwitch,
                           )
                         : const SizedBox.shrink(),
                   ),
@@ -631,10 +760,15 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 }
 
 class _ModelSwitchLoadingOverlay extends StatelessWidget {
-  const _ModelSwitchLoadingOverlay({this.statusText, this.progress});
+  const _ModelSwitchLoadingOverlay({
+    this.statusText,
+    this.progress,
+    this.onCancel,
+  });
 
   final String? statusText;
   final double? progress;
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -646,50 +780,60 @@ class _ModelSwitchLoadingOverlay extends StatelessWidget {
           dismissible: false,
           color: Colors.black.withValues(alpha: 0.72),
         ),
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 320),
-            child: Card(
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              color: const Color(0xFF202124),
-              elevation: 10,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (value == null)
-                      const SizedBox(
-                        width: 34,
-                        height: 34,
-                        child: CircularProgressIndicator(strokeWidth: 3),
-                      )
-                    else
-                      LinearProgressIndicator(value: value),
-                    const SizedBox(height: 16),
-                    Text(
-                      statusText ?? 'Loading model',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+        SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: Card(
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                color: const Color(0xFF202124),
+                elevation: 10,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 14),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (value == null)
+                        const SizedBox(
+                          width: 34,
+                          height: 34,
+                          child: CircularProgressIndicator(strokeWidth: 3),
+                        )
+                      else
+                        LinearProgressIndicator(value: value),
+                      const SizedBox(height: 16),
+                      Text(
+                        statusText ?? 'Loading model',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      value == null
-                          ? 'Preparing inference'
-                          : 'Downloading model weights',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.72),
+                      const SizedBox(height: 6),
+                      Text(
+                        value == null
+                            ? 'Preparing inference'
+                            : 'Downloading model weights',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.72),
+                        ),
                       ),
-                    ),
-                  ],
+                      if (onCancel != null) ...[
+                        const SizedBox(height: 10),
+                        TextButton(
+                          onPressed: onCancel,
+                          child: const Text('Cancel'),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -768,184 +912,224 @@ class _ShowcaseOverlay extends StatelessWidget {
   // iOS YOLOView ports — kept as constants so the layout reads like the Swift source.
   static const double _sidePadding = 20;
   static const double _topGap = 8;
-  static const double _sliderRowGap = 8;
+  static const double _sliderRowGap = 2;
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.paddingOf(context).top;
     return SafeArea(
-      // iOS: opt out of the bottom inset so the toolbar sits flush under the translucent home indicator (matches the
-      // iOS reference). Android: the system navigation bar is opaque and always present, so respect the bottom inset
-      // and let the toolbar start above it instead of being hidden underneath.
       bottom: defaultTargetPlatform == TargetPlatform.android,
-      child: Column(
-        children: [
-          // -- Top stack ----------------------------------------------------------------------------------------
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              _sidePadding,
-              8,
-              _sidePadding,
-              0,
-            ),
-            child: Column(
-              children: [
-                ValueListenableBuilder<({double fps, double ms})>(
-                  valueListenable: metrics,
-                  builder: (context, m, _) => PerformanceLabel(
-                    modelName: modelName,
-                    fps: m.fps,
-                    inferenceMs: m.ms,
-                  ),
-                ),
-                const SizedBox(height: _topGap),
-                TaskSegmentedControl(
-                  currentTask: task,
-                  onTaskChanged: onTaskChanged,
-                  showSemanticTask: showSemanticTask,
-                ),
-                const SizedBox(height: 4),
-                ModelSizeSegmentedControl(
-                  currentSize: size,
-                  availableSizes: availableSizes,
-                  supportedSizes: supportedSizes,
-                  onSizeChanged: onSizeChanged,
-                  downloadingSize: downloadingSize,
-                  downloadFraction: downloadFraction,
-                ),
-                if (modelErrorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.72),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.18),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        child: Text(
-                          modelErrorMessage!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // -- Free camera area --------------------------------------------------------------------------------
-          const Spacer(),
-
-          // -- Sliders ------------------------------------------------------------------------------------------
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              _sidePadding,
-              0,
-              _sidePadding,
-              0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ThresholdSliderRow(
-                  label: 'Confidence Threshold',
-                  value: confidence,
-                  min: 0,
-                  max: 1,
-                  onChanged: onConfidenceChanged,
-                  sliderWidthFactor: 0.46,
-                ),
-                const SizedBox(height: _sliderRowGap),
-                ThresholdSliderRow(
-                  label: 'IoU Threshold',
-                  value: iou,
-                  min: 0,
-                  max: 1,
-                  onChanged: onIouChanged,
-                  sliderWidthFactor: 0.46,
-                ),
-              ],
-            ),
-          ),
-
-          // -- Zoom HUD ----------------------------------------------------------------------------------------
-          // Logo is NOT here — it sits bottom-right per `Main.storyboard` (handled in the outer Stack).
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              _sidePadding,
-              4,
-              _sidePadding,
-              0,
-            ),
-            child: ValueListenableBuilder<double>(
-              valueListenable: zoom,
-              builder: (context, z, _) => ValueListenableBuilder<String>(
-                valueListenable: lensLabel,
-                builder: (context, label, _) =>
-                    ZoomIndicator(currentZoom: z, lensLabel: label),
-              ),
-            ),
-          ),
-
-          // -- Lens picker -------------------------------------------------------------------------------------
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              _sidePadding,
-              2,
-              _sidePadding,
-              2,
-            ),
-            child: ValueListenableBuilder<double>(
-              valueListenable: zoom,
-              builder: (context, z, _) => LensPicker(
-                lenses: lenses,
-                currentZoomFactor: z,
-                onLensSelected: onLensSelected,
-              ),
-            ),
-          ),
-
-          // -- Version + toolbar (full-bleed) ------------------------------------------------------------------
-          if (versionLabel != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: _sidePadding,
-                vertical: 4,
-              ),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  versionLabel!,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
-          // 66pt toolbar flush at the very bottom (its black band covers the home-indicator inset). Matches
-          // `toolbar.frame = (0, height - 66, width, 66)` in `yolo-ios-app/Sources/YOLO/YOLOView.swift:806`. The
-          // earlier safe-area fill Container below this pushed the buttons ~34pt too high.
-          CameraToolbar(
-            isPaused: isPaused,
-            onPlayPause: onPlayPause,
-            onSwitchCamera: onSwitchCamera,
-            onShare: onShare,
-            onInfo: onInfo,
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return constraints.maxWidth > constraints.maxHeight
+              ? _buildLandscape(constraints, topInset)
+              : _buildPortrait();
+        },
       ),
+    );
+  }
+
+  Widget _buildPortrait() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(_sidePadding, 8, _sidePadding, 0),
+          child: _topControls(),
+        ),
+        const Spacer(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: _sidePadding),
+          child: _thresholdControls(sliderWidthFactor: 0.46),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(_sidePadding, 4, _sidePadding, 0),
+          child: _zoomLabel(),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(_sidePadding, 2, _sidePadding, 2),
+          child: _lensPicker(),
+        ),
+        if (versionLabel != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: _sidePadding,
+              vertical: 4,
+            ),
+            child: Align(alignment: Alignment.centerLeft, child: _version()),
+          ),
+        _toolbar(),
+      ],
+    );
+  }
+
+  Widget _buildLandscape(BoxConstraints constraints, double topInset) {
+    final topWidth = (constraints.maxWidth * 0.62).clamp(360.0, 620.0);
+    final sliderWidth = (constraints.maxWidth * 0.28).clamp(220.0, 300.0);
+    final hasLenses = lenses.isNotEmpty;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Align(
+          alignment: Alignment.topCenter,
+          child: Transform.translate(
+            offset: Offset(0, -topInset),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: SizedBox(width: topWidth, child: _topControls()),
+            ),
+          ),
+        ),
+        Positioned(
+          left: _sidePadding,
+          bottom: CameraToolbar.height + (hasLenses ? 18 : 0),
+          width: sliderWidth,
+          child: _thresholdControls(sliderWidthFactor: 1),
+        ),
+        Positioned(
+          left: _sidePadding,
+          right: _sidePadding,
+          bottom: CameraToolbar.height + (hasLenses ? 42 : 8),
+          child: _zoomLabel(),
+        ),
+        if (hasLenses)
+          Positioned(
+            left: _sidePadding,
+            right: _sidePadding,
+            bottom: CameraToolbar.height + 2,
+            child: _lensPicker(),
+          ),
+        if (versionLabel != null)
+          Positioned(
+            left: _sidePadding,
+            bottom: CameraToolbar.height + 4,
+            child: _version(),
+          ),
+        Positioned(left: 0, right: 0, bottom: 0, child: _toolbar()),
+      ],
+    );
+  }
+
+  Widget _topControls() {
+    return Column(
+      children: [
+        ValueListenableBuilder<({double fps, double ms})>(
+          valueListenable: metrics,
+          builder: (context, m, _) => PerformanceLabel(
+            modelName: modelName,
+            fps: m.fps,
+            inferenceMs: m.ms,
+          ),
+        ),
+        const SizedBox(height: _topGap),
+        TaskSegmentedControl(
+          currentTask: task,
+          onTaskChanged: onTaskChanged,
+          showSemanticTask: showSemanticTask,
+        ),
+        const SizedBox(height: 4),
+        ModelSizeSegmentedControl(
+          currentSize: size,
+          availableSizes: availableSizes,
+          supportedSizes: supportedSizes,
+          onSizeChanged: onSizeChanged,
+          downloadingSize: downloadingSize,
+          downloadFraction: downloadFraction,
+        ),
+        if (modelErrorMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.72),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                child: Text(
+                  modelErrorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _thresholdControls({required double sliderWidthFactor}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ThresholdSliderRow(
+          label: 'Confidence Threshold',
+          value: confidence,
+          min: 0,
+          max: 1,
+          onChanged: onConfidenceChanged,
+          sliderWidthFactor: sliderWidthFactor,
+        ),
+        const SizedBox(height: _sliderRowGap),
+        ThresholdSliderRow(
+          label: 'IoU Threshold',
+          value: iou,
+          min: 0,
+          max: 1,
+          onChanged: onIouChanged,
+          sliderWidthFactor: sliderWidthFactor,
+        ),
+      ],
+    );
+  }
+
+  Widget _zoomLabel() {
+    return ValueListenableBuilder<double>(
+      valueListenable: zoom,
+      builder: (context, z, _) => ValueListenableBuilder<String>(
+        valueListenable: lensLabel,
+        builder: (context, label, _) =>
+            ZoomIndicator(currentZoom: z, lensLabel: label),
+      ),
+    );
+  }
+
+  Widget _lensPicker() {
+    return ValueListenableBuilder<double>(
+      valueListenable: zoom,
+      builder: (context, z, _) => LensPicker(
+        lenses: lenses,
+        currentZoomFactor: z,
+        onLensSelected: onLensSelected,
+      ),
+    );
+  }
+
+  Widget _version() {
+    return Text(
+      versionLabel!,
+      style: TextStyle(
+        color: Colors.white.withValues(alpha: 0.7),
+        fontSize: 12,
+      ),
+    );
+  }
+
+  Widget _toolbar() {
+    return CameraToolbar(
+      isPaused: isPaused,
+      onPlayPause: onPlayPause,
+      onSwitchCamera: onSwitchCamera,
+      onShare: onShare,
+      onInfo: onInfo,
     );
   }
 }

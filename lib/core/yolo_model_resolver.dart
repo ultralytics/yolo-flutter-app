@@ -257,23 +257,27 @@ class YOLOModelResolver {
         : _resolveAndroidOfficialModel(artifact);
   }
 
-  /// Whether official [modelId] is already cached on disk (downloaded + extracted) WITHOUT downloading it. UIs use this
-  /// to show a "downloaded" state — the native `checkModelExists` only knows about bundle/asset paths, not the
-  /// resolver's app-documents download cache, so it falsely reports downloaded official models as missing. Returns
-  /// `false` for unknown ids or platforms where the artifact isn't published.
-  static Future<bool> isOfficialModelCached(String modelId) async {
+  /// Whether official [modelId] is already available without a network download.
+  static Future<bool> isOfficialModelAvailableLocally(String modelId) async {
     final artifact = _officialModelForId(modelId);
     if (artifact == null) return false;
     final directory = await getApplicationDocumentsDirectory();
     if (_isIosLikePlatform) {
       if (artifact.iosArchiveName == null) return false;
-      return _hasValidMlPackage(
+      if (await _hasValidMlPackage(
         Directory('${directory.path}/${artifact.id}.mlpackage'),
-      );
+      )) {
+        return true;
+      }
+      return await _loadAssetBytes(
+            'assets/models/${artifact.iosArchiveName}',
+          ) !=
+          null;
     }
     final filename = artifact.androidAssetName;
     if (filename == null) return false;
-    return File('${directory.path}/$filename').existsSync();
+    if (File('${directory.path}/$filename').existsSync()) return true;
+    return await _loadAssetBytes('assets/models/$filename') != null;
   }
 
   static Future<String> _resolveAndroidOfficialModel(
@@ -421,13 +425,30 @@ class YOLOModelResolver {
   }) async {
     targetFile.parent.createSync(recursive: true);
     final client = HttpClient();
+    Object? downloadToken;
+    if (progressId != null) {
+      downloadToken = YOLOModelManager.registerDownload(
+        progressId,
+        () => client.close(force: true),
+      );
+    }
     final temporaryFile = File('${targetFile.path}.download');
+    void checkCancelled() {
+      if (progressId != null &&
+          downloadToken != null &&
+          YOLOModelManager.isDownloadCancelled(progressId, downloadToken)) {
+        throw ModelLoadingException('Model download canceled.');
+      }
+    }
+
     try {
       if (temporaryFile.existsSync()) {
         temporaryFile.deleteSync();
       }
+      checkCancelled();
       final request = await client.getUrl(Uri.parse(url));
       final response = await request.close();
+      checkCancelled();
       if (response.statusCode != HttpStatus.ok) {
         throw ModelLoadingException(
           'Failed to download model from $url (HTTP ${response.statusCode}).',
@@ -447,6 +468,7 @@ class YOLOModelResolver {
       final sink = temporaryFile.openWrite();
       try {
         await response.forEach((chunk) {
+          checkCancelled();
           sink.add(chunk);
           if (progressId == null || totalBytes <= 0) return;
           receivedBytes += chunk.length;
@@ -464,6 +486,7 @@ class YOLOModelResolver {
         await sink.close();
       }
 
+      checkCancelled();
       // Some endpoints (e.g. GitHub release redirects that resolve to a 200 with no body, or chunked-encoding
       // responses that completed with zero chunks) leave the `.download` file in a state where openWrite + close
       // never materialised a real file on disk. Fall through to renameSync would then throw `PathNotFoundException`
@@ -488,8 +511,16 @@ class YOLOModelResolver {
       if (temporaryFile.existsSync()) {
         temporaryFile.deleteSync();
       }
+      if (progressId != null &&
+          downloadToken != null &&
+          YOLOModelManager.isDownloadCancelled(progressId, downloadToken)) {
+        throw ModelLoadingException('Model download canceled.');
+      }
       rethrow;
     } finally {
+      if (progressId != null && downloadToken != null) {
+        YOLOModelManager.finishDownload(progressId, downloadToken);
+      }
       client.close(force: true);
     }
   }

@@ -71,6 +71,40 @@ void main() {
       expect(events.last.fraction, 1);
     });
 
+    test('download cancellation tracks model and invokes canceler', () {
+      var cancelCount = 0;
+
+      YOLOModelManager.clearDownloadCancellation('yolo26s');
+      final token = YOLOModelManager.registerDownload(
+        'yolo26s',
+        () => cancelCount++,
+      );
+      YOLOModelManager.cancelDownload('yolo26s');
+
+      expect(cancelCount, 1);
+      expect(YOLOModelManager.isDownloadCancelled('yolo26s', token), isTrue);
+
+      YOLOModelManager.finishDownload('yolo26s', token);
+
+      expect(YOLOModelManager.isDownloadCancelled('yolo26s', token), isFalse);
+    });
+
+    test('old download cannot clear newer cancellation handle', () {
+      YOLOModelManager.clearDownloadCancellation('yolo26m');
+      final firstToken = YOLOModelManager.registerDownload('yolo26m', () {});
+      final secondToken = YOLOModelManager.registerDownload('yolo26m', () {});
+
+      YOLOModelManager.cancelDownload('yolo26m');
+      YOLOModelManager.finishDownload('yolo26m', firstToken);
+
+      expect(
+        YOLOModelManager.isDownloadCancelled('yolo26m', secondToken),
+        isTrue,
+      );
+
+      YOLOModelManager.finishDownload('yolo26m', secondToken);
+    });
+
     test('initializeInstance for non-default instance', () async {
       final manager = YOLOModelManager(
         channel: mockChannel,

@@ -268,6 +268,7 @@ class YOLOView @JvmOverloads constructor(
     // lens reference factor (e.g. 0.5x on ultra-wide, 2.0x on telephoto). Without this the ZoomIndicator/LensPicker
     // would snap back to 1.0x after every lens change.
     private var pendingEffectiveZoomToEmit: Double? = null
+    private var pendingZoomRatioToApply: Float? = null
 
     // Optional ImageCapture use-case (bound alongside Preview+Analysis when supported)
     private var imageCaptureUseCase: ImageCapture? = null
@@ -842,6 +843,17 @@ class YOLOView @JvmOverloads constructor(
                                 selectedLensZoomFactor = 1.0
                             }
 
+                            pendingZoomRatioToApply?.let { zoom ->
+                                pendingZoomRatioToApply = null
+                                val physical = zoom.coerceIn(
+                                    minZoomRatio,
+                                    cameraInfo.zoomState.value?.maxZoomRatio ?: maxZoomRatio
+                                )
+                                cam.cameraControl.setZoomRatio(physical)
+                                currentZoomRatio = physical
+                                onZoomChanged?.invoke(physical)
+                            }
+
                             // setLens() / auto-snap stashes the effective zoom that should appear in Dart after the
                             // rebind; emit it now so the ZoomIndicator/LensPicker stay consistent across the change.
                             pendingEffectiveZoomToEmit?.let { effective ->
@@ -938,6 +950,7 @@ class YOLOView @JvmOverloads constructor(
         selectedLensZoomFactor = null
         selectedLensLabel = null
         pendingEffectiveZoomToEmit = null
+        pendingZoomRatioToApply = null
     }
 
     // endregion
@@ -1154,9 +1167,11 @@ class YOLOView @JvmOverloads constructor(
         selectedLensLabel = target.label
 
         if (camera?.cameraInfo != logicalWideCameraInfo) {
-            selectedLensLabel = logicalWide.label
+            pendingZoomRatioToApply = targetPhysicalZoom
+            pendingEffectiveZoomToEmit = target.zoomFactor
             switchToLens(logicalWide)
-            emitEvent(mapOf("type" to "lens", "label" to logicalWide.label))
+            selectedLensLabel = target.label
+            emitEvent(mapOf("type" to "lens", "label" to target.label))
             return
         }
 
