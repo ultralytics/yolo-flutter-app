@@ -31,11 +31,6 @@ target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  # Resolve UltralyticsYOLO from the v8.9.1 release tag (instant, bypasses CocoaPods CDN propagation lag for the
-  # freshly published pod). Once it is served from trunk this override can be dropped so the example resolves it
-  # transitively like a normal consumer.
-  pod 'UltralyticsYOLO', :git => 'https://github.com/ultralytics/yolo-ios-app.git', :tag => 'v8.9.1'
-
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths
