@@ -14,6 +14,7 @@
 
 import AVFoundation
 import SwiftUI
+import YOLO
 
 /// A SwiftUI view that provides real-time camera-based object detection using YOLO models.
 public struct YOLOCamera: View {

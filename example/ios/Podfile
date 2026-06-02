@@ -31,6 +31,9 @@ target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
+  # Temporary until ultralytics/yolo-ios-app PR #1 is tagged and YOLO 0.1.0 is pushed to CocoaPods trunk.
+  pod 'YOLO', :git => 'https://github.com/ultralytics/yolo-ios-app.git', :branch => 'glenn/shared-yolo-core'
+
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths

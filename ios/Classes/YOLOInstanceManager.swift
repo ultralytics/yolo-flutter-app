@@ -3,6 +3,7 @@
 import Flutter
 import Foundation
 import UIKit
+import YOLO
 
 /// Manages multiple YOLO instances with unique IDs
 @MainActor
@@ -114,22 +115,22 @@ class YOLOInstanceManager {
     let result: YOLOResult
 
     // Store original thresholds
-    let originalConfThreshold = yolo.confidenceThreshold
-    let originalIouThreshold = yolo.iouThreshold
+    let originalConfThreshold = yolo.getConfidenceThreshold() ?? 0.25
+    let originalIouThreshold = yolo.getIouThreshold() ?? 0.7
 
     // Apply custom thresholds if provided
     if let confThreshold = confidenceThreshold {
-      yolo.confidenceThreshold = confThreshold
+      yolo.setConfidenceThreshold(confThreshold)
     }
     if let iouThres = iouThreshold {
-      yolo.iouThreshold = iouThres
+      yolo.setIouThreshold(iouThres)
     }
 
     result = yolo.callAsFunction(image)
 
     // Restore original thresholds
-    yolo.confidenceThreshold = originalConfThreshold
-    yolo.iouThreshold = originalIouThreshold
+    yolo.setConfidenceThreshold(originalConfThreshold)
+    yolo.setIouThreshold(originalIouThreshold)
 
     return convertToFlutterFormat(result: result)
   }

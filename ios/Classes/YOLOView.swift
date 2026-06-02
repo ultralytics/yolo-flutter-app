@@ -15,6 +15,7 @@
 import AVFoundation
 import UIKit
 import Vision
+import YOLO
 
 /// Maps a rect normalized to `imageSize` into on-screen view coordinates under an aspect-fill (`resizeAspectFill`)
 /// preview: scale the image by `max(viewW/imgW, viewH/imgH)`, center it, and crop. Inverts exactly what the camera
@@ -371,9 +372,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       self.setupSublayers()
       self.videoCapture.predictor = predictor
 
-      // Set stream configuration for original image capture
+      // Set stream configuration for original image capture. The package owns generic capture flags; Flutter-specific
+      // stream filtering/throttling stays in this bridge layer.
       if let basePredictor = predictor as? BasePredictor {
-        basePredictor.streamConfig = self.streamConfig
+        basePredictor.capturesOriginalImage = self.streamConfig?.includeOriginalImage == true
       }
 
       self.cachePredictor(predictor, forKey: cacheKey)
@@ -400,79 +402,24 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         basePredictor.setConfidenceThreshold(confidence: Double(sliderConf.value))
         basePredictor.setIouThreshold(iou: Double(sliderIoU.value))
         basePredictor.setNumItemsThreshold(numItems: Int(sliderNumItems.value))
+        basePredictor.capturesOriginalImage = self.streamConfig?.includeOriginalImage == true
       }
       handleSuccess(cached)
       return
     }
 
-    switch task {
-    case .classify:
-      Classifier.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        result in
-        switch result {
-        case .success(let predictor):
-          handleSuccess(predictor)
-        case .failure(let error):
-          handleFailure(error)
-        }
-      }
-
-    case .segment:
-      Segmenter.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        result in
-        switch result {
-        case .success(let predictor):
-          handleSuccess(predictor)
-        case .failure(let error):
-          handleFailure(error)
-        }
-      }
-
-    case .semantic:
-      SemanticSegmenter.create(
-        unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu
-      ) {
-        result in
-        switch result {
-        case .success(let predictor):
-          handleSuccess(predictor)
-        case .failure(let error):
-          handleFailure(error)
-        }
-      }
-
-    case .pose:
-      PoseEstimator.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        result in
-        switch result {
-        case .success(let predictor):
-          handleSuccess(predictor)
-        case .failure(let error):
-          handleFailure(error)
-        }
-      }
-
-    case .obb:
-      ObbDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu) {
-        result in
-        switch result {
-        case .success(let predictor):
-          handleSuccess(predictor)
-        case .failure(let error):
-          handleFailure(error)
-        }
-      }
-
-    default:
-      ObjectDetector.create(unwrappedModelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu)
-      {
-        result in
-        switch result {
-        case .success(let predictor):
-          handleSuccess(predictor)
-        case .failure(let error):
-          handleFailure(error)
-        }
+    // Use the package default for numItemsThreshold at create time. The live `sliderNumItems` value is applied after
+    // load via setNumItemsThreshold (cached path + sliderChanged); reading it here is unsafe because init() calls
+    // setModel() BEFORE setupUI() configures the slider, so on first load sliderNumItems.value is still 0 (which would
+    // cap detections to zero).
+    BasePredictor.create(
+      for: task, modelURL: unwrappedModelURL, isRealTime: true, useGpu: useGpu
+    ) { result in
+      switch result {
+      case .success(let predictor):
+        handleSuccess(predictor)
+      case .failure(let error):
+        handleFailure(error)
       }
     }
   }
@@ -1704,7 +1651,8 @@ extension YOLOView {
   /// Set streaming configuration
   public func setStreamConfig(_ config: YOLOStreamConfig?) {
     self.streamConfig = config
-    (videoCapture.predictor as? BasePredictor)?.streamConfig = config
+    (videoCapture.predictor as? BasePredictor)?.capturesOriginalImage =
+      config?.includeOriginalImage == true
     setupThrottlingFromConfig()
   }
 

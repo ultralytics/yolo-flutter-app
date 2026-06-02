@@ -5,6 +5,7 @@ import CoreML
 // "shared mutable state" / "Sendable" warnings under Swift 6 strict concurrency.
 @preconcurrency import Flutter
 import UIKit
+import YOLO
 
 // Sendable shim that carries a non-Sendable value across queue boundaries. Used to hand `FlutterResult` (a
 // non-Sendable `(Any?) -> Void` closure) and `[String: Any]` payloads into the background `inspectModel` dispatch

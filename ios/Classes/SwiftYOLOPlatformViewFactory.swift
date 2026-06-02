@@ -4,6 +4,7 @@
 // strict concurrency.
 @preconcurrency import Flutter
 import UIKit
+import YOLO
 
 // Thread-safe view registry
 private class YOLOViewRegistry {
