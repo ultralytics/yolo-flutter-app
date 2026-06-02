@@ -15,7 +15,7 @@
 import AVFoundation
 import UIKit
 import Vision
-import YOLO
+import UltralyticsYOLO
 
 /// Maps a rect normalized to `imageSize` into on-screen view coordinates under an aspect-fill (`resizeAspectFill`)
 /// preview: scale the image by `max(viewW/imgW, viewH/imgH)`, center it, and crop. Inverts exactly what the camera

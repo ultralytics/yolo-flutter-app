@@ -5,7 +5,7 @@ import AVFoundation
 // Swift 6 strict concurrency.
 @preconcurrency import Flutter
 import UIKit
-import YOLO
+import UltralyticsYOLO
 
 // Helper extension for Float to Double conversion
 extension Float {

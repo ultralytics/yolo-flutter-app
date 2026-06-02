@@ -11,14 +11,14 @@ PODS:
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - ultralytics_yolo (0.0.4):
+  - ultralytics_yolo (0.5.0):
     - Flutter
-    - YOLO (~> 0.1)
+    - UltralyticsYOLO (~> 8.9)
+  - UltralyticsYOLO (8.9.0)
   - url_launcher_ios (0.0.1):
     - Flutter
   - wakelock_plus (0.0.1):
     - Flutter
-  - YOLO (0.1.0)
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
@@ -28,9 +28,9 @@ DEPENDENCIES:
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - ultralytics_yolo (from `.symlinks/plugins/ultralytics_yolo/ios`)
+  - UltralyticsYOLO (from `https://github.com/ultralytics/yolo-ios-app.git`, branch `glenn/shared-yolo-core`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
   - wakelock_plus (from `.symlinks/plugins/wakelock_plus/ios`)
-  - YOLO (from `https://github.com/ultralytics/yolo-ios-app.git`, branch `glenn/shared-yolo-core`)
 
 EXTERNAL SOURCES:
   Flutter:
@@ -47,17 +47,17 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   ultralytics_yolo:
     :path: ".symlinks/plugins/ultralytics_yolo/ios"
+  UltralyticsYOLO:
+    :branch: glenn/shared-yolo-core
+    :git: https://github.com/ultralytics/yolo-ios-app.git
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
   wakelock_plus:
     :path: ".symlinks/plugins/wakelock_plus/ios"
-  YOLO:
-    :branch: glenn/shared-yolo-core
-    :git: https://github.com/ultralytics/yolo-ios-app.git
 
 CHECKOUT OPTIONS:
-  YOLO:
-    :commit: e58622e0e295c5ab1661108ca18f0ef17abb5fd2
+  UltralyticsYOLO:
+    :commit: 132fcd56e7715ab33b46c8006fc45f20b0d982b2
     :git: https://github.com/ultralytics/yolo-ios-app.git
 
 SPEC CHECKSUMS:
@@ -67,11 +67,11 @@ SPEC CHECKSUMS:
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
-  ultralytics_yolo: 63732ba5e212ed7347996da67f8fd501c8a01b78
+  ultralytics_yolo: 21d6c4c32c26e70557590180edddd72b24c79be7
+  UltralyticsYOLO: 14c9c8ca7805edd766ab1403b0489f989ada2701
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
-  YOLO: a7f4f73c96b58db318cbaf3292d24db28ecfac0e
 
-PODFILE CHECKSUM: 7fe4208db770b641a97d29a77e00f5c89107f92b
+PODFILE CHECKSUM: e0edad05afdcf1f2b555739a13a3daca0755d6be
 
 COCOAPODS: 1.16.2

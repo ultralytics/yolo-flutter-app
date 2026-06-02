@@ -3,7 +3,7 @@
 import Flutter
 import Foundation
 import UIKit
-import YOLO
+import UltralyticsYOLO
 
 /// Manages multiple YOLO instances with unique IDs
 @MainActor

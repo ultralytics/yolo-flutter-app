@@ -2,7 +2,7 @@
 
 import QuartzCore
 import UIKit
-import YOLO
+import UltralyticsYOLO
 
 let ultralyticsColors: [UIColor] = [
   UIColor(red: 4 / 255, green: 42 / 255, blue: 255 / 255, alpha: 0.6),

@@ -15,7 +15,7 @@
 import AVFoundation
 import CoreVideo
 import UIKit
-import YOLO
+import UltralyticsYOLO
 
 /// Protocol for receiving video capture frame processing results.
 @MainActor
