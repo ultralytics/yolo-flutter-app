@@ -56,7 +56,8 @@ func drawKeypoints(
   drawSkeleton: Bool = true
 ) {
   let scaledRadius = max(imageViewSize.width, imageViewSize.height) / 100
-  for (i, keypoints) in keypointsList.enumerated() where i < confsList.count && i < boundingBoxes.count {
+  for (i, keypoints) in keypointsList.enumerated()
+  where i < confsList.count && i < boundingBoxes.count {
     drawSinglePersonKeypoints(
       keypoints: keypoints, confs: confsList[i], boundingBox: boundingBoxes[i],
       on: layer,
@@ -112,9 +113,10 @@ private func drawSinglePersonKeypoints(
 
 private func drawCircle(on layer: CALayer, at point: CGPoint, radius: CGFloat, color index: Int) {
   let circleLayer = CAShapeLayer()
-  circleLayer.path = UIBezierPath(
-    arcCenter: point, radius: radius, startAngle: 0, endAngle: .pi * 2, clockwise: true
-  ).cgPath
+  circleLayer.path =
+    UIBezierPath(
+      arcCenter: point, radius: radius, startAngle: 0, endAngle: .pi * 2, clockwise: true
+    ).cgPath
   let color = posePalette[index].map { $0 / 255.0 }
   circleLayer.fillColor =
     UIColor(red: color[0], green: color[1], blue: color[2], alpha: 1.0).cgColor
