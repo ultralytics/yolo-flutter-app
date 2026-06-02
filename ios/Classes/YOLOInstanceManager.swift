@@ -183,7 +183,9 @@ class YOLOInstanceManager {
     if let handlers = loadCompletionHandlers[instanceId], !handlers.isEmpty {
       let cancelled = NSError(
         domain: "YOLOInstanceManager", code: -999,
-        userInfo: [NSLocalizedDescriptionKey: "Instance was disposed before the model finished loading"])
+        userInfo: [
+          NSLocalizedDescriptionKey: "Instance was disposed before the model finished loading"
+        ])
       for handler in handlers {
         handler(.failure(cancelled))
       }
