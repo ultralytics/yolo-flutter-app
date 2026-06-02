@@ -85,7 +85,9 @@ class YOLOInstanceManager {
           .failure(
             NSError(
               domain: "YOLOInstanceManager", code: -999,
-              userInfo: [NSLocalizedDescriptionKey: "Instance was disposed before the model finished loading"])
+              userInfo: [
+                NSLocalizedDescriptionKey: "Instance was disposed before the model finished loading"
+              ])
           ))
         return
       }
@@ -285,7 +287,8 @@ class YOLOInstanceManager {
     // never change an already-resolved path.
     let fallbackFileName = modelPath.components(separatedBy: "/").last ?? modelPath
     let fallbackName = fallbackFileName.components(separatedBy: ".").first ?? fallbackFileName
-    let fallbackExt = fallbackFileName.contains(".") ? fallbackFileName.components(separatedBy: ".").last : nil
+    let fallbackExt =
+      fallbackFileName.contains(".") ? fallbackFileName.components(separatedBy: ".").last : nil
     for bundle in Bundle.allBundles {
       if let assetPath = bundle.path(forResource: fallbackFileName, ofType: nil) {
         return assetPath
