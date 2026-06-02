@@ -372,9 +372,14 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       self.setupSublayers()
       self.videoCapture.predictor = predictor
 
-      // Set stream configuration for original image capture. The package owns generic capture flags; Flutter-specific
-      // stream filtering/throttling stays in this bridge layer.
+      // Apply the current UI/Dart thresholds and the stream-capture flag to the freshly loaded predictor, mirroring the
+      // cached path below. Without this, a non-cached load (initial load or a setModel switch) would run on the package
+      // defaults until the user next moves a slider — initial Dart thresholds set before the async create completes
+      // would otherwise be lost. The package owns generic capture flags; Flutter-specific filtering stays in this layer.
       if let basePredictor = predictor as? BasePredictor {
+        basePredictor.setConfidenceThreshold(confidence: Double(sliderConf.value))
+        basePredictor.setIouThreshold(iou: Double(sliderIoU.value))
+        basePredictor.setNumItemsThreshold(numItems: Int(sliderNumItems.value))
         basePredictor.capturesOriginalImage = self.streamConfig?.includeOriginalImage == true
       }
 
