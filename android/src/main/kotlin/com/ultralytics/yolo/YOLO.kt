@@ -64,6 +64,7 @@ class YOLO(
      * @param rotateForCamera Whether to rotate the image for camera processing, defaults to false for standard bitmap inference
      */
     fun predict(bitmap: Bitmap, rotateForCamera: Boolean = false): YOLOResult {
+        (predictor as? BasePredictor)?.includeRawMaskData = true
         val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera, isLandscape = false)
         
         // Don't create annotated image for classification tasks to save memory and processing time
@@ -89,7 +90,10 @@ class YOLO(
         val isRotated = rotationDegrees % 180 != 0
         val orientedWidth = if (isRotated) imageProxy.height else imageProxy.width
         val orientedHeight = if (isRotated) imageProxy.width else imageProxy.height
-        (predictor as? BasePredictor)?.cameraRotationDegrees = rotationDegrees
+        (predictor as? BasePredictor)?.let { basePredictor ->
+            basePredictor.cameraRotationDegrees = rotationDegrees
+            basePredictor.includeRawMaskData = false
+        }
         val result = predictor.predict(
             bitmap,
             orientedWidth,
@@ -110,6 +114,7 @@ class YOLO(
     fun predict(imageUri: Uri): YOLOResult? {
         try {
             val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, imageUri)
+            (predictor as? BasePredictor)?.includeRawMaskData = true
             val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false, isLandscape = false)
             return result.copy(
                 originalImage = bitmap,
@@ -128,6 +133,7 @@ class YOLO(
     suspend fun predict(imageUrl: String): YOLOResult? = withContext(Dispatchers.IO) {
         try {
             val bitmap = BitmapFactory.decodeStream(URL(imageUrl).openStream())
+            (predictor as? BasePredictor)?.includeRawMaskData = true
             val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false, isLandscape = false)
             return@withContext result.copy(
                 originalImage = bitmap,

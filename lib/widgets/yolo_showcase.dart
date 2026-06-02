@@ -918,6 +918,8 @@ class _ShowcaseOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final topInset = MediaQuery.paddingOf(context).top;
     return SafeArea(
+      left: false,
+      right: false,
       bottom: defaultTargetPlatform == TargetPlatform.android,
       child: LayoutBuilder(
         builder: (context, constraints) {

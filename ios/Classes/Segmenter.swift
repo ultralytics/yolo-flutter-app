@@ -58,12 +58,18 @@ class Segmenter: BasePredictor, @unchecked Sendable {
   override func processObservations(for request: VNRequest, error: Error?) {
     if let results = request.results as? [VNCoreMLFeatureValueObservation] {
       //            DispatchQueue.main.async { [self] in
-      guard results.count == 2 else { return }
+      guard results.count == 2 else {
+        isUpdating = false
+        return
+      }
       var pred: MLMultiArray
       var masks: MLMultiArray
       guard let out0 = results[0].featureValue.multiArrayValue,
         let out1 = results[1].featureValue.multiArrayValue
-      else { return }
+      else {
+        isUpdating = false
+        return
+      }
       let out0dim = checkShapeDimensions(of: out0)
       _ = checkShapeDimensions(of: out1)
       if out0dim == 4 {
@@ -108,15 +114,15 @@ class Segmenter: BasePredictor, @unchecked Sendable {
             protos: masksBox.value,
             inputWidth: self.modelInputSize.width,
             inputHeight: self.modelInputSize.height,
-            threshold: 0.5,
+            returnIndividualMasks: self.includeRawMaskData,
             originalImageSize: self.inputSize
 
-          ) as? (CGImage?, [[[Float]]])
+          ) as? (CGImage?, [[[Float]]]?)
         else {
           DispatchQueue.main.async { self.isUpdating = false }
           return
         }
-        let maskResults = Masks(masks: processedMasks.1, combinedMask: processedMasks.0)
+        let maskResults = Masks(masks: processedMasks.1 ?? [], combinedMask: processedMasks.0)
 
         let timing = self.updateTiming()
 
@@ -132,22 +138,20 @@ class Segmenter: BasePredictor, @unchecked Sendable {
 
         self.currentOnResultsListener?.on(result: result)
       }
+    } else {
+      isUpdating = false
     }
   }
 
   override func predictOnImage(image: CIImage) -> YOLOResult {
-    let requestHandler = VNImageRequestHandler(ciImage: image, options: [:])
     guard let request = visionRequest else {
       let emptyResult = YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
       return emptyResult
     }
-    let imageWidth = image.extent.width
-    let imageHeight = image.extent.height
-    self.inputSize = CGSize(width: imageWidth, height: imageHeight)
     var result = YOLOResult(orig_shape: .zero, boxes: [], speed: 0, names: labels)
 
-    do {
-      try requestHandler.perform([request])
+    let requestHandler = makeRequestHandler(for: image)
+    if perform(request, with: requestHandler, errorMessage: "YOLO Segmenter") {
       if let results = request.results as? [VNCoreMLFeatureValueObservation] {
         //                DispatchQueue.main.async { [self] in
         guard results.count == 2 else {
@@ -194,7 +198,6 @@ class Segmenter: BasePredictor, @unchecked Sendable {
             protos: masks,
             inputWidth: self.modelInputSize.width,
             inputHeight: self.modelInputSize.height,
-            threshold: 0.5,
             originalImageSize: self.inputSize
 
           ) as? (CGImage?, [[[Float]]])
@@ -214,18 +217,16 @@ class Segmenter: BasePredictor, @unchecked Sendable {
         var annotatedImage = composeImageWithMask(
           baseImage: cgImage, maskImage: combinedMask)
         let maskResults = Masks(masks: processedMasks.1, combinedMask: combinedMask)
-        let timing = updateTiming()
+        let speed = finishTiming(notify: false)
         result = YOLOResult(
           orig_shape: inputSize, boxes: boxes, masks: maskResults, annotatedImage: annotatedImage,
-          speed: timing.speed, fps: timing.fps, names: labels)
+          speed: speed, names: labels)
         if let annotated = annotatedImage, let annotatedCI = CIImage(image: annotated) {
           annotatedImage = drawYOLODetections(on: annotatedCI, result: result)
           result.annotatedImage = annotatedImage
         }
         return result
       }
-    } catch {
-      NSLog("YOLO Segmenter: %@", String(describing: error))
     }
     return result
   }

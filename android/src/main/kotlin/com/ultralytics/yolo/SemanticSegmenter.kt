@@ -69,15 +69,14 @@ class SemanticSegmenter(
         flatOutput = rtModel.run(floatInput)[0]
         val semanticMask = postProcessSemantic(origWidth, origHeight)
         val annotatedImage = drawSemanticOverlay(bitmap, semanticMask)
-        updateTiming()
-        val fpsDouble = if (t4 > 0f) (1f / t4).toDouble() else 0.0
+        val timing = finishTiming()
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
             boxes = emptyList(),
             semanticMask = semanticMask,
             annotatedImage = annotatedImage,
-            speed = elapsedMsSinceStart(),
-            fps = fpsDouble,
+            speed = timing.speedMs,
+            fps = timing.fps,
             names = labels
         )
     }

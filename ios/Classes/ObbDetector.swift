@@ -34,61 +34,58 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
   }
 
   override func processObservations(for request: VNRequest, error: Error?) {
-    if let results = request.results as? [VNCoreMLFeatureValueObservation] {
-
-      if let prediction = results.first?.featureValue.multiArrayValue {
-        let nmsResults = postProcessOBB(
-          feature: prediction,  // your MLMultiArray
-          confidenceThreshold: Float(confidenceThreshold),
-          iouThreshold: Float(iouThreshold)
-        )
-
-        var obbResults: [OBBResult] = []
-        // Apply numItemsThreshold limit
-        let limitedResults = Array(nmsResults.prefix(numItemsThreshold))
-
-        for result in limitedResults {
-          // Un-letterbox the model-input-normalized OBB back to original-frame-normalized coords (matches what
-          // detect does via inputRect). Without this, scaleFit padding offsets/scales the box. Mirrors
-          // yolo-ios-app ObbDetector.buildResults.
-          let box = inputOBB(fromModelOBB: result.box)
-          let score = result.score
-          let clsIdx = labelName(for: result.cls)
-          let obbResult = OBBResult(box: box, confidence: score, cls: clsIdx, index: result.cls)
-          obbResults.append(obbResult)
-        }
-
-        let timing = updateTiming()
-
-        var result = YOLOResult(
-          orig_shape: inputSize, boxes: [], obb: obbResults, speed: timing.speed, fps: timing.fps,
-          names: labels)
-
-        // Add original image data if available
-        if let originalImageData = self.originalImageData {
-          result.originalImage = UIImage(data: originalImageData)
-
-        }
-
-        self.currentOnResultsListener?.on(result: result)
-      }
+    guard let results = request.results as? [VNCoreMLFeatureValueObservation],
+      let prediction = results.first?.featureValue.multiArrayValue
+    else {
+      isUpdating = false
+      return
     }
+
+    let nmsResults = postProcessOBB(
+      feature: prediction,  // your MLMultiArray
+      confidenceThreshold: Float(confidenceThreshold),
+      iouThreshold: Float(iouThreshold)
+    )
+
+    var obbResults: [OBBResult] = []
+    // Apply numItemsThreshold limit
+    let limitedResults = Array(nmsResults.prefix(numItemsThreshold))
+
+    for result in limitedResults {
+      // Un-letterbox the model-input-normalized OBB back to original-frame-normalized coords (matches what
+      // detect does via inputRect). Without this, scaleFit padding offsets/scales the box. Mirrors
+      // yolo-ios-app ObbDetector.buildResults.
+      let box = inputOBB(fromModelOBB: result.box)
+      let score = result.score
+      let clsIdx = labelName(for: result.cls)
+      let obbResult = OBBResult(box: box, confidence: score, cls: clsIdx, index: result.cls)
+      obbResults.append(obbResult)
+    }
+
+    let timing = updateTiming()
+
+    var result = YOLOResult(
+      orig_shape: inputSize, boxes: [], obb: obbResults, speed: timing.speed, fps: timing.fps,
+      names: labels)
+
+    // Add original image data if available
+    if let originalImageData = self.originalImageData {
+      result.originalImage = UIImage(data: originalImageData)
+
+    }
+
+    self.currentOnResultsListener?.on(result: result)
   }
 
   override func predictOnImage(image: CIImage) -> YOLOResult {
-    let requestHandler = VNImageRequestHandler(ciImage: image, options: [:])
     guard let request = visionRequest else {
       let emptyResult = YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
       return emptyResult
     }
-    let imageWidth = image.extent.width
-    let imageHeight = image.extent.height
-    self.inputSize = CGSize(width: imageWidth, height: imageHeight)
     let result = YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
 
-    do {
-      try requestHandler.perform([request])
-
+    let requestHandler = makeRequestHandler(for: image)
+    if perform(request, with: requestHandler, errorMessage: "YOLO ObbDetector error") {
       if let results = request.results as? [VNCoreMLFeatureValueObservation] {
 
         if let prediction = results.first?.featureValue.multiArrayValue {
@@ -108,15 +105,12 @@ class ObbDetector: BasePredictor, @unchecked Sendable {
             obbResults.append(obbResult)
           }
           let annotatedImage = drawOBBsOnCIImage(ciImage: image, obbDetections: obbResults)
-          let timing = updateTiming()
           return YOLOResult(
             orig_shape: inputSize, boxes: [], masks: nil, probs: nil, keypointsList: [],
-            obb: obbResults, annotatedImage: annotatedImage, speed: timing.speed, fps: timing.fps,
+            obb: obbResults, annotatedImage: annotatedImage, speed: finishTiming(notify: false),
             originalImage: nil, names: labels)
         }
       }
-    } catch {
-      NSLog("YOLO ObbDetector error: %@", String(describing: error))
     }
     return result
   }

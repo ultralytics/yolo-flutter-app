@@ -84,6 +84,9 @@ public class BasePredictor: Predictor, @unchecked Sendable {
   /// Stream configuration for controlling what data is included in results.
   var streamConfig: YOLOStreamConfig?
 
+  /// Whether instance segmentation should materialize raw per-instance masks in addition to the display mask.
+  var includeRawMaskData: Bool = true
+
   /// Original image data captured for streaming (if enabled).
   var originalImageData: Data?
 
@@ -241,18 +244,7 @@ public class BasePredictor: Predictor, @unchecked Sendable {
         predictor.detector.featureProvider = ThresholdProvider(
           iouThreshold: seedIou, confidenceThreshold: predictor.confidenceThreshold)
         predictor.visionRequest = {
-          let request = VNCoreMLRequest(
-            model: predictor.detector,
-            completionHandler: {
-              [weak predictor] request, error in
-              guard let predictor = predictor else {
-                // The predictor was deallocated — do nothing
-                return
-              }
-              if isRealTime {
-                predictor.processObservations(for: request, error: error)
-              }
-            })
+          let request = VNCoreMLRequest(model: predictor.detector)
           request.imageCropAndScaleOption = predictor.imageCropAndScaleOption
           return request
         }()
@@ -289,46 +281,65 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     sampleBuffer: CMSampleBuffer, onResultsListener: ResultsListener?,
     onInferenceTime: InferenceTimeListener?
   ) {
-    if currentBuffer == nil, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
-      currentBuffer = pixelBuffer
-      inputSize = CGSize(
-        width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
-      currentOnResultsListener = onResultsListener
-      currentOnInferenceTimeListener = onInferenceTime
-      //            currentOnFpsRateListener = onFpsRate
+    guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+    currentOnResultsListener = onResultsListener
+    currentOnInferenceTimeListener = onInferenceTime
+    includeRawMaskData = streamConfig?.includeMasks == true
+    originalImageData =
+      streamConfig?.includeOriginalImage == true
+      ? convertPixelBufferToJPEGData(pixelBuffer)
+      : nil
 
-      /// - Tag: MappingOrientation
-      // The frame is always oriented based on the camera sensor,
-      // so in most cases Vision needs to rotate it for the model to work as expected.
-      let imageOrientation: CGImagePropertyOrientation = .up
-
-      // Capture original image data for streaming if needed
-      let originalImageData: Data? =
-        streamConfig?.includeOriginalImage == true
-        ? convertPixelBufferToJPEGData(pixelBuffer)
-        : nil
-
-      // Invoke a VNRequestHandler with that image
-      let handler = VNImageRequestHandler(
-        cvPixelBuffer: pixelBuffer, orientation: imageOrientation, options: [:])
-      self.originalImageData = originalImageData
-      t0 = CACurrentMediaTime()  // inference start
-      do {
-        if let request = visionRequest {
-          try handler.perform([request])
-        }
-      } catch {
-        NSLog("YOLO inference error: %@", String(describing: error))
-      }
-      t1 = CACurrentMediaTime() - t0  // inference dt
-
-      currentBuffer = nil
+    guard let request = visionRequest else {
+      isUpdating = false
+      return
     }
+    let handler = makeRequestHandler(for: pixelBuffer)
+    guard perform(request, with: handler, errorMessage: "Vision request failed") else {
+      isUpdating = false
+      return
+    }
+    processObservations(for: request, error: nil)
+  }
+
+  func makeRequestHandler(for image: CIImage) -> VNImageRequestHandler {
+    inputSize = image.extent.size
+    t0 = CACurrentMediaTime()
+    return VNImageRequestHandler(ciImage: image, options: [:])
+  }
+
+  func makeRequestHandler(for pixelBuffer: CVPixelBuffer) -> VNImageRequestHandler {
+    inputSize = CGSize(
+      width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
+    t0 = CACurrentMediaTime()
+    return VNImageRequestHandler(
+      cvPixelBuffer: pixelBuffer, orientation: cameraFrameOrientation, options: [:])
+  }
+
+  /// The camera output is already configured into the app's inference orientation.
+  var cameraFrameOrientation: CGImagePropertyOrientation { .up }
+
+  @discardableResult
+  func perform(_ request: VNRequest, with handler: VNImageRequestHandler, errorMessage: String)
+    -> Bool
+  {
+    do {
+      try handler.perform([request])
+      return true
+    } catch {
+      NSLog("%@: %@", errorMessage, String(describing: error))
+      return false
+    }
+  }
+
+  func finishTiming(notify: Bool = true) -> Double {
+    updateTiming(notify: notify)
+    return t1
   }
 
   /// Updates inference and FPS timing with the current frame measurements.
   @discardableResult
-  func updateTiming() -> (speed: Double, fps: Double) {
+  func updateTiming(notify: Bool = true) -> (speed: Double, fps: Double) {
     let now = CACurrentMediaTime()
     let inferenceTime = t0 > 0 ? now - t0 : t1
     t1 = inferenceTime
@@ -344,7 +355,9 @@ public class BasePredictor: Predictor, @unchecked Sendable {
     t3 = now
 
     let fps = t4 > 0 ? 1 / t4 : 0
-    currentOnInferenceTimeListener?.on(inferenceTime: t2 * 1000, fpsRate: fps)
+    if notify {
+      currentOnInferenceTimeListener?.on(inferenceTime: t2 * 1000, fpsRate: fps)
+    }
     return (speed: t2, fps: fps)
   }
 

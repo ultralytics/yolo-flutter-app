@@ -66,6 +66,7 @@ class VideoCapture: NSObject, @unchecked Sendable {
   var frameSizeCaptured = false
 
   private var currentBuffer: CVPixelBuffer?
+
   // Called with the very next sample buffer rendered through the video output; matches upstream YOLO iOS
   // `captureNextFrame`. Used by `capturePhoto` so the share-sheet image is a freshly composited live frame (not a
   // separate AVCapturePhotoOutput still that would be off-axis from the preview).
@@ -260,22 +261,22 @@ class VideoCapture: NSObject, @unchecked Sendable {
   }
 
   private func predictOnFrame(sampleBuffer: CMSampleBuffer) {
-    guard let predictor = predictor else {
-      return
+    guard let predictor = predictor, currentBuffer == nil,
+      !predictor.isUpdating,
+      let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
+    else { return }
+    currentBuffer = pixelBuffer
+    self.predictor?.isUpdating = true
+    if !frameSizeCaptured {
+      let frameWidth = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
+      let frameHeight = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
+      longSide = max(frameWidth, frameHeight)
+      shortSide = min(frameWidth, frameHeight)
+      frameSizeCaptured = true
     }
-    if currentBuffer == nil, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
-      currentBuffer = pixelBuffer
-      if !frameSizeCaptured {
-        let frameWidth = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
-        let frameHeight = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
-        longSide = max(frameWidth, frameHeight)
-        shortSide = min(frameWidth, frameHeight)
-        frameSizeCaptured = true
-      }
 
-      predictor.predict(sampleBuffer: sampleBuffer, onResultsListener: self, onInferenceTime: self)
-      currentBuffer = nil
-    }
+    predictor.predict(sampleBuffer: sampleBuffer, onResultsListener: self, onInferenceTime: self)
+    currentBuffer = nil
   }
 
   func updateVideoOrientation(orientation: AVCaptureVideoOrientation) {
@@ -374,6 +375,7 @@ extension VideoCapture: ResultsListener, InferenceTimeListener {
 
   func on(result: YOLOResult) {
     DispatchQueue.main.async {
+      defer { self.predictor?.isUpdating = false }
       self.delegate?.onPredict(result: result)
     }
   }

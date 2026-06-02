@@ -14,6 +14,42 @@ object ImageUtils {
     // Shared read-only paint for frame preprocessing.
     private val filterPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
 
+    data class LetterboxTransform(
+        val gain: Float,
+        val padX: Float,
+        val padY: Float,
+        val padRight: Float,
+        val padBottom: Float,
+        val resizedWidth: Int,
+        val resizedHeight: Int
+    )
+
+    @JvmStatic
+    fun letterboxTransform(
+        sourceWidth: Int,
+        sourceHeight: Int,
+        targetWidth: Int,
+        targetHeight: Int,
+        centerCrop: Boolean = false
+    ): LetterboxTransform? {
+        if (sourceWidth <= 0 || sourceHeight <= 0 || targetWidth <= 0 || targetHeight <= 0) return null
+
+        val scaleX = targetWidth.toFloat() / sourceWidth
+        val scaleY = targetHeight.toFloat() / sourceHeight
+        val gain = if (centerCrop) max(scaleX, scaleY) else min(scaleX, scaleY)
+        if (gain <= 0f) return null
+        val resizedWidth = (sourceWidth * gain).roundToInt()
+        val resizedHeight = (sourceHeight * gain).roundToInt()
+        val padWidth = targetWidth - resizedWidth
+        val padHeight = targetHeight - resizedHeight
+        // Match Ultralytics LetterBox leading/trailing pad rounding.
+        val padX = (padWidth / 2f - 0.1f).roundToInt().toFloat()
+        val padY = (padHeight / 2f - 0.1f).roundToInt().toFloat()
+        val padRight = (padWidth / 2f + 0.1f).roundToInt().toFloat()
+        val padBottom = (padHeight / 2f + 0.1f).roundToInt().toFloat()
+        return LetterboxTransform(gain, padX, padY, padRight, padBottom, resizedWidth, resizedHeight)
+    }
+
     /**
      * Sample to convert ImageProxy to NV21 (BYTE array), then [YuvImage] -> [Bitmap]
      */
@@ -152,20 +188,15 @@ object ImageUtils {
         val orientedHeight = if (isRotated) bitmap.width else bitmap.height
         val targetWidth = targetBitmap.width
         val targetHeight = targetBitmap.height
-        val scaleX = targetWidth.toFloat() / orientedWidth
-        val scaleY = targetHeight.toFloat() / orientedHeight
-        val scale = if (centerCrop) max(scaleX, scaleY) else min(scaleX, scaleY)
-        val scaledWidth = (orientedWidth * scale).roundToInt()
-        val scaledHeight = (orientedHeight * scale).roundToInt()
-        val left = (targetWidth - scaledWidth) / 2
-        val top = (targetHeight - scaledHeight) / 2
+        val transform = letterboxTransform(orientedWidth, orientedHeight, targetWidth, targetHeight, centerCrop)
+            ?: return targetBitmap
 
         Canvas(targetBitmap).apply {
             drawColor(Color.BLACK)
             save()
-            translate(left + scaledWidth / 2f, top + scaledHeight / 2f)
+            translate(transform.padX + transform.resizedWidth / 2f, transform.padY + transform.resizedHeight / 2f)
             rotate(degrees.toFloat())
-            scale(scale, scale)
+            scale(transform.gain, transform.gain)
             drawBitmap(bitmap, -bitmap.width / 2f, -bitmap.height / 2f, filterPaint)
             restore()
         }

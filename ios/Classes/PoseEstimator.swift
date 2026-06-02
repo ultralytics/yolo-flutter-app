@@ -57,54 +57,50 @@ class PoseEstimator: BasePredictor, @unchecked Sendable {
   }
 
   override func processObservations(for request: VNRequest, error: Error?) {
-    if let results = request.results as? [VNCoreMLFeatureValueObservation] {
-
-      if let prediction = results.first?.featureValue.multiArrayValue {
-
-        let preds = PostProcessPose(
-          prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold),
-          iouThreshold: Float(self.iouThreshold))
-        var keypointsList = [Keypoints]()
-        var boxes = [Box]()
-
-        // Apply numItemsThreshold limit
-        let limitedPreds = Array(preds.prefix(numItemsThreshold))
-
-        for person in limitedPreds {
-          boxes.append(person.box)
-          keypointsList.append(person.keypoints)
-        }
-        let timing = updateTiming()
-
-        var result = YOLOResult(
-          orig_shape: inputSize, boxes: boxes, masks: nil, probs: nil, keypointsList: keypointsList,
-          annotatedImage: nil, speed: timing.speed, fps: timing.fps, originalImage: nil,
-          names: labels)
-
-        if let originalImageData = self.originalImageData {
-          result.originalImage = UIImage(data: originalImageData)
-
-        }
-
-        self.currentOnResultsListener?.on(result: result)
-      }
+    guard let results = request.results as? [VNCoreMLFeatureValueObservation],
+      let prediction = results.first?.featureValue.multiArrayValue
+    else {
+      isUpdating = false
+      return
     }
+
+    let preds = PostProcessPose(
+      prediction: prediction, confidenceThreshold: Float(self.confidenceThreshold),
+      iouThreshold: Float(self.iouThreshold))
+    var keypointsList = [Keypoints]()
+    var boxes = [Box]()
+
+    // Apply numItemsThreshold limit
+    let limitedPreds = Array(preds.prefix(numItemsThreshold))
+
+    for person in limitedPreds {
+      boxes.append(person.box)
+      keypointsList.append(person.keypoints)
+    }
+    let timing = updateTiming()
+
+    var result = YOLOResult(
+      orig_shape: inputSize, boxes: boxes, masks: nil, probs: nil, keypointsList: keypointsList,
+      annotatedImage: nil, speed: timing.speed, fps: timing.fps, originalImage: nil,
+      names: labels)
+
+    if let originalImageData = self.originalImageData {
+      result.originalImage = UIImage(data: originalImageData)
+
+    }
+
+    self.currentOnResultsListener?.on(result: result)
   }
 
   override func predictOnImage(image: CIImage) -> YOLOResult {
-    let requestHandler = VNImageRequestHandler(ciImage: image, options: [:])
     guard let request = visionRequest else {
       let emptyResult = YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
       return emptyResult
     }
-    let imageWidth = image.extent.width
-    let imageHeight = image.extent.height
-    self.inputSize = CGSize(width: imageWidth, height: imageHeight)
     let result = YOLOResult(orig_shape: .zero, boxes: [], speed: 0, names: labels)
 
-    do {
-      try requestHandler.perform([request])
-
+    let requestHandler = makeRequestHandler(for: image)
+    if perform(request, with: requestHandler, errorMessage: "YOLO PoseEstimator error") {
       if let results = request.results as? [VNCoreMLFeatureValueObservation] {
 
         if let prediction = results.first?.featureValue.multiArrayValue {
@@ -130,15 +126,13 @@ class PoseEstimator: BasePredictor, @unchecked Sendable {
           let annotatedImage = drawPoseOnCIImage(
             ciImage: image, keypointsList: keypointsForImage, confsList: confsList,
             boundingBoxes: boxes, originalImageSize: inputSize)
-          let timing = updateTiming()
           return YOLOResult(
             orig_shape: inputSize, boxes: boxes, masks: nil, probs: nil,
-            keypointsList: keypointsList, annotatedImage: annotatedImage, speed: timing.speed,
-            fps: timing.fps, originalImage: nil, names: labels)
+            keypointsList: keypointsList, annotatedImage: annotatedImage,
+            speed: finishTiming(notify: false),
+            originalImage: nil, names: labels)
         }
       }
-    } catch {
-      NSLog("YOLO PoseEstimator error: %@", String(describing: error))
     }
     return result
   }

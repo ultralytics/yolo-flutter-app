@@ -1,3 +1,11 @@
+## 0.4.3
+
+- **Bug Fix**: Unify Android preprocessing and postprocessing geometry so OBB, detect, segment, pose, and semantic
+  overlays stay aligned across portrait and landscape rotation.
+- **Bug Fix**: Crop segment masks to detection boxes on Android and iOS, matching Ultralytics mask postprocessing.
+- **Bug Fix**: Make realtime profiling use one shared timing path so FPS and milliseconds are comparable across tasks.
+- **Bug Fix**: Keep the Android showcase bottom bar full-width in landscape mode.
+
 ## 0.4.2
 
 - **Bug Fix**: Improve Android physical camera selection so telephoto lenses remain selectable on logical multi-camera

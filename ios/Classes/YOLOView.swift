@@ -84,29 +84,24 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     if !_showOverlays {
       clearPredictionOverlays()
-      self.videoCapture.predictor.isUpdating = false
       return
     }
 
     if task == .segment || task == .semantic {
-      DispatchQueue.main.async {
-        let maskImage =
-          self.task == .segment ? result.masks?.combinedMask : result.semanticMask?.maskImage
-        if let maskImage {
+      let maskImage =
+        self.task == .segment ? result.masks?.combinedMask : result.semanticMask?.maskImage
+      if let maskImage {
+        guard let maskLayer = self.maskLayer else { return }
 
-          guard let maskLayer = self.maskLayer else { return }
+        maskLayer.isHidden = false
 
-          maskLayer.isHidden = false
-
-          // Fit the mask to the true aspect-fill image rect (from the actual frame size), not a hardcoded-ratio
-          // overlay rect, so the mask registers with the preview. Mirrors yolo-ios-app YOLOView.
-          maskLayer.frame = self.imageFrameInOverlay(for: result.orig_shape)
-          maskLayer.contents = maskImage
-
-          self.videoCapture.predictor.isUpdating = false
-        } else {
-          self.videoCapture.predictor.isUpdating = false
-        }
+        // Fit the mask to the true aspect-fill image rect (from the actual frame size), not a hardcoded-ratio
+        // overlay rect, so the mask registers with the preview. Mirrors yolo-ios-app YOLOView.
+        maskLayer.frame = self.imageFrameInOverlay(for: result.orig_shape)
+        maskLayer.contents = maskImage
+      } else {
+        maskLayer?.isHidden = true
+        maskLayer?.contents = nil
       }
     } else if task == .classify {
       self.overlayYOLOClassificationsCALayer(on: self, result: result)
@@ -1709,6 +1704,7 @@ extension YOLOView {
   /// Set streaming configuration
   public func setStreamConfig(_ config: YOLOStreamConfig?) {
     self.streamConfig = config
+    (videoCapture.predictor as? BasePredictor)?.streamConfig = config
     setupThrottlingFromConfig()
   }
 
