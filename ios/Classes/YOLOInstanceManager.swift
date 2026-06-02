@@ -3,6 +3,7 @@
 import Flutter
 import Foundation
 import UIKit
+import UltralyticsYOLO
 
 /// Manages multiple YOLO instances with unique IDs
 @MainActor
@@ -12,6 +13,14 @@ class YOLOInstanceManager {
   private var instances: [String: YOLO] = [:]
   private var loadingStates: [String: Bool] = [:]
   private var loadCompletionHandlers: [String: [(Result<YOLO, Error>) -> Void]] = [:]
+  // Strong reference held only while a model loads, keyed per-load ("<id>#<generation>") so a newer load for the
+  // same instance id cannot drop an older in-flight load's reference. The shared `UltralyticsYOLO` package's `YOLO`
+  // captures `self` weakly in its async load-completion closure, so without this it would deallocate as soon as the
+  // initializer returns and the completion would never fire (single-image load would hang, instance never stored).
+  private var pendingLoads: [String: YOLO] = [:]
+  // Monotonic per-instance load generation. Bumped when a load starts and when an instance is removed, so a
+  // completion from a superseded or disposed load is detected as stale and cannot resurrect/overwrite the instance.
+  private var loadGeneration: [String: Int] = [:]
 
   private init() {
     createInstance(instanceId: "default")
@@ -43,9 +52,9 @@ class YOLOInstanceManager {
       return
     }
 
-    // Check if loading is in progress
+    // Check if loading is in progress: coalesce onto the in-flight load.
     if loadingStates[instanceId] == true {
-      loadCompletionHandlers[instanceId]?.append({ result in
+      loadCompletionHandlers[instanceId, default: []].append({ result in
         switch result {
         case .success:
           completion(.success(()))
@@ -56,16 +65,43 @@ class YOLOInstanceManager {
       return
     }
 
-    // Start loading
+    // Start loading. Stamp this load with a fresh generation so a completion from a load that is later
+    // superseded (same id reloaded) or disposed (`removeInstance`) is detected as stale.
     loadingStates[instanceId] = true
+    let generation = (loadGeneration[instanceId] ?? 0) + 1
+    loadGeneration[instanceId] = generation
+    let pendingKey = "\(instanceId)#\(generation)"
 
     let resolvedModelPath = resolveModelPath(modelName)
 
-    // YOLO retains itself through its load-completion closure until the model finishes loading, so silencing the
-    // "Result of 'YOLO' initializer is unused" warning by binding to `_` is sufficient.
-    _ = YOLO(resolvedModelPath, task: task, useGpu: useGpu, numItemsThreshold: numItemsThreshold) {
+    // Hold a strong reference while the model loads: the shared package's `YOLO` captures `self` weakly in its async
+    // load-completion closure, so it would otherwise deallocate as soon as this initializer returns and the
+    // completion would never fire (single-image load would hang). The per-load key keeps concurrent loads of the
+    // same id from clobbering each other's reference.
+    let pendingYolo = YOLO(
+      resolvedModelPath, task: task, useGpu: useGpu, numItemsThreshold: numItemsThreshold
+    ) {
       [weak self] result in
       guard let self = self else { return }
+
+      // Release this specific load's keep-alive reference.
+      self.pendingLoads[pendingKey] = nil
+
+      // If a newer load started for this id, or the instance was disposed (`removeInstance`), while this load was
+      // in flight, this completion is stale: don't resurrect/overwrite the instance or touch the newer load's
+      // state. Resolve only this load's own caller with a cancellation so its Dart future doesn't hang.
+      guard self.loadGeneration[instanceId] == generation else {
+        completion(
+          .failure(
+            NSError(
+              domain: "YOLOInstanceManager", code: -999,
+              userInfo: [
+                NSLocalizedDescriptionKey:
+                  "Model load was superseded or the instance was disposed before it finished loading"
+              ])
+          ))
+        return
+      }
 
       self.loadingStates[instanceId] = false
 
@@ -74,7 +110,7 @@ class YOLOInstanceManager {
         self.instances[instanceId] = loadedYolo
         completion(.success(()))
 
-        // Call all pending handlers
+        // Call all coalesced handlers
         if let handlers = self.loadCompletionHandlers[instanceId] {
           for handler in handlers {
             handler(.success(loadedYolo))
@@ -84,7 +120,7 @@ class YOLOInstanceManager {
       case .failure(let error):
         completion(.failure(error))
 
-        // Call all pending handlers with error
+        // Call all coalesced handlers with error
         if let handlers = self.loadCompletionHandlers[instanceId] {
           for handler in handlers {
             handler(.failure(error))
@@ -94,6 +130,7 @@ class YOLOInstanceManager {
 
       self.loadCompletionHandlers[instanceId]?.removeAll()
     }
+    pendingLoads[pendingKey] = pendingYolo
   }
 
   /// Runs inference on a specific instance
@@ -114,28 +151,45 @@ class YOLOInstanceManager {
     let result: YOLOResult
 
     // Store original thresholds
-    let originalConfThreshold = yolo.confidenceThreshold
-    let originalIouThreshold = yolo.iouThreshold
+    let originalConfThreshold = yolo.getConfidenceThreshold() ?? 0.25
+    let originalIouThreshold = yolo.getIouThreshold() ?? 0.7
 
     // Apply custom thresholds if provided
     if let confThreshold = confidenceThreshold {
-      yolo.confidenceThreshold = confThreshold
+      yolo.setConfidenceThreshold(confThreshold)
     }
     if let iouThres = iouThreshold {
-      yolo.iouThreshold = iouThres
+      yolo.setIouThreshold(iouThres)
     }
 
     result = yolo.callAsFunction(image)
 
     // Restore original thresholds
-    yolo.confidenceThreshold = originalConfThreshold
-    yolo.iouThreshold = originalIouThreshold
+    yolo.setConfidenceThreshold(originalConfThreshold)
+    yolo.setIouThreshold(originalIouThreshold)
 
     return convertToFlutterFormat(result: result)
   }
 
   /// Removes an instance
   func removeInstance(instanceId: String) {
+    // Invalidate any in-flight load so its completion is treated as stale and cannot resurrect this instance.
+    // The in-flight load keeps its own strong reference (keyed in `pendingLoads`) until it finishes, so its
+    // original caller is still resolved (with a cancellation) by the stale-completion path rather than hanging.
+    if let generation = loadGeneration[instanceId] {
+      loadGeneration[instanceId] = generation + 1
+    }
+    // Fail any coalesced waiters now so their Dart futures don't hang on a load that will be dropped.
+    if let handlers = loadCompletionHandlers[instanceId], !handlers.isEmpty {
+      let cancelled = NSError(
+        domain: "YOLOInstanceManager", code: -999,
+        userInfo: [
+          NSLocalizedDescriptionKey: "Instance was disposed before the model finished loading"
+        ])
+      for handler in handlers {
+        handler(.failure(cancelled))
+      }
+    }
     instances.removeValue(forKey: instanceId)
     loadingStates.removeValue(forKey: instanceId)
     loadCompletionHandlers.removeValue(forKey: instanceId)
@@ -250,6 +304,28 @@ class YOLOInstanceManager {
       }
 
       if let assetPath = Bundle.main.path(forResource: fileNameWithoutExt, ofType: nil) {
+        return assetPath
+      }
+    }
+
+    // Last-resort fallback: search every loaded bundle (parity with the previously vendored
+    // loader, which checked `Bundle.allBundles` for models nested in sub-framework bundles).
+    // Only runs after every flutter_assets / main-bundle lookup above has failed, so it can
+    // never change an already-resolved path.
+    let fallbackFileName = modelPath.components(separatedBy: "/").last ?? modelPath
+    let fallbackName = fallbackFileName.components(separatedBy: ".").first ?? fallbackFileName
+    let fallbackExt =
+      fallbackFileName.contains(".") ? fallbackFileName.components(separatedBy: ".").last : nil
+    for bundle in Bundle.allBundles {
+      if let assetPath = bundle.path(forResource: fallbackFileName, ofType: nil) {
+        return assetPath
+      }
+      if let ext = fallbackExt,
+        let assetPath = bundle.path(forResource: fallbackName, ofType: ext)
+      {
+        return assetPath
+      }
+      if let assetPath = bundle.path(forResource: fallbackName, ofType: nil) {
         return assetPath
       }
     }

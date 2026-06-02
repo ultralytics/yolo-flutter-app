@@ -2,15 +2,15 @@
 
 # iOS Native Layer
 
-This directory contains the iOS implementation used by the Flutter plugin.
+This directory contains the **Flutter-specific** iOS layer of the plugin. The shared YOLO inference core (Core ML model loading, metadata parsing, and the task-specific predictors) lives in the [`UltralyticsYOLO` Swift package](https://github.com/ultralytics/yolo-ios-app) and is consumed here via `import UltralyticsYOLO`, so the plugin and the native iOS app share a single source of truth.
 
 ## What Lives Here
 
-- Core ML model loading
-- exported metadata inspection
-- camera inference for `YOLOView`
-- task-specific predictor implementations
-- method-channel hooks used by the Dart API
+- the platform view + method-channel bridge to the Dart API (`YOLOPlugin`, `YOLOInstanceManager`, `SwiftYOLOPlatformView`)
+- the real-time camera/view layer (`YOLOView`, `VideoCapture`, `YOLOCamera`, `BoundingBoxView`)
+- live-overlay drawing (`YOLOOverlayStyle`) and stream configuration (`YOLOStreamConfig`)
+
+Core ML loading, metadata inspection, and the per-task predictors come from the `UltralyticsYOLO` package — not this directory.
 
 ## Current Model Flow
 

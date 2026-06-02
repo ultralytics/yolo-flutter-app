@@ -1,3 +1,9 @@
+## 0.5.0
+
+- **Enhancement**: Build the iOS plugin on the shared Ultralytics `YOLO` Swift package so the Flutter plugin and the
+  native iOS app share a single inference core (predictors, results, NMS, and plotting), removing the duplicated iOS
+  Swift fork.
+
 ## 0.4.3
 
 - **Bug Fix**: Unify Android preprocessing and postprocessing geometry so OBB, detect, segment, pose, and semantic
