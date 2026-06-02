@@ -19,27 +19,22 @@ class SemanticSegmenter: BasePredictor, @unchecked Sendable {
   }
 
   override func predictOnImage(image: CIImage) -> YOLOResult {
-    let requestHandler = VNImageRequestHandler(ciImage: image, options: [:])
     guard let request = visionRequest else {
       return YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
     }
 
-    inputSize = CGSize(width: image.extent.width, height: image.extent.height)
-    let start = Date()
     var semanticMask: SemanticMask?
-
-    do {
-      try requestHandler.perform([request])
+    let requestHandler = makeRequestHandler(for: image)
+    if perform(request, with: requestHandler, errorMessage: "Semantic segmentation failed") {
       semanticMask = firstFeatureArray(request).flatMap { postProcessSemantic($0) }
-    } catch {
-      NSLog("Semantic segmentation failed: %@", String(describing: error))
     }
 
     var result = YOLOResult(
       orig_shape: inputSize, boxes: [], semanticMask: semanticMask,
-      speed: Date().timeIntervalSince(start), names: labels)
+      speed: 0, names: labels)
     result.annotatedImage = drawYOLOSemanticSegmentation(
       ciImage: image, semanticMask: semanticMask?.maskImage)
+    result.speed = finishTiming(notify: false)
     return result
   }
 

@@ -6,6 +6,8 @@ import android.graphics.Bitmap
 import android.graphics.Rect
 import android.graphics.RectF
 import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -50,6 +52,7 @@ abstract class BasePredictor : Predictor {
     var IOU_THRESHOLD:Float = 0.7f
     var isFrontCamera: Boolean = false
     var cameraRotationDegrees: Int? = null
+    var includeRawMaskData: Boolean = true
 
     fun close() {
         if (isInterpreterInitialized()) {
@@ -57,15 +60,22 @@ abstract class BasePredictor : Predictor {
         }
     }
 
-    protected fun updateTiming() {
+    protected data class FrameTiming(
+        val speedMs: Double,
+        val fps: Double
+    )
+
+    protected fun finishTiming(): FrameTiming {
         val now = System.nanoTime()
         val dtMs = (now - t0) / 1_000_000.0
         t2 = 0.05 * dtMs + 0.95 * t2
         t4 = 0.05 * ((now - t3) / 1e9) + 0.95 * t4
         t3 = now
+        return FrameTiming(
+            speedMs = dtMs,
+            fps = if (t4 > 0.0) 1.0 / t4 else 0.0
+        )
     }
-
-    protected fun elapsedMsSinceStart(): Double = (System.nanoTime() - t0) / 1_000_000.0
 
     protected fun labelName(index: Int): String {
         if (index < 0) return "class $index"
@@ -129,59 +139,42 @@ abstract class BasePredictor : Predictor {
     ): Pair<Float, Float> {
         val modelX = modelCoordinate(x, modelInputSize.first, outputIsNormalized)
         val modelY = modelCoordinate(y, modelInputSize.second, outputIsNormalized)
-        val transform = letterboxTransform(origWidth, origHeight) ?: return x to y
-        return (
-            ((modelX - transform.padX) / transform.gain).coerceIn(0f, origWidth.toFloat())
-        ) to (
-            ((modelY - transform.padY) / transform.gain).coerceIn(0f, origHeight.toFloat())
-        )
+        return inputPointFromModelPoint(modelX, modelY, origWidth, origHeight, clamp = true)
     }
 
     protected fun inputOBBFromModelOBB(obb: OBB, origWidth: Int, origHeight: Int): OBB {
-        val transform = letterboxTransform(origWidth, origHeight) ?: return obb
         val modelWidth = modelInputSize.first
         val modelHeight = modelInputSize.second
         val outputIsNormalized = outputCoordinatesAreNormalized(obb)
-        val cx = modelCoordinate(obb.cx, modelWidth, outputIsNormalized)
-        val cy = modelCoordinate(obb.cy, modelHeight, outputIsNormalized)
-        val w = modelCoordinate(obb.w, modelWidth, outputIsNormalized)
-        val h = modelCoordinate(obb.h, modelHeight, outputIsNormalized)
+        val modelOBB = OBB(
+            cx = modelCoordinate(obb.cx, modelWidth, outputIsNormalized),
+            cy = modelCoordinate(obb.cy, modelHeight, outputIsNormalized),
+            w = modelCoordinate(obb.w, modelWidth, outputIsNormalized),
+            h = modelCoordinate(obb.h, modelHeight, outputIsNormalized),
+            angle = obb.angle
+        )
+        val points = modelOBB.toPolygon().map { point ->
+            inputPointFromModelPoint(point.x, point.y, origWidth, origHeight, clamp = false)
+        }
+        val p0 = points[0]
+        val p1 = points[1]
+        val p2 = points[2]
+        val centerX = points.sumOf { it.first.toDouble() }.toFloat() / points.size
+        val centerY = points.sumOf { it.second.toDouble() }.toFloat() / points.size
+        val width = hypot(p1.first - p0.first, p1.second - p0.second)
+        val height = hypot(p2.first - p1.first, p2.second - p1.second)
 
         return OBB(
-            cx = ((cx - transform.padX) / transform.gain) / origWidth,
-            cy = ((cy - transform.padY) / transform.gain) / origHeight,
-            w = (w / transform.gain) / origWidth,
-            h = (h / transform.gain) / origHeight,
-            angle = obb.angle
+            cx = centerX / origWidth,
+            cy = centerY / origHeight,
+            w = width / origWidth,
+            h = height / origHeight,
+            angle = atan2(p1.second - p0.second, p1.first - p0.first)
         )
     }
 
-    private data class LetterboxTransform(
-        val gain: Float,
-        val padX: Float,
-        val padY: Float,
-        val padRight: Float,
-        val padBottom: Float
-    )
-
-    private fun letterboxTransform(origWidth: Int, origHeight: Int): LetterboxTransform? {
-        val modelWidth = modelInputSize.first.toFloat()
-        val modelHeight = modelInputSize.second.toFloat()
-        if (modelWidth <= 0f || modelHeight <= 0f || origWidth <= 0 || origHeight <= 0) return null
-
-        val gain = min(modelWidth / origWidth, modelHeight / origHeight)
-        if (gain <= 0f) return null
-        val resizedWidth = (origWidth * gain).roundToInt()
-        val resizedHeight = (origHeight * gain).roundToInt()
-        val padWidth = modelWidth - resizedWidth
-        val padHeight = modelHeight - resizedHeight
-        // Match Ultralytics LetterBox leading-pad rounding: round(d - 0.1).
-        val padX = (padWidth / 2f - 0.1f).roundToInt().toFloat()
-        val padY = (padHeight / 2f - 0.1f).roundToInt().toFloat()
-        val padRight = (padWidth / 2f + 0.1f).roundToInt().toFloat()
-        val padBottom = (padHeight / 2f + 0.1f).roundToInt().toFloat()
-        return LetterboxTransform(gain, padX, padY, padRight, padBottom)
-    }
+    private fun letterboxTransform(origWidth: Int, origHeight: Int): ImageUtils.LetterboxTransform? =
+        ImageUtils.letterboxTransform(origWidth, origHeight, modelInputSize.first, modelInputSize.second)
 
     protected fun modelMaskCropRect(maskWidth: Int, maskHeight: Int, origWidth: Int, origHeight: Int): Rect? {
         val transform = letterboxTransform(origWidth, origHeight) ?: return null
@@ -203,19 +196,40 @@ abstract class BasePredictor : Predictor {
     }
 
     private fun inputRectFromModelRect(modelRect: RectF, origWidth: Int, origHeight: Int): RectF? {
-        val transform = letterboxTransform(origWidth, origHeight) ?: return modelRect
         // Do NOT clamp to the image bounds: a partially off-frame object has a box that legitimately extends past the
         // edge, and clamping each side to [0, size] distorts it (e.g. a left edge pinned to 0 shifts the box right /
         // stretches its width). Keep the true coordinates and let the overlay clip them, matching the iOS app.
-        val left = (modelRect.left - transform.padX) / transform.gain
-        val top = (modelRect.top - transform.padY) / transform.gain
-        val right = (modelRect.right - transform.padX) / transform.gain
-        val bottom = (modelRect.bottom - transform.padY) / transform.gain
+        val leftTop = inputPointFromModelPoint(modelRect.left, modelRect.top, origWidth, origHeight, clamp = false)
+        val rightBottom = inputPointFromModelPoint(
+            modelRect.right,
+            modelRect.bottom,
+            origWidth,
+            origHeight,
+            clamp = false
+        )
+        val left = leftTop.first
+        val top = leftTop.second
+        val right = rightBottom.first
+        val bottom = rightBottom.second
         val rect = RectF(min(left, right), min(top, bottom), max(left, right), max(top, bottom))
         return rect.takeIf { it.width() > 0f && it.height() > 0f }
     }
 
-    private fun modelRectFromOutputRect(rect: RectF, outputIsNormalized: Boolean): RectF {
+    private fun inputPointFromModelPoint(
+        modelX: Float,
+        modelY: Float,
+        origWidth: Int,
+        origHeight: Int,
+        clamp: Boolean
+    ): Pair<Float, Float> {
+        val transform = letterboxTransform(origWidth, origHeight) ?: return modelX to modelY
+        val x = (modelX - transform.padX) / transform.gain
+        val y = (modelY - transform.padY) / transform.gain
+        if (!clamp) return x to y
+        return x.coerceIn(0f, origWidth.toFloat()) to y.coerceIn(0f, origHeight.toFloat())
+    }
+
+    protected fun modelRectFromOutputRect(rect: RectF, outputIsNormalized: Boolean): RectF {
         return if (outputIsNormalized) {
             RectF(
                 rect.left * modelInputSize.first,

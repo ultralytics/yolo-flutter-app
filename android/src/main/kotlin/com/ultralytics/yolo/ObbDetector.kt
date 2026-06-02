@@ -115,13 +115,13 @@ class ObbDetector(
             drawOBBsOnBitmap(bitmap, limitedDetections, origWidth, origHeight)
         }
 
-        updateTiming()
+        val timing = finishTiming()
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
             obb = limitedDetections,
             annotatedImage = annotatedImage,
-            speed = elapsedMsSinceStart(),
-            fps = if (t4 > 0) 1.0 / t4 else 0.0,
+            speed = timing.speedMs,
+            fps = timing.fps,
             names = labels
         )
     }

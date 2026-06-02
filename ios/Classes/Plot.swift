@@ -305,7 +305,7 @@ func generateCombinedMaskImage(
   protos: MLMultiArray,  // shape: [1, C, H, W]
   inputWidth: Int,
   inputHeight: Int,
-  threshold: Float = 0.5,
+  threshold: Float = 0.0,
   returnIndividualMasks: Bool = true,
   originalImageSize: CGSize? = nil
 ) -> (CGImage?, [[[Float]]]?)? {
@@ -326,6 +326,7 @@ func generateCombinedMaskImage(
   let protosPointer = protos.dataPointer.assumingMemoryBound(to: Float.self)
   let HW = maskHeight * maskWidth
   let N = detectedObjects.count
+  guard N > 0 else { return (nil, returnIndividualMasks ? [] : nil) }
 
   // 2) Prepare matrix A: (N, C) at once (number of objects x mask channels)
   var coeffsArray = [Float](repeating: 0, count: N * maskChannels)
@@ -372,31 +373,70 @@ func generateCombinedMaskImage(
   var mergedPixels = [UInt8](repeating: 0, count: HW * 4)
   let scaleX = Float(maskWidth) / Float(inputWidth)
   let scaleY = Float(maskHeight) / Float(inputHeight)
+  let maskBounds = CGRect(x: 0, y: 0, width: maskWidth, height: maskHeight)
+  let contentRect =
+    originalImageSize.flatMap {
+      maskContentRect(
+        maskWidth: maskWidth,
+        maskHeight: maskHeight,
+        inputWidth: inputWidth,
+        inputHeight: inputHeight,
+        originalImageSize: $0)
+    } ?? maskBounds
+  let outputRect = contentRect.intersection(maskBounds).integral
+  guard outputRect.width > 0, outputRect.height > 0 else { return nil }
+  let outputX = Int(outputRect.minX)
+  let outputY = Int(outputRect.minY)
+  let outputWidth = Int(outputRect.width)
+  let outputHeight = Int(outputRect.height)
+
+  // Match Ultralytics process_mask(): crop each instance mask to its detection box before returning mask data.
+  var maskBoxes: [(x1: Int, y1: Int, x2: Int, y2: Int)] = []
+  maskBoxes.reserveCapacity(N)
+  for (box, _, _, _) in detectedObjects {
+    let x1 = Int((Float(box.minX) * scaleX).rounded())
+    let y1 = Int((Float(box.minY) * scaleY).rounded())
+    let x2 = Int((Float(box.maxX) * scaleX).rounded())
+    let y2 = Int((Float(box.maxY) * scaleY).rounded())
+    maskBoxes.append(
+      (
+        x1: max(0, min(x1, maskWidth)),
+        y1: max(0, min(y1, maskHeight)),
+        x2: max(0, min(x2, maskWidth)),
+        y2: max(0, min(y2, maskHeight))
+      ))
+  }
+
+  if returnIndividualMasks {
+    for i in 0..<N {
+      let box = maskBoxes[i]
+      let startIdx = i * HW
+      for y in 0..<maskHeight {
+        let rowStart = startIdx + y * maskWidth
+        let insideY = y >= box.y1 && y < box.y2
+        for x in 0..<maskWidth where !insideY || x < box.x1 || x >= box.x2 {
+          combinedMask[rowStart + x] = 0
+        }
+      }
+    }
+  }
 
   // 8) Whether to keep individual probability maps
   var probabilityMasks: [[[Float]]]? = nil
   if returnIndividualMasks {
     probabilityMasks = Array(
       repeating: Array(
-        repeating: [Float](repeating: 0.0, count: maskWidth),
-        count: maskHeight
+        repeating: [Float](repeating: 0.0, count: outputWidth),
+        count: outputHeight
       ),
       count: N
     )
   }
 
   // 9) Compose according to sort order
-  for (originalIndex, box, classID, _) in sortedObjects {
-    // Convert boundingBox to mask coordinate system
-    let minX = Int(Float(box.minX) * scaleX)
-    let minY = Int(Float(box.minY) * scaleY)
-    let maxX = Int(Float(box.maxX) * scaleX)
-    let maxY = Int(Float(box.maxY) * scaleY)
-
-    let boxX1 = max(0, min(minX, maskWidth - 1))
-    let boxX2 = max(0, min(maxX, maskWidth - 1))
-    let boxY1 = max(0, min(minY, maskHeight - 1))
-    let boxY2 = max(0, min(maxY, maskHeight - 1))
+  for (originalIndex, _, classID, _) in sortedObjects {
+    let maskBox = maskBoxes[originalIndex]
+    guard maskBox.x1 < maskBox.x2, maskBox.y1 < maskBox.y2 else { continue }
 
     let startIdx = originalIndex * HW
 
@@ -410,8 +450,8 @@ func generateCombinedMaskImage(
     let b = UInt8(color.blue)
 
     // Pixel loop: box range only
-    for y in boxY1...boxY2 {
-      for x in boxX1...boxX2 {
+    for y in maskBox.y1..<maskBox.y2 {
+      for x in maskBox.x1..<maskBox.x2 {
         let px = y * maskWidth + x
         let maskVal = combinedMask[startIdx + px]
         if maskVal > threshold {
@@ -428,10 +468,12 @@ func generateCombinedMaskImage(
   if returnIndividualMasks, var masksArray = probabilityMasks {
     for i in 0..<N {
       let startIdx = i * HW
-      for k in 0..<HW {
-        let row = k / maskWidth
-        let col = k % maskWidth
-        masksArray[i][row][col] = combinedMask[startIdx + k]
+      for row in 0..<outputHeight {
+        let sourceRow = outputY + row
+        let rowStart = startIdx + sourceRow * maskWidth + outputX
+        for col in 0..<outputWidth {
+          masksArray[i][row][col] = combinedMask[rowStart + col]
+        }
       }
     }
     probabilityMasks = masksArray
@@ -466,28 +508,10 @@ func generateCombinedMaskImage(
 
   var outputImage = mergedCGImage
   var outputProbabilityMasks = probabilityMasks
-  if let originalImageSize,
-    let rect = maskContentRect(
-      maskWidth: maskWidth,
-      maskHeight: maskHeight,
-      inputWidth: inputWidth,
-      inputHeight: inputHeight,
-      originalImageSize: originalImageSize),
-    rect != CGRect(x: 0, y: 0, width: CGFloat(maskWidth), height: CGFloat(maskHeight)),
-    let croppedImage = mergedCGImage.cropping(to: rect)
+  if outputRect != maskBounds,
+    let croppedImage = mergedCGImage.cropping(to: outputRect)
   {
     outputImage = croppedImage
-    if let masksArray = outputProbabilityMasks {
-      let left = Int(rect.minX)
-      let top = Int(rect.minY)
-      let right = Int(rect.maxX)
-      let bottom = Int(rect.maxY)
-      outputProbabilityMasks = masksArray.map { mask in
-        (top..<bottom).map { row in
-          Array(mask[row][left..<right])
-        }
-      }
-    }
   }
 
   return (outputImage, outputProbabilityMasks)

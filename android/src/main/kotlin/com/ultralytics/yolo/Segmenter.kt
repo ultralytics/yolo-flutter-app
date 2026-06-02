@@ -110,13 +110,12 @@ class Segmenter(
             rtModel.run(floatInput)
         } catch (e: Exception) {
             Log.e("Segmenter", "Inference error: ${e.message}")
-            updateTiming()
-            val fpsDouble: Double = if (t4 > 0f) (1f / t4).toDouble() else 0.0
+            val timing = finishTiming()
             return YOLOResult(
                 origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
                 boxes = emptyList(),
-                speed = elapsedMsSinceStart(),
-                fps = fpsDouble,
+                speed = timing.speedMs,
+                fps = timing.fps,
                 names = labels
             )
         }
@@ -152,17 +151,16 @@ class Segmenter(
             maskH = maskH,
             origWidth = origWidth,
             origHeight = origHeight,
-            threshold = 0.5f
+            returnIndividualMasks = includeRawMaskData
         )
         val masks = Masks(probMasks ?: emptyList(), combinedMask)
-        updateTiming()
-        val fpsDouble: Double = if (t4 > 0f) (1f / t4).toDouble() else 0.0
+        val timing = finishTiming()
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
             masks = masks,
-            speed = elapsedMsSinceStart(),
-            fps = fpsDouble,
+            speed = timing.speedMs,
+            fps = timing.fps,
             names = labels
         )
     }
@@ -296,38 +294,64 @@ class Segmenter(
         maskH: Int,
         origWidth: Int,
         origHeight: Int,
-        threshold: Float
+        threshold: Float = 0.0f,
+        returnIndividualMasks: Boolean = false
     ): Pair<Bitmap?, List<List<List<Float>>>?> {
         if (detections.isEmpty()) return Pair(null, null)
-        val contentRect = maskContentRect(maskW, maskH, origWidth, origHeight)
+        if (maskW <= 0 || maskH <= 0 || maskC <= 0) return Pair(null, null)
+        val contentRect = modelMaskCropRect(maskW, maskH, origWidth, origHeight)
+            ?: Rect(0, 0, maskW, maskH)
         val combinedPixels = IntArray(maskW * maskH) { Color.TRANSPARENT }
-        val probabilityMasks = mutableListOf<List<List<Float>>>()
+        val probabilityMasks = if (returnIndividualMasks) mutableListOf<List<List<Float>>>() else null
+        val coeffCount = min(maskConfidenceLength, maskC)
         detections.forEach { det ->
             val color = ultralyticsColors[det.cls % ultralyticsColors.size]
-            val pm = Array(maskH) { FloatArray(maskW) }
+            val instanceMask = if (returnIndividualMasks) {
+                Array(contentRect.height()) { FloatArray(contentRect.width()) }
+            } else {
+                null
+            }
+            val maskBox = maskBoxForDetection(det.box, maskW, maskH)
+            val outputBox =
+                if (maskBox.left < maskBox.right && maskBox.top < maskBox.bottom) {
+                    Rect(
+                        max(maskBox.left, contentRect.left),
+                        max(maskBox.top, contentRect.top),
+                        min(maskBox.right, contentRect.right),
+                        min(maskBox.bottom, contentRect.bottom)
+                    )
+                } else {
+                    null
+                }
+            if (
+                outputBox == null ||
+                outputBox.left >= outputBox.right ||
+                outputBox.top >= outputBox.bottom
+            ) {
+                instanceMask?.let { mask ->
+                    probabilityMasks?.add(mask.map { it.toList() })
+                }
+                return@forEach
+            }
             // proto is HWC flat: protos[y][x][c] == protoFlat[(y * maskW + x) * maskC + c]. Walking c contiguously
             // keeps each coeff dot-product on one cache line.
-            for (y in 0 until maskH) {
+            for (y in outputBox.top until outputBox.bottom) {
                 val rowBase = y * maskW
-                for (x in 0 until maskW) {
+                for (x in outputBox.left until outputBox.right) {
                     val base = (rowBase + x) * maskC
                     var v = 0f
-                    for (c in 0 until maskConfidenceLength) {
+                    for (c in 0 until coeffCount) {
                         v += det.maskCoeffs[c] * protoFlat[base + c]
                     }
-                    pm[y][x] = v
-                }
-            }
-            for (y in 0 until maskH) {
-                for (x in 0 until maskW) {
-                    if (pm[y][x] > threshold) {
-                        combinedPixels[y * maskW + x] = color
+                    if (v > threshold) {
+                        combinedPixels[rowBase + x] = color
+                        instanceMask?.get(y - contentRect.top)?.set(x - contentRect.left, v)
                     }
                 }
             }
-            probabilityMasks.add((contentRect.top until contentRect.bottom).map { y ->
-                pm[y].copyOfRange(contentRect.left, contentRect.right).toList()
-            })
+            instanceMask?.let { mask ->
+                probabilityMasks?.add(mask.map { it.toList() })
+            }
         }
         val bmp = Bitmap.createBitmap(maskW, maskH, Bitmap.Config.ARGB_8888)
         bmp.setPixels(combinedPixels, 0, maskW, 0, 0, maskW, maskH)
@@ -350,27 +374,14 @@ class Segmenter(
         return Pair(croppedBmp, probabilityMasks)
     }
 
-    private fun maskContentRect(maskW: Int, maskH: Int, origWidth: Int, origHeight: Int): Rect {
-        // Remove prototype-space letterbox padding before masks are scaled to the original image.
-        val modelWidth = modelInputSize.first.toFloat()
-        val modelHeight = modelInputSize.second.toFloat()
-        if (modelWidth <= 0f || modelHeight <= 0f || origWidth <= 0 || origHeight <= 0) {
-            return Rect(0, 0, maskW, maskH)
-        }
-
-        val gain = min(modelWidth / origWidth, modelHeight / origHeight)
-        if (gain <= 0f) return Rect(0, 0, maskW, maskH)
-        val resizedWidth = (origWidth * gain).roundToInt()
-        val resizedHeight = (origHeight * gain).roundToInt()
-        // Match Ultralytics LetterBox leading-pad rounding: round(d - 0.1).
-        val padX = ((modelWidth - resizedWidth) / 2f - 0.1f).roundToInt()
-        val padY = ((modelHeight - resizedHeight) / 2f - 0.1f).roundToInt()
-        val scaleX = maskW / modelWidth
-        val scaleY = maskH / modelHeight
-        val left = (padX * scaleX).roundToInt().coerceIn(0, maskW - 1)
-        val top = (padY * scaleY).roundToInt().coerceIn(0, maskH - 1)
-        val right = ((padX + resizedWidth) * scaleX).roundToInt().coerceIn(left + 1, maskW)
-        val bottom = ((padY + resizedHeight) * scaleY).roundToInt().coerceIn(top + 1, maskH)
+    private fun maskBoxForDetection(outputBox: RectF, maskW: Int, maskH: Int): Rect {
+        val modelBox = modelRectFromOutputRect(outputBox, outputCoordinatesAreNormalized(outputBox))
+        val scaleX = maskW.toFloat() / modelInputSize.first
+        val scaleY = maskH.toFloat() / modelInputSize.second
+        val left = (modelBox.left * scaleX).roundToInt().coerceIn(0, maskW)
+        val top = (modelBox.top * scaleY).roundToInt().coerceIn(0, maskH)
+        val right = (modelBox.right * scaleX).roundToInt().coerceIn(0, maskW)
+        val bottom = (modelBox.bottom * scaleY).roundToInt().coerceIn(0, maskH)
         return Rect(left, top, right, bottom)
     }
 

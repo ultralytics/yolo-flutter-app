@@ -160,15 +160,13 @@ class ObjectDetector(
             }
         }
 
-        val totalMs = (System.nanoTime() - overallStartTime) / 1_000_000.0
-
-        updateTiming() // This updates t0, t1, t2, t3, t4 based on its own logic
+        val timing = finishTiming()
 
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
-            speed = totalMs, // Actual processing time in milliseconds for this frame
-            fps = if (t4 > 0.0) 1.0 / t4 else 0.0, // Smoothed FPS from BasePredictor (t4 is smoothed dt)
+            speed = timing.speedMs,
+            fps = timing.fps,
             names = labels
         )
     }

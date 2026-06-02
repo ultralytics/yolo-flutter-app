@@ -88,27 +88,19 @@ class ObjectDetector: BasePredictor, @unchecked Sendable {
   /// - Parameter image: The CIImage to analyze for object detection.
   /// - Returns: A YOLOResult containing the detected objects with bounding boxes, class labels, and confidence scores.
   override func predictOnImage(image: CIImage) -> YOLOResult {
-    let requestHandler = VNImageRequestHandler(ciImage: image, options: [:])
     guard let request = visionRequest else {
       let emptyResult = YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
       return emptyResult
     }
     var boxes = [Box]()
 
-    let imageWidth = image.extent.width
-    let imageHeight = image.extent.height
-    self.inputSize = CGSize(width: imageWidth, height: imageHeight)
-    let start = Date()
-
-    do {
-      try requestHandler.perform([request])
+    let requestHandler = makeRequestHandler(for: image)
+    if perform(request, with: requestHandler, errorMessage: "YOLO ObjectDetector error") {
       boxes = decodeBoxes(from: request)
-    } catch {
-      NSLog("YOLO ObjectDetector error: %@", String(describing: error))
     }
-    let speed = Date().timeIntervalSince(start)
-    var result = YOLOResult(orig_shape: inputSize, boxes: boxes, speed: speed, names: labels)
+    var result = YOLOResult(orig_shape: inputSize, boxes: boxes, speed: 0, names: labels)
     let annotatedImage = drawYOLODetections(on: image, result: result)
+    result.speed = finishTiming(notify: false)
     result.annotatedImage = annotatedImage
 
     return result

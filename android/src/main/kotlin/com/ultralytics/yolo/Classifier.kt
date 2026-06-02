@@ -128,13 +128,12 @@ class Classifier(
             top5Indices = top5Indices
         )
 
-        updateTiming()
-        val fpsVal = if (t4 > 0) 1.0 / t4 else 0.0
+        val timing = finishTiming()
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
             probs = probs,
-            speed = elapsedMsSinceStart(),
-            fps = fpsVal,
+            speed = timing.speedMs,
+            fps = timing.fps,
             names = labels
         )
     }

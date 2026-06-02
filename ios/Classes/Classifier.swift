@@ -51,23 +51,20 @@ class Classifier: BasePredictor, @unchecked Sendable {
   }
 
   override func predictOnImage(image: CIImage) -> YOLOResult {
-    let requestHandler = VNImageRequestHandler(ciImage: image, options: [:])
     guard let request = visionRequest else {
       return YOLOResult(orig_shape: inputSize, boxes: [], speed: 0, names: labels)
     }
 
-    self.inputSize = CGSize(width: image.extent.width, height: image.extent.height)
     var probs = Probs(top1Label: "", top5Labels: [], top1Conf: 0, top5Confs: [])
-    do {
-      try requestHandler.perform([request])
+    let requestHandler = makeRequestHandler(for: image)
+    if perform(request, with: requestHandler, errorMessage: "YOLO Classifier error") {
       probs = extractProbs(from: request)
-    } catch {
-      NSLog("YOLO Classifier error: %@", String(describing: error))
     }
 
     var result = YOLOResult(
-      orig_shape: inputSize, boxes: [], probs: probs, speed: t1, names: labels)
+      orig_shape: inputSize, boxes: [], probs: probs, speed: 0, names: labels)
     result.annotatedImage = drawYOLOClassifications(on: image, result: result)
+    result.speed = finishTiming(notify: false)
     return result
   }
 

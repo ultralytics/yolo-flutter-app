@@ -132,15 +132,14 @@ class PoseEstimator(
         val boxes = limitedDetections.map { it.box }
         val keypointsList = limitedDetections.map { it.keypoints }
 
-        updateTiming()
-        val fpsDouble: Double = if (t4 > 0) (1.0 / t4) else 0.0
+        val timing = finishTiming()
         // Pack into YOLOResult and return
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
             keypointsList = keypointsList,
-            speed = elapsedMsSinceStart(),
-            fps = fpsDouble,
+            speed = timing.speedMs,
+            fps = timing.fps,
             names = labels
         )
     }

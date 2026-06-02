@@ -237,6 +237,7 @@ class YOLOView @JvmOverloads constructor(
     // New fields for proper teardown:
     private var cameraExecutor: ExecutorService? = null
     private var imageAnalysisUseCase: ImageAnalysis? = null
+    private var targetRotation = Surface.ROTATION_0
 
     // Bumped on every camera (re)bind. A rebind path (lens snap / camera flip / resume) shuts down the old executor
     // without awaiting it, so an in-flight analyzer frame on the old thread can still be running when the new analyzer
@@ -620,6 +621,20 @@ class YOLOView @JvmOverloads constructor(
 
     // endregion
 
+    private fun syncTargetRotation() {
+        val rotation = previewView.display?.rotation ?: return
+        if (rotation == targetRotation) return
+        targetRotation = rotation
+        previewUseCase?.targetRotation = rotation
+        imageAnalysisUseCase?.targetRotation = rotation
+        imageCaptureUseCase?.targetRotation = rotation
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        syncTargetRotation()
+    }
+
     /**
      * Called when a LifecycleOwner is available for camera operations
      */
@@ -752,13 +767,17 @@ class YOLOView @JvmOverloads constructor(
                     }
                     cameraExecutor = null
 
+                    targetRotation = previewView.display?.rotation ?: Surface.ROTATION_0
+
                     previewUseCase = Preview.Builder()
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                        .setTargetRotation(targetRotation)
                         .build()
 
                     imageAnalysisUseCase = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                        .setTargetRotation(targetRotation)
                         // Ask CameraX for RGBA frames so toBitmap() is a direct buffer copy. The default YUV_420_888
                         // forced a per-frame JPEG encode@100 + decode round-trip (~100ms/frame, ~5 FPS).
                         .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
@@ -796,6 +815,7 @@ class YOLOView @JvmOverloads constructor(
                         imageCaptureUseCase = ImageCapture.Builder()
                             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                             .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                            .setTargetRotation(targetRotation)
                             .build()
 
                         camera = try {
@@ -1435,6 +1455,7 @@ class YOLOView @JvmOverloads constructor(
             }
             
             try {
+                syncTargetRotation()
                 // Get device orientation
                 val orientation = context.resources.configuration.orientation
                 val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -1450,6 +1471,7 @@ class YOLOView @JvmOverloads constructor(
                 (p as? BasePredictor)?.let { basePredictor ->
                     basePredictor.isFrontCamera = isFrontCamera
                     basePredictor.cameraRotationDegrees = rotationDegrees
+                    basePredictor.includeRawMaskData = streamConfig?.includeMasks == true
                 }
                 
                 val result = p.predict(
@@ -1605,26 +1627,38 @@ class YOLOView @JvmOverloads constructor(
             val vw = width.toFloat()
             val vh = height.toFloat()
             
-            // Get device orientation for debugging
-            val orientation = context.resources.configuration.orientation
-            val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
-            
-
             // Scale factor from camera image to view
             val scaleX = vw / iw
             val scaleY = vh / ih
             val scale = max(scaleX, scaleY)
             
 
-            val scaledW = iw * scale
-            val scaledH = ih * scale
-
-            val dx = (vw - scaledW) / 2f
-            val dy = (vh - scaledH) / 2f
-            
             // Check if using front camera
             val isFrontCamera = lensFacing == CameraSelector.LENS_FACING_FRONT
-            
+
+            val imageRect = RectF(
+                (vw - iw * scale) / 2f,
+                (vh - ih * scale) / 2f,
+                (vw + iw * scale) / 2f,
+                (vh + ih * scale) / 2f
+            )
+
+            fun mapPoint(x: Float, y: Float): PointF {
+                val px = imageRect.left + x * scale
+                val py = imageRect.top + y * scale
+                return PointF(if (isFrontCamera) vw - px else px, py)
+            }
+
+            fun mapRect(rect: RectF): RectF {
+                val topLeft = mapPoint(rect.left, rect.top)
+                val bottomRight = mapPoint(rect.right, rect.bottom)
+                return RectF(
+                    minOf(topLeft.x, bottomRight.x),
+                    minOf(topLeft.y, bottomRight.y),
+                    maxOf(topLeft.x, bottomRight.x),
+                    maxOf(topLeft.y, bottomRight.y)
+                )
+            }
 
             when (task) {
                 // ----------------------------------------
@@ -1634,34 +1668,21 @@ class YOLOView @JvmOverloads constructor(
                     for (box in result.boxes) {
                         val newColor = colorFor(box.index, box.conf)
 
-                        // Use same coordinate calculation for all orientations
-                        // since the image is now correctly oriented before inference
-                        var left = box.xywh.left * scale + dx
-                        var top = box.xywh.top * scale + dy
-                        var right = box.xywh.right * scale + dx
-                        var bottom = box.xywh.bottom * scale + dy
+                        val rect = mapRect(box.xywh)
                         // Draw at the box's true position and let the canvas clip whatever falls outside the view. Do
                         // NOT pin an edge to the bound while keeping the width — that shifts a partially off-screen box
                         // inward (a left edge clamped to 0 pushes the right edge too far right, and vice versa).
-
-                        // Flip horizontally for front camera (DETECT task)
-                        if (isFrontCamera) {
-                            val flippedLeft = vw - right
-                            val flippedRight = vw - left
-                            left = flippedLeft
-                            right = flippedRight
-                        }
 
                         paint.color = newColor
                         paint.style = Paint.Style.STROKE
                         paint.strokeWidth = BOX_LINE_WIDTH
                         canvas.drawRoundRect(
-                            left, top, right, bottom,
+                            rect.left, rect.top, rect.right, rect.bottom,
                             BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
                             paint
                         )
 
-                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, left, top, right, vw, vh)
+                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, rect.left, rect.top, rect.right, vw, vh)
                     }
                 }
                 // ----------------------------------------
@@ -1672,37 +1693,23 @@ class YOLOView @JvmOverloads constructor(
                     for (box in result.boxes) {
                         val newColor = colorFor(box.index, box.conf)
 
-                        // Draw bounding box
-                        var left   = box.xywh.left   * scale + dx
-                        var top    = box.xywh.top    * scale + dy
-                        var right  = box.xywh.right  * scale + dx
-                        var bottom = box.xywh.bottom * scale + dy
-                        
-                        // For front camera POSE, apply horizontal flip
-                        if (isFrontCamera) {
-                            // Flip horizontally
-                            val flippedLeft = vw - right
-                            val flippedRight = vw - left
-                            left = flippedLeft
-                            right = flippedRight
-                        }
+                        val rect = mapRect(box.xywh)
 
                         paint.color = newColor
                         paint.style = Paint.Style.STROKE
                         paint.strokeWidth = BOX_LINE_WIDTH
                         canvas.drawRoundRect(
-                            left, top, right, bottom,
+                            rect.left, rect.top, rect.right, rect.bottom,
                             BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
                             paint
                         )
 
-                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, left, top, right, vw, vh)
+                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, rect.left, rect.top, rect.right, vw, vh)
                     }
 
                     // Segmentation mask
                     result.masks?.combinedMask?.let { maskBitmap ->
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
-                        val dst = RectF(dx, dy, dx + scaledW, dy + scaledH)
                         val maskPaint = Paint().apply {
                             alpha = 128
                             isFilterBitmap = true
@@ -1715,10 +1722,10 @@ class YOLOView @JvmOverloads constructor(
                             canvas.translate(vw / 2f, 0f)
                             canvas.scale(-1f, 1f)
                             canvas.translate(-vw / 2f, 0f)
-                            canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
                             canvas.restore()
                         } else {
-                            canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
                         }
                     }
                 }
@@ -1728,7 +1735,6 @@ class YOLOView @JvmOverloads constructor(
                 YOLOTask.SEMANTIC -> {
                     result.semanticMask?.maskImage?.let { maskBitmap ->
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
-                        val dst = RectF(dx, dy, dx + scaledW, dy + scaledH)
                         val maskPaint = Paint().apply {
                             alpha = 128
                             isFilterBitmap = true
@@ -1739,10 +1745,10 @@ class YOLOView @JvmOverloads constructor(
                             canvas.translate(vw / 2f, 0f)
                             canvas.scale(-1f, 1f)
                             canvas.translate(-vw / 2f, 0f)
-                            canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
                             canvas.restore()
                         } else {
-                            canvas.drawBitmap(maskBitmap, src, dst, maskPaint)
+                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
                         }
                     }
                 }
@@ -1774,30 +1780,18 @@ class YOLOView @JvmOverloads constructor(
                     for (box in result.boxes) {
                         val newColor = colorFor(box.index, box.conf)
 
-                        var left   = box.xywh.left   * scale + dx
-                        var top    = box.xywh.top    * scale + dy
-                        var right  = box.xywh.right  * scale + dx
-                        var bottom = box.xywh.bottom * scale + dy
-                        
-                        // For front camera POSE, apply horizontal flip
-                        if (isFrontCamera) {
-                            // Flip horizontally
-                            val flippedLeft = vw - right
-                            val flippedRight = vw - left
-                            left = flippedLeft
-                            right = flippedRight
-                        }
+                        val rect = mapRect(box.xywh)
 
                         paint.color = newColor
                         paint.style = Paint.Style.STROKE
                         paint.strokeWidth = BOX_LINE_WIDTH
                         canvas.drawRoundRect(
-                            left, top, right, bottom,
+                            rect.left, rect.top, rect.right, rect.bottom,
                             BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
                             paint
                         )
                         
-                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, left, top, right, vw, vh)
+                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, rect.left, rect.top, rect.right, vw, vh)
                     }
 
                     // Keypoints & skeleton
@@ -1807,15 +1801,7 @@ class YOLOView @JvmOverloads constructor(
                             val kp = person.xyn[i]
                             val conf = person.conf[i]
                             if (conf > 0.25f) {
-                                val pxCam = kp.first * iw
-                                val pyCam = kp.second * ih
-                                var px = pxCam * scale + dx
-                                var py = pyCam * scale + dy
-                                
-                                // For front camera POSE, apply horizontal flip
-                                if (isFrontCamera) {
-                                    px = vw - px  // Flip horizontally
-                                }
+                                val point = mapPoint(kp.first * iw, kp.second * ih)
 
                                 val colorIdx = if (i < kptColorIndices.size) kptColorIndices[i] else 0
                                 val rgbArray = posePalette[colorIdx % posePalette.size]
@@ -1826,9 +1812,9 @@ class YOLOView @JvmOverloads constructor(
                                     rgbArray[2].toInt().coerceIn(0,255)
                                 )
                                 paint.style = Paint.Style.FILL
-                                canvas.drawCircle(px, py, 8f, paint)
+                                canvas.drawCircle(point.x, point.y, 8f, paint)
 
-                                points[i] = PointF(px, py)
+                                points[i] = point
                             }
                         }
 
@@ -1866,17 +1852,7 @@ class YOLOView @JvmOverloads constructor(
                         paint.strokeWidth = BOX_LINE_WIDTH
 
                         // Draw rotated rectangle (polygon) using path
-                        val polygon = obbRes.box.toPolygon(iw, ih).map { pt ->
-                            var x = pt.x * scaledW + dx
-                            val y = pt.y * scaledH + dy
-                            
-                            // Flip horizontally for front camera
-                            if (isFrontCamera) {
-                                x = vw - x
-                            }
-                            
-                            PointF(x, y)
-                        }
+                        val polygon = obbRes.box.toPolygon(iw, ih).map { pt -> mapPoint(pt.x * iw, pt.y * ih) }
                         if (polygon.size >= 4) {
                             val path = Path().apply {
                                 moveTo(polygon[0].x, polygon[0].y)
