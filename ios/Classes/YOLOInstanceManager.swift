@@ -13,6 +13,10 @@ class YOLOInstanceManager {
   private var instances: [String: YOLO] = [:]
   private var loadingStates: [String: Bool] = [:]
   private var loadCompletionHandlers: [String: [(Result<YOLO, Error>) -> Void]] = [:]
+  // Strong reference held only while a model loads. The shared `UltralyticsYOLO` package's `YOLO` captures `self`
+  // weakly in its async load-completion closure, so without this it would deallocate as soon as the initializer
+  // returns and the completion would never fire (single-image load would hang, instance never stored).
+  private var pendingLoads: [String: YOLO] = [:]
 
   private init() {
     createInstance(instanceId: "default")
@@ -62,12 +66,16 @@ class YOLOInstanceManager {
 
     let resolvedModelPath = resolveModelPath(modelName)
 
-    // YOLO retains itself through its load-completion closure until the model finishes loading, so silencing the
-    // "Result of 'YOLO' initializer is unused" warning by binding to `_` is sufficient.
-    _ = YOLO(resolvedModelPath, task: task, useGpu: useGpu, numItemsThreshold: numItemsThreshold) {
+    // Hold a strong reference while the model loads: the shared package's `YOLO` captures `self` weakly in its async
+    // load-completion closure, so it would otherwise deallocate as soon as this initializer returns and the
+    // completion would never fire (single-image load would hang).
+    let pendingYolo = YOLO(
+      resolvedModelPath, task: task, useGpu: useGpu, numItemsThreshold: numItemsThreshold
+    ) {
       [weak self] result in
       guard let self = self else { return }
 
+      self.pendingLoads[instanceId] = nil
       self.loadingStates[instanceId] = false
 
       switch result {
@@ -95,6 +103,7 @@ class YOLOInstanceManager {
 
       self.loadCompletionHandlers[instanceId]?.removeAll()
     }
+    pendingLoads[instanceId] = pendingYolo
   }
 
   /// Runs inference on a specific instance

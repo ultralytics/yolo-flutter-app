@@ -381,6 +381,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         basePredictor.setIouThreshold(iou: Double(sliderIoU.value))
         basePredictor.setNumItemsThreshold(numItems: Int(sliderNumItems.value))
         basePredictor.capturesOriginalImage = self.streamConfig?.includeOriginalImage == true
+        basePredictor.capturesInstanceMasks = self.streamConfig?.includeMasks == true
       }
 
       self.cachePredictor(predictor, forKey: cacheKey)
@@ -408,6 +409,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         basePredictor.setIouThreshold(iou: Double(sliderIoU.value))
         basePredictor.setNumItemsThreshold(numItems: Int(sliderNumItems.value))
         basePredictor.capturesOriginalImage = self.streamConfig?.includeOriginalImage == true
+        basePredictor.capturesInstanceMasks = self.streamConfig?.includeMasks == true
       }
       handleSuccess(cached)
       return
@@ -1658,6 +1660,8 @@ extension YOLOView {
     self.streamConfig = config
     (videoCapture.predictor as? BasePredictor)?.capturesOriginalImage =
       config?.includeOriginalImage == true
+    (videoCapture.predictor as? BasePredictor)?.capturesInstanceMasks =
+      config?.includeMasks == true
     setupThrottlingFromConfig()
   }
 
