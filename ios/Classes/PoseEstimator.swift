@@ -128,7 +128,8 @@ class PoseEstimator: BasePredictor, @unchecked Sendable {
             boundingBoxes: boxes, originalImageSize: inputSize)
           return YOLOResult(
             orig_shape: inputSize, boxes: boxes, masks: nil, probs: nil,
-            keypointsList: keypointsList, annotatedImage: annotatedImage, speed: finishTiming(notify: false),
+            keypointsList: keypointsList, annotatedImage: annotatedImage,
+            speed: finishTiming(notify: false),
             originalImage: nil, names: labels)
         }
       }
