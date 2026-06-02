@@ -75,6 +75,21 @@ class YOLOInstanceManager {
       [weak self] result in
       guard let self = self else { return }
 
+      // If the instance was disposed (`removeInstance`) while this load was still in flight,
+      // `loadingStates[instanceId]` was removed and reads `nil`. Drop the result instead of
+      // resurrecting the disposed instance / retaining the loaded model in `instances`, and
+      // resolve the pending caller with a cancellation so its Dart future doesn't hang.
+      guard self.loadingStates[instanceId] == true else {
+        self.pendingLoads[instanceId] = nil
+        completion(
+          .failure(
+            NSError(
+              domain: "YOLOInstanceManager", code: -999,
+              userInfo: [NSLocalizedDescriptionKey: "Instance was disposed before the model finished loading"])
+          ))
+        return
+      }
+
       self.pendingLoads[instanceId] = nil
       self.loadingStates[instanceId] = false
 
@@ -260,6 +275,27 @@ class YOLOInstanceManager {
       }
 
       if let assetPath = Bundle.main.path(forResource: fileNameWithoutExt, ofType: nil) {
+        return assetPath
+      }
+    }
+
+    // Last-resort fallback: search every loaded bundle (parity with the previously vendored
+    // loader, which checked `Bundle.allBundles` for models nested in sub-framework bundles).
+    // Only runs after every flutter_assets / main-bundle lookup above has failed, so it can
+    // never change an already-resolved path.
+    let fallbackFileName = modelPath.components(separatedBy: "/").last ?? modelPath
+    let fallbackName = fallbackFileName.components(separatedBy: ".").first ?? fallbackFileName
+    let fallbackExt = fallbackFileName.contains(".") ? fallbackFileName.components(separatedBy: ".").last : nil
+    for bundle in Bundle.allBundles {
+      if let assetPath = bundle.path(forResource: fallbackFileName, ofType: nil) {
+        return assetPath
+      }
+      if let ext = fallbackExt,
+        let assetPath = bundle.path(forResource: fallbackName, ofType: ext)
+      {
+        return assetPath
+      }
+      if let assetPath = bundle.path(forResource: fallbackName, ofType: nil) {
         return assetPath
       }
     }

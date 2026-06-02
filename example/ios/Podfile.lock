@@ -28,9 +28,12 @@ DEPENDENCIES:
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - ultralytics_yolo (from `.symlinks/plugins/ultralytics_yolo/ios`)
-  - UltralyticsYOLO (from `https://github.com/ultralytics/yolo-ios-app.git`, tag `v8.9.2`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
   - wakelock_plus (from `.symlinks/plugins/wakelock_plus/ios`)
+
+SPEC REPOS:
+  trunk:
+    - UltralyticsYOLO
 
 EXTERNAL SOURCES:
   Flutter:
@@ -47,18 +50,10 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   ultralytics_yolo:
     :path: ".symlinks/plugins/ultralytics_yolo/ios"
-  UltralyticsYOLO:
-    :git: https://github.com/ultralytics/yolo-ios-app.git
-    :tag: v8.9.2
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
   wakelock_plus:
     :path: ".symlinks/plugins/wakelock_plus/ios"
-
-CHECKOUT OPTIONS:
-  UltralyticsYOLO:
-    :git: https://github.com/ultralytics/yolo-ios-app.git
-    :tag: v8.9.2
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
@@ -72,6 +67,6 @@ SPEC CHECKSUMS:
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
 
-PODFILE CHECKSUM: 20188b5b1e2b2014be65b3108f3cc6e50fb42a60
+PODFILE CHECKSUM: c1f9b04c4f336239018b20f9d77f52962a803e4a
 
 COCOAPODS: 1.16.2
