@@ -14,7 +14,7 @@ PODS:
   - ultralytics_yolo (0.5.0):
     - Flutter
     - UltralyticsYOLO (~> 8.9)
-  - UltralyticsYOLO (8.9.0)
+  - UltralyticsYOLO (8.9.1)
   - url_launcher_ios (0.0.1):
     - Flutter
   - wakelock_plus (0.0.1):
@@ -28,7 +28,7 @@ DEPENDENCIES:
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - ultralytics_yolo (from `.symlinks/plugins/ultralytics_yolo/ios`)
-  - UltralyticsYOLO (from `https://github.com/ultralytics/yolo-ios-app.git`, branch `glenn/shared-yolo-core`)
+  - UltralyticsYOLO (from `https://github.com/ultralytics/yolo-ios-app.git`, tag `v8.9.1`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
   - wakelock_plus (from `.symlinks/plugins/wakelock_plus/ios`)
 
@@ -48,8 +48,8 @@ EXTERNAL SOURCES:
   ultralytics_yolo:
     :path: ".symlinks/plugins/ultralytics_yolo/ios"
   UltralyticsYOLO:
-    :branch: glenn/shared-yolo-core
     :git: https://github.com/ultralytics/yolo-ios-app.git
+    :tag: v8.9.1
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
   wakelock_plus:
@@ -57,8 +57,8 @@ EXTERNAL SOURCES:
 
 CHECKOUT OPTIONS:
   UltralyticsYOLO:
-    :commit: 132fcd56e7715ab33b46c8006fc45f20b0d982b2
     :git: https://github.com/ultralytics/yolo-ios-app.git
+    :tag: v8.9.1
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
@@ -68,10 +68,10 @@ SPEC CHECKSUMS:
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   ultralytics_yolo: 21d6c4c32c26e70557590180edddd72b24c79be7
-  UltralyticsYOLO: 14c9c8ca7805edd766ab1403b0489f989ada2701
+  UltralyticsYOLO: cb7304fc32fd813872d8074c327816cef4c53d8a
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
 
-PODFILE CHECKSUM: e0edad05afdcf1f2b555739a13a3daca0755d6be
+PODFILE CHECKSUM: bd9cb2f252245a5a4775d5b3c0a70acaf6e9cfc8
 
 COCOAPODS: 1.16.2
