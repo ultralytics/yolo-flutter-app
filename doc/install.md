@@ -178,7 +178,7 @@ Android inference runs on LiteRT 2.x via `CompiledModel`, which automatically tr
 YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
 
-Keep `useGpu: true` for the automatic LiteRT GPU -> CPU ladder. See the [Performance Guide](performance.md) and [Performance Record](../docs/performance.md) for the current device results.
+Keep `useGpu: true` for the automatic LiteRT GPU -> CPU ladder. See the [Performance Guide](performance.md) for the current device results.
 
 You can also restrict native ABIs:
 
