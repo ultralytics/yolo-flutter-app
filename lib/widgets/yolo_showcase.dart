@@ -65,7 +65,6 @@ class YOLOShowcase extends StatefulWidget {
 
 class _YOLOShowcaseState extends State<YOLOShowcase> {
   static const _prefsTaskKey = 'ultralytics_yolo.showcase.task';
-  static const _prefsSizeKey = 'ultralytics_yolo.showcase.size';
 
   late YOLOViewController _controller;
   bool _ownsController = false;
@@ -208,18 +207,15 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   Future<void> _bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     final storedTask = prefs.getString(_prefsTaskKey);
-    final storedSize = prefs.getString(_prefsSizeKey);
     if (mounted) {
       setState(() {
         if (storedTask != null) {
           final parsed = YOLOTaskParsing.tryParse(storedTask);
           if (parsed != null) _currentTask = parsed;
         }
-        if (storedSize != null && _allSizes.contains(storedSize)) {
-          _currentSize = storedSize;
-        }
-        // Clamp the restored size to whatever the resolver actually publishes for the active platform. Otherwise we'd
-        // hand `YOLOView` a `_currentModelId` that 404s on first launch before the chip even renders.
+        // The model size always starts at nano (matches the native iOS app) and is never restored from prefs.
+        // Clamp to whatever the resolver actually publishes for the active platform so we never hand `YOLOView`
+        // a `_currentModelId` that 404s on first launch before the chip even renders.
         _currentSize = _clampSizeToSupported(_currentSize, _currentTask);
       });
     }
@@ -336,11 +332,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     await prefs.setString(_prefsTaskKey, task.name);
   }
 
-  Future<void> _persistSize(String size) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsSizeKey, size);
-  }
-
   /// `YOLOView` confirms a model is actually loaded (initial load or a successful in-place switch). Record the loaded
   /// model's identity (not the possibly-already-changed optimistic selection) as the "running" baseline, so a later
   /// failed switch reverts to a model that truly loaded.
@@ -361,7 +352,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         _runningTask = loadedTask;
         _runningSize = loadedSize;
         unawaited(_persistTask(loadedTask));
-        unawaited(_persistSize(loadedSize));
       }
     });
     _restoreInferenceAfterModelSwitch();
@@ -412,7 +402,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   void _onTaskChanged(YOLOTask task) {
     if (task == _currentTask) return;
     HapticFeedback.selectionClick();
-    final targetSize = _clampSizeToSupported(_currentSize, task);
+    // Match the native iOS app: switching tasks always resets the model size to nano (the smallest/first size)
+    // rather than carrying over the previously selected size.
+    final targetSize = _clampSizeToSupported('n', task);
     YOLOModelManager.clearDownloadCancellation(
       _composeModelId(task: task, size: targetSize),
     );
