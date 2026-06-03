@@ -1,3 +1,10 @@
+## 0.5.1
+
+- **Feature**: Expose camera torch control on `YOLOViewController` with `toggleTorch()` and an `isTorchEnabled`
+  getter, and surface a torch toggle next to the zoom controls in `YOLOShowcase`.
+- **Enhancement**: Default the `YOLOShowcase` model size to nano on launch and when switching tasks, matching the
+  native iOS app's behavior.
+
 ## 0.5.0
 
 - **Enhancement**: Build the iOS plugin on the shared Ultralytics `YOLO` Swift package so the Flutter plugin and the

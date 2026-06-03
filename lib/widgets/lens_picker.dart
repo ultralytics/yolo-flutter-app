@@ -24,40 +24,65 @@ class LensPicker extends StatelessWidget {
   /// Invoked when the user taps a lens chip.
   final ValueChanged<LensInfo> onLensSelected;
 
+  /// Optional control rendered immediately to the right of the lens pill (e.g. a torch toggle), sharing the same
+  /// centered row so it sits directly next to the zoom options.
+  final Widget? trailing;
+
   const LensPicker({
     super.key,
     required this.lenses,
     required this.currentZoomFactor,
     required this.onLensSelected,
+    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (lenses.isEmpty) return const SizedBox.shrink();
+    final pill = _pill(context);
+    if (pill == null && trailing == null) return const SizedBox.shrink();
+    if (trailing == null) return Center(child: pill);
+    if (pill == null) return Center(child: trailing);
+    // Keep the lens pill centered on screen: balance the trailing control (torch) on the right with an invisible
+    // copy of equal width on the left, so the zoom options stay centered while the torch sits directly next to them.
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Opacity(opacity: 0, child: IgnorePointer(child: trailing)),
+          const SizedBox(width: 6),
+          pill,
+          const SizedBox(width: 6),
+          trailing!,
+        ],
+      ),
+    );
+  }
+
+  /// The lens pill itself (single chip or sliding segmented control), un-centered; `null` when there are no lenses.
+  Widget? _pill(BuildContext context) {
+    if (lenses.isEmpty) return null;
     final selected = _closestLens(lenses, currentZoomFactor);
     if (lenses.length == 1) {
-      return Center(
-        child: Semantics(
-          button: true,
-          selected: true,
-          label: selected.label.isNotEmpty
-              ? selected.label
-              : '${_formatZoom(selected)}x zoom',
-          child: GestureDetector(
-            onTap: () => onLensSelected(selected),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.38),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-              child: Text(
-                _formatZoom(selected),
-                style: const TextStyle(
-                  color: CupertinoColors.systemYellow,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
+      return Semantics(
+        button: true,
+        selected: true,
+        label: selected.label.isNotEmpty
+            ? selected.label
+            : '${_formatZoom(selected)}x zoom',
+        child: GestureDetector(
+          onTap: () => onLensSelected(selected),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.38),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+            child: Text(
+              _formatZoom(selected),
+              style: const TextStyle(
+                color: CupertinoColors.systemYellow,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -65,50 +90,48 @@ class LensPicker extends StatelessWidget {
       );
     }
 
-    // Content-hug + centered (NOT full-width) — a compact pill like the iOS app, not a screen-wide bar.
-    return Center(
-      child: CupertinoSlidingSegmentedControl<double>(
-        groupValue: selected.zoomFactor,
-        backgroundColor: Colors.black.withValues(alpha: 0.38),
-        thumbColor: Colors.white.withValues(alpha: 0.18),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-        onValueChanged: (zoom) {
-          if (zoom == null) return;
-          final picked = lenses.firstWhere(
-            (l) => l.zoomFactor == zoom,
-            orElse: () => selected,
-          );
-          onLensSelected(picked);
-        },
-        children: {
-          for (final lens in lenses)
-            lens.zoomFactor: Semantics(
-              // Name each chip for screen readers (the bare `0.5`/`1`/`2` glyphs are ambiguous out of context) and
-              // expose its selected state. Visuals are unchanged.
-              button: true,
-              selected: lens.zoomFactor == selected.zoomFactor,
-              label: lens.label.isNotEmpty
-                  ? lens.label
-                  : '${_formatZoom(lens)}x zoom',
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Text(
-                  _formatZoom(lens),
-                  style: TextStyle(
-                    // systemYellow when selected; white otherwise — matches the iOS reference exactly.
-                    color: lens.zoomFactor == selected.zoomFactor
-                        ? CupertinoColors.systemYellow
-                        : Colors.white,
-                    fontSize: 13,
-                    fontWeight: lens.zoomFactor == selected.zoomFactor
-                        ? FontWeight.w700
-                        : FontWeight.w600,
-                  ),
+    // Content-hug pill like the iOS app, not a screen-wide bar.
+    return CupertinoSlidingSegmentedControl<double>(
+      groupValue: selected.zoomFactor,
+      backgroundColor: Colors.black.withValues(alpha: 0.38),
+      thumbColor: Colors.white.withValues(alpha: 0.18),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+      onValueChanged: (zoom) {
+        if (zoom == null) return;
+        final picked = lenses.firstWhere(
+          (l) => l.zoomFactor == zoom,
+          orElse: () => selected,
+        );
+        onLensSelected(picked);
+      },
+      children: {
+        for (final lens in lenses)
+          lens.zoomFactor: Semantics(
+            // Name each chip for screen readers (the bare `0.5`/`1`/`2` glyphs are ambiguous out of context) and
+            // expose its selected state. Visuals are unchanged.
+            button: true,
+            selected: lens.zoomFactor == selected.zoomFactor,
+            label: lens.label.isNotEmpty
+                ? lens.label
+                : '${_formatZoom(lens)}x zoom',
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Text(
+                _formatZoom(lens),
+                style: TextStyle(
+                  // systemYellow when selected; white otherwise — matches the iOS reference exactly.
+                  color: lens.zoomFactor == selected.zoomFactor
+                      ? CupertinoColors.systemYellow
+                      : Colors.white,
+                  fontSize: 13,
+                  fontWeight: lens.zoomFactor == selected.zoomFactor
+                      ? FontWeight.w700
+                      : FontWeight.w600,
                 ),
               ),
             ),
-        },
-      ),
+          ),
+      },
     );
   }
 

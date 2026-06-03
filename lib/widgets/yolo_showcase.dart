@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:async';
+import 'package:flutter/cupertino.dart' show CupertinoIcons, CupertinoColors;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1101,71 +1102,78 @@ class _ShowcaseOverlay extends StatelessWidget {
   }
 
   Widget _zoomLabel() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        ValueListenableBuilder<double>(
-          valueListenable: zoom,
-          builder: (context, z, _) => ValueListenableBuilder<String>(
-            valueListenable: lensLabel,
-            builder: (context, label, _) =>
-                ZoomIndicator(currentZoom: z, lensLabel: label),
-          ),
-        ),
-        // Torch state note, styled like the zoom HUD and sitting above the torch button on the right.
-        if (isTorchOn)
-          const Positioned(
-            right: 0,
-            bottom: 0,
-            child: Text(
-              'Torch on',
-              style: TextStyle(
-                color: Colors.amber,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-      ],
+    return ValueListenableBuilder<double>(
+      valueListenable: zoom,
+      builder: (context, z, _) => ValueListenableBuilder<String>(
+        valueListenable: lensLabel,
+        builder: (context, label, _) =>
+            ZoomIndicator(currentZoom: z, lensLabel: label),
+      ),
     );
   }
 
   Widget _lensPicker() {
-    // Lens "camera tabs" stay centered; the torch toggle sits to their right.
-    return Stack(
-      alignment: Alignment.center,
+    return ValueListenableBuilder<double>(
+      valueListenable: zoom,
+      builder: (context, z, _) => LensPicker(
+        lenses: lenses,
+        currentZoomFactor: z,
+        onLensSelected: onLensSelected,
+        trailing: _torchControl(),
+      ),
+    );
+  }
+
+  /// Torch chip plus its "Torch on" note to the right. The note's space is reserved (shown/hidden in place) so
+  /// toggling the torch never shifts the chip or the centered zoom options.
+  Widget _torchControl() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        ValueListenableBuilder<double>(
-          valueListenable: zoom,
-          builder: (context, z, _) => LensPicker(
-            lenses: lenses,
-            currentZoomFactor: z,
-            onLensSelected: onLensSelected,
-          ),
-        ),
-        Positioned(
-          right: 0,
-          child: Semantics(
-            button: true,
-            label: isTorchOn ? 'Turn torch off' : 'Turn torch on',
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onToggleTorch,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                child: Icon(
-                  isTorchOn ? Icons.flashlight_on : Icons.flashlight_off,
-                  color: isTorchOn ? Colors.amber : Colors.white,
-                  size: 26,
-                ),
-              ),
+        _torchChip(),
+        const SizedBox(width: 6),
+        Visibility(
+          visible: isTorchOn,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: const Text(
+            'Torch on',
+            style: TextStyle(
+              color: CupertinoColors.systemYellow,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// Torch toggle styled as a chip the same size as the lens (zoom) chips, sitting directly next to them. Uses the
+  /// native lightning glyph (Cupertino has no flashlight icon).
+  Widget _torchChip() {
+    return Semantics(
+      button: true,
+      label: isTorchOn ? 'Turn torch off' : 'Turn torch on',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onToggleTorch,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.38),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Icon(
+            isTorchOn
+                ? CupertinoIcons.bolt_fill
+                : CupertinoIcons.bolt_slash_fill,
+            color: isTorchOn ? CupertinoColors.systemYellow : Colors.white,
+            size: 17,
+          ),
+        ),
+      ),
     );
   }
 
