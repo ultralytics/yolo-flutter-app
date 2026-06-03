@@ -288,13 +288,13 @@ YOLOView(
 
 `YOLOView` no longer accepts `showOverlays`, `overlayTheme`, or `showNativeUI`. Camera overlay drawing is native-only, and package-provided controls moved out of `YOLOView`.
 
-| Removed API                                | Use instead                                                                                          |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `YOLOOverlay`, `YOLOOverlayTheme`          | Native `YOLOView` overlays, or raw `onResult`/`YOLO.predict()` data for fully custom rendering.      |
-| `YOLOControls`                             | `YOLOShowcase` for the full UI, or exported widgets such as `TaskSegmentedControl` and `LensPicker`. |
-| `YOLOView.showNativeUI`                    | `YOLOShowcase` for built-in controls; bare `YOLOView` plus your own Flutter controls for custom UI.  |
-| `YOLOView.showOverlays`, `overlayTheme`    | No constructor replacement. Native camera overlays are not themed from Dart; toggle them with `YOLOViewController.setShowOverlays()`. |
-| `setShowUIControls()`                      | Own the surrounding Flutter controls. `setShowOverlays()` is still available on `YOLOViewController`; `capturePhoto(withOverlays: false)` only affects captures. |
+| Removed API                             | Use instead                                                                                                                                                      |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `YOLOOverlay`, `YOLOOverlayTheme`       | Native `YOLOView` overlays, or raw `onResult`/`YOLO.predict()` data for fully custom rendering.                                                                  |
+| `YOLOControls`                          | `YOLOShowcase` for the full UI, or exported widgets such as `TaskSegmentedControl` and `LensPicker`.                                                             |
+| `YOLOView.showNativeUI`                 | `YOLOShowcase` for built-in controls; bare `YOLOView` plus your own Flutter controls for custom UI.                                                              |
+| `YOLOView.showOverlays`, `overlayTheme` | No constructor replacement. Native camera overlays are not themed from Dart; toggle them with `YOLOViewController.setShowOverlays()`.                            |
+| `setShowUIControls()`                   | Own the surrounding Flutter controls. `setShowOverlays()` is still available on `YOLOViewController`; `capturePhoto(withOverlays: false)` only affects captures. |
 
 ---
 
@@ -601,15 +601,15 @@ YOLOShowcase(
 
 #### Constructor Parameters
 
-| Parameter          | Type                              | Required | Default           | Description                                                          |
-| ------------------ | --------------------------------- | -------- | ----------------- | -------------------------------------------------------------------- |
-| `initialTask`      | `YOLOTask`                        | ❌       | `YOLOTask.detect` | Task to load on first launch (overridden by the stored preference)   |
-| `initialModelSize` | `String`                          | ❌       | `'n'`             | Model size (`n/s/m/l/x`) to load on first launch                     |
-| `showSemanticTask` | `bool`                            | ❌       | `true`            | When `false`, hides the Semantic task chip                           |
-| `onCapture`        | `void Function(Uint8List bytes)?` | ❌       | `null`            | Callback invoked with the composited JPEG bytes after capture        |
-| `controller`       | `YOLOViewController?`             | ❌       | `null`            | Optional controller; one is created internally if `null`             |
-| `theme`            | `ThemeData?`                      | ❌       | `null`            | Optional theme override; defaults to dark Material 3                 |
-| `versionLabel`     | `String?`                         | ❌       | `null`            | Optional app version label shown in the bottom-left; hidden if `null`|
+| Parameter          | Type                              | Required | Default           | Description                                                           |
+| ------------------ | --------------------------------- | -------- | ----------------- | --------------------------------------------------------------------- |
+| `initialTask`      | `YOLOTask`                        | ❌       | `YOLOTask.detect` | Task to load on first launch (overridden by the stored preference)    |
+| `initialModelSize` | `String`                          | ❌       | `'n'`             | Model size (`n/s/m/l/x`) to load on first launch                      |
+| `showSemanticTask` | `bool`                            | ❌       | `true`            | When `false`, hides the Semantic task chip                            |
+| `onCapture`        | `void Function(Uint8List bytes)?` | ❌       | `null`            | Callback invoked with the composited JPEG bytes after capture         |
+| `controller`       | `YOLOViewController?`             | ❌       | `null`            | Optional controller; one is created internally if `null`              |
+| `theme`            | `ThemeData?`                      | ❌       | `null`            | Optional theme override; defaults to dark Material 3                  |
+| `versionLabel`     | `String?`                         | ❌       | `null`            | Optional app version label shown in the bottom-left; hidden if `null` |
 
 Import once and get the full UI:
 
