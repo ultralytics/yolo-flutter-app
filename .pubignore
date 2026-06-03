@@ -43,6 +43,7 @@ hello_yolo/
 docs/
 store-assets/
 CLAUDE.md
+DOCS_RAG_AUDIT_PROMPT.md
 fix_summary.md
 MISSING_FEATURES.md
 PUBLISH_CHECKLIST.md

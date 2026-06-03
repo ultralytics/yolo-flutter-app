@@ -268,8 +268,7 @@ Version 0.4.0 removes the old Dart-side overlay/control layer. Camera detections
 | **[Model Guide](doc/models.md)**              | Official models, custom models, export flow |
 | **[Usage Guide](doc/usage.md)**               | Common app patterns and examples            |
 | **[API Reference](doc/api.md)**               | Full API surface                            |
-| **[Performance Guide](doc/performance.md)**   | Tuning and performance controls             |
-| **[Performance Record](docs/performance.md)** | On-device benchmark record                  |
+| **[Performance Guide](doc/performance.md)**   | Tuning controls and on-device benchmark record |
 | **[Troubleshooting](doc/troubleshooting.md)** | Common problems and fixes                   |
 
 ## 🤝 Community & Support
