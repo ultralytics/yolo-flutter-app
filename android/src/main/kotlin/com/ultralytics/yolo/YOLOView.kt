@@ -487,12 +487,16 @@ class YOLOView @JvmOverloads constructor(
         }
     }
 
-    fun setTorchMode(enabled: Boolean) {
+    // Turns the torch on/off and returns the actual resulting state (false when there is no flash unit), so callers
+    // can keep their cached state in sync with the hardware.
+    fun setTorchMode(enabled: Boolean): Boolean {
         camera?.let { cam ->
             if (cam.cameraInfo.hasFlashUnit()) {
                 cam.cameraControl.enableTorch(enabled)
+                return enabled
             }
         }
+        return false
     }
 
     // endregion

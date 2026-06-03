@@ -430,7 +430,8 @@ class YOLOTestHelpers {
             },
             'setTorchMode': (call) {
               log.add(call);
-              return true;
+              // Echo the requested state, mirroring the native handlers which return the actual resulting state.
+              return (call.arguments as Map)['enabled'] as bool;
             },
             'zoomIn': (call) {
               log.add(call);

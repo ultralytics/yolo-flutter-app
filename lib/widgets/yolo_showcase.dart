@@ -511,7 +511,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     setState(() => _lenses = const [LensInfo(zoomFactor: 1, label: 'Camera')]);
     _zoom.value = 1;
     _lensLabel.value = '';
-    // Switching the camera input drops the torch (the new device may not have one); reflect that in the UI.
+    // Switching the camera input drops the torch (the new device may not have one); reset both the controller's
+    // cached state and the UI flag so they stay in sync across the switch.
+    _controller.resetTorchState();
     if (_torchOn) setState(() => _torchOn = false);
     await _controller.switchCamera();
     await Future<void>.delayed(const Duration(milliseconds: 300));

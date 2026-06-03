@@ -1379,8 +1379,11 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
-  public func setTorchMode(_ enabled: Bool) {
-    guard let device = videoCapture.captureDevice, device.hasTorch else { return }
+  /// Turns the torch on/off and returns the actual resulting state (`false` when the active device has no torch or
+  /// configuration fails), so callers can keep their cached state in sync with the hardware.
+  @discardableResult
+  public func setTorchMode(_ enabled: Bool) -> Bool {
+    guard let device = videoCapture.captureDevice, device.hasTorch else { return false }
 
     do {
       try device.lockForConfiguration()
@@ -1393,8 +1396,10 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       } else {
         device.torchMode = .off
       }
+      return device.torchMode == .on
     } catch {
       NSLog("YOLOView: Failed to set torch mode: %@", error.localizedDescription)
+      return false
     }
   }
 

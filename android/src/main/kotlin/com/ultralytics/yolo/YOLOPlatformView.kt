@@ -393,8 +393,8 @@ class YOLOPlatformView(
                 "setTorchMode" -> {
                     val enabled = call.argument<Boolean>("enabled")
                     if (enabled != null) {
-                        yoloView.setTorchMode(enabled)
-                        result.success(null)
+                        // Return the actual resulting torch state so Dart caches the real hardware state.
+                        result.success(yoloView.setTorchMode(enabled))
                     } else {
                         result.error("invalid_args", "enabled is required", null)
                     }

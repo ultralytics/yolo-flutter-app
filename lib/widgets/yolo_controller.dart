@@ -125,15 +125,20 @@ class YOLOViewController {
 
   Future<void> switchCamera() => _invoke('switchCamera');
 
-  /// Turns the active camera's torch (flashlight) on or off. No-ops on cameras without a torch
-  /// (e.g. most front cameras) and updates [isTorchEnabled].
+  /// Turns the active camera's torch (flashlight) on or off. The platform returns the actual resulting torch state,
+  /// which is cached in [isTorchEnabled] — so the cache stays correct even when the call fails or the active camera
+  /// has no torch (e.g. most front cameras). On a swallowed platform error the cached state is left unchanged.
   Future<void> setTorchMode(bool enabled) async {
-    await _invoke('setTorchMode', {'enabled': enabled});
-    _torchEnabled = enabled;
+    final result = await _invoke<bool>('setTorchMode', {'enabled': enabled});
+    if (result != null) _torchEnabled = result;
   }
 
   /// Toggles the torch (flashlight) between on and off. See [setTorchMode] and [isTorchEnabled].
   Future<void> toggleTorch() => setTorchMode(!_torchEnabled);
+
+  /// Resets the cached torch state to off without a platform call. Use after an operation where the platform drops
+  /// the torch on its own (e.g. switching the camera input), so [isTorchEnabled] stays in sync.
+  void resetTorchState() => _torchEnabled = false;
 
   Future<void> zoomIn() => _invoke('zoomIn');
 
