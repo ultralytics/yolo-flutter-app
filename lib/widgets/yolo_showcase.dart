@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:async';
+import 'package:flutter/cupertino.dart' show CupertinoIcons, CupertinoColors;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -102,6 +103,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   bool _isModelLoading = false;
 
   bool _isPaused = false;
+  bool _torchOn = false;
   Offset? _focusPosition;
   double _baseScale = 1;
   Size _viewSize = Size.zero;
@@ -509,9 +511,19 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     setState(() => _lenses = const [LensInfo(zoomFactor: 1, label: 'Camera')]);
     _zoom.value = 1;
     _lensLabel.value = '';
+    // Switching the camera input drops the torch (the new device may not have one); reset both the controller's
+    // cached state and the UI flag so they stay in sync across the switch.
+    _controller.resetTorchState();
+    if (_torchOn) setState(() => _torchOn = false);
     await _controller.switchCamera();
     await Future<void>.delayed(const Duration(milliseconds: 300));
     await _refreshLenses();
+  }
+
+  Future<void> _onToggleTorch() async {
+    HapticFeedback.selectionClick();
+    await _controller.toggleTorch();
+    if (mounted) setState(() => _torchOn = _controller.isTorchEnabled);
   }
 
   void _onPlayPause() {
@@ -715,6 +727,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   onLensSelected: _onLensSelected,
                   onPlayPause: _onPlayPause,
                   onSwitchCamera: () => unawaited(_onSwitchCamera()),
+                  isTorchOn: _torchOn,
+                  onToggleTorch: () => unawaited(_onToggleTorch()),
                   onShare: () => unawaited(_onShare()),
                   onInfo: () => _showInfoSheet(context),
                 ),
@@ -870,6 +884,8 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.onLensSelected,
     required this.onPlayPause,
     required this.onSwitchCamera,
+    required this.isTorchOn,
+    required this.onToggleTorch,
     required this.onShare,
     required this.onInfo,
   });
@@ -898,6 +914,8 @@ class _ShowcaseOverlay extends StatelessWidget {
   final ValueChanged<LensInfo> onLensSelected;
   final VoidCallback onPlayPause;
   final VoidCallback onSwitchCamera;
+  final bool isTorchOn;
+  final VoidCallback onToggleTorch;
   final VoidCallback onShare;
   final VoidCallback onInfo;
 
@@ -1103,6 +1121,60 @@ class _ShowcaseOverlay extends StatelessWidget {
         lenses: lenses,
         currentZoomFactor: z,
         onLensSelected: onLensSelected,
+        trailing: _torchControl(),
+      ),
+    );
+  }
+
+  /// Torch chip plus its "Torch on" note to the right. The note's space is reserved (shown/hidden in place) so
+  /// toggling the torch never shifts the chip or the centered zoom options.
+  Widget _torchControl() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _torchChip(),
+        const SizedBox(width: 6),
+        Visibility(
+          visible: isTorchOn,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: const Text(
+            'Torch on',
+            style: TextStyle(
+              color: CupertinoColors.systemYellow,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Torch toggle styled as a chip the same size as the lens (zoom) chips, sitting directly next to them. Uses the
+  /// native lightning glyph (Cupertino has no flashlight icon).
+  Widget _torchChip() {
+    return Semantics(
+      button: true,
+      label: isTorchOn ? 'Turn torch off' : 'Turn torch on',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onToggleTorch,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.38),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Icon(
+            isTorchOn
+                ? CupertinoIcons.bolt_fill
+                : CupertinoIcons.bolt_slash_fill,
+            color: isTorchOn ? CupertinoColors.systemYellow : Colors.white,
+            size: 17,
+          ),
+        ),
       ),
     );
   }

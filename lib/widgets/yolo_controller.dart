@@ -36,6 +36,7 @@ class YOLOViewController {
   double _confidenceThreshold = 0.25;
   double _iouThreshold = 0.7;
   int _numItemsThreshold = 30;
+  bool _torchEnabled = false;
 
   final StreamController<double> _zoomController =
       StreamController<double>.broadcast();
@@ -48,6 +49,9 @@ class YOLOViewController {
   double get iouThreshold => _iouThreshold;
   int get numItemsThreshold => _numItemsThreshold;
   bool get isInitialized => _methodChannel != null && _viewId != null;
+
+  /// Whether the torch (flashlight) is currently enabled, per the last [setTorchMode]/[toggleTorch] call.
+  bool get isTorchEnabled => _torchEnabled;
 
   /// Emits the native zoom factor whenever it changes (e.g. via pinch).
   Stream<double> get zoomEvents => _zoomController.stream;
@@ -121,8 +125,20 @@ class YOLOViewController {
 
   Future<void> switchCamera() => _invoke('switchCamera');
 
-  Future<void> setTorchMode(bool enabled) =>
-      _invoke('setTorchMode', {'enabled': enabled});
+  /// Turns the active camera's torch (flashlight) on or off. The platform returns the actual resulting torch state,
+  /// which is cached in [isTorchEnabled] — so the cache stays correct even when the call fails or the active camera
+  /// has no torch (e.g. most front cameras). On a swallowed platform error the cached state is left unchanged.
+  Future<void> setTorchMode(bool enabled) async {
+    final result = await _invoke<bool>('setTorchMode', {'enabled': enabled});
+    if (result != null) _torchEnabled = result;
+  }
+
+  /// Toggles the torch (flashlight) between on and off. See [setTorchMode] and [isTorchEnabled].
+  Future<void> toggleTorch() => setTorchMode(!_torchEnabled);
+
+  /// Resets the cached torch state to off without a platform call. Use after an operation where the platform drops
+  /// the torch on its own (e.g. switching the camera input), so [isTorchEnabled] stays in sync.
+  void resetTorchState() => _torchEnabled = false;
 
   Future<void> zoomIn() => _invoke('zoomIn');
 

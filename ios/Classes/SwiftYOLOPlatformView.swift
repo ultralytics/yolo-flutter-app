@@ -298,8 +298,8 @@ public final class SwiftYOLOPlatformView: NSObject,
         if let args = call.arguments as? [String: Any],
           let enabled = args["enabled"] as? Bool
         {
-          self.yoloView?.setTorchMode(enabled)
-          result(nil)  // Success
+          // Return the actual resulting torch state so Dart caches the real hardware state.
+          result(self.yoloView?.setTorchMode(enabled) ?? false)
         } else {
           result(
             FlutterError(
