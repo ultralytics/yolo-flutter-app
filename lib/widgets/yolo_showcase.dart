@@ -959,16 +959,22 @@ class _ShowcaseOverlay extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(_sidePadding, 2, _sidePadding, 2),
-          child: _lensPicker(),
-        ),
-        if (versionLabel != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: _sidePadding,
-              vertical: 4,
-            ),
-            child: Align(alignment: Alignment.centerLeft, child: _version()),
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              _lensPicker(),
+              // Version stamp at the lens-tabs vertical level, tucked into the bottom-left corner (negative left
+              // escapes the row's side padding so it sits closer to the screen edge than the controls).
+              if (versionLabel != null)
+                Positioned(
+                  left: -(_sidePadding - 8),
+                  bottom: 0,
+                  child: _version(),
+                ),
+            ],
           ),
+        ),
         _toolbar(),
       ],
     );
@@ -1184,7 +1190,7 @@ class _ShowcaseOverlay extends StatelessWidget {
       versionLabel!,
       style: TextStyle(
         color: Colors.white.withValues(alpha: 0.7),
-        fontSize: 12,
+        fontSize: 10,
       ),
     );
   }
