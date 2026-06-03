@@ -55,7 +55,8 @@ Use `YOLOShowcase` when you want the complete Ultralytics camera UI with model/t
 
 ```dart
 YOLOShowcase(
-  modelPath: 'yolo26n',
+  initialTask: YOLOTask.detect,
+  initialModelSize: 'n',
   onCapture: (bytes) {},
 )
 ```
@@ -83,7 +84,7 @@ YOLOView(
 )
 
 // 0.4.0: full built-in experience.
-YOLOShowcase(modelPath: 'yolo26n')
+YOLOShowcase()
 
 // 0.4.0: custom experience.
 Stack(
@@ -163,8 +164,8 @@ final classifier = YOLO(
 await classifier.loadModel();
 
 final results = await classifier.predict(imageBytes);
-for (final item in results['classifications'] ?? <dynamic>[]) {
-  print('${item['class']}: ${item['confidence']}');
+for (final item in results['detections'] ?? <dynamic>[]) {
+  print('${item['className']}: ${item['confidence']}');
 }
 ```
 
@@ -178,7 +179,7 @@ final poseModel = YOLO(
 await poseModel.loadModel();
 
 final results = await poseModel.predict(imageBytes);
-for (final pose in results['poses'] ?? <dynamic>[]) {
+for (final pose in results['detections'] ?? <dynamic>[]) {
   print('Keypoints: ${(pose['keypoints'] as List?)?.length ?? 0}');
 }
 ```
@@ -300,7 +301,7 @@ final yolo = YOLO(
 
 await yolo.loadModel();
 final results = await yolo.predict(imageBytes);
-final masks = results['boxes'] ?? [];
+final masks = results['masks'] ?? [];
 ```
 
 ### 3. Runtime switching between an official model and a custom export

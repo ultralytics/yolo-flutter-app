@@ -150,7 +150,7 @@ If you want to inspect a model without loading it for inference:
 ```dart
 final info = await YOLO.inspectModel('assets/models/custom.tflite');
 print(info['task']);
-print(info['names']);
+print(info['labels']);
 ```
 
 ## 🏗️ Platform Asset Placement

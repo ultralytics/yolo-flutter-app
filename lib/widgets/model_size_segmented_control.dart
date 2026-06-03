@@ -14,7 +14,7 @@ class ModelSizeSegmentedControl extends StatelessWidget {
   /// Currently-selected size (one of `n s m l x`).
   final String currentSize;
 
-  /// Sizes already present on-disk; missing sizes still appear with the `⤓` prefix so the user can tap to start a
+  /// Sizes already present on-disk; missing sizes still appear with the `↓` prefix so the user can tap to start a
   /// download.
   final Set<String> availableSizes;
 

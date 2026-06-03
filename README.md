@@ -73,7 +73,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.4.0
+  ultralytics_yolo: ^0.5.1
 ```
 
 ```bash
@@ -231,7 +231,8 @@ Use `YOLOShowcase` when you want the complete Ultralytics camera UI:
 
 ```dart
 YOLOShowcase(
-  modelPath: 'yolo26n',
+  initialTask: YOLOTask.detect,
+  initialModelSize: 'n',
   onCapture: (bytes) {},
 )
 ```

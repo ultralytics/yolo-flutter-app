@@ -20,7 +20,7 @@ import Vision
 /// Maps a rect normalized to `imageSize` into on-screen view coordinates under an aspect-fill (`resizeAspectFill`)
 /// preview: scale the image by `max(viewW/imgW, viewH/imgH)`, center it, and crop. Inverts exactly what the camera
 /// preview layer does, so overlays line up with the live image regardless of camera/preview aspect ratio. Ported from
-/// `yolo-ios-app/Sources/YOLO/YOLOView.swift#aspectFillDisplayRect`.
+/// `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#aspectFillDisplayRect`.
 func aspectFillDisplayRect(for normalizedRect: CGRect, imageSize: CGSize, viewSize: CGSize)
   -> CGRect
 {
@@ -1105,7 +1105,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   // MARK: - Multi-lens support
   //
-  // Port of the lens enumeration + lens-snap math from `yolo-ios-app/Sources/YOLO/YOLOView.swift:1157-1185` and the
+  // Port of the lens enumeration + lens-snap math from `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift` and the
   // device discovery in `VideoCapture.swift:32-45`. Setters only — Dart owns gestures; this class never attaches a
   // pinch/tap recognizer.
 
@@ -1333,7 +1333,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   // MARK: - Camera-flip blur transition
   //
-  // Ported from `yolo-ios-app/Sources/YOLO/YOLOView.swift:1036-1069`. Adds a snapshot + UIVisualEffectView over the
+  // Ported from `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`. Adds a snapshot + UIVisualEffectView over the
   // preview while the camera session reconfigures, then fades it out.
 
   private func showCameraTransition() {

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 
 /// Picks the active [YOLOTask] using a `CupertinoSlidingSegmentedControl` styled to match
-/// `yolo-ios-app/Sources/YOLO/YOLOView.swift`'s storyboard-driven `UISegmentedControl` (`Det Seg Sem Cls Pose OBB`).
+/// `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`'s storyboard-driven `UISegmentedControl` (`Det Seg Sem Cls Pose OBB`).
 ///
 /// Material 3's `SegmentedButton` was used previously but its pill-shaped chips don't match the iOS reference's
 /// inset rounded-rect look. The Cupertino variant gives us:

@@ -1,6 +1,6 @@
 #
 # To learn more about a Podspec see https://guides.cocoapods.org/syntax/podspec.html.
-# Run `pod lib lint yolo.podspec` to validate before publishing.
+# Run `pod lib lint ultralytics_yolo.podspec` to validate before publishing.
 #
 Pod::Spec.new do |s|
   s.name             = 'ultralytics_yolo'

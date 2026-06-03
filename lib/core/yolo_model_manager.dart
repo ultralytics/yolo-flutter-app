@@ -16,8 +16,8 @@ class DownloadProgress {
   /// Official model id (e.g. `yolo26n`, `yolo26s-seg`) being downloaded.
   final String modelId;
 
-  /// Completion fraction in `[0, 1]`. Reaches `1.0` on completion; emits `0.0` at download start when the remote
-  /// `Content-Length` is unknown.
+  /// Completion fraction in `[0, 1]`. Emits `0.0` at download start and reaches `1.0` on completion; intermediate
+  /// fractions stream only when the remote `Content-Length` is known.
   final double fraction;
 
   @override

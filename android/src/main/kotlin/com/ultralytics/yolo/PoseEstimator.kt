@@ -118,7 +118,7 @@ class PoseEstimator(
             }
         }
         val rawDetections = postProcessPose(
-            features = outputArray[0],  // shape: [56][numAnchors]
+            features = outputArray[0],  // shape: [56][numAnchors] (FEATURES_FIRST) or [numAnchors][56] (ANCHORS_FIRST)
             numAnchors = numAnchors,
             confidenceThreshold = confidenceThreshold,
             iouThreshold = iouThreshold,
@@ -302,7 +302,7 @@ class PoseEstimator(
         detections: List<PoseDetection>,
         iouThreshold: Float
     ): List<PoseDetection> {
-        val confidenceThreshold = 0.25f  // Configurable threshold
+        val confidenceThreshold = 0.25f  // Hardcoded second-pass threshold
         val filteredDetections = detections.filter { it.box.conf >= confidenceThreshold }
         
         if (filteredDetections.size <= 1) {

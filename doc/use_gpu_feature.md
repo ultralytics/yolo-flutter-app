@@ -64,8 +64,8 @@ On a Galaxy S26, the official `yolo26n_int8.tflite` compiled fully with the Lite
 
 ### iOS
 
-- `useGpu: true` uses broader Core ML compute units
-- `useGpu: false` avoids the GPU path
+- `useGpu: true` enables hardware-accelerated Core ML inference: `.cpuAndNeuralEngine` on iOS 16+ (the GPU is deliberately excluded to avoid contention with preview/overlay compositing), `.all` on older iOS
+- `useGpu: false` pins inference to `.cpuOnly` (no Neural Engine or GPU)
 
 ## Recommendation
 

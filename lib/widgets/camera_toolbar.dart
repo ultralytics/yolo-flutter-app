@@ -4,7 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Bottom action toolbar (play/pause, switch camera, share, info). Matches `yolo-ios-app/Sources/YOLO/YOLOView.swift`'s
+/// Bottom action toolbar (play/pause, switch camera, share, info). Matches `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`'s
 /// toolbar layout:
 ///   * `toolbar.backgroundColor = .black.withAlphaComponent(0.7)` (line 637).
 ///   * `toolBarHeight: CGFloat = 66` (line 803) — the toolbar is 66pt tall.

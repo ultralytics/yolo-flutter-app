@@ -218,7 +218,8 @@ class YOLOViewController {
   Future<void> restartCamera() => _invoke('restartCamera');
 
   /// Pause the preview. On iOS this snapshots the next frame into the native share-image cache before stopping the
-  /// session (so [capturePhoto] after pause returns the frozen frame); on Android it's a `stop()` alias.
+  /// session (so [capturePhoto] after pause returns the frozen frame); on Android it unbinds the camera use-cases
+  /// while keeping the predictor alive.
   Future<void> pause() => _invoke('pause');
 
   /// Resume after [pause]. iOS clears the cached share frame and restarts the session; Android aliases to

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 /// Top HUD: model name (`YOLO26n`) over an FPS / inference-time line.
 ///
-/// Centered, matching `yolo-ios-app/Sources/YOLO/YOLOView.swift#setupUI`:
+/// Centered, matching `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#setupUI`:
 ///   * `labelName.font = UIFont.preferredFont(forTextStyle: .title1)` (line 561) — iOS `title1` ≈ 28pt regular.
 ///   * `labelFPS.font = UIFont.preferredFont(forTextStyle: .body)` (line 567) — iOS `body` ≈ 17pt regular.
 ///   * Both `textAlignment = .center` and `textColor = .white` (lines 558/565/560/566).

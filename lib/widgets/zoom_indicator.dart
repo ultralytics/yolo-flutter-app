@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// Two-line zoom HUD: numeric zoom factor on top, human-readable lens label below (e.g. `Wide camera`, `Ultra wide
 /// camera`). Sits above the lens picker in [YOLOShowcase].
 ///
-/// Styling pulled from `yolo-ios-app/Sources/YOLO/YOLOView.swift#setupUI`:
+/// Styling pulled from `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#setupUI`:
 ///   * `labelZoom.font = UIFont.systemFont(ofSize: 12, weight: .semibold)` (line 597) — numeric reading.
 ///   * `lensCaptionLabel.font = UIFont.systemFont(ofSize: 11, weight: .medium)` (line 665) — caption.
 ///   * `lensCaptionLabel.textColor = UIColor.white.withAlphaComponent(0.78)` (line 664).

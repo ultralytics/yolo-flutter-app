@@ -109,7 +109,7 @@ class YOLOStreamingConfig {
   /// - `4`: Process every 5th frame (1/5 frequency)
   ///
   /// Note: If both `inferenceFrequency` and `skipFrames` are set,
-  /// `inferenceFrequency` takes precedence.
+  /// `skipFrames` takes precedence.
   final int? skipFrames;
 
   /// Creates a YOLOStreamingConfig with custom settings.

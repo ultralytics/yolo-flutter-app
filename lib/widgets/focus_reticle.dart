@@ -35,8 +35,8 @@ class _FocusReticleState extends State<FocusReticle> {
 
   Future<void> _pulse() async {
     setState(() => _opacity = 1);
-    // Wait for the fade-in (100 ms) before kicking off the fade-out so the user actually sees the reticle peak before
-    // it disappears.
+    // Wait 400 ms (the 100 ms fade-in plus a brief hold) before kicking off the fade-out so the user actually sees
+    // the reticle peak before it disappears.
     await Future<void>.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
     setState(() => _opacity = 0);

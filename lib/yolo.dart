@@ -61,13 +61,15 @@ class YOLO {
   /// When omitted, the plugin resolves it from model metadata during [loadModel].
   final YOLOTask? task;
 
-  /// Whether to use GPU acceleration for inference.
+  /// Whether to use hardware-accelerated inference.
   ///
-  /// On Android, this controls TensorFlow Lite GPU delegate usage.
-  /// On iOS, this controls Core ML GPU usage.
+  /// On Android, this requests the LiteRT GPU accelerator, with automatic
+  /// fallback to CPU when the model can't compile on the GPU.
+  /// On iOS, this enables hardware-accelerated Core ML inference
+  /// (Neural Engine + CPU on iOS 16+); when false, inference is pinned to CPU only.
   ///
   /// Default is true for better performance, but can be set to false
-  /// for stability on devices where GPU inference causes crashes.
+  /// for stability on devices where accelerated inference causes crashes.
   final bool useGpu;
 
   late int numItemsThreshold;
