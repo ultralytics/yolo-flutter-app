@@ -374,13 +374,29 @@ Future<void> switchCamera()
 
 ##### `setTorchMode()`
 
-Turn the active camera torch on or off when supported.
+Turn the active camera torch (flashlight) on or off when supported. No-ops on cameras without a torch (e.g. most front cameras). Updates `isTorchEnabled`.
 
 ```dart
 Future<void> setTorchMode(bool enabled)
 ```
 
 **Parameters**: `enabled` - `true` to enable the torch, `false` to disable it
+
+##### `toggleTorch()`
+
+Toggle the active camera torch (flashlight) between on and off.
+
+```dart
+Future<void> toggleTorch()
+```
+
+##### `isTorchEnabled`
+
+Whether the torch is currently enabled, per the last `setTorchMode`/`toggleTorch` call.
+
+```dart
+bool get isTorchEnabled
+```
 
 ##### `switchModel()`
 

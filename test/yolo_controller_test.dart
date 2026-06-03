@@ -84,6 +84,17 @@ void main() {
         'setTorchMode',
         arguments: {'enabled': true},
       );
+      expect(controller.isTorchEnabled, isTrue);
+
+      // toggleTorch flips the tracked state and invokes setTorchMode with the negated value.
+      log.clear();
+      await controller.toggleTorch();
+      YOLOTestHelpers.assertMethodCalled(
+        log,
+        'setTorchMode',
+        arguments: {'enabled': false},
+      );
+      expect(controller.isTorchEnabled, isFalse);
 
       await controller.zoomIn();
       YOLOTestHelpers.assertMethodCalled(log, 'zoomIn');

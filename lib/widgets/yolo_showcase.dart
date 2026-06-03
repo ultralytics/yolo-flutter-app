@@ -102,6 +102,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   bool _isModelLoading = false;
 
   bool _isPaused = false;
+  bool _torchOn = false;
   Offset? _focusPosition;
   double _baseScale = 1;
   Size _viewSize = Size.zero;
@@ -509,9 +510,17 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     setState(() => _lenses = const [LensInfo(zoomFactor: 1, label: 'Camera')]);
     _zoom.value = 1;
     _lensLabel.value = '';
+    // Switching the camera input drops the torch (the new device may not have one); reflect that in the UI.
+    if (_torchOn) setState(() => _torchOn = false);
     await _controller.switchCamera();
     await Future<void>.delayed(const Duration(milliseconds: 300));
     await _refreshLenses();
+  }
+
+  Future<void> _onToggleTorch() async {
+    HapticFeedback.selectionClick();
+    await _controller.toggleTorch();
+    if (mounted) setState(() => _torchOn = _controller.isTorchEnabled);
   }
 
   void _onPlayPause() {
@@ -715,6 +724,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   onLensSelected: _onLensSelected,
                   onPlayPause: _onPlayPause,
                   onSwitchCamera: () => unawaited(_onSwitchCamera()),
+                  isTorchOn: _torchOn,
+                  onToggleTorch: () => unawaited(_onToggleTorch()),
                   onShare: () => unawaited(_onShare()),
                   onInfo: () => _showInfoSheet(context),
                 ),
@@ -870,6 +881,8 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.onLensSelected,
     required this.onPlayPause,
     required this.onSwitchCamera,
+    required this.isTorchOn,
+    required this.onToggleTorch,
     required this.onShare,
     required this.onInfo,
   });
@@ -898,6 +911,8 @@ class _ShowcaseOverlay extends StatelessWidget {
   final ValueChanged<LensInfo> onLensSelected;
   final VoidCallback onPlayPause;
   final VoidCallback onSwitchCamera;
+  final bool isTorchOn;
+  final VoidCallback onToggleTorch;
   final VoidCallback onShare;
   final VoidCallback onInfo;
 
@@ -1122,6 +1137,8 @@ class _ShowcaseOverlay extends StatelessWidget {
       isPaused: isPaused,
       onPlayPause: onPlayPause,
       onSwitchCamera: onSwitchCamera,
+      isTorchOn: isTorchOn,
+      onToggleTorch: onToggleTorch,
       onShare: onShare,
       onInfo: onInfo,
     );
