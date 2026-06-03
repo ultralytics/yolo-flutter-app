@@ -44,4 +44,4 @@ from ultralytics import YOLO
 YOLO("yolo26n.pt").export(format="coreml", nms=False, end2end=True, imgsz=[640, 640])
 ```
 
-Other tasks use the same `nms=False` and `end2end=True` settings, with the same square-orientation guidance for `imgsz`.
+Other tasks are exported with the same `nms=False` and `end2end=True` settings (matching the official asset pipeline in yolo-ios-app `scripts/export-models.py`), with the same square-orientation guidance for `imgsz`.
