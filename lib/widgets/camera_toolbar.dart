@@ -27,12 +27,6 @@ class CameraToolbar extends StatelessWidget {
   /// Fires on the camera-flip button.
   final VoidCallback onSwitchCamera;
 
-  /// Torch (flashlight) on/off state; controls the bolt icon.
-  final bool isTorchOn;
-
-  /// Fires on the torch toggle button.
-  final VoidCallback onToggleTorch;
-
   /// Fires on the share button (capture + system share / save).
   final VoidCallback onShare;
 
@@ -44,8 +38,6 @@ class CameraToolbar extends StatelessWidget {
     required this.isPaused,
     required this.onPlayPause,
     required this.onSwitchCamera,
-    required this.isTorchOn,
-    required this.onToggleTorch,
     required this.onShare,
     required this.onInfo,
   });
@@ -70,13 +62,6 @@ class CameraToolbar extends StatelessWidget {
               icon: CupertinoIcons.camera_rotate,
               onPressed: onSwitchCamera,
               semanticLabel: 'Switch camera',
-            ),
-            _ToolbarButton(
-              icon: isTorchOn
-                  ? CupertinoIcons.bolt_fill
-                  : CupertinoIcons.bolt_slash_fill,
-              onPressed: onToggleTorch,
-              semanticLabel: isTorchOn ? 'Turn torch off' : 'Turn torch on',
             ),
             _ToolbarButton(
               icon: CupertinoIcons.share,

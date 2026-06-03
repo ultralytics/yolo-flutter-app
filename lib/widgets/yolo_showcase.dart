@@ -1101,24 +1101,71 @@ class _ShowcaseOverlay extends StatelessWidget {
   }
 
   Widget _zoomLabel() {
-    return ValueListenableBuilder<double>(
-      valueListenable: zoom,
-      builder: (context, z, _) => ValueListenableBuilder<String>(
-        valueListenable: lensLabel,
-        builder: (context, label, _) =>
-            ZoomIndicator(currentZoom: z, lensLabel: label),
-      ),
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        ValueListenableBuilder<double>(
+          valueListenable: zoom,
+          builder: (context, z, _) => ValueListenableBuilder<String>(
+            valueListenable: lensLabel,
+            builder: (context, label, _) =>
+                ZoomIndicator(currentZoom: z, lensLabel: label),
+          ),
+        ),
+        // Torch state note, styled like the zoom HUD and sitting above the torch button on the right.
+        if (isTorchOn)
+          const Positioned(
+            right: 0,
+            bottom: 0,
+            child: Text(
+              'Torch on',
+              style: TextStyle(
+                color: Colors.amber,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
   Widget _lensPicker() {
-    return ValueListenableBuilder<double>(
-      valueListenable: zoom,
-      builder: (context, z, _) => LensPicker(
-        lenses: lenses,
-        currentZoomFactor: z,
-        onLensSelected: onLensSelected,
-      ),
+    // Lens "camera tabs" stay centered; the torch toggle sits to their right.
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        ValueListenableBuilder<double>(
+          valueListenable: zoom,
+          builder: (context, z, _) => LensPicker(
+            lenses: lenses,
+            currentZoomFactor: z,
+            onLensSelected: onLensSelected,
+          ),
+        ),
+        Positioned(
+          right: 0,
+          child: Semantics(
+            button: true,
+            label: isTorchOn ? 'Turn torch off' : 'Turn torch on',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onToggleTorch,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                child: Icon(
+                  isTorchOn ? Icons.flashlight_on : Icons.flashlight_off,
+                  color: isTorchOn ? Colors.amber : Colors.white,
+                  size: 26,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1137,8 +1184,6 @@ class _ShowcaseOverlay extends StatelessWidget {
       isPaused: isPaused,
       onPlayPause: onPlayPause,
       onSwitchCamera: onSwitchCamera,
-      isTorchOn: isTorchOn,
-      onToggleTorch: onToggleTorch,
       onShare: onShare,
       onInfo: onInfo,
     );
