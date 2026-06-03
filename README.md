@@ -248,7 +248,7 @@ Version 0.4.0 removes the old Dart-side overlay/control layer. Camera detections
 | `YOLOView.showNativeUI`                          | Use `YOLOShowcase` for built-in controls; use bare `YOLOView` when building your own UI.           |
 | `YOLOView.showOverlays`, `YOLOView.overlayTheme` | No constructor replacement. Camera overlay drawing is native and not themed from Dart.             |
 | `YOLOViewController.setShowUIControls()`         | Show/hide your own Flutter controls around `YOLOView`.                                             |
-| `YOLOViewController.setShowOverlays()`           | No controller replacement. `capturePhoto(withOverlays: false)` only affects captured JPEG output.  |
+| `YOLOViewController.setShowOverlays()`           | Still available: toggles native overlay rendering. `capturePhoto(withOverlays: false)` only affects captured JPEG output. |
 
 ## 🧩 Recommended Patterns
 

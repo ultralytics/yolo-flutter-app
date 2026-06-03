@@ -293,8 +293,8 @@ YOLOView(
 | `YOLOOverlay`, `YOLOOverlayTheme`          | Native `YOLOView` overlays, or raw `onResult`/`YOLO.predict()` data for fully custom rendering.      |
 | `YOLOControls`                             | `YOLOShowcase` for the full UI, or exported widgets such as `TaskSegmentedControl` and `LensPicker`. |
 | `YOLOView.showNativeUI`                    | `YOLOShowcase` for built-in controls; bare `YOLOView` plus your own Flutter controls for custom UI.  |
-| `YOLOView.showOverlays`, `overlayTheme`    | No constructor replacement. Native camera overlays are not themed or toggled from Dart.              |
-| `setShowUIControls()`, `setShowOverlays()` | Own the surrounding Flutter controls; `capturePhoto(withOverlays: false)` only affects captures.     |
+| `YOLOView.showOverlays`, `overlayTheme`    | No constructor replacement. Native camera overlays are not themed from Dart; toggle them with `YOLOViewController.setShowOverlays()`. |
+| `setShowUIControls()`                      | Own the surrounding Flutter controls. `setShowOverlays()` is still available on `YOLOViewController`; `capturePhoto(withOverlays: false)` only affects captures. |
 
 ---
 

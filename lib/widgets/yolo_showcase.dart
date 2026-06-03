@@ -531,7 +531,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     HapticFeedback.lightImpact();
     setState(() => _isPaused = !_isPaused);
     // iOS `pause` snapshots the next frame into the native share cache before stopping; sharing while paused returns
-    // that frame. Android aliases to stop/start. resume() clears the cached frame and restarts.
+    // that frame. Android unbinds the camera use-cases (the predictor stays alive). resume() clears the cached frame
+    // and restarts.
     if (_isPaused) {
       unawaited(_controller.pause());
     } else {

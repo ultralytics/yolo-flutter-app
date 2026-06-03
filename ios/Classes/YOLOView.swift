@@ -1106,7 +1106,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   // MARK: - Multi-lens support
   //
   // Port of the lens enumeration + lens-snap math from `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift` and the
-  // device discovery in `VideoCapture.swift:32-45`. Setters only — Dart owns gestures; this class never attaches a
+  // device discovery in `VideoCapture.swift#bestCaptureDevice`. Setters only — Dart owns gestures; this class never attaches a
   // pinch/tap recognizer.
 
   /// Returns the physical lens devices available for the active camera position (back: ultra-wide / wide / telephoto,

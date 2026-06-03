@@ -34,14 +34,14 @@ The Flutter side can hand the iOS layer:
 
 ## Export Reminder
 
-For detection models on iOS, Core ML exports must use `nms=True`:
+YOLO26 models are NMS-free; Core ML exports use `nms=False` and `end2end=True` (the Swift decoders consume the YOLO26 end-to-end output contract):
 
 ```python
 from ultralytics import YOLO
 
 # Square [640, 640] works best when one model must run in both portrait and landscape.
 # Ultralytics imgsz order is [height, width]; use [640, 384] for portrait-only or [384, 640] for landscape-only.
-YOLO("yolo26n.pt").export(format="coreml", nms=True, imgsz=[640, 640])
+YOLO("yolo26n.pt").export(format="coreml", nms=False, end2end=True, imgsz=[640, 640])
 ```
 
-Other tasks can use the default export settings, with the same square-orientation guidance for `imgsz`.
+Other tasks use the same `nms=False` and `end2end=True` settings, with the same square-orientation guidance for `imgsz`.
