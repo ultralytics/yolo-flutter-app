@@ -51,7 +51,7 @@ jobs:
 
   example-android:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v6
@@ -68,6 +68,21 @@ jobs:
       - name: Build example Android app
         working-directory: example
         run: flutter build apk --debug
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Launch smoke test (Android emulator)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          working-directory: example
+          script: flutter test integration_test/app_launch_test.dart
 
   example-ios:
     runs-on: macos-26
@@ -88,3 +103,14 @@ jobs:
       - name: Build example iOS app
         working-directory: example
         run: flutter build ios --simulator --no-codesign
+
+      - name: Boot iOS Simulator
+        run: |
+          UDID=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/{print $2; exit}')
+          echo "Booting simulator $UDID"
+          xcrun simctl boot "$UDID"
+          echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Launch smoke test (iOS Simulator)
+        working-directory: example
+        run: flutter test integration_test/app_launch_test.dart -d "$SIMULATOR_UDID"
