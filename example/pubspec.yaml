@@ -3,7 +3,7 @@
 name: ultralytics_yolo_example
 description: "Demonstrates how to use the ultralytics_yolo plugin."
 publish_to: "none"
-version: 0.4.3+4
+version: 0.5.1+5
 
 environment:
   sdk: ^3.8.1
@@ -14,6 +14,7 @@ dependencies:
   flutter:
     sdk: flutter
   image_picker: ^1.2.1
+  package_info_plus: ^9.0.0
   path_provider: ^2.1.5
   # Pinned to ^12.x: share_plus 13.x ships a Swift Package umbrella that fails framework module verification under
   # Xcode 26.5 ("'Flutter/Flutter.h' file not found", "double-quoted include in framework header"). Revisit once the
