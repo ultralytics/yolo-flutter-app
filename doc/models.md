@@ -39,10 +39,10 @@ print(models);
 
 Official assets are maintained as GitHub release assets:
 
-| Platform  | Runtime asset                 | Release                                                                                          |
-| --------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| Android   | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
-| iOS       | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+| Platform | Runtime asset                 | Release                                                                                          |
+| -------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| Android  | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| iOS      | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 URL patterns:
 
