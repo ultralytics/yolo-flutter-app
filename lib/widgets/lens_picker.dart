@@ -7,10 +7,10 @@ import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 /// Lens picker mirroring `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#setupLensControl`.
 ///
 /// Visual tokens:
-///   * background: `UIColor.black.withAlphaComponent(0.38)` (line 647)
-///   * selected thumb: `UIColor.white.withAlphaComponent(0.18)` (line 648)
-///   * normal label: 13pt semibold white (lines 651–653)
-///   * selected label: 13pt **bold** `systemYellow` (lines 654–658)
+///   * background: `UIColor.black.withAlphaComponent(0.38)`
+///   * selected thumb: `UIColor.white.withAlphaComponent(0.18)`
+///   * normal label: 13pt semibold white
+///   * selected label: 13pt **bold** `systemYellow`
 ///
 /// Labels render `0.5`, `1`, `2`, `4` (sub-1× lenses get one decimal). The chip whose zoom factor is closest to
 /// [currentZoomFactor] is selected, so a pinch-zoom past a lens threshold visually snaps the picker.

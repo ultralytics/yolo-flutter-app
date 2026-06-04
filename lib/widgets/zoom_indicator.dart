@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 /// camera`). Sits above the lens picker in [YOLOShowcase].
 ///
 /// Styling pulled from `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#setupUI`:
-///   * `labelZoom.font = UIFont.systemFont(ofSize: 12, weight: .semibold)` (line 597) — numeric reading.
-///   * `lensCaptionLabel.font = UIFont.systemFont(ofSize: 11, weight: .medium)` (line 665) — caption.
-///   * `lensCaptionLabel.textColor = UIColor.white.withAlphaComponent(0.78)` (line 664).
+///   * `labelZoom.font = UIFont.systemFont(ofSize: 12, weight: .semibold)` — numeric reading.
+///   * `lensCaptionLabel.font = UIFont.systemFont(ofSize: 11, weight: .medium)` — caption.
+///   * `lensCaptionLabel.textColor = UIColor.white.withAlphaComponent(0.78)`.
 class ZoomIndicator extends StatelessWidget {
   /// Current effective zoom factor, e.g. `0.5` or `2.34`.
   final double currentZoom;

@@ -232,7 +232,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   public var capturedImage: UIImage?
 
-  // Lens-snap state (ported from yolo-ios-app YOLOView.swift:1157-1185).
+  // Lens-snap state (ported from yolo-ios-app YOLOView.swift).
   private let physicalLensTypes: [AVCaptureDevice.DeviceType] = [
     .builtInUltraWideCamera,
     .builtInWideAngleCamera,
@@ -240,7 +240,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   ]
   private var currentLensLabel: String = ""
 
-  // Camera-flip blur transition (ported from yolo-ios-app YOLOView.swift:1036-1060).
+  // Camera-flip blur transition (ported from yolo-ios-app YOLOView.swift).
   private weak var cameraTransitionView: UIView?
 
   public init(
@@ -1303,7 +1303,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
-  /// Port of upstream `VideoCapture.swift:62-84` — computes the raw zoom factor on `virtualDevice` that selects the
+  /// Port of upstream `VideoCapture.swift` — computes the raw zoom factor on `virtualDevice` that selects the
   /// constituent lens `lensDevice`.
   private func zoomFactor(
     for lensDevice: AVCaptureDevice, on virtualDevice: AVCaptureDevice?
@@ -1426,7 +1426,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
 
     // Visual polish: snapshot+blur the preview while the session
-    // reconfigures (port of yolo-ios-app YOLOView.swift:1036-1060).
+    // reconfigures (port of yolo-ios-app YOLOView.swift).
     showCameraTransition()
 
     self.videoCapture.captureSession.beginConfiguration()

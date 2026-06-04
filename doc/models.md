@@ -42,12 +42,12 @@ Official assets are maintained as GitHub release assets:
 | Platform  | Runtime asset                 | Release                                                                                          |
 | --------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
 | Android   | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
-| iOS/macOS | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+| iOS       | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 URL patterns:
 
 - Android TFLite: `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5/<model>.tflite`
-- iOS/macOS Core ML: `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.mlpackage.zip`
+- iOS Core ML: `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.mlpackage.zip`
 
 The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms. The native iOS app uses the same Core ML release through `RemoteModels.swift`. These release tags are intentionally pinned in code for reproducible first-use downloads; when official assets move to a new release, update the resolver constants, docs, and URL tests in the same PR.
 
