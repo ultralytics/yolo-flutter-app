@@ -1232,7 +1232,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     return lensLabel(for: device)
   }
 
-  /// Port of `YOLOView.updateSelectedLens` (yolo-ios-app:1157-1185). Picks the largest-zoom physical lens whose
+  /// Port of upstream `YOLOView.updateSelectedLens` (yolo-ios-app). Picks the largest-zoom physical lens whose
   /// threshold is <= `rawZoomFactor`, falling back to the smallest available lens. Emits `onLensChanged` when the
   /// label transitions to a new value.
   private func updateSelectedLensLabel(rawZoomFactor: CGFloat, device: AVCaptureDevice) {
