@@ -1,10 +1,10 @@
 #
 # To learn more about a Podspec see https://guides.cocoapods.org/syntax/podspec.html.
-# Run `pod lib lint yolo.podspec` to validate before publishing.
+# Run `pod lib lint ultralytics_yolo.podspec` to validate before publishing.
 #
 Pod::Spec.new do |s|
   s.name             = 'ultralytics_yolo'
-  s.version          = '0.5.0'
+  s.version          = '0.5.1'
   s.summary          = 'Flutter plugin for YOLO (You Only Look Once) models'
   s.description      = <<-DESC
 Flutter plugin for YOLO (You Only Look Once) models, supporting object detection, segmentation, classification, pose estimation and oriented bounding boxes (OBB) on both Android and iOS.

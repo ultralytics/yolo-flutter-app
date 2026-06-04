@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 
 /// One labeled slider row — the prefix (`0.25 Confidence Threshold`) shows the live value with the label baked in.
 ///
-/// Styling mirrors `yolo-ios-app/Sources/YOLO/YOLOView.swift#setupUI`:
-///   * `labelSliderConf.font = UIFont.preferredFont(forTextStyle: .subheadline)` (lines 577/586) — `subheadline` in
-///     iOS is ~15pt regular, so we use `bodyMedium`/15 with `FontWeight.w400`.
-///   * `slider.minimumTrackTintColor = .white` (line 630).
-///   * `slider.maximumTrackTintColor = .systemGray.withAlphaComponent(0.7)` (line 631).
+/// Styling mirrors `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#setupUI`:
+///   * `labelSliderConf.font = UIFont.preferredFont(forTextStyle: .subheadline)` — `subheadline` in
+///     iOS is ~15pt regular; the caption renders with a fixed `TextStyle` at 13pt and `FontWeight.w400`.
+///   * `slider.minimumTrackTintColor = .white`.
+///   * `slider.maximumTrackTintColor = .systemGray.withAlphaComponent(0.7)`.
 /// `CupertinoSlider` is used over Material's `Slider` because the iOS-style thin track with a circular thumb is what
 /// the showcase reference uses; `SliderTheme` can't reshape Material's wider track to match without re-painting.
 class ThresholdSliderRow extends StatelessWidget {

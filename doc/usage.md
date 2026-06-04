@@ -55,7 +55,8 @@ Use `YOLOShowcase` when you want the complete Ultralytics camera UI with model/t
 
 ```dart
 YOLOShowcase(
-  modelPath: 'yolo26n',
+  initialTask: YOLOTask.detect,
+  initialModelSize: 'n',
   onCapture: (bytes) {},
 )
 ```
@@ -64,14 +65,14 @@ YOLOShowcase(
 
 Version 0.4.0 removes the old Dart-side overlay/control layer. `YOLOView` is now the camera + native detection-rendering surface. The full app UI lives in `YOLOShowcase`, and reusable controls are exported as normal Flutter widgets for custom layouts.
 
-| Removed 0.3.x API                                | 0.4.0 replacement                                                                                  |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `YOLOOverlay`, `YOLOOverlayTheme`                | Remove these widgets. Use native `YOLOView` overlays, or consume `onResult`/`YOLO.predict()` data. |
-| `YOLOControls`                                   | Use `YOLOShowcase` for the full UI, or compose `TaskSegmentedControl`, `ThresholdSliderRow`, etc.  |
-| `YOLOView.showNativeUI`                          | Use `YOLOShowcase` for built-in controls; use bare `YOLOView` when building your own UI.           |
-| `YOLOView.showOverlays`, `YOLOView.overlayTheme` | No constructor replacement. Camera overlay drawing is native and not themed from Dart.             |
-| `YOLOViewController.setShowUIControls()`         | Show/hide your own Flutter controls around `YOLOView`.                                             |
-| `YOLOViewController.setShowOverlays()`           | No controller replacement. `capturePhoto(withOverlays: false)` only affects captured JPEG output.  |
+| Removed 0.3.x API                                | 0.4.0 replacement                                                                                                         |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `YOLOOverlay`, `YOLOOverlayTheme`                | Remove these widgets. Use native `YOLOView` overlays, or consume `onResult`/`YOLO.predict()` data.                        |
+| `YOLOControls`                                   | Use `YOLOShowcase` for the full UI, or compose `TaskSegmentedControl`, `ThresholdSliderRow`, etc.                         |
+| `YOLOView.showNativeUI`                          | Use `YOLOShowcase` for built-in controls; use bare `YOLOView` when building your own UI.                                  |
+| `YOLOView.showOverlays`, `YOLOView.overlayTheme` | No constructor replacement. Camera overlay drawing is native and not themed from Dart.                                    |
+| `YOLOViewController.setShowUIControls()`         | Show/hide your own Flutter controls around `YOLOView`.                                                                    |
+| `YOLOViewController.setShowOverlays()`           | Still available: toggles native overlay rendering. `capturePhoto(withOverlays: false)` only affects captured JPEG output. |
 
 Typical upgrade:
 
@@ -83,7 +84,7 @@ YOLOView(
 )
 
 // 0.4.0: full built-in experience.
-YOLOShowcase(modelPath: 'yolo26n')
+YOLOShowcase()
 
 // 0.4.0: custom experience.
 Stack(
@@ -163,8 +164,8 @@ final classifier = YOLO(
 await classifier.loadModel();
 
 final results = await classifier.predict(imageBytes);
-for (final item in results['classifications'] ?? <dynamic>[]) {
-  print('${item['class']}: ${item['confidence']}');
+for (final item in results['detections'] ?? <dynamic>[]) {
+  print('${item['className']}: ${item['confidence']}');
 }
 ```
 
@@ -178,7 +179,7 @@ final poseModel = YOLO(
 await poseModel.loadModel();
 
 final results = await poseModel.predict(imageBytes);
-for (final pose in results['poses'] ?? <dynamic>[]) {
+for (final pose in results['detections'] ?? <dynamic>[]) {
   print('Keypoints: ${(pose['keypoints'] as List?)?.length ?? 0}');
 }
 ```
@@ -300,7 +301,7 @@ final yolo = YOLO(
 
 await yolo.loadModel();
 final results = await yolo.predict(imageBytes);
-final masks = results['boxes'] ?? [];
+final masks = results['masks'] ?? [];
 ```
 
 ### 3. Runtime switching between an official model and a custom export

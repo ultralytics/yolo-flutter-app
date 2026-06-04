@@ -20,7 +20,7 @@ import Vision
 /// Maps a rect normalized to `imageSize` into on-screen view coordinates under an aspect-fill (`resizeAspectFill`)
 /// preview: scale the image by `max(viewW/imgW, viewH/imgH)`, center it, and crop. Inverts exactly what the camera
 /// preview layer does, so overlays line up with the live image regardless of camera/preview aspect ratio. Ported from
-/// `yolo-ios-app/Sources/YOLO/YOLOView.swift#aspectFillDisplayRect`.
+/// `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#aspectFillDisplayRect`.
 func aspectFillDisplayRect(for normalizedRect: CGRect, imageSize: CGSize, viewSize: CGSize)
   -> CGRect
 {
@@ -232,7 +232,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   public var capturedImage: UIImage?
 
-  // Lens-snap state (ported from yolo-ios-app YOLOView.swift:1157-1185).
+  // Lens-snap state (ported from yolo-ios-app YOLOView.swift).
   private let physicalLensTypes: [AVCaptureDevice.DeviceType] = [
     .builtInUltraWideCamera,
     .builtInWideAngleCamera,
@@ -240,7 +240,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   ]
   private var currentLensLabel: String = ""
 
-  // Camera-flip blur transition (ported from yolo-ios-app YOLOView.swift:1036-1060).
+  // Camera-flip blur transition (ported from yolo-ios-app YOLOView.swift).
   private weak var cameraTransitionView: UIView?
 
   public init(
@@ -1105,8 +1105,8 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   // MARK: - Multi-lens support
   //
-  // Port of the lens enumeration + lens-snap math from `yolo-ios-app/Sources/YOLO/YOLOView.swift:1157-1185` and the
-  // device discovery in `VideoCapture.swift:32-45`. Setters only — Dart owns gestures; this class never attaches a
+  // Port of the lens enumeration + lens-snap math from `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift` and the
+  // device discovery in `VideoCapture.swift#bestCaptureDevice`. Setters only — Dart owns gestures; this class never attaches a
   // pinch/tap recognizer.
 
   /// Returns the physical lens devices available for the active camera position (back: ultra-wide / wide / telephoto,
@@ -1232,7 +1232,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     return lensLabel(for: device)
   }
 
-  /// Port of `YOLOView.updateSelectedLens` (yolo-ios-app:1157-1185). Picks the largest-zoom physical lens whose
+  /// Port of upstream `YOLOView.updateSelectedLens` (yolo-ios-app). Picks the largest-zoom physical lens whose
   /// threshold is <= `rawZoomFactor`, falling back to the smallest available lens. Emits `onLensChanged` when the
   /// label transitions to a new value.
   private func updateSelectedLensLabel(rawZoomFactor: CGFloat, device: AVCaptureDevice) {
@@ -1303,7 +1303,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
   }
 
-  /// Port of upstream `VideoCapture.swift:62-84` — computes the raw zoom factor on `virtualDevice` that selects the
+  /// Port of upstream `VideoCapture.swift` — computes the raw zoom factor on `virtualDevice` that selects the
   /// constituent lens `lensDevice`.
   private func zoomFactor(
     for lensDevice: AVCaptureDevice, on virtualDevice: AVCaptureDevice?
@@ -1333,7 +1333,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
   // MARK: - Camera-flip blur transition
   //
-  // Ported from `yolo-ios-app/Sources/YOLO/YOLOView.swift:1036-1069`. Adds a snapshot + UIVisualEffectView over the
+  // Ported from `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`. Adds a snapshot + UIVisualEffectView over the
   // preview while the camera session reconfigures, then fades it out.
 
   private func showCameraTransition() {
@@ -1426,7 +1426,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
 
     // Visual polish: snapshot+blur the preview while the session
-    // reconfigures (port of yolo-ios-app YOLOView.swift:1036-1060).
+    // reconfigures (port of yolo-ios-app YOLOView.swift).
     showCameraTransition()
 
     self.videoCapture.captureSession.beginConfiguration()

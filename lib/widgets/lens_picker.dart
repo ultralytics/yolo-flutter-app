@@ -4,13 +4,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 
-/// Lens picker mirroring `yolo-ios-app/Sources/YOLO/YOLOView.swift#setupLensControl`.
+/// Lens picker mirroring `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#setupLensControl`.
 ///
 /// Visual tokens:
-///   * background: `UIColor.black.withAlphaComponent(0.38)` (line 647)
-///   * selected thumb: `UIColor.white.withAlphaComponent(0.18)` (line 648)
-///   * normal label: 13pt semibold white (lines 651–653)
-///   * selected label: 13pt **bold** `systemYellow` (lines 654–658)
+///   * background: `UIColor.black.withAlphaComponent(0.38)`
+///   * selected thumb: `UIColor.white.withAlphaComponent(0.18)`
+///   * normal label: 13pt semibold white
+///   * selected label: 13pt **bold** `systemYellow`
 ///
 /// Labels render `0.5`, `1`, `2`, `4` (sub-1× lenses get one decimal). The chip whose zoom factor is closest to
 /// [currentZoomFactor] is selected, so a pinch-zoom past a lens threshold visually snaps the picker.
@@ -141,8 +141,8 @@ class LensPicker extends StatelessWidget {
         : lens.zoomFactor.toStringAsFixed(0);
   }
 
-  /// Mirrors `yolo-ios-app/Sources/YOLO/YOLOView.swift#updateSelectedLens` (line 1181): pick the largest-zoom lens
-  /// whose threshold is `<= zoom - 0.01`, falling back to the smallest lens when zoom is below every threshold. The
+  /// Mirrors `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#updateSelectedLens`: pick the largest-zoom lens
+  /// whose threshold is `<= zoom + 0.01`, falling back to the smallest lens when zoom is below every threshold. The
   /// previous "closest absolute delta" heuristic switched the yellow selection too early around midpoints (a 1.5x
   /// zoom on a 1×/2× picker would jump to 2x before the camera actually rebound).
   static LensInfo _closestLens(List<LensInfo> lenses, double zoom) {

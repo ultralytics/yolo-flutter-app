@@ -4,13 +4,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Bottom action toolbar (play/pause, switch camera, share, info). Matches `yolo-ios-app/Sources/YOLO/YOLOView.swift`'s
+/// Bottom action toolbar (play/pause, switch camera, share, info). Matches `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`'s
 /// toolbar layout:
-///   * `toolbar.backgroundColor = .black.withAlphaComponent(0.7)` (line 637).
-///   * `toolBarHeight: CGFloat = 66` (line 803) — the toolbar is 66pt tall.
+///   * `toolbar.backgroundColor = .black.withAlphaComponent(0.7)`.
+///   * `toolBarHeight: CGFloat = 66` — the toolbar is 66pt tall.
 ///   * `buttonHeight = toolBarHeight * 0.75 = 49.5pt` — each button is roughly square at 49.5pt.
-///   * SF Symbol `pointSize: 20` (line 601) — icons render at ~20pt.
-///   * Buttons spread evenly across the toolbar width (`layoutToolbarButtons` lines 802–840).
+///   * SF Symbol `pointSize: 20` — icons render at ~20pt.
+///   * Buttons spread evenly across the toolbar width (`layoutToolbarButtons`).
 class CameraToolbar extends StatelessWidget {
   // 66pt matches the iOS reference toolbar; Android's bar is shortened to the 44pt min touch target since it also sits
   // above the system nav bar.

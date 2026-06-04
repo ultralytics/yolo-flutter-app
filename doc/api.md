@@ -288,13 +288,13 @@ YOLOView(
 
 `YOLOView` no longer accepts `showOverlays`, `overlayTheme`, or `showNativeUI`. Camera overlay drawing is native-only, and package-provided controls moved out of `YOLOView`.
 
-| Removed API                                | Use instead                                                                                          |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `YOLOOverlay`, `YOLOOverlayTheme`          | Native `YOLOView` overlays, or raw `onResult`/`YOLO.predict()` data for fully custom rendering.      |
-| `YOLOControls`                             | `YOLOShowcase` for the full UI, or exported widgets such as `TaskSegmentedControl` and `LensPicker`. |
-| `YOLOView.showNativeUI`                    | `YOLOShowcase` for built-in controls; bare `YOLOView` plus your own Flutter controls for custom UI.  |
-| `YOLOView.showOverlays`, `overlayTheme`    | No constructor replacement. Native camera overlays are not themed or toggled from Dart.              |
-| `setShowUIControls()`, `setShowOverlays()` | Own the surrounding Flutter controls; `capturePhoto(withOverlays: false)` only affects captures.     |
+| Removed API                             | Use instead                                                                                                                                                      |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `YOLOOverlay`, `YOLOOverlayTheme`       | Native `YOLOView` overlays, or raw `onResult`/`YOLO.predict()` data for fully custom rendering.                                                                  |
+| `YOLOControls`                          | `YOLOShowcase` for the full UI, or exported widgets such as `TaskSegmentedControl` and `LensPicker`.                                                             |
+| `YOLOView.showNativeUI`                 | `YOLOShowcase` for built-in controls; bare `YOLOView` plus your own Flutter controls for custom UI.                                                              |
+| `YOLOView.showOverlays`, `overlayTheme` | No constructor replacement. Native camera overlays are not themed from Dart; toggle them with `YOLOViewController.setShowOverlays()`.                            |
+| `setShowUIControls()`                   | Own the surrounding Flutter controls. `setShowOverlays()` is still available on `YOLOViewController`; `capturePhoto(withOverlays: false)` only affects captures. |
 
 ---
 
@@ -593,24 +593,30 @@ A Material 3 one-import camera screen that mirrors the layout of the native Ultr
 
 ```dart
 YOLOShowcase(
-  modelPath: 'yolo26n',
+  initialTask: YOLOTask.detect,
+  initialModelSize: 'n',
   onCapture: (bytes) {},
 )
 ```
 
 #### Constructor Parameters
 
-| Parameter   | Type                    | Required | Default | Description                                        |
-| ----------- | ----------------------- | -------- | ------- | -------------------------------------------------- |
-| `modelPath` | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL  |
-| `onCapture` | `Function(Uint8List?)?` | ❌       | `null`  | Callback invoked with the JPEG bytes after capture |
+| Parameter          | Type                              | Required | Default           | Description                                                           |
+| ------------------ | --------------------------------- | -------- | ----------------- | --------------------------------------------------------------------- |
+| `initialTask`      | `YOLOTask`                        | ❌       | `YOLOTask.detect` | Task to load on first launch (overridden by the stored preference)    |
+| `initialModelSize` | `String`                          | ❌       | `'n'`             | Model size (`n/s/m/l/x`) to load on first launch                      |
+| `showSemanticTask` | `bool`                            | ❌       | `true`            | When `false`, hides the Semantic task chip                            |
+| `onCapture`        | `void Function(Uint8List bytes)?` | ❌       | `null`            | Callback invoked with the composited JPEG bytes after capture         |
+| `controller`       | `YOLOViewController?`             | ❌       | `null`            | Optional controller; one is created internally if `null`              |
+| `theme`            | `ThemeData?`                      | ❌       | `null`            | Optional theme override; defaults to dark Material 3                  |
+| `versionLabel`     | `String?`                         | ❌       | `null`            | Optional app version label shown in the bottom-left; hidden if `null` |
 
 Import once and get the full UI:
 
 ```dart
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
-YOLOShowcase(modelPath: 'yolo26n')
+YOLOShowcase()
 ```
 
 For a custom layout, compose the 9 exported Material widgets around a bare `YOLOView` instead: `TaskSegmentedControl`, `ModelSizeSegmentedControl`, `ThresholdSliderRow`, `LensPicker`, `ZoomIndicator`, `CameraToolbar`, `FocusReticle`, `LogoOverlay`, `PerformanceLabel`.
@@ -619,7 +625,7 @@ For a custom layout, compose the 9 exported Material widgets around a bare `YOLO
 
 ### YOLOModelManager Class
 
-Static class that manages model downloads and caching.
+Static class that manages model downloads and caching. The umbrella library re-exports only the `DownloadProgress` type; to reference `YOLOModelManager` itself, import `package:ultralytics_yolo/core/yolo_model_manager.dart`.
 
 #### Static Properties
 
@@ -964,7 +970,7 @@ Base exception class for all YOLO-related errors.
 ```dart
 class YOLOException implements Exception {
   final String message;
-  const YOLOException(this.message);
+  YOLOException(this.message);
 }
 ```
 
@@ -974,7 +980,7 @@ Thrown when model loading fails.
 
 ```dart
 class ModelLoadingException extends YOLOException {
-  const ModelLoadingException(String message) : super(message);
+  ModelLoadingException(super.message);
 }
 ```
 
@@ -984,7 +990,7 @@ Thrown when attempting to use an unloaded model.
 
 ```dart
 class ModelNotLoadedException extends YOLOException {
-  const ModelNotLoadedException(String message) : super(message);
+  ModelNotLoadedException(super.message);
 }
 ```
 
@@ -994,7 +1000,7 @@ Thrown when inference fails.
 
 ```dart
 class InferenceException extends YOLOException {
-  const InferenceException(String message) : super(message);
+  InferenceException(super.message);
 }
 ```
 
@@ -1004,52 +1010,35 @@ Thrown when invalid input is provided.
 
 ```dart
 class InvalidInputException extends YOLOException {
-  const InvalidInputException(String message) : super(message);
+  InvalidInputException(super.message);
 }
 ```
 
 ---
 
-## 📊 Type Definitions
+## 📊 Callback Types
 
-### Common Types
+The plugin does not export named callback typedefs; `YOLOView` declares its callbacks inline:
 
 ```dart
-// Callback function types
-typedef YOLOResultCallback = void Function(List<YOLOResult> results);
-typedef YOLOPerformanceCallback = void Function(YOLOPerformanceMetrics metrics);
-typedef YOLOStreamingCallback = void Function(Map<String, dynamic> data);
-typedef YOLOZoomCallback = void Function(double zoomLevel);
-
-// Result data types
-typedef DetectionBox = Map<String, dynamic>;
-typedef ClassificationResult = Map<String, dynamic>;
-typedef PoseKeypoints = List<Map<String, dynamic>>;
+final Function(List<YOLOResult>)? onResult;
+final Function(YOLOPerformanceMetrics)? onPerformanceMetrics;
+final Function(Map<String, dynamic>)? onStreamingData;
+final Function(double zoomLevel)? onZoomChanged;
+final void Function(Object error, String modelPath, YOLOTask? task)? onModelError;
 ```
 
 ---
 
-## 🔧 Constants
+## 🔧 Default Values
 
-### Default Values
+The plugin does not export named constants; these defaults are baked into the implementation:
 
-```dart
-// Default thresholds
-const double DEFAULT_CONFIDENCE_THRESHOLD = 0.25;
-const double DEFAULT_IOU_THRESHOLD = 0.7;
-const int DEFAULT_NUM_ITEMS_THRESHOLD = 30;
-
-// Performance thresholds
-const double GOOD_PERFORMANCE_FPS = 15.0;
-const double GOOD_PERFORMANCE_TIME_MS = 100.0;
-const double PERFORMANCE_ISSUE_FPS = 10.0;
-const double PERFORMANCE_ISSUE_TIME_MS = 200.0;
-
-// Camera resolutions
-const List<String> SUPPORTED_RESOLUTIONS = [
-  "480p", "720p", "1080p", "4K"
-];
-```
+- Confidence threshold: `0.25` (`YOLOViewController`)
+- IoU threshold: `0.7` (`YOLOViewController`)
+- Max detections (`numItemsThreshold`): `30` (`YOLOViewController`)
+- `YOLOPerformanceMetrics.isGoodPerformance`: FPS ≥ 15 and processing time ≤ 100 ms
+- `YOLOPerformanceMetrics.hasPerformanceIssues`: FPS < 10 or processing time > 200 ms
 
 ---
 

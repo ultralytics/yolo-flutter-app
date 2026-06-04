@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 
 /// Top HUD: model name (`YOLO26n`) over an FPS / inference-time line.
 ///
-/// Centered, matching `yolo-ios-app/Sources/YOLO/YOLOView.swift#setupUI`:
-///   * `labelName.font = UIFont.preferredFont(forTextStyle: .title1)` (line 561) — iOS `title1` ≈ 28pt regular.
-///   * `labelFPS.font = UIFont.preferredFont(forTextStyle: .body)` (line 567) — iOS `body` ≈ 17pt regular.
-///   * Both `textAlignment = .center` and `textColor = .white` (lines 558/565/560/566).
+/// Centered, matching `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#setupUI`:
+///   * `labelName.font = UIFont.preferredFont(forTextStyle: .title1)` — iOS `title1` ≈ 28pt regular.
+///   * `labelFPS.font = UIFont.preferredFont(forTextStyle: .body)` — iOS `body` ≈ 17pt regular.
+///   * Both `textAlignment = .center` and `textColor = .white`.
 class PerformanceLabel extends StatelessWidget {
   /// Active model display name, e.g. `YOLO26n`.
   final String modelName;

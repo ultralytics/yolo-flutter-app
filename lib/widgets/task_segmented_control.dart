@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 
 /// Picks the active [YOLOTask] using a `CupertinoSlidingSegmentedControl` styled to match
-/// `yolo-ios-app/Sources/YOLO/YOLOView.swift`'s storyboard-driven `UISegmentedControl` (`Det Seg Sem Cls Pose OBB`).
+/// `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`'s storyboard-driven `UISegmentedControl` (`Det Seg Sem Cls Pose OBB`).
 ///
 /// Material 3's `SegmentedButton` was used previously but its pill-shaped chips don't match the iOS reference's
 /// inset rounded-rect look. The Cupertino variant gives us:
@@ -29,7 +29,7 @@ class TaskSegmentedControl extends StatelessWidget {
     this.showSemanticTask = true,
   });
 
-  // EXACT short button strings the iOS app inserts via task.shortName (yolo-ios-app ViewController.swift:77-108) —
+  // EXACT short button strings the iOS app inserts via task.shortName (yolo-ios-app ViewController.swift) —
   // Det / Seg / Sem / Cls / Pose / OBB. The storyboard's full words are placeholders overridden at runtime.
   static const Map<YOLOTask, String> _shortLabels = {
     YOLOTask.detect: 'Det',

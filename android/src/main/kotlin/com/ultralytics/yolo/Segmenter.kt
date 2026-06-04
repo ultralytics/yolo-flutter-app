@@ -60,7 +60,7 @@ class Segmenter(
         val out0Shape = dims.getOrNull(detOutIndex) ?: IntArray(0)
         val out1Shape = dims.getOrNull(maskOutIndex) ?: IntArray(0)
 
-        // Detection head shape (traditional [1,116,2100] or end-to-end [1,300,38]); kept flat and indexed in place.
+        // Detection head shape (traditional [1,116,8400] or end-to-end [1,300,38]); kept flat and indexed in place.
         isEndToEnd = out0Shape[2] < out0Shape[1] && out0Shape[2] >= 6
         if (isEndToEnd) {
             out0NumAnchors = out0Shape[1]
@@ -70,7 +70,7 @@ class Segmenter(
             out0NumAnchors = out0Shape[2]
         }
 
-        // Mask proto shape (example: [1,80,80,32]); kept flat and indexed in place.
+        // Mask proto shape (example: [1,160,160,32]); kept flat and indexed in place.
         maskH = out1Shape[1]
         maskW = out1Shape[2]
         maskC = out1Shape[3]

@@ -73,7 +73,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.4.0
+  ultralytics_yolo: ^0.5.1
 ```
 
 ```bash
@@ -123,10 +123,10 @@ Call `YOLO.officialModels()` to see which official IDs are available on the curr
 
 Official assets are maintained as GitHub release assets:
 
-| Platform  | Runtime asset                 | Release                                                                                          |
-| --------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| Android   | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
-| iOS/macOS | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+| Platform | Runtime asset                 | Release                                                                                          |
+| -------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| Android  | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| iOS      | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms. These release tags are intentionally pinned for reproducible first-use downloads. See the [model guide](doc/models.md) for the official export matrix, URL patterns, and model properties.
 
@@ -231,7 +231,8 @@ Use `YOLOShowcase` when you want the complete Ultralytics camera UI:
 
 ```dart
 YOLOShowcase(
-  modelPath: 'yolo26n',
+  initialTask: YOLOTask.detect,
+  initialModelSize: 'n',
   onCapture: (bytes) {},
 )
 ```
@@ -240,14 +241,14 @@ YOLOShowcase(
 
 Version 0.4.0 removes the old Dart-side overlay/control layer. Camera detections are rendered natively by `YOLOView`; Flutter now owns only the surrounding app controls.
 
-| Removed 0.3.x API                                | 0.4.0 replacement                                                                                  |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `YOLOOverlay`, `YOLOOverlayTheme`                | Remove these widgets. Use native `YOLOView` overlays, or consume `onResult`/`YOLO.predict()` data. |
-| `YOLOControls`                                   | Use `YOLOShowcase` for the full UI, or compose the exported Material widgets directly.             |
-| `YOLOView.showNativeUI`                          | Use `YOLOShowcase` for built-in controls; use bare `YOLOView` when building your own UI.           |
-| `YOLOView.showOverlays`, `YOLOView.overlayTheme` | No constructor replacement. Camera overlay drawing is native and not themed from Dart.             |
-| `YOLOViewController.setShowUIControls()`         | Show/hide your own Flutter controls around `YOLOView`.                                             |
-| `YOLOViewController.setShowOverlays()`           | No controller replacement. `capturePhoto(withOverlays: false)` only affects captured JPEG output.  |
+| Removed 0.3.x API                                | 0.4.0 replacement                                                                                                         |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `YOLOOverlay`, `YOLOOverlayTheme`                | Remove these widgets. Use native `YOLOView` overlays, or consume `onResult`/`YOLO.predict()` data.                        |
+| `YOLOControls`                                   | Use `YOLOShowcase` for the full UI, or compose the exported Material widgets directly.                                    |
+| `YOLOView.showNativeUI`                          | Use `YOLOShowcase` for built-in controls; use bare `YOLOView` when building your own UI.                                  |
+| `YOLOView.showOverlays`, `YOLOView.overlayTheme` | No constructor replacement. Camera overlay drawing is native and not themed from Dart.                                    |
+| `YOLOViewController.setShowUIControls()`         | Show/hide your own Flutter controls around `YOLOView`.                                                                    |
+| `YOLOViewController.setShowOverlays()`           | Still available: toggles native overlay rendering. `capturePhoto(withOverlays: false)` only affects captured JPEG output. |
 
 ## 🧩 Recommended Patterns
 

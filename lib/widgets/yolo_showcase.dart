@@ -25,12 +25,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// One-import camera UI matching the iOS showcase layout. Composes every widget under `lib/widgets/`, owns gestures
-/// (pinch + tap-to-focus), drives the controller, and persists the last task/size across launches.
+/// (pinch + tap-to-focus), drives the controller, and persists the last task across launches.
 class YOLOShowcase extends StatefulWidget {
   /// Task to load on first launch (overridden by stored preference).
   final YOLOTask initialTask;
 
-  /// Model size (`n/s/m/l/x`) to load on first launch (overridden by stored preference).
+  /// Model size (`n/s/m/l/x`) to load on first launch.
   final String initialModelSize;
 
   /// When `false`, the Semantic task chip is hidden for hosts that do not want to expose semantic segmentation.
@@ -316,7 +316,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   /// Probes each declared `yolo26<size><suffix>` for the active task to decide which chips are "downloaded" vs need a
-  /// `⤓` glyph. Only models the resolver declares (`YOLO.officialModels`) are probed.
+  /// `↓` glyph. Only models the resolver declares (`YOLO.officialModels`) are probed.
   Future<Set<String>> _scanAvailableSizes(YOLOTask task) async {
     final supported = _supportedSizesForTask(task);
     final present = <String>{};
@@ -531,7 +531,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     HapticFeedback.lightImpact();
     setState(() => _isPaused = !_isPaused);
     // iOS `pause` snapshots the next frame into the native share cache before stopping; sharing while paused returns
-    // that frame. Android aliases to stop/start. resume() clears the cached frame and restarts.
+    // that frame. Android unbinds the camera use-cases (the predictor stays alive). resume() clears the cached frame
+    // and restarts.
     if (_isPaused) {
       unawaited(_controller.pause());
     } else {
@@ -850,7 +851,7 @@ class _ModelSwitchLoadingOverlay extends StatelessWidget {
   }
 }
 
-/// Stateless overlay sandwich. Layout mirrors `yolo-ios-app/Sources/YOLO/YOLOView.swift#layoutPortrait` (lines 749–798)
+/// Stateless overlay sandwich. Layout mirrors `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#layoutPortrait`
 /// and the storyboard segmented-control frames in `Main.storyboard`:
 ///   * Top: 20pt side padding, centered model name (10% view-height), centered FPS line (4%), 8pt gap, task control
 ///     (32pt), 4pt gap, model-size control (32pt).
