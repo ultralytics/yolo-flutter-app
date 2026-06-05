@@ -1,0 +1,6 @@
+ignore:
+  - "lib/platform/yolo_platform_impl.dart"
+  - "lib/widgets/focus_reticle.dart"
+  - "lib/widgets/lens_picker.dart"
+  - "lib/widgets/yolo_showcase.dart"
+  - "lib/yolo_view.dart"
