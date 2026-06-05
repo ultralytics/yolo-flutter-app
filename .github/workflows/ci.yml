@@ -43,7 +43,7 @@ jobs:
           awk '
             /^SF:/ {
               file = $0
-              skip = file ~ /lib\/(platform\/yolo_platform_impl|widgets\/focus_reticle|yolo_view)\.dart$/
+              skip = file ~ /lib\/(platform\/yolo_platform_impl|widgets\/focus_reticle)\.dart$/
             }
             !skip { print }
             /^end_of_record/ { skip = 0 }

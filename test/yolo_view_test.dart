@@ -8,6 +8,7 @@ import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/models/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
+import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:flutter/foundation.dart';
 import 'utils/test_helpers.dart';
 
@@ -298,6 +299,201 @@ void main() {
       expect(find.byType(YOLOView), findsOneWidget);
       expect(capturedStreamData, isEmpty);
     });
+
+    testWidgets(
+      'drives platform view, event stream, and controller callbacks',
+      (WidgetTester tester) async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+        final singleImageChannel = YOLOTestHelpers.setupMockChannel();
+        addTearDown(() {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(singleImageChannel, null);
+        });
+
+        final results = <YOLOResult>[];
+        final metrics = <YOLOPerformanceMetrics>[];
+        final streamingData = <Map<String, dynamic>>[];
+        final zoomLevels = <double>[];
+        final loadedModels = <String>[];
+        final controlCalls = <MethodCall>[];
+        MockStreamHandlerEventSink? events;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: YOLOView(
+              modelPath: 'camera_model.tflite',
+              task: YOLOTask.detect,
+              confidenceThreshold: 0.4,
+              iouThreshold: 0.6,
+              useGpu: false,
+              lensFacing: LensFacing.front,
+              streamingConfig: const YOLOStreamingConfig(
+                includeDetections: true,
+                includeClassifications: true,
+                includeProcessingTimeMs: true,
+                includeFps: true,
+                includeMasks: true,
+                includePoses: true,
+                includeOBB: true,
+                includeOriginalImage: true,
+                maxFPS: 15,
+                throttleInterval: Duration(milliseconds: 120),
+                inferenceFrequency: 3,
+                skipFrames: 2,
+              ),
+              onResult: results.addAll,
+              onPerformanceMetrics: metrics.add,
+              onZoomChanged: zoomLevels.add,
+              onModelLoad: (modelPath, _) => loadedModels.add(modelPath),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        final androidView = tester.widget<AndroidView>(
+          find.byType(AndroidView),
+        );
+        final creationParams =
+            androidView.creationParams! as Map<dynamic, dynamic>;
+        expect(creationParams['modelPath'], 'camera_model.tflite');
+        expect(creationParams['task'], 'detect');
+        expect(creationParams['confidenceThreshold'], 0.4);
+        expect(creationParams['iouThreshold'], 0.6);
+        expect(creationParams['useGpu'], isFalse);
+        expect(creationParams['lensFacing'], 'front');
+        expect(creationParams['streamingConfig'], {
+          'includeDetections': true,
+          'includeClassifications': true,
+          'includeProcessingTimeMs': true,
+          'includeFps': true,
+          'includeMasks': true,
+          'includePoses': true,
+          'includeOBB': true,
+          'includeOriginalImage': true,
+          'maxFPS': 15,
+          'throttleIntervalMs': 120,
+          'inferenceFrequency': 3,
+          'skipFrames': 2,
+        });
+        expect(loadedModels, ['camera_model.tflite']);
+
+        final viewId = creationParams['viewId'] as String;
+        final controlChannel = MethodChannel(
+          'com.ultralytics.yolo/controlChannel_$viewId',
+        );
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(controlChannel, (call) async {
+              controlCalls.add(call);
+              return true;
+            });
+        addTearDown(() {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(controlChannel, null);
+        });
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockStreamHandler(
+              EventChannel('com.ultralytics.yolo/detectionResults_$viewId'),
+              MockStreamHandler.inline(
+                onListen: (_, eventSink) {
+                  events = eventSink;
+                },
+              ),
+            );
+
+        androidView.onPlatformViewCreated?.call(7);
+        await tester.pump();
+
+        expect(
+          controlCalls.map((call) => call.method),
+          contains('setStreamingConfig'),
+        );
+
+        events!.success({'type': 'zoom', 'value': 1.8});
+        await tester.pump();
+        expect(zoomLevels, isEmpty);
+
+        await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+          controlChannel.name,
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall('onZoomChanged', 2.5),
+          ),
+          (_) {},
+        );
+        expect(zoomLevels, [2.5]);
+
+        events!.success({
+          'detections': [
+            {
+              'classIndex': 0,
+              'className': 'person',
+              'confidence': 0.9,
+              'boundingBox': {
+                'left': 10.0,
+                'top': 20.0,
+                'right': 30.0,
+                'bottom': 40.0,
+              },
+              'normalizedBox': {
+                'left': 0.1,
+                'top': 0.2,
+                'right': 0.3,
+                'bottom': 0.4,
+              },
+            },
+          ],
+          'fps': 30.0,
+          'processingTimeMs': 12.0,
+          'preprocessTimeMs': 3.0,
+          'inferenceTimeMs': 7.0,
+          'postprocessTimeMs': 2.0,
+        });
+        await tester.pump();
+
+        expect(results.single.className, 'person');
+        expect(metrics.single.fps, 30.0);
+        expect(streamingData, isEmpty);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: YOLOView(
+              modelPath: 'camera_model.tflite',
+              task: YOLOTask.detect,
+              onStreamingData: streamingData.add,
+            ),
+          ),
+        );
+        await tester.pump();
+
+        final streamingView = tester.widget<AndroidView>(
+          find.byType(AndroidView),
+        );
+        final streamingParams =
+            streamingView.creationParams! as Map<dynamic, dynamic>;
+        final streamingViewId = streamingParams['viewId'] as String;
+        MockStreamHandlerEventSink? streamingEvents;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockStreamHandler(
+              EventChannel(
+                'com.ultralytics.yolo/detectionResults_$streamingViewId',
+              ),
+              MockStreamHandler.inline(
+                onListen: (_, eventSink) {
+                  streamingEvents = eventSink;
+                },
+              ),
+            );
+        streamingView.onPlatformViewCreated?.call(8);
+        await tester.pump();
+
+        streamingEvents!.success({'fps': 60.0, 'frameId': 42});
+        await tester.pump();
+        expect(streamingData.single, {'fps': 60.0, 'frameId': 42});
+        debugDefaultTargetPlatformOverride = null;
+      },
+    );
 
     testWidgets('handles different camera resolutions', (
       WidgetTester tester,
