@@ -110,4 +110,7 @@ example/lib/widget_previews.dart
 Screenshot*.png
 
 # Local store listing assets
-store-assets/
+play-store-assets/*
+!play-store-assets/
+!play-store-assets/README.md
+!play-store-assets/ultralytics-yolo-feature-graphic.png
