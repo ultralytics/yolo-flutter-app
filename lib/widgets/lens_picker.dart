@@ -45,15 +45,18 @@ class LensPicker extends StatelessWidget {
     // Keep the lens pill centered on screen: balance the trailing control (torch) on the right with an invisible
     // copy of equal width on the left, so the zoom options stay centered while the torch sits directly next to them.
     return Center(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Opacity(opacity: 0, child: IgnorePointer(child: trailing)),
-          const SizedBox(width: 6),
-          pill,
-          const SizedBox(width: 6),
-          trailing!,
-        ],
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Opacity(opacity: 0, child: IgnorePointer(child: trailing)),
+            const SizedBox(width: 6),
+            pill,
+            const SizedBox(width: 6),
+            trailing!,
+          ],
+        ),
       ),
     );
   }
