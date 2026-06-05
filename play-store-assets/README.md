@@ -1,7 +1,7 @@
 # Google Play Store Deployment
 
 This directory is the local Google Play Console staging area for the example Android app. Generated files here are
-ignored by git and excluded from the pub package; only this README is tracked.
+ignored by git and excluded from the pub package; only this README and the feature graphic are tracked.
 
 Useful links:
 

@@ -66,13 +66,32 @@ if ! command -v flutter > /dev/null; then
   exit 1
 fi
 
+if command -v shasum > /dev/null; then
+  CHECKSUM_CMD=(shasum -a 256)
+elif command -v sha256sum > /dev/null; then
+  CHECKSUM_CMD=(sha256sum)
+else
+  echo "build_play_store_assets: shasum or sha256sum is required to write the checksum manifest" >&2
+  exit 1
+fi
+
 KEY_PROPERTIES="$EXAMPLE_DIR/android/key.properties"
 if [ ! -f "$KEY_PROPERTIES" ]; then
   echo "build_play_store_assets: missing $KEY_PROPERTIES; release builds must use the Play upload key" >&2
   exit 1
 fi
 
-STORE_FILE="$(awk -F= '$1 == "storeFile" { print $2; exit }' "$KEY_PROPERTIES")"
+STORE_FILE="$(
+  awk -F= '
+    $1 ~ /^[[:space:]]*storeFile[[:space:]]*$/ {
+      gsub(/\r/, "", $2)
+      sub(/^[[:space:]]+/, "", $2)
+      sub(/[[:space:]]+$/, "", $2)
+      print $2
+      exit
+    }
+  ' "$KEY_PROPERTIES"
+)"
 if [ -n "$STORE_FILE" ] && [ ! -f "$EXAMPLE_DIR/android/$STORE_FILE" ]; then
   echo "build_play_store_assets: missing Android keystore $EXAMPLE_DIR/android/$STORE_FILE" >&2
   exit 1
@@ -109,42 +128,43 @@ echo "build_play_store_assets: building ultralytics_yolo $VERSION_NAME+$VERSION_
 (cd "$EXAMPLE_DIR" && flutter build appbundle --release)
 
 mkdir -p "$STORE_DIR"
-find "$STORE_DIR" -maxdepth 1 -type f \( \
-  -name 'ultralytics-yolo-*-build*.aab' -o \
-  -name 'ultralytics-yolo-*-whats-new.txt' -o \
-  -name 'ultralytics-yolo-*-sha256.txt' \
-  \) -delete
+TMP_STORE_DIR="$(mktemp -d "$STORE_DIR/.tmp-play-store-assets.XXXXXX")"
+trap 'rm -rf "$TMP_STORE_DIR"' EXIT
 
 AAB_SOURCE="$EXAMPLE_DIR/build/app/outputs/bundle/release/app-release.aab"
 AAB_DEST="$STORE_DIR/ultralytics-yolo-$VERSION_NAME-build$VERSION_CODE.aab"
 NOTES_DEST="$STORE_DIR/ultralytics-yolo-$VERSION_NAME-whats-new.txt"
 SHA_DEST="$STORE_DIR/ultralytics-yolo-$VERSION_NAME-sha256.txt"
 FEATURE_GRAPHIC="$STORE_DIR/ultralytics-yolo-feature-graphic.png"
+TMP_AAB="$TMP_STORE_DIR/$(basename "$AAB_DEST")"
+TMP_NOTES="$TMP_STORE_DIR/$(basename "$NOTES_DEST")"
+TMP_SHA="$TMP_STORE_DIR/$(basename "$SHA_DEST")"
+TMP_FEATURE_GRAPHIC="$TMP_STORE_DIR/$(basename "$FEATURE_GRAPHIC")"
 
-install -m 0644 "$AAB_SOURCE" "$AAB_DEST"
+install -m 0644 "$AAB_SOURCE" "$TMP_AAB"
 
 if [ -n "$NOTES_SOURCE" ]; then
-  install -m 0644 "$NOTES_SOURCE" "$NOTES_DEST"
+  install -m 0644 "$NOTES_SOURCE" "$TMP_NOTES"
 else
-  extract_changelog_notes > "$NOTES_DEST"
+  extract_changelog_notes > "$TMP_NOTES"
 fi
 
-if [ ! -s "$NOTES_DEST" ]; then
-  echo "build_play_store_assets: generated empty Play release notes at $NOTES_DEST" >&2
+if [ ! -s "$TMP_NOTES" ]; then
+  echo "build_play_store_assets: generated empty Play release notes at $TMP_NOTES" >&2
   exit 1
 fi
 
-NOTES_BYTES="$(wc -c < "$NOTES_DEST" | tr -d ' ')"
+NOTES_BYTES="$(wc -c < "$TMP_NOTES" | tr -d ' ')"
 if [ "$NOTES_BYTES" -gt 500 ]; then
   echo "build_play_store_assets: warning: Play release notes are $NOTES_BYTES bytes; Play Console may require shortening" >&2
 fi
 
 if command -v jarsigner > /dev/null; then
-  if jarsigner -verify "$AAB_DEST" > /dev/null 2>&1; then
+  if jarsigner -verify "$TMP_AAB" > /dev/null 2>&1; then
     echo "build_play_store_assets: verified AAB signature"
   else
     echo "build_play_store_assets: AAB signature verification failed" >&2
-    jarsigner -verify "$AAB_DEST" >&2
+    jarsigner -verify "$TMP_AAB" >&2
     exit 1
   fi
 else
@@ -152,16 +172,26 @@ else
 fi
 
 if [ -f "$FEATURE_GRAPHIC" ]; then
+  install -m 0644 "$FEATURE_GRAPHIC" "$TMP_FEATURE_GRAPHIC"
   (
-    cd "$STORE_DIR"
-    shasum -a 256 "$(basename "$AAB_DEST")" "$(basename "$NOTES_DEST")" "$(basename "$FEATURE_GRAPHIC")"
-  ) > "$SHA_DEST"
+    cd "$TMP_STORE_DIR"
+    "${CHECKSUM_CMD[@]}" "$(basename "$TMP_AAB")" "$(basename "$TMP_NOTES")" "$(basename "$TMP_FEATURE_GRAPHIC")"
+  ) > "$TMP_SHA"
 else
   (
-    cd "$STORE_DIR"
-    shasum -a 256 "$(basename "$AAB_DEST")" "$(basename "$NOTES_DEST")"
-  ) > "$SHA_DEST"
+    cd "$TMP_STORE_DIR"
+    "${CHECKSUM_CMD[@]}" "$(basename "$TMP_AAB")" "$(basename "$TMP_NOTES")"
+  ) > "$TMP_SHA"
 fi
+
+find "$STORE_DIR" -maxdepth 1 -type f \( \
+  -name 'ultralytics-yolo-*-build*.aab' -o \
+  -name 'ultralytics-yolo-*-whats-new.txt' -o \
+  -name 'ultralytics-yolo-*-sha256.txt' \
+  \) -delete
+install -m 0644 "$TMP_AAB" "$AAB_DEST"
+install -m 0644 "$TMP_NOTES" "$NOTES_DEST"
+install -m 0644 "$TMP_SHA" "$SHA_DEST"
 
 echo "build_play_store_assets: wrote:"
 echo "  $AAB_DEST"
