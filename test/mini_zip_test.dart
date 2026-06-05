@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/utils/mini_zip.dart';
+import 'utils/test_helpers.dart';
 
 void main() {
   group('MiniZip', () {
@@ -142,7 +143,7 @@ void main() {
 
       expect(
         () => MiniZip.extractBytes(
-          _storedZip({'../escape.txt': utf8.encode('nope')}),
+          YOLOTestHelpers.storedZip({'../escape.txt': utf8.encode('nope')}),
           destination: destination,
         ),
         throwsA(isA<MiniZipException>()),
@@ -168,88 +169,3 @@ cy50eHRQSwUGAAAAAAQABAAwAQAADwEAAAAA
 
 Uint8List _decodeBase64(String value) =>
     base64Decode(value.replaceAll(RegExp(r'\s+'), ''));
-
-Uint8List _storedZip(Map<String, List<int>> files) {
-  final output = BytesBuilder();
-  final central = BytesBuilder();
-  var offset = 0;
-
-  for (final entry in files.entries) {
-    final name = utf8.encode(entry.key);
-    final data = entry.value;
-    final crc = _crc32(data);
-
-    _writeU32(output, 0x04034b50);
-    _writeU16(output, 20);
-    _writeU16(output, 0);
-    _writeU16(output, 0);
-    _writeU16(output, 0);
-    _writeU16(output, 0);
-    _writeU32(output, crc);
-    _writeU32(output, data.length);
-    _writeU32(output, data.length);
-    _writeU16(output, name.length);
-    _writeU16(output, 0);
-    output.add(name);
-    output.add(data);
-
-    _writeU32(central, 0x02014b50);
-    _writeU16(central, 20);
-    _writeU16(central, 20);
-    _writeU16(central, 0);
-    _writeU16(central, 0);
-    _writeU16(central, 0);
-    _writeU16(central, 0);
-    _writeU32(central, crc);
-    _writeU32(central, data.length);
-    _writeU32(central, data.length);
-    _writeU16(central, name.length);
-    _writeU16(central, 0);
-    _writeU16(central, 0);
-    _writeU16(central, 0);
-    _writeU16(central, 0);
-    _writeU32(central, 0);
-    _writeU32(central, offset);
-    central.add(name);
-
-    offset = output.length;
-  }
-
-  final centralBytes = central.toBytes();
-  final centralOffset = output.length;
-  output.add(centralBytes);
-  _writeU32(output, 0x06054b50);
-  _writeU16(output, 0);
-  _writeU16(output, 0);
-  _writeU16(output, files.length);
-  _writeU16(output, files.length);
-  _writeU32(output, centralBytes.length);
-  _writeU32(output, centralOffset);
-  _writeU16(output, 0);
-  return output.toBytes();
-}
-
-void _writeU16(BytesBuilder builder, int value) {
-  builder.add(<int>[value & 0xff, (value >> 8) & 0xff]);
-}
-
-void _writeU32(BytesBuilder builder, int value) {
-  builder.add(<int>[
-    value & 0xff,
-    (value >> 8) & 0xff,
-    (value >> 16) & 0xff,
-    (value >> 24) & 0xff,
-  ]);
-}
-
-int _crc32(List<int> data) {
-  var crc = 0xffffffff;
-  for (final byte in data) {
-    var value = (crc ^ byte) & 0xff;
-    for (var bit = 0; bit < 8; bit++) {
-      value = (value & 1) != 0 ? (0xedb88320 ^ (value >> 1)) : (value >> 1);
-    }
-    crc = value ^ (crc >> 8);
-  }
-  return (crc ^ 0xffffffff) & 0xffffffff;
-}
