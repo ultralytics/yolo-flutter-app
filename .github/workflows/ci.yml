@@ -46,6 +46,9 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
+          files: coverage/lcov.info
+          disable_search: true
+          plugins: noop
           name: flutter-codecov
           verbose: false
 
