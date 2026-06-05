@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 #
 # Build the local Google Play Console upload assets for the example Android app.
 
@@ -20,7 +21,7 @@ while [ "$#" -gt 0 ]; do
       NOTES_SOURCE="$2"
       shift 2
       ;;
-    -h|--help)
+    -h | --help)
       usage
       exit 0
       ;;
@@ -60,7 +61,7 @@ if [ "$PACKAGE_VERSION" != "$VERSION_NAME" ]; then
   exit 1
 fi
 
-if ! command -v flutter >/dev/null; then
+if ! command -v flutter > /dev/null; then
   echo "build_play_store_assets: flutter is not on PATH" >&2
   exit 1
 fi
@@ -112,7 +113,7 @@ find "$STORE_DIR" -maxdepth 1 -type f \( \
   -name 'ultralytics-yolo-*-build*.aab' -o \
   -name 'ultralytics-yolo-*-whats-new.txt' -o \
   -name 'ultralytics-yolo-*-sha256.txt' \
-\) -delete
+  \) -delete
 
 AAB_SOURCE="$EXAMPLE_DIR/build/app/outputs/bundle/release/app-release.aab"
 AAB_DEST="$STORE_DIR/ultralytics-yolo-$VERSION_NAME-build$VERSION_CODE.aab"
@@ -138,8 +139,8 @@ if [ "$NOTES_BYTES" -gt 500 ]; then
   echo "build_play_store_assets: warning: Play release notes are $NOTES_BYTES bytes; Play Console may require shortening" >&2
 fi
 
-if command -v jarsigner >/dev/null; then
-  if jarsigner -verify "$AAB_DEST" >/dev/null 2>&1; then
+if command -v jarsigner > /dev/null; then
+  if jarsigner -verify "$AAB_DEST" > /dev/null 2>&1; then
     echo "build_play_store_assets: verified AAB signature"
   else
     echo "build_play_store_assets: AAB signature verification failed" >&2
