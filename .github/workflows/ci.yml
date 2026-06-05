@@ -110,10 +110,6 @@ jobs:
         working-directory: example
         run: flutter pub get
 
-      - name: Build example iOS app
-        working-directory: example
-        run: flutter build ios --simulator --no-codesign
-
       - name: Boot iOS Simulator
         run: |
           UDID=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/{print $2; exit}')

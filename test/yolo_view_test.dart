@@ -393,15 +393,22 @@ void main() {
               .setMockMethodCallHandler(controlChannel, null);
         });
 
+        final eventChannel = EventChannel(
+          'com.ultralytics.yolo/detectionResults_$viewId',
+        );
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockStreamHandler(
-              EventChannel('com.ultralytics.yolo/detectionResults_$viewId'),
+              eventChannel,
               MockStreamHandler.inline(
                 onListen: (_, eventSink) {
                   events = eventSink;
                 },
               ),
             );
+        addTearDown(() {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockStreamHandler(eventChannel, null);
+        });
 
         androidView.onPlatformViewCreated?.call(7);
         await tester.pump();
@@ -474,17 +481,22 @@ void main() {
             streamingView.creationParams! as Map<dynamic, dynamic>;
         final streamingViewId = streamingParams['viewId'] as String;
         MockStreamHandlerEventSink? streamingEvents;
+        final streamingEventChannel = EventChannel(
+          'com.ultralytics.yolo/detectionResults_$streamingViewId',
+        );
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockStreamHandler(
-              EventChannel(
-                'com.ultralytics.yolo/detectionResults_$streamingViewId',
-              ),
+              streamingEventChannel,
               MockStreamHandler.inline(
                 onListen: (_, eventSink) {
                   streamingEvents = eventSink;
                 },
               ),
             );
+        addTearDown(() {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockStreamHandler(streamingEventChannel, null);
+        });
         streamingView.onPlatformViewCreated?.call(8);
         await tester.pump();
 

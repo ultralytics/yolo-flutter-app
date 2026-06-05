@@ -500,16 +500,18 @@ void main() {
     });
 
     test('preset constructors encode streaming tradeoffs', () {
-      // ignore: prefer_const_constructors
-      final minimal = YOLOStreamingConfig.minimal();
-      // ignore: prefer_const_constructors
-      final masks = YOLOStreamingConfig.withMasks();
-      // ignore: prefer_const_constructors
-      final poses = YOLOStreamingConfig.withPoses();
-      // ignore: prefer_const_constructors
-      final full = YOLOStreamingConfig.full();
-      // ignore: prefer_const_constructors
-      final debug = YOLOStreamingConfig.debug();
+      final constructors = <YOLOStreamingConfig Function()>[
+        YOLOStreamingConfig.minimal,
+        YOLOStreamingConfig.withMasks,
+        YOLOStreamingConfig.withPoses,
+        YOLOStreamingConfig.full,
+        YOLOStreamingConfig.debug,
+      ];
+      final minimal = constructors[0]();
+      final masks = constructors[1]();
+      final poses = constructors[2]();
+      final full = constructors[3]();
+      final debug = constructors[4]();
       final throttled = YOLOStreamingConfig.throttled(
         maxFPS: 12,
         includeOBB: true,
@@ -522,8 +524,12 @@ void main() {
       final highPerformance = YOLOStreamingConfig.highPerformance(
         inferenceFrequency: 45,
       );
-      // ignore: prefer_const_constructors
-      final custom = YOLOStreamingConfig.custom(includeOriginalImage: true);
+      final customOptions = Map<String, bool>.of({
+        'includeOriginalImage': true,
+      });
+      final custom = YOLOStreamingConfig.custom(
+        includeOriginalImage: customOptions['includeOriginalImage'],
+      );
 
       expect(minimal.includeMasks, isFalse);
       expect(masks.includeMasks, isTrue);
