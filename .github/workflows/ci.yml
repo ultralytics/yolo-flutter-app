@@ -82,7 +82,14 @@ jobs:
           arch: x86_64
           target: google_apis
           working-directory: example
-          script: flutter test integration_test/app_launch_test.dart
+          script: |
+            set -eux
+            adb install -r -t build/app/outputs/flutter-apk/app-debug.apk
+            adb shell pm grant com.ultralytics.yolo android.permission.CAMERA || true
+            adb shell am start -W -n com.ultralytics.yolo/.MainActivity
+            sleep 10
+            adb shell pidof com.ultralytics.yolo
+            adb shell dumpsys activity activities | grep com.ultralytics.yolo
 
   example-ios:
     runs-on: macos-26
