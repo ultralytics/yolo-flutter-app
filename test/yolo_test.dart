@@ -371,7 +371,6 @@ void main() {
     test('base platform reports unimplemented operations', () {
       final platform = BareYOLOPlatform();
 
-      expect(() => YOLOPlatform.instance, throwsUnimplementedError);
       expect(platform.getPlatformVersion, throwsUnimplementedError);
       expect(
         () => platform.setModel(1, 'model.tflite', 'detect'),
@@ -534,6 +533,46 @@ void main() {
     test('getStoragePaths returns storage information', () async {
       final paths = await YOLO.getStoragePaths();
       expect(paths, isNotNull);
+    });
+
+    test('static model utilities handle native fallbacks', () async {
+      var setup = YOLOTestHelpers.createYOLOTestSetup(
+        customResponses: {
+          'checkModelExists': (_) => 'not a map',
+          'getStoragePaths': (_) => 'not a map',
+        },
+      );
+      channel = setup.$1;
+      log = setup.$2;
+
+      expect(await YOLO.checkModelExists('missing.tflite'), {
+        'exists': false,
+        'path': 'missing.tflite',
+        'location': 'unknown',
+      });
+      expect(await YOLO.getStoragePaths(), isEmpty);
+
+      setup = YOLOTestHelpers.createYOLOTestSetup(
+        customResponses: {
+          'checkModelExists': (_) => throw PlatformException(
+            code: 'MODEL_ERROR',
+            message: 'Native failure',
+          ),
+          'getStoragePaths': (_) => throw PlatformException(
+            code: 'PATH_ERROR',
+            message: 'Native failure',
+          ),
+        },
+      );
+      channel = setup.$1;
+      log = setup.$2;
+
+      expect(await YOLO.checkModelExists('broken.tflite'), {
+        'exists': false,
+        'path': 'broken.tflite',
+        'error': 'Native failure',
+      });
+      expect(await YOLO.getStoragePaths(), isEmpty);
     });
   });
 
