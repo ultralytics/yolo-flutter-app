@@ -38,6 +38,11 @@ jobs:
       - name: Run tests with coverage
         run: flutter test --coverage
 
+      - name: Filter unit coverage scope
+        run: |
+          awk '/^SF:/ { skip = ($0 ~ /^SF:lib\/(platform\/|yolo_view\.dart|widgets\/yolo_showcase\.dart)/) } !skip { print } /^end_of_record$/ { skip = 0 }' coverage/lcov.info > coverage/lcov.filtered.info
+          mv coverage/lcov.filtered.info coverage/lcov.info
+
       - name: Dart publish dry-run
         run: dart pub publish --dry-run
 

@@ -1,5 +1,8 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data' as typed_data;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -978,5 +981,245 @@ void main() {
         );
       },
     );
+
+    group('YOLOModelResolver path preparation', () {
+      setUp(() {
+        _resetResolverDocuments();
+        _mockFlutterAssets({});
+      });
+
+      tearDown(() {
+        _mockFlutterAssets(null);
+        _resetResolverDocuments();
+      });
+
+      test(
+        'uses cached official models and rejects unsupported ones',
+        () async {
+          final cachedPath = _isAppleTestPlatform
+              ? '/tmp/yolo_test/yolo26n.mlpackage'
+              : '/tmp/yolo_test/yolo26n_int8.tflite';
+          if (_isAppleTestPlatform) {
+            Directory(cachedPath).createSync(recursive: true);
+            File('$cachedPath/Manifest.json').writeAsStringSync('{}');
+          } else {
+            File(cachedPath)
+              ..createSync(recursive: true)
+              ..writeAsBytesSync([1, 2, 3]);
+          }
+
+          expect(await YOLOModelResolver.preparePath('yolo26n'), cachedPath);
+          expect(
+            await YOLOModelResolver.isOfficialModelAvailableLocally('yolo26n'),
+            isTrue,
+          );
+          expect(
+            await YOLOModelResolver.isOfficialModelAvailableLocally('missing'),
+            isFalse,
+          );
+          await expectLater(
+            YOLOModelResolver.preparePath(
+              _isAppleTestPlatform ? 'yolo11n-seg' : 'yolo11s',
+            ),
+            throwsA(isA<ModelLoadingException>()),
+          );
+        },
+      );
+
+      test('prepares official and Flutter bundled assets', () async {
+        final bytes = YOLOTestHelpers.storedZip({
+          'model.mlpackage/Manifest.json': utf8.encode('{}'),
+          'model.mlpackage/labels.txt': utf8.encode('person'),
+          '__MACOSX/model.mlpackage/._Manifest.json': utf8.encode('junk'),
+        });
+        final officialAsset = _isAppleTestPlatform
+            ? 'assets/models/yolo26s.mlpackage.zip'
+            : 'assets/models/yolo26s_int8.tflite';
+        final customAsset = _isAppleTestPlatform
+            ? 'assets/custom.mlpackage.zip'
+            : 'assets/custom.tflite';
+        if (_isAppleTestPlatform) {
+          Directory(
+            '/tmp/yolo_test/yolo26s.mlpackage',
+          ).createSync(recursive: true);
+        }
+        _mockFlutterAssets({officialAsset: bytes, customAsset: bytes});
+
+        expect(
+          await YOLOModelResolver.isOfficialModelAvailableLocally('yolo26s'),
+          isTrue,
+        );
+        final officialPath = await YOLOModelResolver.preparePath('yolo26s');
+        final assetPath = await YOLOModelResolver.preparePath(customAsset);
+        if (_isAppleTestPlatform) {
+          expect(File('$officialPath/Manifest.json').existsSync(), isTrue);
+          expect(File('$officialPath/labels.txt').readAsStringSync(), 'person');
+          expect(Directory('$officialPath/__MACOSX').existsSync(), isFalse);
+          expect(assetPath, '/tmp/yolo_test/custom.mlpackage');
+          expect(File('$assetPath/Manifest.json').existsSync(), isTrue);
+        } else {
+          expect(officialPath, '/tmp/yolo_test/yolo26s_int8.tflite');
+          expect(File(officialPath).readAsBytesSync(), bytes);
+          expect(assetPath, '/tmp/yolo_test/custom.tflite');
+          expect(File(assetPath).readAsBytesSync(), bytes);
+        }
+
+        await expectLater(
+          YOLOModelResolver.preparePath(
+            _isAppleTestPlatform
+                ? 'assets/missing.mlpackage.zip'
+                : 'assets/missing.tflite',
+          ),
+          throwsA(isA<ModelLoadingException>()),
+        );
+        if (_isAppleTestPlatform) {
+          await expectLater(
+            YOLOModelResolver.preparePath('assets/broken.mlpackage.zip'),
+            throwsA(isA<ModelLoadingException>()),
+          );
+        }
+      });
+
+      test('downloads remote models once and surfaces bad responses', () async {
+        final archiveBytes = YOLOTestHelpers.storedZip({
+          'model.mlpackage/Manifest.json': utf8.encode('{}'),
+        });
+        final client = _FakeHttpClient({
+          'https://example.test/model.tflite': _FakeHttpResponse(
+            statusCode: HttpStatus.ok,
+            chunks: [
+              [1, 2],
+              [3],
+            ],
+          ),
+          'https://example.test/remote.mlpackage.zip': _FakeHttpResponse(
+            statusCode: HttpStatus.ok,
+            chunks: [archiveBytes],
+          ),
+          'https://example.test/missing.tflite': _FakeHttpResponse(
+            statusCode: HttpStatus.notFound,
+            chunks: [],
+          ),
+          'https://example.test/empty.tflite': _FakeHttpResponse(
+            statusCode: HttpStatus.ok,
+            chunks: [],
+          ),
+        });
+
+        await HttpOverrides.runZoned(() async {
+          final modelPath = await YOLOModelResolver.preparePath(
+            'https://example.test/model.tflite',
+          );
+          expect(modelPath, '/tmp/yolo_test/model.tflite');
+          expect(File(modelPath).readAsBytesSync(), [1, 2, 3]);
+          expect(
+            await YOLOModelResolver.preparePath(
+              'https://example.test/model.tflite',
+            ),
+            modelPath,
+          );
+          expect(client.requestedUrls, ['https://example.test/model.tflite']);
+
+          if (_isAppleTestPlatform) {
+            final packagePath = await YOLOModelResolver.preparePath(
+              'https://example.test/remote.mlpackage.zip',
+            );
+            expect(packagePath, '/tmp/yolo_test/remote.mlpackage');
+            expect(File('$packagePath/Manifest.json').existsSync(), isTrue);
+            expect(
+              File('/tmp/yolo_test/remote.mlpackage.zip').existsSync(),
+              isFalse,
+            );
+          }
+
+          await expectLater(
+            YOLOModelResolver.preparePath(
+              'https://example.test/missing.tflite',
+            ),
+            throwsA(isA<ModelLoadingException>()),
+          );
+          await expectLater(
+            YOLOModelResolver.preparePath('https://example.test/empty.tflite'),
+            throwsA(isA<ModelLoadingException>()),
+          );
+        }, createHttpClient: (_) => client);
+      });
+    });
   });
+}
+
+void _resetResolverDocuments() {
+  final directory = Directory('/tmp/yolo_test');
+  if (directory.existsSync()) directory.deleteSync(recursive: true);
+  directory.createSync(recursive: true);
+}
+
+bool get _isAppleTestPlatform => Platform.isIOS || Platform.isMacOS;
+
+void _mockFlutterAssets(Map<String, List<int>>? assets) {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMessageHandler(
+        'flutter/assets',
+        assets == null
+            ? null
+            : (typed_data.ByteData? message) async {
+                final key = utf8.decode(message!.buffer.asUint8List());
+                final bytes = assets[key];
+                return bytes == null
+                    ? null
+                    : typed_data.ByteData.sublistView(
+                        typed_data.Uint8List.fromList(bytes),
+                      );
+              },
+      );
+}
+
+class _FakeHttpClient implements HttpClient {
+  _FakeHttpClient(this.responses);
+
+  final Map<String, _FakeHttpResponse> responses;
+  final requestedUrls = <String>[];
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async {
+    requestedUrls.add(url.toString());
+    return _FakeHttpClientRequest(
+      responses[url.toString()] ??
+          _FakeHttpResponse(statusCode: HttpStatus.notFound, chunks: []),
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeHttpClientRequest implements HttpClientRequest {
+  const _FakeHttpClientRequest(this.response);
+
+  final _FakeHttpResponse response;
+
+  @override
+  Future<HttpClientResponse> close() async => response;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeHttpResponse extends StreamView<List<int>>
+    implements HttpClientResponse {
+  _FakeHttpResponse({required this.statusCode, required List<List<int>> chunks})
+    : contentLength = chunks.fold(0, (total, chunk) => total + chunk.length),
+      super(Stream<List<int>>.fromIterable(chunks));
+
+  @override
+  final int statusCode;
+
+  @override
+  final int contentLength;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
