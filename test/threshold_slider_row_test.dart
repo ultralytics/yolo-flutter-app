@@ -3,6 +3,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ultralytics_yolo/widgets/focus_reticle.dart';
 import 'package:ultralytics_yolo/widgets/threshold_slider_row.dart';
 
 void main() {
@@ -58,6 +59,33 @@ void main() {
       );
     },
   );
+
+  testWidgets('FocusReticle pulses at a new position', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Stack(children: [FocusReticle(position: null)])),
+    );
+    expect(find.byType(Image), findsNothing);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Stack(children: [FocusReticle(position: Offset(40, 50))]),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(Image), findsOneWidget);
+    expect(tester.widget<Positioned>(find.byType(Positioned)).left, 0);
+    expect(
+      tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity,
+      1,
+    );
+
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(
+      tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity,
+      0,
+    );
+  });
 }
 
 class _Probe extends StatelessWidget {

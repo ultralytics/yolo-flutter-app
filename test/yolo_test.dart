@@ -355,9 +355,29 @@ void main() {
   });
 
   group('Platform Method Channel', () {
-    test('getPlatformVersion works', () async {
+    test('method channel implementation forwards native calls', () async {
       final platform = YOLOMethodChannel();
-      expect(platform, isNotNull);
+      final calls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(platform.methodChannel, (call) async {
+            calls.add(call);
+            return call.method == 'getPlatformVersion' ? '42' : null;
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(platform.methodChannel, null);
+      });
+
+      expect(await platform.getPlatformVersion(), '42');
+      await platform.setModel(7, 'model.tflite', 'detect');
+
+      expect(calls.first.method, 'getPlatformVersion');
+      expect(calls.last.method, 'setModel');
+      expect(calls.last.arguments, {
+        'viewId': 7,
+        'modelPath': 'model.tflite',
+        'task': 'detect',
+      });
     });
 
     test('platform interface works correctly', () {
@@ -480,7 +500,6 @@ void main() {
     });
 
     test('preset constructors encode streaming tradeoffs', () {
-      // Keep these runtime-constructed so LCOV records each public constructor.
       // ignore: prefer_const_constructors
       final minimal = YOLOStreamingConfig.minimal();
       // ignore: prefer_const_constructors
