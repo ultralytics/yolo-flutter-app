@@ -1,5 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'dart:typed_data' as typed_data;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
 import 'package:ultralytics_yolo/yolo.dart';
@@ -22,6 +24,8 @@ class MockYOLOPlatform with MockPlatformInterfaceMixin implements YOLOPlatform {
   Future<void> setModel(int viewId, String modelPath, String task) =>
       Future.value();
 }
+
+class BareYOLOPlatform extends YOLOPlatform {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -238,6 +242,116 @@ void main() {
         throwsA(isA<ModelLoadingException>()),
       );
     });
+
+    test(
+      'single-image API resolves, loads, predicts, switches, and inspects',
+      () async {
+        final calls = <MethodCall>[];
+        final setup = YOLOTestHelpers.createYOLOTestSetup(
+          customResponses: {
+            'inspectModel': (call) {
+              calls.add(call);
+              final path = (call.arguments as Map)['modelPath'] as String;
+              return {
+                'path': path,
+                'task': path.contains('segment') ? 'segment' : 'detect',
+                'labels': ['person'],
+              };
+            },
+            'loadModel': (call) {
+              calls.add(call);
+              return true;
+            },
+            'predictorInstance': (call) {
+              calls.add(call);
+              return null;
+            },
+            'predictSingleImage': (call) {
+              calls.add(call);
+              return {
+                'boxes': [
+                  {
+                    'x1': 10,
+                    'y1': 20,
+                    'x2': 30,
+                    'y2': 40,
+                    'x1_norm': 0.1,
+                    'y1_norm': 0.2,
+                    'x2_norm': 0.3,
+                    'y2_norm': 0.4,
+                    'class': 'person',
+                    'confidence': 0.9,
+                  },
+                ],
+              };
+            },
+            'setModel': (call) {
+              calls.add(call);
+              return true;
+            },
+            'disposeInstance': (call) {
+              calls.add(call);
+              return true;
+            },
+          },
+        );
+        channel = setup.$1;
+        log = setup.$2;
+
+        final yolo = YOLO(
+          modelPath: 'detect_model.tflite',
+          task: YOLOTask.detect,
+          useGpu: false,
+          classifierOptions: {'expectedClasses': 80},
+          numItemsThreshold: 5,
+        )..setViewId(42);
+
+        expect(await yolo.loadModel(), isTrue);
+        expect(yolo.isInitialized, isTrue);
+        await yolo.predictorInstance();
+
+        final prediction = await yolo.predict(
+          typed_data.Uint8List.fromList([1, 2, 3]),
+          confidenceThreshold: 0.4,
+          iouThreshold: 0.6,
+        );
+        expect(prediction['detections'], hasLength(1));
+        expect(prediction['detections'].first['className'], 'person');
+
+        final metadata = await YOLO.inspectModel('detect_model.tflite');
+        expect(metadata['task'], 'detect');
+
+        await yolo.switchModel('segment_model.tflite', YOLOTask.segment);
+        expect(yolo.resolvedTask, YOLOTask.segment);
+        await yolo.dispose();
+        expect(yolo.isInitialized, isFalse);
+
+        final loadArgs =
+            calls.firstWhere((call) => call.method == 'loadModel').arguments
+                as Map;
+        expect(loadArgs['modelPath'], 'detect_model.tflite');
+        expect(loadArgs['task'], 'detect');
+        expect(loadArgs['useGpu'], isFalse);
+        expect(loadArgs['classifierOptions'], {'expectedClasses': 80});
+        expect(loadArgs['numItemsThreshold'], 5);
+
+        final predictArgs =
+            calls
+                    .firstWhere((call) => call.method == 'predictSingleImage')
+                    .arguments
+                as Map;
+        expect(predictArgs['confidenceThreshold'], 0.4);
+        expect(predictArgs['iouThreshold'], 0.6);
+        expect(predictArgs['image'], isA<typed_data.Uint8List>());
+
+        final switchArgs =
+            calls.firstWhere((call) => call.method == 'setModel').arguments
+                as Map;
+        expect(switchArgs['viewId'], 42);
+        expect(switchArgs['modelPath'], 'segment_model.tflite');
+        expect(switchArgs['task'], 'segment');
+      },
+    );
   });
 
   group('Platform Method Channel', () {
@@ -248,8 +362,21 @@ void main() {
 
     test('platform interface works correctly', () {
       final mockPlatform = MockYOLOPlatform();
+
       expect(mockPlatform, isNotNull);
       expect(mockPlatform.getPlatformVersion(), completion('42'));
+      expect(mockPlatform.setModel(1, 'model.tflite', 'detect'), completes);
+    });
+
+    test('base platform reports unimplemented operations', () {
+      final platform = BareYOLOPlatform();
+
+      expect(() => YOLOPlatform.instance, throwsUnimplementedError);
+      expect(platform.getPlatformVersion, throwsUnimplementedError);
+      expect(
+        () => platform.setModel(1, 'model.tflite', 'detect'),
+        throwsUnimplementedError,
+      );
     });
   });
 
@@ -294,6 +421,30 @@ void main() {
       expect(metrics.frameNumber, equals(50));
       expect(metrics.timestamp, isA<DateTime>());
     });
+
+    test('ratings and copyWith classify real-time performance', () {
+      final timestamp = DateTime.fromMillisecondsSinceEpoch(1234);
+      final excellent = YOLOPerformanceMetrics(
+        fps: 30,
+        processingTimeMs: 40,
+        frameNumber: 7,
+        timestamp: timestamp,
+      );
+      final fair = excellent.copyWith(fps: 12, processingTimeMs: 140);
+      final poor = excellent.copyWith(fps: 8, processingTimeMs: 250);
+
+      expect(excellent.isGoodPerformance, isTrue);
+      expect(excellent.hasPerformanceIssues, isFalse);
+      expect(excellent.performanceRating, 'Excellent');
+      expect(excellent.toString(), contains('fps: 30.0'));
+      expect(fair.isGoodPerformance, isFalse);
+      expect(fair.hasPerformanceIssues, isFalse);
+      expect(fair.performanceRating, 'Fair');
+      expect(poor.hasPerformanceIssues, isTrue);
+      expect(poor.performanceRating, 'Poor');
+      expect(poor.frameNumber, 7);
+      expect(poor.timestamp, timestamp);
+    });
   });
 
   group('Streaming Config', () {
@@ -327,6 +478,50 @@ void main() {
         config.throttleInterval,
         equals(const Duration(milliseconds: 100)),
       );
+    });
+
+    test('preset constructors encode streaming tradeoffs', () {
+      // Keep these runtime-constructed so LCOV records each public constructor.
+      // ignore: prefer_const_constructors
+      final minimal = YOLOStreamingConfig.minimal();
+      // ignore: prefer_const_constructors
+      final masks = YOLOStreamingConfig.withMasks();
+      // ignore: prefer_const_constructors
+      final poses = YOLOStreamingConfig.withPoses();
+      // ignore: prefer_const_constructors
+      final full = YOLOStreamingConfig.full();
+      // ignore: prefer_const_constructors
+      final debug = YOLOStreamingConfig.debug();
+      final throttled = YOLOStreamingConfig.throttled(
+        maxFPS: 12,
+        includeOBB: true,
+        skipFrames: 2,
+      );
+      final powerSaving = YOLOStreamingConfig.powerSaving(
+        inferenceFrequency: 6,
+        maxFPS: 9,
+      );
+      final highPerformance = YOLOStreamingConfig.highPerformance(
+        inferenceFrequency: 45,
+      );
+      // ignore: prefer_const_constructors
+      final custom = YOLOStreamingConfig.custom(includeOriginalImage: true);
+
+      expect(minimal.includeMasks, isFalse);
+      expect(masks.includeMasks, isTrue);
+      expect(masks.includePoses, isFalse);
+      expect(poses.includePoses, isTrue);
+      expect(full.includeOBB, isTrue);
+      expect(debug.includeOriginalImage, isTrue);
+      expect(throttled.maxFPS, 12);
+      expect(throttled.includeOBB, isTrue);
+      expect(throttled.skipFrames, 2);
+      expect(powerSaving.maxFPS, 9);
+      expect(powerSaving.inferenceFrequency, 6);
+      expect(highPerformance.inferenceFrequency, 45);
+      expect(custom.includeDetections, isTrue);
+      expect(custom.includeOriginalImage, isTrue);
+      expect(debug.toString(), contains('originalImage: true'));
     });
   });
 
@@ -535,6 +730,44 @@ void main() {
       );
     });
 
+    test('ChannelConfig validates legacy method-call arguments', () {
+      const validCall = MethodCall('loadModel', {
+        'modelPath': 'model.tflite',
+        'task': 'detect',
+      });
+      expect(
+        () =>
+            ChannelConfig.validateMethodCall(validCall, ['modelPath', 'task']),
+        returnsNormally,
+      );
+      expect(
+        () => ChannelConfig.validateMethodCall(
+          const MethodCall('loadModel', 'not a map'),
+          ['modelPath'],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => ChannelConfig.validateMethodCall(validCall, ['missing']),
+        throwsArgumentError,
+      );
+
+      expect(
+        ChannelConfig.createStandardArgs(
+          viewId: 1,
+          modelPath: 'model.tflite',
+          task: 'detect',
+          additionalArgs: {'useGpu': false},
+        ),
+        {
+          'viewId': 1,
+          'modelPath': 'model.tflite',
+          'task': 'detect',
+          'useGpu': false,
+        },
+      );
+    });
+
     test('ErrorHandler handles different exception types', () {
       final platformException = PlatformException(
         code: 'MODEL_NOT_FOUND',
@@ -547,6 +780,53 @@ void main() {
 
       expect(handledException, isA<ModelLoadingException>());
       expect(handledException.message, contains('Model not found'));
+    });
+
+    test('ErrorHandler maps native and generic failures by context', () {
+      final platformCases = {
+        'INVALID_MODEL': isA<ModelLoadingException>(),
+        'UNSUPPORTED_TASK': isA<ModelLoadingException>(),
+        'MODEL_FILE_ERROR': isA<ModelLoadingException>(),
+        'MODEL_NOT_LOADED': isA<ModelNotLoadedException>(),
+        'INVALID_IMAGE': isA<InvalidInputException>(),
+        'IMAGE_LOAD_ERROR': isA<InferenceException>(),
+        'INFERENCE_ERROR': isA<InferenceException>(),
+        'OTHER': isA<InferenceException>(),
+      };
+
+      for (final entry in platformCases.entries) {
+        expect(
+          YOLOErrorHandler.handlePlatformException(
+            PlatformException(code: entry.key, message: 'message'),
+            context: 'switch to model task pose',
+          ),
+          entry.value,
+        );
+      }
+
+      final existing = InferenceException('already wrapped');
+      expect(YOLOErrorHandler.handleGenericException(existing), same(existing));
+      expect(
+        YOLOErrorHandler.handleGenericException(
+          MissingPluginException('missing'),
+          context: 'load model',
+        ),
+        isA<ModelLoadingException>(),
+      );
+      expect(
+        YOLOErrorHandler.handleGenericException(
+          MissingPluginException('missing'),
+          context: 'predict',
+        ),
+        isA<InferenceException>(),
+      );
+      expect(
+        YOLOErrorHandler.handleError(
+          PlatformException(code: 'INVALID_IMAGE', message: 'bad'),
+          'predict',
+        ),
+        isA<InvalidInputException>(),
+      );
     });
   });
 
@@ -591,5 +871,48 @@ void main() {
       final storagePaths = await YOLO.getStoragePaths();
       expect(storagePaths, isA<Map<String, String?>>());
     });
+
+    test(
+      'YOLOModelResolver resolves metadata and normalizes official IDs',
+      () async {
+        final setup = YOLOTestHelpers.createYOLOTestSetup(
+          customResponses: {
+            'inspectModel': (_) => {
+              'task': 'pose',
+              'labels': ['person'],
+            },
+          },
+        );
+        channel = setup.$1;
+        log = setup.$2;
+
+        final resolved = await YOLOModelResolver.resolve(
+          modelPath: 'custom-model.tflite',
+        );
+
+        expect(resolved.modelPath, 'custom-model.tflite');
+        expect(resolved.task, YOLOTask.pose);
+        expect(resolved.metadata['labels'], ['person']);
+        expect(
+          YOLOModelResolver.isOfficialModel('models/yolo26n.tflite'),
+          isTrue,
+        );
+        expect(
+          YOLOModelResolver.isOfficialModel('yolo26n.mlpackage.zip'),
+          isTrue,
+        );
+        expect(
+          YOLOModelResolver.isOfficialModel('not-a-model.tflite'),
+          isFalse,
+        );
+        expect(
+          YOLOModelResolver.officialModelDownloadUrlForTesting(
+            'missing',
+            iosLike: false,
+          ),
+          isNull,
+        );
+      },
+    );
   });
 }
