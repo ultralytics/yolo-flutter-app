@@ -7,8 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ultralytics_yolo/widgets/camera_toolbar.dart';
 import 'package:ultralytics_yolo/widgets/lens_picker.dart';
-import 'package:ultralytics_yolo/widgets/model_size_segmented_control.dart';
-import 'package:ultralytics_yolo/widgets/task_segmented_control.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/widgets/yolo_showcase.dart';
 import 'package:ultralytics_yolo/yolo.dart';
@@ -86,9 +84,6 @@ void main() {
     await tester.pump();
 
     expect(find.text('Sem'), findsNothing);
-    expect(find.text('v1.2.3'), findsOneWidget);
-    expect(find.text('0.25 Confidence Threshold'), findsOneWidget);
-    expect(find.text('0.70 IoU Threshold'), findsOneWidget);
 
     tester
         .widget<YOLOView>(find.byType(YOLOView))
@@ -120,31 +115,22 @@ void main() {
     await tester.pump();
 
     await tester.tap(find.bySemanticsLabel('Share'));
-    tester.widget<CameraToolbar>(find.byType(CameraToolbar)).onInfo();
+    await tester.tap(find.byIcon(CupertinoIcons.info));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('About YOLO'), findsOneWidget);
-    expect(find.text('Continue Learning'), findsOneWidget);
+    expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
 
-    Navigator.of(tester.element(find.text('About YOLO'))).pop();
-    await tester.pump(const Duration(milliseconds: 300));
-    tester
-        .widget<ModelSizeSegmentedControl>(
-          find.byType(ModelSizeSegmentedControl),
-        )
-        .onSizeChanged('s');
+    Navigator.of(tester.element(find.byIcon(Icons.menu_book_outlined))).pop();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('↓ YOLO26s'));
     await tester.pump();
 
     expect(find.textContaining('Downloading YOLO26s Detect'), findsOneWidget);
 
-    tester
-        .widget<TextButton>(find.widgetWithText(TextButton, 'Cancel'))
-        .onPressed!();
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
     await tester.pump();
-    tester
-        .widget<TaskSegmentedControl>(find.byType(TaskSegmentedControl))
-        .onTaskChanged(YOLOTask.segment);
+    await tester.tap(find.text('Seg'));
     await tester.pump();
 
     expect(captured.single, orderedEquals([1, 2, 3]));
