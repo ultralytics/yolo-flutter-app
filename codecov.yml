@@ -1,3 +1,5 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
 ignore:
   - "lib/platform/yolo_platform_impl.dart"
   - "lib/widgets/focus_reticle.dart"
