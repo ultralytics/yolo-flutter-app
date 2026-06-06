@@ -123,20 +123,23 @@ void main() {
       YOLOTestHelpers.assertMethodCalled(log, 'captureFrame');
     });
 
-    test('setShowOverlays before init is remembered and applied on init', () async {
-      // Called before the platform view attaches: no channel yet, so the call is only recorded locally.
-      await controller.setShowOverlays(false);
-      expect(controller.showOverlays, isFalse);
-      expect(log, isEmpty);
+    test(
+      'setShowOverlays before init is remembered and applied on init',
+      () async {
+        // Called before the platform view attaches: no channel yet, so the call is only recorded locally.
+        await controller.setShowOverlays(false);
+        expect(controller.showOverlays, isFalse);
+        expect(log, isEmpty);
 
-      controller.init(mockChannel, 1);
+        controller.init(mockChannel, 1);
 
-      YOLOTestHelpers.assertMethodCalled(
-        log,
-        'setShowOverlays',
-        arguments: {'visible': false},
-      );
-    });
+        YOLOTestHelpers.assertMethodCalled(
+          log,
+          'setShowOverlays',
+          arguments: {'visible': false},
+        );
+      },
+    );
 
     test('lens, focus, and photo methods invoke platform channel', () async {
       final calls = <MethodCall>[];
