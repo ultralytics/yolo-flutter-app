@@ -17,14 +17,12 @@ class _OfficialModelArtifact {
     required this.id,
     required this.task,
     this.androidAssetName,
-    this.androidReleaseBaseUrl = YOLOModelResolver._androidModelReleaseBaseUrl,
     this.iosArchiveName,
   });
 
   final String id;
   final YOLOTask task;
   final String? androidAssetName;
-  final String androidReleaseBaseUrl;
   final String? iosArchiveName;
 }
 
@@ -45,9 +43,6 @@ class YOLOModelResolver {
   // when the official model asset set moves to a new release.
   static const String _androidModelReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5';
-  // The YOLO11 TFLite assets were published with the v0.2.0 release and were not re-uploaded to v0.3.5.
-  static const String _androidYolo11ModelReleaseBaseUrl =
-      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0';
   static const String _iosModelReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
@@ -63,71 +58,12 @@ class YOLOModelResolver {
   ];
 
   // Canonical YOLO26 task x size matrix. Keep generated so the app, docs, and export script all represent the same
-  // 6-task x 5-size official asset set.
+  // 6-task x 5-size official asset set. YOLO11 assets still exist on older releases but are no longer maintained for
+  // autodownload — load them as custom paths/URLs instead.
   static final List<_OfficialModelArtifact> _officialModels = [
     for (final task in _yolo26Tasks)
       for (final size in _yolo26Sizes)
         _yolo26Artifact(task: task.task, size: size, suffix: task.suffix),
-    const _OfficialModelArtifact(
-      id: 'yolo11n',
-      task: YOLOTask.detect,
-      androidAssetName: 'yolo11n.tflite',
-      androidReleaseBaseUrl:
-          YOLOModelResolver._androidYolo11ModelReleaseBaseUrl,
-      iosArchiveName: 'yolo11n.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11s',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo11s.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11m',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo11m.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11l',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo11l.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11x',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo11x.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11n-seg',
-      task: YOLOTask.segment,
-      androidAssetName: 'yolo11n-seg.tflite',
-      androidReleaseBaseUrl:
-          YOLOModelResolver._androidYolo11ModelReleaseBaseUrl,
-      iosArchiveName: 'yolo11n-seg.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11n-cls',
-      task: YOLOTask.classify,
-      androidAssetName: 'yolo11n-cls.tflite',
-      androidReleaseBaseUrl:
-          YOLOModelResolver._androidYolo11ModelReleaseBaseUrl,
-      iosArchiveName: 'yolo11n-cls.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11n-pose',
-      task: YOLOTask.pose,
-      androidAssetName: 'yolo11n-pose.tflite',
-      androidReleaseBaseUrl:
-          YOLOModelResolver._androidYolo11ModelReleaseBaseUrl,
-      iosArchiveName: 'yolo11n-pose.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11n-obb',
-      task: YOLOTask.obb,
-      androidAssetName: 'yolo11n-obb.tflite',
-      androidReleaseBaseUrl:
-          YOLOModelResolver._androidYolo11ModelReleaseBaseUrl,
-      iosArchiveName: 'yolo11n-obb.mlpackage.zip',
-    ),
   ];
 
   static _OfficialModelArtifact _yolo26Artifact({
@@ -174,9 +110,7 @@ class YOLOModelResolver {
           : '$_iosModelReleaseBaseUrl/$archiveName';
     }
     final assetName = artifact.androidAssetName;
-    return assetName == null
-        ? null
-        : '${artifact.androidReleaseBaseUrl}/$assetName';
+    return assetName == null ? null : '$_androidModelReleaseBaseUrl/$assetName';
   }
 
   static Future<YOLOResolvedModel> resolve({
@@ -319,7 +253,7 @@ class YOLOModelResolver {
     }
 
     await _downloadToFile(
-      '${artifact.androidReleaseBaseUrl}/$filename',
+      '$_androidModelReleaseBaseUrl/$filename',
       modelFile,
       progressId: artifact.id,
     );

@@ -49,8 +49,6 @@ URL patterns:
 - Android TFLite: `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5/<model>_int8.tflite`
 - iOS Core ML: `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.mlpackage.zip`
 
-The YOLO11 nano TFLite assets (`yolo11n`, `yolo11n-seg/-cls/-pose/-obb`) are hosted on the earlier [yolo-flutter-app `v0.2.0`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0) release as `<model>.tflite`, and the resolver pins them there.
-
 The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms. The native iOS app uses the same Core ML release through `RemoteModels.swift`. These release tags are intentionally pinned in code for reproducible first-use downloads; when official assets move to a new release, update the resolver constants, docs, and URL tests in the same PR.
 
 Official export properties:

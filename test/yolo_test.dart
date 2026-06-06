@@ -179,51 +179,14 @@ void main() {
       }
     });
 
-    test('official YOLO11 URLs pin the releases that host their assets', () {
-      // The YOLO11 TFLite assets live on the v0.2.0 release; they were not re-uploaded to v0.3.5.
-      const androidIds = [
-        'yolo11n',
-        'yolo11n-seg',
-        'yolo11n-cls',
-        'yolo11n-pose',
-        'yolo11n-obb',
-      ];
-      for (final modelId in androidIds) {
-        expect(
-          YOLOModelResolver.officialModelDownloadUrlForTesting(
-            modelId,
-            iosLike: false,
-          ),
-          'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.2.0/$modelId.tflite',
-        );
-      }
-
-      const appleIds = [
-        'yolo11n',
-        'yolo11s',
-        'yolo11m',
-        'yolo11l',
-        'yolo11x',
-        'yolo11n-seg',
-        'yolo11n-cls',
-        'yolo11n-pose',
-        'yolo11n-obb',
-      ];
-      for (final modelId in appleIds) {
-        expect(
-          YOLOModelResolver.officialModelDownloadUrlForTesting(
-            modelId,
-            iosLike: true,
-          ),
-          'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/$modelId.mlpackage.zip',
-        );
-      }
-
-      // IDs without an asset on a platform resolve to no URL there (only the
-      // non-nano YOLO11 sizes lack an Android TFLite asset).
+    test('YOLO11 IDs are no longer official autodownload models', () {
+      // YOLO11 assets still exist on older releases but are not maintained for
+      // autodownload; they must be loaded as custom paths/URLs.
+      expect(YOLO.officialModels(), isNot(contains('yolo11n')));
+      expect(YOLOModelResolver.isOfficialModel('yolo11n'), isFalse);
       expect(
         YOLOModelResolver.officialModelDownloadUrlForTesting(
-          'yolo11s',
+          'yolo11n',
           iosLike: false,
         ),
         isNull,
@@ -1061,14 +1024,6 @@ void main() {
             await YOLOModelResolver.isOfficialModelAvailableLocally('missing'),
             isFalse,
           );
-          // Every official ID has an Apple archive, so the platform-unavailable
-          // path only exists on the Android side (non-nano YOLO11 sizes).
-          if (!_isAppleTestPlatform) {
-            await expectLater(
-              YOLOModelResolver.preparePath('yolo11s'),
-              throwsA(isA<ModelLoadingException>()),
-            );
-          }
         },
       );
 
