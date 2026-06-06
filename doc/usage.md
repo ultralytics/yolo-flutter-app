@@ -79,7 +79,7 @@ Typical upgrade:
 ```dart
 // 0.3.x: YOLOView plus package-provided Dart controls/overlays.
 YOLOView(
-  modelPath: 'yolo11n',
+  modelPath: 'yolo26n',
   onResult: (results) {},
 )
 
