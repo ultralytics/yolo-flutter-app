@@ -195,7 +195,7 @@ uv run python scripts/export-tflite-models.py --verify
 
 使用 `--upload --repo ultralytics/yolo-flutter-app --tag v0.3.5` 将生成的 `.tflite` 资产发布到规范的 Android release。配套的 Core ML 资产由 `../yolo-ios-app/scripts/export-models.py` 生成，托管在 iOS `v8.3.0` release 上。
 
-Android 推理运行在 [LiteRT](https://ai.google.dev/edge/litert) 2.x 之上，带有自动的 GPU -> CPU 加速器降级链。int8 资产因体积优势作为官方下载产物，但 int8 的 GPU 覆盖取决于设备驱动和计算图；不支持的图或算子可能回退到 CPU。在 delegate 支持该计算图的设备上，fp16 非端到端（non-end-to-end）TFLite 导出仍可用于 GPU 基准测试：
+Android 推理运行在 [LiteRT](https://ai.google.dev/edge/litert) 2.x 之上，带有自动的 GPU -> CPU 加速器降级链。int8 资产因体积优势作为官方下载产物，但 int8 的 GPU 覆盖取决于设备驱动和计算图；GPU 无法编译的计算图会回退到 CPU。在 delegate 支持该计算图的设备上，fp16 非端到端（non-end-to-end）TFLite 导出仍可用于 GPU 基准测试：
 
 ```python
 from ultralytics import YOLO

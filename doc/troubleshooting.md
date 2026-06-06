@@ -146,7 +146,7 @@ await controller.setThresholds(
 
 ### Android detections run slow / not on GPU
 
-Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; unsupported graphs or ops may fall back to CPU. To compare against fp16, export a non-end-to-end TFLite model:
+Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. To compare against fp16, export a non-end-to-end TFLite model:
 
 ```python
 YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
