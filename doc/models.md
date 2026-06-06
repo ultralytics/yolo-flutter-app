@@ -46,7 +46,7 @@ Official assets are maintained as GitHub release assets:
 
 URL patterns:
 
-- Android TFLite: `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5/<model>.tflite`
+- Android TFLite: `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5/<model>_int8.tflite`
 - iOS Core ML: `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.mlpackage.zip`
 
 The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms. The native iOS app uses the same Core ML release through `RemoteModels.swift`. These release tags are intentionally pinned in code for reproducible first-use downloads; when official assets move to a new release, update the resolver constants, docs, and URL tests in the same PR.
@@ -203,7 +203,7 @@ uv run python scripts/export-tflite-models.py --verify
 
 Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.3.5` to publish the generated `.tflite` assets. The script exports YOLO26 `n/s/m/l/x` models for detect, segment, semantic, classify, pose, and OBB. Output files are written under `exports/yolo26-tflite/release-assets/` and are ignored by Git. Leave `--data` unset for official exports so the script uses `ultralytics.cfg.TASK2CALIBRATIONDATA`; pass `--data` only when intentionally benchmarking a single calibration source across tasks.
 
-Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. int8 assets are the official download artifacts for size, but int8 GPU coverage depends on the device driver and graph; unsupported graphs or ops may fall back to CPU. fp16 non-end-to-end TFLite exports can still be useful for GPU benchmarking on devices whose delegate supports the graph:
+Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. int8 assets are the official download artifacts for size, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. fp16 non-end-to-end TFLite exports can still be useful for GPU benchmarking on devices whose delegate supports the graph:
 
 ```python
 from ultralytics import YOLO

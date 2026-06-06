@@ -6,8 +6,8 @@
 //  Access the source code: https://github.com/ultralytics/yolo-ios-app
 //
 //  The YOLOView class is the primary UI component for displaying real-time YOLO model results.
-//  It handles camera setup, model loading, video frame processing, rendering of detection results,
-//  and user interactions such as pinch-to-zoom. The view can display bounding boxes, masks for segmentation,
+//  It handles camera setup, model loading, video frame processing, and rendering of detection results;
+//  zoom, lens, and focus are exposed as setter APIs driven by Flutter-side gestures. The view can display bounding boxes, masks for segmentation,
 //  pose estimation keypoints, and oriented bounding boxes depending on the active task. It includes
 //  UI elements for controlling inference settings such as confidence threshold and IoU threshold,
 //  and provides functionality for capturing photos with detection results overlaid.
@@ -51,7 +51,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     if showUIControls {
       DispatchQueue.main.async {
-        self.labelFPS.text = String(format: "%.1f FPS - %.1f ms", fps, speed)  // t2 seconds to ms
+        self.labelFPS.text = String(format: "%.1f FPS - %.1f ms", fps, speed)  // speed is already in milliseconds
       }
     }
   }

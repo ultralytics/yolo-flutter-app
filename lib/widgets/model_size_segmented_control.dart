@@ -4,11 +4,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 /// Picks the active YOLO26 model size using a `CupertinoSlidingSegmentedControl` styled to match `yolo-ios-app`'s
-/// `Main.storyboard` modelSegmentedControl. Chips read `nano / small / medium / large / xlarge` (the storyboard
-/// titles); sizes not yet on disk are dimmed to signal a download-on-tap. When [downloadingSize] matches a chip a thin
+/// `Main.storyboard` modelSegmentedControl. Chips read `YOLO26n / YOLO26s / YOLO26m / YOLO26l / YOLO26x`; sizes not
+/// yet on disk get a `↓` prefix to signal a download-on-tap. When [downloadingSize] matches a chip a thin
 /// [LinearProgressIndicator] tracks [downloadFraction] under the label.
 ///
-/// Visual tokens: translucent black background, 18% white selected thumb, 13pt system-weight labels in white (light
+/// Visual tokens: translucent black background, 18% white selected thumb, 11pt system-weight labels in white (light
 /// weight bump when active).
 class ModelSizeSegmentedControl extends StatelessWidget {
   /// Currently-selected size (one of `n s m l x`).

@@ -368,7 +368,7 @@ class YOLOView @JvmOverloads constructor(
                 bottomMargin = 100
                 leftMargin = 50
             }
-            text = "Confidence: 0.50"
+            text = "Confidence: 0.25"
             textSize = 20f
             setTextColor(Color.WHITE)
             setBackgroundColor(Color.argb(200, 200, 100, 0))

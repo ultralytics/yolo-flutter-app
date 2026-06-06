@@ -58,57 +58,12 @@ class YOLOModelResolver {
   ];
 
   // Canonical YOLO26 task x size matrix. Keep generated so the app, docs, and export script all represent the same
-  // 6-task x 5-size official asset set.
+  // 6-task x 5-size official asset set. YOLO11 assets still exist on older releases but are no longer maintained for
+  // autodownload — load them as custom paths/URLs instead.
   static final List<_OfficialModelArtifact> _officialModels = [
     for (final task in _yolo26Tasks)
       for (final size in _yolo26Sizes)
         _yolo26Artifact(task: task.task, size: size, suffix: task.suffix),
-    const _OfficialModelArtifact(
-      id: 'yolo11n',
-      task: YOLOTask.detect,
-      androidAssetName: 'yolo11n.tflite',
-      iosArchiveName: 'yolo11n.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11s',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo11s.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11m',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo11m.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11l',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo11l.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11x',
-      task: YOLOTask.detect,
-      iosArchiveName: 'yolo11x.mlpackage.zip',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11n-seg',
-      task: YOLOTask.segment,
-      androidAssetName: 'yolo11n-seg.tflite',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11n-cls',
-      task: YOLOTask.classify,
-      androidAssetName: 'yolo11n-cls.tflite',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11n-pose',
-      task: YOLOTask.pose,
-      androidAssetName: 'yolo11n-pose.tflite',
-    ),
-    const _OfficialModelArtifact(
-      id: 'yolo11n-obb',
-      task: YOLOTask.obb,
-      androidAssetName: 'yolo11n-obb.tflite',
-    ),
   ];
 
   static _OfficialModelArtifact _yolo26Artifact({

@@ -45,7 +45,7 @@ Disable GPU when:
 
 Android inference runs on LiteRT 2.x (Google's rebrand of TensorFlow Lite) via the `CompiledModel` API, with an automatic **GPU → CPU accelerator ladder**:
 
-- `useGpu: true` requests the GPU. The plugin compiles compatible graphs for the GPU, while unsupported graphs or ops may fall back to XNNPACK CPU.
+- `useGpu: true` requests the GPU. The plugin compiles the whole model for the GPU when it can; models the GPU cannot compile fall back to XNNPACK CPU.
 - `useGpu: false` runs on XNNPACK CPU.
 
 NNAPI is no longer used (it is deprecated and slower).

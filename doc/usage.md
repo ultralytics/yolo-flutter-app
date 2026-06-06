@@ -79,7 +79,7 @@ Typical upgrade:
 ```dart
 // 0.3.x: YOLOView plus package-provided Dart controls/overlays.
 YOLOView(
-  modelPath: 'yolo11n',
+  modelPath: 'yolo26n',
   onResult: (results) {},
 )
 
@@ -121,7 +121,7 @@ final yolo = YOLO(
 );
 ```
 
-On Android, inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; unsupported graphs or ops may fall back to CPU. For GPU benchmarking, fp16 non-end-to-end exports are also useful:
+On Android, inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. For GPU benchmarking, fp16 non-end-to-end exports are also useful:
 
 ```python
 YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)

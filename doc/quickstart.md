@@ -16,7 +16,7 @@ By the end of this guide, you'll have a working Flutter app that can detect obje
 
 - ✅ Flutter SDK installed
 - ✅ Android/iOS device or emulator
-- ✅ 5 minutes of your time
+- ✅ 2 minutes of your time
 
 ## 🚀 Step 1: Create New Flutter App
 
@@ -61,7 +61,7 @@ Custom local models are still supported:
 
 Task and labels are auto-detected from the model's embedded metadata. If your custom model has no `task` in its metadata, pass it explicitly.
 
-Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core ML. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; unsupported graphs or ops may fall back to CPU. fp16 non-end-to-end exports are useful for GPU benchmarking:
+Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core ML. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. fp16 non-end-to-end exports are useful for GPU benchmarking:
 
 ```python
 YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)

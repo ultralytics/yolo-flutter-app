@@ -21,9 +21,6 @@ import 'utils/test_helpers.dart';
 
 class MockYOLOPlatform with MockPlatformInterfaceMixin implements YOLOPlatform {
   @override
-  Future<String?> getPlatformVersion() => Future.value('42');
-
-  @override
   Future<void> setModel(int viewId, String modelPath, String task) =>
       Future.value();
 }
@@ -180,6 +177,20 @@ void main() {
           'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/$modelId.mlpackage.zip',
         );
       }
+    });
+
+    test('YOLO11 IDs are no longer official autodownload models', () {
+      // YOLO11 assets still exist on older releases but are not maintained for
+      // autodownload; they must be loaded as custom paths/URLs.
+      expect(YOLO.officialModels(), isNot(contains('yolo11n')));
+      expect(YOLOModelResolver.isOfficialModel('yolo11n'), isFalse);
+      expect(
+        YOLOModelResolver.officialModelDownloadUrlForTesting(
+          'yolo11n',
+          iosLike: false,
+        ),
+        isNull,
+      );
     });
 
     test('default official model returns the first supported ID', () {
@@ -364,19 +375,17 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(platform.methodChannel, (call) async {
             calls.add(call);
-            return call.method == 'getPlatformVersion' ? '42' : null;
+            return null;
           });
       addTearDown(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(platform.methodChannel, null);
       });
 
-      expect(await platform.getPlatformVersion(), '42');
       await platform.setModel(7, 'model.tflite', 'detect');
 
-      expect(calls.first.method, 'getPlatformVersion');
-      expect(calls.last.method, 'setModel');
-      expect(calls.last.arguments, {
+      expect(calls.single.method, 'setModel');
+      expect(calls.single.arguments, {
         'viewId': 7,
         'modelPath': 'model.tflite',
         'task': 'detect',
@@ -387,14 +396,12 @@ void main() {
       final mockPlatform = MockYOLOPlatform();
 
       expect(mockPlatform, isNotNull);
-      expect(mockPlatform.getPlatformVersion(), completion('42'));
       expect(mockPlatform.setModel(1, 'model.tflite', 'detect'), completes);
     });
 
     test('base platform reports unimplemented operations', () {
       final platform = BareYOLOPlatform();
 
-      expect(platform.getPlatformVersion, throwsUnimplementedError);
       expect(
         () => platform.setModel(1, 'model.tflite', 'detect'),
         throwsUnimplementedError,
@@ -1016,12 +1023,6 @@ void main() {
           expect(
             await YOLOModelResolver.isOfficialModelAvailableLocally('missing'),
             isFalse,
-          );
-          await expectLater(
-            YOLOModelResolver.preparePath(
-              _isAppleTestPlatform ? 'yolo11n-seg' : 'yolo11s',
-            ),
-            throwsA(isA<ModelLoadingException>()),
           );
         },
       );
