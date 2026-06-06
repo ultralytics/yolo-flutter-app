@@ -102,6 +102,7 @@ class YOLOModelResolver {
       androidAssetName: 'yolo11n-seg.tflite',
       androidReleaseBaseUrl:
           YOLOModelResolver._androidYolo11ModelReleaseBaseUrl,
+      iosArchiveName: 'yolo11n-seg.mlpackage.zip',
     ),
     const _OfficialModelArtifact(
       id: 'yolo11n-cls',
@@ -109,6 +110,7 @@ class YOLOModelResolver {
       androidAssetName: 'yolo11n-cls.tflite',
       androidReleaseBaseUrl:
           YOLOModelResolver._androidYolo11ModelReleaseBaseUrl,
+      iosArchiveName: 'yolo11n-cls.mlpackage.zip',
     ),
     const _OfficialModelArtifact(
       id: 'yolo11n-pose',
@@ -116,6 +118,7 @@ class YOLOModelResolver {
       androidAssetName: 'yolo11n-pose.tflite',
       androidReleaseBaseUrl:
           YOLOModelResolver._androidYolo11ModelReleaseBaseUrl,
+      iosArchiveName: 'yolo11n-pose.mlpackage.zip',
     ),
     const _OfficialModelArtifact(
       id: 'yolo11n-obb',
@@ -123,6 +126,7 @@ class YOLOModelResolver {
       androidAssetName: 'yolo11n-obb.tflite',
       androidReleaseBaseUrl:
           YOLOModelResolver._androidYolo11ModelReleaseBaseUrl,
+      iosArchiveName: 'yolo11n-obb.mlpackage.zip',
     ),
   ];
 
