@@ -119,7 +119,16 @@ final results = await yolo.predict(imageBytes);
 final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 ```
 
-插件会自动下载并缓存当前平台对应的官方产物。可通过 `YOLO.officialModels()` 查看当前平台可用的全部官方 ID。Android TFLite 统一从 Flutter `v0.3.5` release 下载，iOS Core ML 统一从 YOLO iOS `v8.3.0` release 下载，后续包版本发布不会改变模型 URL。
+可通过 `YOLO.officialModels()` 查看当前平台可用的全部官方 ID。官方资产在首次使用时自动下载并缓存到应用存储，因此应用安装包不携带大体积模型文件。
+
+官方资产以 GitHub release 资产的形式维护：
+
+| 平台    | 运行时资产                    | Release                                                                                          |
+| ------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| Android | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| iOS     | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+
+Flutter 解析器在 Android 上使用 TFLite release，在 Apple 平台上使用 Core ML release；YOLO11 nano TFLite 资产仍固定在托管它们的早期 [yolo-flutter-app `v0.2.0`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0) release 上。这些 release 标签被刻意固定，以保证首次下载可复现。官方导出矩阵、URL 模式与模型属性详见[模型指南](doc/models.md)。
 
 ### 2. 你自己的导出模型
 
@@ -129,7 +138,7 @@ final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 final yolo = YOLO(modelPath: 'assets/models/my-finetuned-model.tflite');
 ```
 
-如果模型导出时带有元数据，插件会自动推断 `task`。如果没有，就显式传入 `task`。
+如果导出的模型包含内嵌元数据，插件会自动推断 `task` 和类别标签——它会读取 Ultralytics 的附加 ZIP（appended-ZIP）元数据，并以标准 TFLite（FlatBuffers）元数据作为回退——因此直接拖入的自定义模型可以自动识别。如果缺少元数据，请显式传入 `task`。
 
 ```dart
 final yolo = YOLO(
@@ -152,7 +161,7 @@ final yolo = YOLO(
 | 希望插件自动推断 `task`    | 使用带元数据的导出模型          |
 | 你的导出模型没有元数据     | 自定义模型并显式传入 `task`     |
 
-官方模型可直接从 `YOLO.defaultOfficialModel()` 或 `YOLO.officialModels()` 开始；自定义模型则直接从你准备实际交付的导出文件开始。 Android TFLite 示例资产来自 [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5)， iOS Core ML 示例资产来自 [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)。
+官方模型可直接从 `YOLO.defaultOfficialModel()` 或 `YOLO.officialModels()` 开始；自定义模型则直接从你准备实际交付的导出文件开始。
 
 ## 📥 把你自己的模型放进应用
 
@@ -165,35 +174,34 @@ final yolo = YOLO(
 
 然后把对应路径传给 `modelPath` 即可。
 
-### iOS 导出注意事项
+### 官方资产维护
 
-YOLO26 模型是 NMS-free 的，Core ML 导出请使用 `nms=False` 和 `end2end=True`（Swift 解码器消费的就是 YOLO26 端到端输出格式）：
+Android TFLite release 资产由 [`scripts/export-tflite-models.py`](scripts/export-tflite-models.py) 生成。该脚本定义了官方 YOLO26 任务/尺寸矩阵、int8 导出设置、Ultralytics 任务专用校准数据、可选的一次性 TFLite 推理验证，以及可选的 GitHub release 上传。脚本默认读取 `ultralytics.cfg.TASK2CALIBRATIONDATA`，使每个任务使用与 Ultralytics 导出器相同的规范校准数据集。
 
-```python
-from ultralytics import YOLO
+请在 Linux Python 3.13 环境中运行：
 
-# Square [640, 640] works best when one model must run in both portrait and landscape.
-# Ultralytics imgsz order is [height, width]; use [640, 384] for portrait-only or [384, 640] for landscape-only.
-YOLO("yolo26n.pt").export(format="coreml", nms=False, end2end=True, imgsz=[640, 640])
+```bash
+uv venv --python 3.13 .venv
+uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+uv pip install -e "../ultralytics" "tensorflow>2.19.0" "onnx>=1.20.0" "onnxslim>=0.1.82" \
+  "tf_keras>2.19.0" "sng4onnx>=1.0.1" "onnx_graphsurgeon>=0.3.26" \
+  "ai-edge-litert>=1.2.0" "onnxruntime" "protobuf>=6.31.1,<7.0.0" \
+  --extra-index-url https://pypi.ngc.nvidia.com --index-strategy unsafe-best-match
+uv pip uninstall opencv-python
+uv pip install opencv-python-headless
+uv pip install --no-deps "onnx2tf>=2.3.0,<2.3.16"
+uv run python scripts/export-tflite-models.py --verify
 ```
 
-其他任务使用同样的 `nms=False` 和 `end2end=True` 导出参数，`imgsz` 同样优先使用方形尺寸。 固定方向场景再使用对应的长宽比。
+使用 `--upload --repo ultralytics/yolo-flutter-app --tag v0.3.5` 将生成的 `.tflite` 资产发布到规范的 Android release。配套的 Core ML 资产由 `../yolo-ios-app/scripts/export-models.py` 生成，托管在 iOS `v8.3.0` release 上。
 
-### Android 导出注意事项
-
-Android 推理通过 `CompiledModel` API 运行在 [LiteRT](https://ai.google.dev/edge/litert) 2.x （Google 对 TensorFlow Lite 的重新命名）之上，并带有自动的 GPU → CPU 加速器降级链： 当模型支持时，插件会把整张计算图编译到 GPU 上运行，否则回退到 CPU 上的 XNNPACK。
-
-要获得最快的 GPU 路径，请导出 fp16、非端到端（non-end-to-end）的 TFLite 模型：
+Android 推理运行在 [LiteRT](https://ai.google.dev/edge/litert) 2.x 之上，带有自动的 GPU -> CPU 加速器降级链。int8 资产因体积优势作为官方下载产物，但 int8 的 GPU 覆盖取决于设备驱动和计算图；不支持的图或算子可能回退到 CPU。在 delegate 支持该计算图的设备上，fp16 非端到端（non-end-to-end）TFLite 导出仍可用于 GPU 基准测试：
 
 ```python
 from ultralytics import YOLO
 
 YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
-
-在三星 Galaxy S26 上，官方 `yolo26n_int8.tflite` 通过 LiteRT OpenCL GPU delegate 完整编译，在实时相机示例中约为 15 FPS / 每帧约 32 毫秒。数值为近似值，会随设备而变化。
-
-int8 资产是官方下载产物（体积更小），但 int8 的 GPU 覆盖取决于设备驱动和计算图；不支持的图或算子会回退到 CPU，而不会报错。
 
 ## 🎯 该用哪个 API
 
@@ -261,7 +269,7 @@ YOLOShowcase(
 | **[模型指南](doc/models.md)**          | 官方模型、自定义模型、导出流程 |
 | **[使用指南](doc/usage.md)**           | 常见应用模式与示例             |
 | **[API 参考](doc/api.md)**             | 完整 API 文档                  |
-| **[性能优化](doc/performance.md)**     | 性能调优与控制项               |
+| **[性能优化](doc/performance.md)**     | 性能调优、控制项与设备实测记录 |
 | **[故障排查](doc/troubleshooting.md)** | 常见问题与修复方法             |
 
 ## 🤝 社区与支持
@@ -291,7 +299,7 @@ Ultralytics 提供两种许可证，以适应不同需求：
 
 如果你希望在 iOS 应用中直接使用 YOLO 模型与 Swift 集成，而不是通过 Flutter，可以查看我们的专用 iOS 仓库：
 
-👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - 一个原生 iOS 应用，演示如何使用 Ultralytics YOLO 模型进行实时目标检测、分割、分类、姿态估计和旋转框检测。
+👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - 一个原生 iOS 应用，演示如何使用 Ultralytics YOLO 模型进行实时目标检测、实例分割、语义分割、图像分类、姿态估计和旋转框检测。
 
 该仓库提供：
 
@@ -300,6 +308,9 @@ Ultralytics 提供两种许可证，以适应不同需求：
 - 原生 iOS UI 组件
 - 多种 YOLO 任务的示例代码
 - 针对 iOS 性能的优化
+
+> [!NOTE]
+> 在 iOS 上，本插件构建于共享的 [`UltralyticsYOLO` Swift 包](https://github.com/ultralytics/yolo-ios-app)（`import UltralyticsYOLO`）之上——与原生 iOS 应用使用同一推理核心——两者通过单一事实来源保持同步。插件的 `ios/Classes` 目录仅包含 Flutter 桥接层和相机/视图组件。
 
 ## 📮 联系方式
 
