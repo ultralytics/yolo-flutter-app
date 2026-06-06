@@ -184,6 +184,47 @@ void main() {
       ]);
     });
 
+    test('fromMap parses normalized polygon points and round-trips them', () {
+      final map = {
+        'classIndex': 1,
+        'className': 'airplane',
+        'confidence': 0.92,
+        'boundingBox': {
+          'left': 100.0,
+          'top': 150.0,
+          'right': 300.0,
+          'bottom': 250.0,
+        },
+        'normalizedBox': {
+          'left': 0.1,
+          'top': 0.15,
+          'right': 0.3,
+          'bottom': 0.25,
+        },
+        'polygon': [
+          {'x': 100.0, 'y': 150.0},
+          {'x': 300.0, 'y': 250.0},
+        ],
+        'polygonNormalized': [
+          {'x': 0.1, 'y': 0.15},
+          {'x': 0.3, 'y': 0.25},
+        ],
+        'angle': 0.25,
+      };
+
+      final result = YOLOResult.fromMap(map);
+
+      expect(result.obbPointsNormalized, [
+        {'x': 0.1, 'y': 0.15},
+        {'x': 0.3, 'y': 0.25},
+      ]);
+
+      final roundTrip = YOLOResult.fromMap(result.toMap());
+      expect(roundTrip.obbPoints, result.obbPoints);
+      expect(roundTrip.obbPointsNormalized, result.obbPointsNormalized);
+      expect(roundTrip.angle, result.angle);
+    });
+
     test('constructor creates instance with all parameters', () {
       final keypoints = [Keypoint(0.5, 0.3), Keypoint(0.6, 0.4)];
       final keypointConfidences = [0.8, 0.9];

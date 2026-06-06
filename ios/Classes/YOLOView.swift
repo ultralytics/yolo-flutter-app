@@ -78,6 +78,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         enhancedStreamData["timestamp"] = Int64(Date().timeIntervalSince1970 * 1000)  // milliseconds
         enhancedStreamData["frameNumber"] = frameNumberCounter
         frameNumberCounter += 1
+        // Dimensions of the upright frame that (normalized) detection coordinates refer to (#506)
+        enhancedStreamData["imageWidth"] = Int(result.orig_shape.width)
+        enhancedStreamData["imageHeight"] = Int(result.orig_shape.height)
 
         streamCallback(enhancedStreamData)
       }
@@ -1881,6 +1884,17 @@ extension YOLOView {
             "bottom": Double(maxY),
           ]
 
+          // Pixel + normalized (0-1) corners and rotation angle, always present so custom overlays
+          // can transform OBB detections without enabling includeOBB (#506)
+          detection["polygon"] = polygon.map { point in
+            [
+              "x": Double(point.x * imgWidth),
+              "y": Double(point.y * imgHeight),
+            ]
+          }
+          detection["polygonNormalized"] = points
+          detection["angle"] = Double(obbResult.box.angle)
+
           if config.includeOBB {
             detection["obb"] = [
               "centerX": Double(obbResult.box.cx),
@@ -1970,6 +1984,16 @@ extension YOLOView {
               "y": Double(point.y),
             ]
           }
+
+          // Top-level pixel/normalized corners and angle, matching the OBB-only path (#506)
+          detection["polygon"] = polygon.map { point in
+            [
+              "x": Double(point.x * result.orig_shape.width),
+              "y": Double(point.y * result.orig_shape.height),
+            ]
+          }
+          detection["polygonNormalized"] = points
+          detection["angle"] = Double(obbBox.angle)
 
           // Create comprehensive OBB data map
           let obbDataMap: [String: Any] = [
