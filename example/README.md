@@ -40,12 +40,12 @@ It does not maintain its own model taxonomy or download system anymore. That log
 
 The camera screen is now a thin wrapper around `YOLOShowcase`, not the removed 0.3.x Dart overlay/control APIs.
 
-| Removed 0.3.x API                                             | What this example uses now                                                                      |
-| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `YOLOOverlay`, `YOLOOverlayTheme`                             | Native overlays from `YOLOView` inside `YOLOShowcase`.                                          |
-| `YOLOControls`, `YOLOView.showNativeUI`                       | `YOLOShowcase` for the full camera UI.                                                          |
-| `YOLOView.showOverlays`, `YOLOView.overlayTheme`              | No Dart-side overlay theme/toggle; consume `onResult` or `YOLO.predict()` for custom rendering. |
-| `YOLOViewController.setShowUIControls()`                      | Own any custom Flutter controls around a bare `YOLOView`.                                       |
+| Removed 0.3.x API                                | What this example uses now                                                                      |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `YOLOOverlay`, `YOLOOverlayTheme`                | Native overlays from `YOLOView` inside `YOLOShowcase`.                                          |
+| `YOLOControls`, `YOLOView.showNativeUI`          | `YOLOShowcase` for the full camera UI.                                                          |
+| `YOLOView.showOverlays`, `YOLOView.overlayTheme` | No Dart-side overlay theme/toggle; consume `onResult` or `YOLO.predict()` for custom rendering. |
+| `YOLOViewController.setShowUIControls()`         | Own any custom Flutter controls around a bare `YOLOView`.                                       |
 
 For a custom camera layout, use `YOLOView` as the native camera surface and compose exported widgets such as `TaskSegmentedControl`, `ModelSizeSegmentedControl`, `ThresholdSliderRow`, `LensPicker`, `CameraToolbar`, and `PerformanceLabel` around it.
 

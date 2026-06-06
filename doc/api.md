@@ -255,23 +255,23 @@ class YOLOView extends StatefulWidget {
 
 #### Constructor Parameters
 
-| Parameter              | Type                                | Required | Default           | Description                                                                               |
-| ---------------------- | ----------------------------------- | -------- | ----------------- | ----------------------------------------------------------------------------------------- |
-| `modelPath`            | `String`                            | ✅       | -                 | Official model ID, local path, asset path, or URL                                         |
-| `task`                 | `YOLOTask?`                         | ❌       | `null`            | YOLO task type when metadata is missing                                                   |
-| `controller`           | `YOLOViewController?`               | ❌       | `null`            | Custom view controller                                                                    |
-| `cameraResolution`     | `String`                            | ❌       | `"720p"`          | Camera resolution                                                                         |
-| `onResult`             | `Function(List<YOLOResult>)?`       | ❌       | `null`            | Detection results callback                                                                |
-| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`            | Performance metrics callback                                                              |
-| `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`            | Comprehensive streaming callback                                                          |
-| `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`            | Zoom level change callback                                                                |
-| `onModelError`         | `void Function(Object, String, YOLOTask?)?` | ❌ | `null`            | Called when a model load or in-place switch fails; carries the failed request's model path and requested task |
-| `onModelLoad`          | `void Function(String, YOLOTask?)?` | ❌       | `null`            | Called after a model loads or switches successfully; carries the request's model path and requested task (null when inferred from metadata) |
-| `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`            | Streaming configuration                                                                   |
-| `confidenceThreshold`  | `double`                            | ❌       | `0.25`            | Initial confidence threshold for YOLOView                                                 |
-| `iouThreshold`         | `double`                            | ❌       | `0.7`             | Initial IoU threshold for YOLOView                                                        |
-| `useGpu`               | `bool`                              | ❌       | `true`            | Allow GPU acceleration on Android (LiteRT 2.x GPU → CPU ladder); set `false` to force CPU |
-| `lensFacing`           | `LensFacing`                        | ❌       | `LensFacing.back` | Initial camera lens selection                                                             |
+| Parameter              | Type                                        | Required | Default           | Description                                                                                                                                 |
+| ---------------------- | ------------------------------------------- | -------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modelPath`            | `String`                                    | ✅       | -                 | Official model ID, local path, asset path, or URL                                                                                           |
+| `task`                 | `YOLOTask?`                                 | ❌       | `null`            | YOLO task type when metadata is missing                                                                                                     |
+| `controller`           | `YOLOViewController?`                       | ❌       | `null`            | Custom view controller                                                                                                                      |
+| `cameraResolution`     | `String`                                    | ❌       | `"720p"`          | Camera resolution                                                                                                                           |
+| `onResult`             | `Function(List<YOLOResult>)?`               | ❌       | `null`            | Detection results callback                                                                                                                  |
+| `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?`         | ❌       | `null`            | Performance metrics callback                                                                                                                |
+| `onStreamingData`      | `Function(Map<String, dynamic>)?`           | ❌       | `null`            | Comprehensive streaming callback                                                                                                            |
+| `onZoomChanged`        | `Function(double)?`                         | ❌       | `null`            | Zoom level change callback                                                                                                                  |
+| `onModelError`         | `void Function(Object, String, YOLOTask?)?` | ❌       | `null`            | Called when a model load or in-place switch fails; carries the failed request's model path and requested task                               |
+| `onModelLoad`          | `void Function(String, YOLOTask?)?`         | ❌       | `null`            | Called after a model loads or switches successfully; carries the request's model path and requested task (null when inferred from metadata) |
+| `streamingConfig`      | `YOLOStreamingConfig?`                      | ❌       | `null`            | Streaming configuration                                                                                                                     |
+| `confidenceThreshold`  | `double`                                    | ❌       | `0.25`            | Initial confidence threshold for YOLOView                                                                                                   |
+| `iouThreshold`         | `double`                                    | ❌       | `0.7`             | Initial IoU threshold for YOLOView                                                                                                          |
+| `useGpu`               | `bool`                                      | ❌       | `true`            | Allow GPU acceleration on Android (LiteRT 2.x GPU → CPU ladder); set `false` to force CPU                                                   |
+| `lensFacing`           | `LensFacing`                                | ❌       | `LensFacing.back` | Initial camera lens selection                                                                                                               |
 
 `LensFacing.backWide` prefers the shortest-focal-length rear camera on Android and falls back to the default back camera when the device does not expose a wide rear lens. Other platforms treat it as `LensFacing.back`.
 
