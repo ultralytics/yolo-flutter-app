@@ -43,8 +43,8 @@ Make sure your app uses:
 Check what the plugin can see:
 
 ```dart
-final exists = await YOLO.checkModelExists('yolo26n');
-print(exists);
+final info = await YOLO.checkModelExists('yolo26n');
+print(info); // {'exists': ..., 'path': ..., 'location': ...}
 
 final paths = await YOLO.getStoragePaths();
 print(paths);

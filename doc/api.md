@@ -242,6 +242,8 @@ class YOLOView extends StatefulWidget {
     this.onPerformanceMetrics,
     this.onStreamingData,
     this.onZoomChanged,
+    this.onModelError,
+    this.onModelLoad,
     this.streamingConfig,
     this.confidenceThreshold = 0.25,
     this.iouThreshold = 0.7,
@@ -263,6 +265,8 @@ class YOLOView extends StatefulWidget {
 | `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`            | Performance metrics callback                                                              |
 | `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`            | Comprehensive streaming callback                                                          |
 | `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`            | Zoom level change callback                                                                |
+| `onModelError`         | `void Function(Object, String, YOLOTask?)?` | ❌ | `null`            | Called when an in-place model switch fails; carries the failed request's model path and task |
+| `onModelLoad`          | `void Function(String, YOLOTask?)?` | ❌       | `null`            | Called after a model loads or switches successfully; carries the loaded model path and task |
 | `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`            | Streaming configuration                                                                   |
 | `confidenceThreshold`  | `double`                            | ❌       | `0.25`            | Initial confidence threshold for YOLOView                                                 |
 | `iouThreshold`         | `double`                            | ❌       | `0.7`             | Initial IoU threshold for YOLOView                                                        |
@@ -1026,6 +1030,7 @@ final Function(YOLOPerformanceMetrics)? onPerformanceMetrics;
 final Function(Map<String, dynamic>)? onStreamingData;
 final Function(double zoomLevel)? onZoomChanged;
 final void Function(Object error, String modelPath, YOLOTask? task)? onModelError;
+final void Function(String modelPath, YOLOTask? task)? onModelLoad;
 ```
 
 ---

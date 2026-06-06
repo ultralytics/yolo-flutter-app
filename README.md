@@ -128,7 +128,7 @@ Official assets are maintained as GitHub release assets:
 | Android  | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
 | iOS      | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
-The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms. These release tags are intentionally pinned for reproducible first-use downloads. See the [model guide](doc/models.md) for the official export matrix, URL patterns, and model properties.
+The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms; the YOLO11 nano TFLite assets remain pinned to the earlier [yolo-flutter-app `v0.2.0`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.2.0) release that hosts them. These release tags are intentionally pinned for reproducible first-use downloads. See the [model guide](doc/models.md) for the official export matrix, URL patterns, and model properties.
 
 ### 2. Your own exported model
 

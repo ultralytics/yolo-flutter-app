@@ -16,7 +16,7 @@ By the end of this guide, you'll have a working Flutter app that can detect obje
 
 - ✅ Flutter SDK installed
 - ✅ Android/iOS device or emulator
-- ✅ 5 minutes of your time
+- ✅ 2 minutes of your time
 
 ## 🚀 Step 1: Create New Flutter App
 

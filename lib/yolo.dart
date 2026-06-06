@@ -323,7 +323,12 @@ class YOLO {
   /// Creates a YOLO instance with classifier options for custom preprocessing
   ///
   /// This constructor is specifically designed for classification models that
-  /// need custom preprocessing, such as 1-channel grayscale models.
+  /// need custom preprocessing, such as 1-channel grayscale models. 1-channel
+  /// support is detected automatically from the model's input tensor.
+  ///
+  /// Supported keys: `labels` (class names when the model has no embedded
+  /// metadata), `enableColorInversion`, `enableMaxNormalization`, `inputMean`,
+  /// and `inputStd`.
   ///
   /// Example:
   /// ```dart
@@ -331,25 +336,21 @@ class YOLO {
   ///   modelPath: 'assets/handwriting_model.tflite',
   ///   task: YOLOTask.classify,
   ///   classifierOptions: {
-  ///     'enable1ChannelSupport': true,
   ///     'enableColorInversion': true,
   ///     'enableMaxNormalization': true,
-  ///     'expectedChannels': 1,
-  ///     'expectedClasses': 12,
   ///   },
   /// );
   /// ```
   ///
   /// if need custom Normalization:
   /// ```dart
-  ///   final grayscaleOptions = {
+  /// final grayscaleOptions = {
   ///   'enableMaxNormalization': false,
   ///   'inputMean': 127.5,
-  ///   'inputStd' : 127.5,
-  ///   'expectedChannels': 1,
-  ///   // labels·expectedClasses (if needed)
+  ///   'inputStd': 127.5,
+  ///   // 'labels': [...] (if the model has no embedded labels)
   /// };
-  ///```
+  /// ```
 
   static YOLO withClassifierOptions({
     required String modelPath,
