@@ -1,3 +1,23 @@
+## 0.6.0
+
+- **Breaking**: Remove the unused `getPlatformVersion` API from the platform interface and method channel — a plugin
+  template leftover with no inference purpose.
+- **Breaking**: Retire YOLO11 from the official auto-download registry; the official set is now the YOLO26 task×size
+  matrix. YOLO11 (and any other) models still load via custom paths or URLs.
+- **Bug Fix**: `YOLOViewController.setShowOverlays` called before the platform view attached was silently dropped;
+  the controller now remembers the requested visibility and applies it on initialization (#506).
+- **Feature**: Streamed OBB detections now always carry top-level `polygon` (pixel) and `polygonNormalized` (0-1)
+  corner points plus `angle` (radians) on both platforms — previously normalized corners required `includeOBB` on
+  Android and iOS live streams carried no parseable polygon at all. `YOLOResult` exposes the normalized corners via
+  the new `obbPointsNormalized` field (#506).
+- **Feature**: Per-frame streaming data now includes `imageWidth`/`imageHeight`, the dimensions of the upright frame
+  that normalized detection coordinates refer to, enabling accurate custom overlay transforms (#506).
+- **Enhancement**: Require UltralyticsYOLO pod `>= 8.9.3`, which adds the matching `YOLOView.showOverlays` toggle
+  upstream.
+- **Enhancement**: Migrate Android builds to Flutter's built-in Kotlin support, readying the plugin for AGP 9.
+- **Enhancement**: Stamp the app version on the example screens, and align GPU fallback wording with whole-model
+  compilation semantics across the docs.
+
 ## 0.5.1
 
 - **Feature**: Expose camera torch control on `YOLOViewController` with `toggleTorch()` and an `isTorchEnabled`

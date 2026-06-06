@@ -37,6 +37,7 @@ class YOLOViewController {
   double _iouThreshold = 0.7;
   int _numItemsThreshold = 30;
   bool _torchEnabled = false;
+  bool _showOverlays = true;
 
   final StreamController<double> _zoomController =
       StreamController<double>.broadcast();
@@ -52,6 +53,9 @@ class YOLOViewController {
 
   /// Whether the torch (flashlight) is currently enabled, per the last [setTorchMode]/[toggleTorch] call.
   bool get isTorchEnabled => _torchEnabled;
+
+  /// Whether native prediction overlays are shown, per the last [setShowOverlays] call.
+  bool get showOverlays => _showOverlays;
 
   /// Emits the native zoom factor whenever it changes (e.g. via pinch).
   Stream<double> get zoomEvents => _zoomController.stream;
@@ -72,6 +76,10 @@ class YOLOViewController {
       'iouThreshold': _iouThreshold,
       'numItemsThreshold': _numItemsThreshold,
     });
+    // Re-apply state set before the platform view attached, which would otherwise be silently dropped.
+    if (!_showOverlays) {
+      _invoke('setShowOverlays', {'visible': false});
+    }
   }
 
   Future<T?> _invoke<T>(String method, [Map<String, dynamic>? args]) async {
@@ -166,8 +174,12 @@ class YOLOViewController {
       _invoke('tapToFocus', {'x': x, 'y': y});
 
   /// Shows or hides native prediction overlays without changing inference callbacks.
-  Future<void> setShowOverlays(bool visible) =>
-      _invoke('setShowOverlays', {'visible': visible});
+  ///
+  /// Safe to call before the view attaches: the value is remembered and applied on initialization.
+  Future<void> setShowOverlays(bool visible) {
+    _showOverlays = visible;
+    return _invoke('setShowOverlays', {'visible': visible});
+  }
 
   /// Captures a still photo from the live preview.
   ///

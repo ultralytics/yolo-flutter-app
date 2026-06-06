@@ -80,8 +80,14 @@ class YOLOResult {
   /// Only available when using OBB models (YOLOTask.obb).
   final double? angle;
 
-  /// Polygon points for oriented bounding boxes.
+  /// Polygon corner points for oriented bounding boxes, in pixel coordinates of the camera frame.
   final List<Map<String, num>>? obbPoints;
+
+  /// Polygon corner points for oriented bounding boxes, normalized to 0.0-1.0.
+  ///
+  /// Multiply by the frame dimensions (`imageWidth`/`imageHeight` in streaming data) or your own
+  /// render size to draw custom OBB overlays.
+  final List<Map<String, num>>? obbPointsNormalized;
 
   YOLOResult({
     required this.classIndex,
@@ -94,6 +100,7 @@ class YOLOResult {
     this.keypointConfidences,
     this.angle,
     this.obbPoints,
+    this.obbPointsNormalized,
   });
 
   /// Creates a [YOLOResult] from a map representation.
@@ -142,18 +149,8 @@ class YOLOResult {
     }
 
     final angle = map['angle'] is num ? (map['angle'] as num).toDouble() : null;
-    final polygonRaw = map['polygon'] ?? map['obbPoints'];
-    List<Map<String, num>>? obbPoints;
-    if (polygonRaw is List) {
-      obbPoints = <Map<String, num>>[];
-      for (final point in polygonRaw) {
-        if (point is! Map) continue;
-        final x = point['x'];
-        final y = point['y'];
-        if (x is! num || y is! num) continue;
-        obbPoints.add({'x': x.toDouble(), 'y': y.toDouble()});
-      }
-    }
+    final obbPoints = _parsePolygonPoints(map['polygon'] ?? map['obbPoints']);
+    final obbPointsNormalized = _parsePolygonPoints(map['polygonNormalized']);
 
     return YOLOResult(
       classIndex: classIndex,
@@ -166,7 +163,22 @@ class YOLOResult {
       keypointConfidences: keypointConfidences,
       angle: angle,
       obbPoints: obbPoints,
+      obbPointsNormalized: obbPointsNormalized,
     );
+  }
+
+  /// Parses a list of `{x, y}` maps, keeping only valid numeric points.
+  static List<Map<String, num>>? _parsePolygonPoints(dynamic raw) {
+    if (raw is! List) return null;
+    final points = <Map<String, num>>[];
+    for (final point in raw) {
+      if (point is! Map) continue;
+      final x = point['x'];
+      final y = point['y'];
+      if (x is! num || y is! num) continue;
+      points.add({'x': x.toDouble(), 'y': y.toDouble()});
+    }
+    return points;
   }
 
   Map<String, dynamic> toMap() {
@@ -208,6 +220,10 @@ class YOLOResult {
 
     if (obbPoints != null) {
       map['polygon'] = obbPoints;
+    }
+
+    if (obbPointsNormalized != null) {
+      map['polygonNormalized'] = obbPointsNormalized;
     }
 
     return map;

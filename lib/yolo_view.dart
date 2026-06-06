@@ -31,6 +31,10 @@ class YOLOView extends StatefulWidget {
   final String cameraResolution;
   final Function(List<YOLOResult>)? onResult;
   final Function(YOLOPerformanceMetrics)? onPerformanceMetrics;
+
+  /// Raw per-frame streaming data. Top-level keys include `detections`, `fps`, `processingTimeMs`,
+  /// `timestamp`, `frameNumber`, and `imageWidth`/`imageHeight` — the dimensions of the upright frame
+  /// that normalized detection coordinates refer to, for custom overlay transforms.
   final Function(Map<String, dynamic>)? onStreamingData;
   final Function(double zoomLevel)? onZoomChanged;
 

@@ -1511,6 +1511,9 @@ class YOLOView @JvmOverloads constructor(
                         val enhancedStreamData = HashMap<String, Any>(streamData)
                         enhancedStreamData["timestamp"] = System.currentTimeMillis()
                         enhancedStreamData["frameNumber"] = frameNumberCounter++
+                        // Dimensions of the upright frame that (normalized) detection coordinates refer to (#506)
+                        enhancedStreamData["imageWidth"] = resultWithOriginalImage.origShape.width
+                        enhancedStreamData["imageHeight"] = resultWithOriginalImage.origShape.height
                         
                         callback.invoke(enhancedStreamData)
                     }
@@ -2140,7 +2143,18 @@ class YOLOView @JvmOverloads constructor(
                 
                 // Store polygon points directly for precise OBB cropping
                 detection["polygon"] = polygonPixels
-                
+
+                // Normalized (0-1) corners and rotation angle, always present so custom overlays
+                // can transform OBB detections without enabling includeOBB (#506)
+                val pointsNormalized = polygon.map { point ->
+                    mapOf(
+                        "x" to point.x.toDouble(),
+                        "y" to point.y.toDouble()
+                    )
+                }
+                detection["polygonNormalized"] = pointsNormalized
+                detection["angle"] = obbRes.box.angle.toDouble()
+
                 // Also calculate AABB as fallback for compatibility (but Flutter should use polygon)
                 var minX = Float.MAX_VALUE
                 var maxX = Float.MIN_VALUE  
@@ -2172,13 +2186,6 @@ class YOLOView @JvmOverloads constructor(
                 
                 // Add OBB-specific data
                 if (config.includeOBB) {
-                    val points = polygon.map { point ->
-                        mapOf(
-                            "x" to point.x.toDouble(),
-                            "y" to point.y.toDouble()
-                        )
-                    }
-                    
                     val obbDataMap = mapOf(
                         "centerX" to obbRes.box.cx.toDouble(),
                         "centerY" to obbRes.box.cy.toDouble(),
@@ -2187,7 +2194,7 @@ class YOLOView @JvmOverloads constructor(
                         "angle" to obbRes.box.angle.toDouble(),
                         "angleDegrees" to (obbRes.box.angle * 180.0 / Math.PI),
                         "area" to obbRes.box.area.toDouble(),
-                        "points" to points,
+                        "points" to pointsNormalized,
                         "confidence" to obbRes.confidence.toDouble(),
                         "className" to obbRes.cls,
                         "classIndex" to obbRes.index
