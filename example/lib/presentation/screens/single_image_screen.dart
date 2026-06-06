@@ -4,10 +4,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 /// Mirrors the iOS `YOLOSingleImageUIKit` example: pick a gallery image, run `yolo26n` detection, and list the
-/// resulting labels + confidences over the annotated image returned by the native side.
+/// resulting labels + confidences over the annotated image returned by the native side. Stamps the live app version
+/// in the bottom-left like the camera screen.
 class SingleImageScreen extends StatefulWidget {
   const SingleImageScreen({super.key});
 
@@ -24,11 +26,20 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   Uint8List? _annotatedImage;
   bool _isModelReady = false;
   bool _isInferring = false;
+  String? _versionLabel;
 
   @override
   void initState() {
     super.initState();
+    _loadVersion();
     _initializeYOLO();
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    // Match yolo-ios-app's `labelVersion`: "v<version> (<build>)".
+    setState(() => _versionLabel = 'v${info.version} (${info.buildNumber})');
   }
 
   Future<void> _initializeYOLO() async {
@@ -79,71 +90,88 @@ class _SingleImageScreenState extends State<SingleImageScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Single Image Inference')),
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: FilledButton.icon(
-              onPressed: (_isModelReady && !_isInferring)
-                  ? _pickAndPredict
-                  : null,
-              icon: const Icon(Icons.photo_library_outlined),
-              label: const Text('Pick image & run inference'),
-            ),
-          ),
-          if (!_isModelReady)
-            const Padding(
-              padding: EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: FilledButton.icon(
+                  onPressed: (_isModelReady && !_isInferring)
+                      ? _pickAndPredict
+                      : null,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Pick image & run inference'),
+                ),
+              ),
+              if (!_isModelReady)
+                const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 12),
+                      Text('Preparing YOLO26 model...'),
+                    ],
                   ),
-                  SizedBox(width: 12),
-                  Text('Preparing YOLO26 model...'),
-                ],
+                ),
+              if (_isInferring) const LinearProgressIndicator(minHeight: 2),
+              Expanded(
+                child: ListView(
+                  children: [
+                    if (_annotatedImage != null || _imageBytes != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(
+                            _annotatedImage ?? _imageBytes!,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    if (_detections.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Detections (${_detections.length})',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                    for (final d in _detections)
+                      ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.crop_din),
+                        title: Text(d.className),
+                        trailing: Text(
+                          '${(d.confidence * 100).toStringAsFixed(1)}%',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (_versionLabel != null)
+            Positioned(
+              left: 8,
+              bottom: 8,
+              child: SafeArea(
+                child: Text(
+                  _versionLabel!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
             ),
-          if (_isInferring) const LinearProgressIndicator(minHeight: 2),
-          Expanded(
-            child: ListView(
-              children: [
-                if (_annotatedImage != null || _imageBytes != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.memory(
-                        _annotatedImage ?? _imageBytes!,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                if (_detections.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'Detections (${_detections.length})',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                for (final d in _detections)
-                  ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.crop_din),
-                    title: Text(d.className),
-                    trailing: Text(
-                      '${(d.confidence * 100).toStringAsFixed(1)}%',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-              ],
-            ),
-          ),
         ],
       ),
     );
