@@ -30,18 +30,6 @@ abstract class YOLOPlatform extends PlatformInterface {
     throw UnimplementedError('Default implementation not available');
   }
 
-  /// Returns the current platform version.
-  ///
-  /// This method is primarily used for testing and debugging to verify that
-  /// the method channel communication is working correctly between Flutter
-  /// and the native platform.
-  ///
-  /// Returns a string containing the platform name and version
-  /// (e.g., "Android 12" or "iOS 15.0"), or null if unavailable.
-  Future<String?> getPlatformVersion() {
-    throw UnimplementedError('platformVersion() has not been implemented.');
-  }
-
   /// Sets the model for an existing YOLO view.
   ///
   /// This method allows switching the model on an existing YOLO view instance

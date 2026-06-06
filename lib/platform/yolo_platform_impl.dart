@@ -23,14 +23,6 @@ class YOLOMethodChannel extends YOLOPlatform {
   final methodChannel = ChannelConfig.createSingleImageChannel();
 
   @override
-  Future<String?> getPlatformVersion() async {
-    final version = await methodChannel.invokeMethod<String>(
-      'getPlatformVersion',
-    );
-    return version;
-  }
-
-  @override
   Future<void> setModel(int viewId, String modelPath, String task) async {
     await methodChannel.invokeMethod<void>('setModel', {
       'viewId': viewId,
