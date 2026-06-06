@@ -12,8 +12,8 @@
   the new `obbPointsNormalized` field (#506).
 - **Feature**: Per-frame streaming data now includes `imageWidth`/`imageHeight`, the dimensions of the upright frame
   that normalized detection coordinates refer to, enabling accurate custom overlay transforms (#506).
-- **Enhancement**: Require UltralyticsYOLO pod `>= 8.9.3`, which adds the matching `YOLOView.showOverlays` toggle
-  upstream.
+- **Enhancement**: Require UltralyticsYOLO pod `>= 8.9.4`, which adds the matching `YOLOView.showOverlays` toggle
+  and a camera torch chip upstream.
 - **Enhancement**: Migrate Android builds to Flutter's built-in Kotlin support, readying the plugin for AGP 9.
 - **Enhancement**: Stamp the app version on the example screens, and align GPU fallback wording with whole-model
   compilation semantics across the docs.

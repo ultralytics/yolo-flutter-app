@@ -13,8 +13,8 @@ PODS:
     - FlutterMacOS
   - ultralytics_yolo (0.6.0):
     - Flutter
-    - UltralyticsYOLO (< 9.0, >= 8.9.3)
-  - UltralyticsYOLO (8.9.3)
+    - UltralyticsYOLO (< 9.0, >= 8.9.4)
+  - UltralyticsYOLO (8.9.4)
   - url_launcher_ios (0.0.1):
     - Flutter
   - wakelock_plus (0.0.1):
@@ -62,8 +62,8 @@ SPEC CHECKSUMS:
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
-  ultralytics_yolo: e4f02daf383b478b55efc5e7e1b64db71d6bcfbf
-  UltralyticsYOLO: 9c8689101352eaf3f0507ed72796a50b801b47c5
+  ultralytics_yolo: b19941dc12a47245d2db81462d4734ac1273e2c8
+  UltralyticsYOLO: 163cd55ce4e0282ebc0d5712dd098d1897d04d7d
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
 
