@@ -265,8 +265,8 @@ class YOLOView extends StatefulWidget {
 | `onPerformanceMetrics` | `Function(YOLOPerformanceMetrics)?` | ❌       | `null`            | Performance metrics callback                                                              |
 | `onStreamingData`      | `Function(Map<String, dynamic>)?`   | ❌       | `null`            | Comprehensive streaming callback                                                          |
 | `onZoomChanged`        | `Function(double)?`                 | ❌       | `null`            | Zoom level change callback                                                                |
-| `onModelError`         | `void Function(Object, String, YOLOTask?)?` | ❌ | `null`            | Called when an in-place model switch fails; carries the failed request's model path and task |
-| `onModelLoad`          | `void Function(String, YOLOTask?)?` | ❌       | `null`            | Called after a model loads or switches successfully; carries the loaded model path and task |
+| `onModelError`         | `void Function(Object, String, YOLOTask?)?` | ❌ | `null`            | Called when a model load or in-place switch fails; carries the failed request's model path and requested task |
+| `onModelLoad`          | `void Function(String, YOLOTask?)?` | ❌       | `null`            | Called after a model loads or switches successfully; carries the request's model path and requested task (null when inferred from metadata) |
 | `streamingConfig`      | `YOLOStreamingConfig?`              | ❌       | `null`            | Streaming configuration                                                                   |
 | `confidenceThreshold`  | `double`                            | ❌       | `0.25`            | Initial confidence threshold for YOLOView                                                 |
 | `iouThreshold`         | `double`                            | ❌       | `0.7`             | Initial IoU threshold for YOLOView                                                        |
