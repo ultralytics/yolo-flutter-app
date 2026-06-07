@@ -1,3 +1,8 @@
+## 0.6.1
+
+- **Bug Fix**: Fix Android builds on AGP 9 by letting built-in Kotlin inherit the Java 17 target from
+  `compileOptions` and registering Kotlin sources through the Kotlin source set (#520).
+
 ## 0.6.0
 
 - **Breaking**: Remove the unused `getPlatformVersion` API from the platform interface and method channel — a plugin
