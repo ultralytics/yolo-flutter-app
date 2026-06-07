@@ -26,13 +26,14 @@ apply plugin: "com.android.library"
 // Built-in Kotlin migration (https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors):
 // AGP 9+ ships Kotlin support itself; on older AGP (Flutter < 3.44) the plugin still has to apply KGP.
 def agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0] as int
-if (agpMajor < 9) {
+def builtInKotlinEnabled = !"false".equalsIgnoreCase(providers.gradleProperty("android.builtInKotlin").orNull)
+if (agpMajor < 9 || !builtInKotlinEnabled) {
     apply plugin: "kotlin-android"
-}
 
-kotlin {
-    compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    kotlin {
+        compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+        }
     }
 }
 
@@ -46,8 +47,8 @@ android {
     }
 
     sourceSets {
-        main.java.srcDirs += "src/main/kotlin"
-        test.java.srcDirs += "src/test/kotlin"
+        main.kotlin.srcDirs += "src/main/kotlin"
+        test.kotlin.srcDirs += "src/test/kotlin"
     }
 
     // NDK version: Use project property if set by host app, otherwise use a compatible default
