@@ -82,11 +82,15 @@ fetch() {
   rm -f "$tmp"
   echo "fetch_bundled_models: downloading $name"
   if curl -fL --retry 3 --retry-delay 2 --connect-timeout 15 -o "$tmp" "$BASE/$name"; then
-    if [ -s "$tmp" ]; then
-      mv -f "$tmp" "$out"
-    else
+    if [ ! -s "$tmp" ]; then
       echo "fetch_bundled_models: WARNING $name downloaded 0 bytes; will fall back to runtime download" >&2
       rm -f "$tmp"
+    elif [[ "$name" == *.zip ]] && ! unzip -tqq "$tmp" > /dev/null 2>&1; then
+      # A truncated or error-page response can still be a non-empty 200; never bundle a corrupt archive.
+      echo "fetch_bundled_models: WARNING $name archive is corrupt or truncated; will fall back to runtime download" >&2
+      rm -f "$tmp"
+    else
+      mv -f "$tmp" "$out"
     fi
   else
     echo "fetch_bundled_models: WARNING failed to download $name; will fall back to runtime download" >&2
