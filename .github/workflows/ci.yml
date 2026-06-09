@@ -16,6 +16,7 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
   checks: write
   pull-requests: write
 
@@ -49,7 +50,7 @@ jobs:
       - name: Upload Coverage Reports to CodeCov
         uses: codecov/codecov-action@v7
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
           fail_ci_if_error: true
           files: coverage/lcov.info
           disable_search: true
