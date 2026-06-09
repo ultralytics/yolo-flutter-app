@@ -50,9 +50,9 @@ verify_aab_entrypoint() {
   tmp_dex="$(mktemp)"
   tmp_manifest="$(mktemp)"
   unzip -p "$aab" base/manifest/AndroidManifest.xml > "$tmp_manifest"
-  if ! grep -a -q 'com.ultralytics.yolo.MainActivity' "$tmp_manifest" ||
-    ! grep -a -q 'android.intent.action.MAIN' "$tmp_manifest" ||
-    ! grep -a -q 'android.intent.category.LAUNCHER' "$tmp_manifest"; then
+  if ! grep -a -q 'com.ultralytics.yolo.MainActivity' "$tmp_manifest" \
+    || ! grep -a -q 'android.intent.action.MAIN' "$tmp_manifest" \
+    || ! grep -a -q 'android.intent.category.LAUNCHER' "$tmp_manifest"; then
     rm -f "$tmp_dex" "$tmp_manifest"
     echo "build_play_store_assets: release AAB manifest is missing the MainActivity launcher entrypoint" >&2
     exit 1
