@@ -1,3 +1,11 @@
+## 0.6.2
+
+- **Bug Fix**: Compile the Android example app's Kotlin `MainActivity` into release bundles so Play Store installs can
+  launch successfully.
+- **Enhancement**: Add release AAB entrypoint verification to CI and the Play asset builder so missing launcher
+  activity regressions fail before Play Console submission.
+- **Enhancement**: Hide the torch control while the showcase is using the front camera.
+
 ## 0.6.1
 
 - **Bug Fix**: Fix Android builds on AGP 9 by letting built-in Kotlin inherit the Java 17 target from

@@ -95,8 +95,12 @@ void main() {
     await tester.pump();
     await tester.tap(find.bySemanticsLabel('Resume'));
     await tester.pump();
+    await tester.tap(find.bySemanticsLabel('Turn torch on'));
+    await tester.pump();
     await tester.tap(find.bySemanticsLabel('Switch camera'));
     await tester.pump(const Duration(milliseconds: 300));
+    expect(find.bySemanticsLabel('Turn torch on'), findsNothing);
+
     controller.onNativeEvent({'type': 'zoom', 'value': 1.5});
     controller.onNativeEvent({'type': 'lens', 'label': 'Wide'});
     await tester.pump();
@@ -104,8 +108,6 @@ void main() {
     expect(find.text('1.50x'), findsOneWidget);
     expect(find.text('Wide'), findsOneWidget);
 
-    await tester.tap(find.bySemanticsLabel('Turn torch on'));
-    await tester.pump();
     await tester.tap(find.text('0.5'));
     final sliders = tester
         .widgetList<CupertinoSlider>(find.byType(CupertinoSlider))

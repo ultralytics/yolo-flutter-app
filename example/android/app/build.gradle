@@ -1,7 +1,7 @@
 plugins {
     id "com.android.application"
-    // The Flutter Gradle Plugin must be applied after the Android Gradle plugin; Kotlin comes from Flutter's
-    // built-in Kotlin support.
+    id "org.jetbrains.kotlin.android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
 }
 
@@ -10,6 +10,10 @@ def keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
 }
+def hasReleaseSigning = keystoreProperties["storeFile"] &&
+    (keystoreProperties["keyAlias"] ?: System.getenv("ANDROID_KEY_ALIAS")) &&
+    (keystoreProperties["keyPassword"] ?: System.getenv("ANDROID_KEY_PASSWORD")) &&
+    (keystoreProperties["storePassword"] ?: System.getenv("ANDROID_STORE_PASSWORD"))
 
 android {
     namespace = "com.ultralytics.yolo"
@@ -40,7 +44,9 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.release
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.release
+            }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
