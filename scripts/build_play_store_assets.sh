@@ -7,10 +7,11 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 [--notes path/to/whats-new.txt]" >&2
+  echo "Usage: $0 [--notes path/to/whats-new.txt] | --verify-aab path/to/app.aab" >&2
 }
 
 NOTES_SOURCE=""
+VERIFY_AAB=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --notes)
@@ -19,6 +20,14 @@ while [ "$#" -gt 0 ]; do
         exit 2
       fi
       NOTES_SOURCE="$2"
+      shift 2
+      ;;
+    --verify-aab)
+      if [ "$#" -lt 2 ]; then
+        usage
+        exit 2
+      fi
+      VERIFY_AAB="$2"
       shift 2
       ;;
     -h | --help)
@@ -31,6 +40,42 @@ while [ "$#" -gt 0 ]; do
       ;;
   esac
 done
+
+verify_aab_entrypoint() {
+  local aab="$1"
+  local dex
+  local tmp_dex
+  local tmp_manifest
+
+  tmp_dex="$(mktemp)"
+  tmp_manifest="$(mktemp)"
+  unzip -p "$aab" base/manifest/AndroidManifest.xml > "$tmp_manifest"
+  if ! grep -a -q 'com.ultralytics.yolo.MainActivity' "$tmp_manifest" \
+    || ! grep -a -q 'android.intent.action.MAIN' "$tmp_manifest" \
+    || ! grep -a -q 'android.intent.category.LAUNCHER' "$tmp_manifest"; then
+    rm -f "$tmp_dex" "$tmp_manifest"
+    echo "build_play_store_assets: release AAB manifest is missing the MainActivity launcher entrypoint" >&2
+    exit 1
+  fi
+
+  while IFS= read -r dex; do
+    unzip -p "$aab" "$dex" > "$tmp_dex"
+    if grep -a -q 'Lcom/ultralytics/yolo/MainActivity;' "$tmp_dex"; then
+      rm -f "$tmp_dex" "$tmp_manifest"
+      return 0
+    fi
+  done < <(unzip -Z1 "$aab" | grep -E '^base/dex/classes[0-9]*\.dex$')
+
+  rm -f "$tmp_dex" "$tmp_manifest"
+  echo "build_play_store_assets: release AAB is missing com.ultralytics.yolo.MainActivity" >&2
+  exit 1
+}
+
+if [ -n "$VERIFY_AAB" ]; then
+  verify_aab_entrypoint "$VERIFY_AAB"
+  echo "build_play_store_assets: verified Android release entrypoint in $VERIFY_AAB"
+  exit 0
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -142,6 +187,8 @@ TMP_SHA="$TMP_STORE_DIR/$(basename "$SHA_DEST")"
 TMP_FEATURE_GRAPHIC="$TMP_STORE_DIR/$(basename "$FEATURE_GRAPHIC")"
 
 install -m 0644 "$AAB_SOURCE" "$TMP_AAB"
+
+verify_aab_entrypoint "$TMP_AAB"
 
 if [ -n "$NOTES_SOURCE" ]; then
   install -m 0644 "$NOTES_SOURCE" "$TMP_NOTES"

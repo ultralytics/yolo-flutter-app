@@ -104,6 +104,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   bool _isPaused = false;
   bool _torchOn = false;
+  bool _isFrontCamera = false;
   Offset? _focusPosition;
   double _baseScale = 1;
   Size _viewSize = Size.zero;
@@ -508,7 +509,10 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   Future<void> _onSwitchCamera() async {
-    setState(() => _lenses = const [LensInfo(zoomFactor: 1, label: 'Camera')]);
+    setState(() {
+      _isFrontCamera = !_isFrontCamera;
+      _lenses = const [LensInfo(zoomFactor: 1, label: 'Camera')];
+    });
     _zoom.value = 1;
     _lensLabel.value = '';
     // Switching the camera input drops the torch (the new device may not have one); reset both the controller's
@@ -729,6 +733,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   onPlayPause: _onPlayPause,
                   onSwitchCamera: () => unawaited(_onSwitchCamera()),
                   isTorchOn: _torchOn,
+                  showTorchControl: !_isFrontCamera,
                   onToggleTorch: () => unawaited(_onToggleTorch()),
                   onShare: () => unawaited(_onShare()),
                   onInfo: () => _showInfoSheet(context),
@@ -886,6 +891,7 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.onPlayPause,
     required this.onSwitchCamera,
     required this.isTorchOn,
+    required this.showTorchControl,
     required this.onToggleTorch,
     required this.onShare,
     required this.onInfo,
@@ -916,6 +922,7 @@ class _ShowcaseOverlay extends StatelessWidget {
   final VoidCallback onPlayPause;
   final VoidCallback onSwitchCamera;
   final bool isTorchOn;
+  final bool showTorchControl;
   final VoidCallback onToggleTorch;
   final VoidCallback onShare;
   final VoidCallback onInfo;
@@ -1128,7 +1135,7 @@ class _ShowcaseOverlay extends StatelessWidget {
         lenses: lenses,
         currentZoomFactor: z,
         onLensSelected: onLensSelected,
-        trailing: _torchControl(),
+        trailing: showTorchControl ? _torchControl() : null,
       ),
     );
   }
