@@ -15,8 +15,8 @@ Useful links:
 
 Before building store assets:
 
-- `pubspec.yaml` must have the package version, for example `0.5.1`.
-- `example/pubspec.yaml` must have the matching app version plus Android build number, for example `0.5.1+5`.
+- `pubspec.yaml` must have the package version, for example `0.6.2`.
+- `example/pubspec.yaml` must have the matching app version plus Android build number, for example `0.6.2+8`.
 - `CHANGELOG.md` must have a top section for that version.
 - Local signing files must be present:
   - `example/android/key.properties`
