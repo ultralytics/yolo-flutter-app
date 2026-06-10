@@ -63,6 +63,10 @@ interface InferenceModel {
     }
 }
 
+/** Widen unsigned 8-bit model outputs (e.g. semantic class maps) into the predictors' float pipeline. */
+internal fun widenToFloats(bytes: ByteArray): FloatArray =
+    FloatArray(bytes.size) { i -> (bytes[i].toInt() and 0xFF).toFloat() }
+
 interface Predictor {
     /**
      * Predict method for processing a bitmap

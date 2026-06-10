@@ -5,6 +5,7 @@ package com.ultralytics.yolo
 import android.util.Log
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
+import com.google.ai.edge.litert.LiteRtException
 import com.google.ai.edge.litert.TensorBuffer
 
 /**
@@ -117,7 +118,7 @@ class LiteRtModel(
                 inputs[0].writeFloat(FloatArray(inputFloats))
                 compiled.run(inputs, outputs)
             }
-            val elementCounts = IntArray(outputs.size) { outputs[it].readFloat().size }
+            val elementCounts = IntArray(outputs.size) { readAsFloats(outputs[it]).size }
             val outputShapes = List(outputs.size) { i ->
                 val name = if (i == 0) "Identity" else "Identity_$i"
                 try {
@@ -138,7 +139,14 @@ class LiteRtModel(
     override fun run(input: FloatArray): List<FloatArray> {
         inputBuffers[0].writeFloat(input)
         model.run(inputBuffers, outputBuffers)
-        return List(outputBuffers.size) { outputBuffers[it].readFloat() }
+        return List(outputBuffers.size) { readAsFloats(outputBuffers[it]) }
+    }
+
+    /** Read a tensor buffer as floats; integer outputs (e.g. semantic class maps) are widened. */
+    private fun readAsFloats(buffer: TensorBuffer): FloatArray = try {
+        buffer.readFloat()
+    } catch (e: LiteRtException) {
+        widenToFloats(buffer.readInt8())
     }
 
     override fun close() {

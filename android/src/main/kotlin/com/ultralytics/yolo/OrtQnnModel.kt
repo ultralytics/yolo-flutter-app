@@ -131,11 +131,8 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
     private fun readOutput(tensor: OnnxTensor, target: FloatArray): FloatArray {
         val info = tensor.info
         if (info.type == ai.onnxruntime.OnnxJavaType.UINT8 || info.type == ai.onnxruntime.OnnxJavaType.INT8) {
-            val bytes = tensor.byteBuffer
-            val count = bytes.remaining()
-            for (i in 0 until count) {
-                target[i] = (bytes.get(i).toInt() and 0xFF).toFloat()
-            }
+            val bytes = ByteArray(tensor.byteBuffer.remaining()).also { tensor.byteBuffer.get(it) }
+            widenToFloats(bytes).copyInto(target)
         } else {
             val buffer = tensor.floatBuffer
             buffer.get(target, 0, buffer.remaining())
