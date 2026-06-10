@@ -5,8 +5,8 @@ package com.ultralytics.yolo
 import android.util.Log
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
-import com.google.ai.edge.litert.LiteRtException
 import com.google.ai.edge.litert.TensorBuffer
+import com.google.ai.edge.litert.TensorType
 
 /**
  * Wraps a LiteRT 2.x [CompiledModel] behind a simple float-in / float-out API so the predictors don't deal with
@@ -32,11 +32,13 @@ class LiteRtModel(
         val inputDims: IntArray,
         val outputElementCounts: IntArray,
         val outputDims: List<IntArray>,
+        val outputTypes: List<TensorType.ElementType?>,
     )
 
     private val model: CompiledModel
     private val inputBuffers: List<TensorBuffer>
     private val outputBuffers: List<TensorBuffer>
+    private val outputTypes: List<TensorType.ElementType?>
 
     /** Accelerator actually in use after the ladder resolves: "GPU" or "CPU". */
     override val accelerator: String
@@ -73,6 +75,7 @@ class LiteRtModel(
         inputDims = prepared.inputDims
         outputElementCounts = prepared.outputElementCounts
         outputDims = prepared.outputDims
+        outputTypes = prepared.outputTypes
 
         Log.i(
             tag,
@@ -118,16 +121,18 @@ class LiteRtModel(
                 inputs[0].writeFloat(FloatArray(inputFloats))
                 compiled.run(inputs, outputs)
             }
-            val elementCounts = IntArray(outputs.size) { readAsFloats(outputs[it]).size }
-            val outputShapes = List(outputs.size) { i ->
+            val outputTensorTypes = List(outputs.size) { i ->
                 val name = if (i == 0) "Identity" else "Identity_$i"
                 try {
-                    compiled.getOutputTensorType(outputName = name).layout?.dimensions?.toIntArray() ?: IntArray(0)
+                    compiled.getOutputTensorType(outputName = name)
                 } catch (e: Throwable) {
-                    IntArray(0)
+                    null // also thrown for element types the Kotlin API can't read (e.g. uint8)
                 }
             }
-            return PreparedModel(compiled, inputs, outputs, dims, elementCounts, outputShapes)
+            val outputShapes = outputTensorTypes.map { it?.layout?.dimensions?.toIntArray() ?: IntArray(0) }
+            val types = outputTensorTypes.map { it?.elementType }
+            val elementCounts = IntArray(outputs.size) { readAsFloats(outputs[it], types[it]).size }
+            return PreparedModel(compiled, inputs, outputs, dims, elementCounts, outputShapes, types)
         } catch (e: Throwable) {
             closeBuffers(inputs, outputs)
             runCatching { compiled.close() }
@@ -139,14 +144,18 @@ class LiteRtModel(
     override fun run(input: FloatArray): List<FloatArray> {
         inputBuffers[0].writeFloat(input)
         model.run(inputBuffers, outputBuffers)
-        return List(outputBuffers.size) { readAsFloats(outputBuffers[it]) }
+        return List(outputBuffers.size) { readAsFloats(outputBuffers[it], outputTypes[it]) }
     }
 
-    /** Read a tensor buffer as floats; integer outputs (e.g. semantic class maps) are widened. */
-    private fun readAsFloats(buffer: TensorBuffer): FloatArray = try {
-        buffer.readFloat()
-    } catch (e: LiteRtException) {
-        widenToFloats(buffer.readInt8())
+    /**
+     * Read a tensor buffer as floats; integer outputs (e.g. semantic class maps) are widened. Dispatch on the
+     * declared element type - the native read functions don't type-check, so a mistyped read corrupts memory.
+     */
+    private fun readAsFloats(buffer: TensorBuffer, type: TensorType.ElementType?): FloatArray = when (type) {
+        TensorType.ElementType.INT -> buffer.readInt().let { v -> FloatArray(v.size) { v[it].toFloat() } }
+        TensorType.ElementType.INT8 -> widenToFloats(buffer.readInt8())
+        TensorType.ElementType.INT64 -> buffer.readLong().let { v -> FloatArray(v.size) { v[it].toFloat() } }
+        else -> buffer.readFloat() // FLOAT, or null when the type can't be read (all official assets are float)
     }
 
     override fun close() {

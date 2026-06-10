@@ -133,6 +133,10 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
         if (info.type == ai.onnxruntime.OnnxJavaType.UINT8 || info.type == ai.onnxruntime.OnnxJavaType.INT8) {
             val bytes = ByteArray(tensor.byteBuffer.remaining()).also { tensor.byteBuffer.get(it) }
             widenToFloats(bytes).copyInto(target)
+        } else if (info.type == ai.onnxruntime.OnnxJavaType.INT32) {
+            // Semantic class maps (in-graph ArgMax) are int32
+            val buffer = tensor.intBuffer
+            for (i in 0 until buffer.remaining()) target[i] = buffer.get(i).toFloat()
         } else {
             val buffer = tensor.floatBuffer
             buffer.get(target, 0, buffer.remaining())
