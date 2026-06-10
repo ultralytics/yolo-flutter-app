@@ -62,6 +62,44 @@ with the preprocess / inference / postprocess split beneath it.
   ~3.8 ms burst but ~16 ms/frame sustained in the live camera). Watch the in-app pre/inference/post HUD line for
   your device's steady-state numbers, and benchmark your exact models on your target hardware.
 
+## 🔭 Optimization Findings and Future Exploration
+
+The table above reflects a device-validated optimization pass (Snapdragon 8 Elite Gen 5, June 2026). What was tried,
+what worked, and what's left on the table:
+
+**Shipped (in the table):**
+
+- **Flat-output decode** for detect/pose/OBB: postprocess dropped from ~12 ms to 0.7-2.4 ms on every backend by
+  reading the model output directly (no reshape copies, no JNI nested-array marshalling, confidence checked before
+  box reads) — the same pattern as MediaPipe's decode and the iOS SDK's raw-pointer reads.
+- **Channel-last (NHWC) QNN exports** (ultralytics#24790): removes the app's CPU transpose and the NPU's boundary
+  transpose simultaneously; detect inference 7.4 → 5.8 ms.
+- **In-graph ArgMax semantic QNN exports** (ultralytics#24790): a uint8 class map replaces ~80 MB of float logits;
+  stable ~50 ms vs 123-1065 ms (erratic) before.
+- **GPU program cache** (`GpuOptions.serializationDir`): model re-opens skip OpenCL compilation.
+
+**Tested and intentionally NOT changed (don't re-litigate without new evidence):**
+
+- `htp_performance_mode`: burst/sustained/high_performance are identical for our use — ORT votes the same max DCVS
+  corner for burst and sustained; the default stays `burst`.
+- `offload_graph_io_quantization=0`: no measurable effect on normal-sized outputs.
+- **Naive A8W8 quantization**: 33% faster inference but zero detections — a shared uint8 scale on the concatenated
+  output destroys scores. A16W8 stays the export default.
+- **fp16 GPU variants**: identical inference time to INT8 on the LiteRT GPU accelerator (it computes in fp16
+  internally either way) — no reason to ship larger fp16 assets.
+
+**Future exploration (in expected-value order):**
+
+1. **A8W8 with mixed precision**: Qualcomm's "LiteMP" recipe (per-channel weights + ~10% of layers promoted to
+   16-bit via `init_overrides`) recovers full accuracy at near-A8 speed — potential further ~30% NPU inference cut,
+   needs an mAP validation loop in the exporter.
+2. **Zero-copy I/O**: LiteRT supports AHardwareBuffer/GL/CL tensor interop and ORT QNN has a shared-memory
+   allocator (`QnnHtpShared`), but both are C/C++-API-only today — revisit when the Kotlin/Java surfaces catch up,
+   or via a small JNI shim. Attacks the remaining ~3.5 ms preprocess copy.
+3. **RGBA camera input**: feeding 4-channel frames avoids the RGB repack (the GPU's native layout is 4-channel).
+4. **Per-run HTP power votes** (`qnn.htp_perf_mode` run options): vote high during camera sessions, low after —
+   battery/thermal optimization for sustained use rather than a latency win.
+
 ## 🎚️ Tune Thresholds
 
 Higher confidence thresholds reduce post-processing work and visual noise:
