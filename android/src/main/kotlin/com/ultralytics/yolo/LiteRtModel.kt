@@ -18,7 +18,12 @@ import com.google.ai.edge.litert.TensorBuffer
  *
  * Tensor names follow the Ultralytics tflite export convention: input `images`, outputs `Identity`, `Identity_1`, ...
  */
-class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) : InferenceModel {
+class LiteRtModel(
+    private val context: android.content.Context,
+    modelPath: String,
+    useGpu: Boolean,
+    private val tag: String,
+) : InferenceModel {
     private data class PreparedModel(
         val model: CompiledModel,
         val inputBuffers: List<TensorBuffer>,
@@ -76,7 +81,16 @@ class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) :
     }
 
     private fun prepareModel(modelPath: String, accelerator: Accelerator): PreparedModel {
-        val compiled = CompiledModel.create(modelPath, CompiledModel.Options(accelerator))
+        val options = CompiledModel.Options(accelerator)
+        if (accelerator == Accelerator.GPU) {
+            // Serialize compiled GPU programs so subsequent model opens skip CL compilation entirely.
+            options.gpuOptions = CompiledModel.GpuOptions(
+                serializationDir = context.codeCacheDir.absolutePath,
+                modelCacheKey = "${java.io.File(modelPath).name}_${java.io.File(modelPath).length()}",
+                serializeProgramCache = true,
+            )
+        }
+        val compiled = CompiledModel.create(modelPath, options)
         val inputs: List<TensorBuffer>
         val outputs: List<TensorBuffer>
         try {

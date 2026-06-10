@@ -45,7 +45,7 @@ interface InferenceModel {
          */
         fun create(context: Context, modelPath: String, useGpu: Boolean, tag: String): InferenceModel {
             val lower = modelPath.lowercase()
-            if (!lower.endsWith(".onnx")) return LiteRtModel(modelPath, useGpu, tag)
+            if (!lower.endsWith(".onnx")) return LiteRtModel(context, modelPath, useGpu, tag)
             require(lower.endsWith("_qnn.onnx")) {
                 "Generic ONNX models are not supported; use an Ultralytics QNN context-binary export (*_qnn.onnx) " +
                     "or a .tflite model"

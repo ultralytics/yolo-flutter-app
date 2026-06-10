@@ -98,34 +98,25 @@ JNIEXPORT jobjectArray JNICALL
 Java_com_ultralytics_yolo_ObjectDetector_postprocess(
         JNIEnv *env,
         jobject thiz,
-        jobjectArray recognitions,
+        jfloatArray recognitions,
         jint w, jint h,
         jfloat confidence_threshold,
         jfloat iou_threshold,
         jint num_items_threshold,
         jint num_classes) {
 
-    // Convert 2D array to C++ vector
-    std::vector<std::vector<float>> vec;
-    vec.resize(h, std::vector<float>(w, 0.0f));
-    for (int i = 0; i < h; ++i) {
-        jfloatArray row = (jfloatArray) env->GetObjectArrayElement(recognitions, i);
-        jfloat* rowData = env->GetFloatArrayElements(row, JNI_FALSE);
-        for (int j = 0; j < w; ++j) {
-            vec[i][j] = rowData[j];
-        }
-        env->ReleaseFloatArrayElements(row, rowData, JNI_ABORT);
-        env->DeleteLocalRef(row);
-    }
+    // Read the flat [h x w] prediction tensor directly - one pin, no per-row marshalling or nested copies.
+    jfloat *data = env->GetFloatArrayElements(recognitions, nullptr);
+    if (data == nullptr) return NULL;
 
-    // Extract box candidates (proposals)
+    // Extract box candidates (proposals); confidence first so box reads are skipped for rejected anchors
     std::vector<DetectedObject> proposals;
     for (int i = 0; i < w; ++i) {
         int class_index = 0;
         float class_score = -FLT_MAX;
-        // Get each class score (assuming class scores start from the 4th index)
+        // Get each class score (class scores start at row 4)
         for (int c = 0; c < num_classes; c++) {
-            float score = vec[c + 4][i];
+            float score = data[(c + 4) * w + i];
             if (score > class_score) {
                 class_score = score;
                 class_index = c;
@@ -134,10 +125,10 @@ Java_com_ultralytics_yolo_ObjectDetector_postprocess(
         // Only add to candidates if score exceeds threshold
         if (class_score > confidence_threshold) {
             // Get center coordinates and width/height, convert to top-left coordinates
-            float cx = vec[0][i];
-            float cy = vec[1][i];
-            float w_box = vec[2][i];
-            float h_box = vec[3][i];
+            float cx = data[i];
+            float cy = data[w + i];
+            float w_box = data[2 * w + i];
+            float h_box = data[3 * w + i];
 
             DetectedObject obj;
             obj.rect.x = cx - w_box / 2;
@@ -150,6 +141,7 @@ Java_com_ultralytics_yolo_ObjectDetector_postprocess(
             proposals.push_back(obj);
         }
     }
+    env->ReleaseFloatArrayElements(recognitions, data, JNI_ABORT);
 
     // Sort by score
     qsort_descent_inplace(proposals);

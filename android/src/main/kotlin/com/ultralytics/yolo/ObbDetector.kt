@@ -22,10 +22,8 @@ class ObbDetector(
     private lateinit var intValues: IntArray
     
     // Reuse output arrays to reduce allocations
-    private lateinit var rawOutput: Array<Array<FloatArray>>
     
     // Transposed array to avoid recreating on each inference
-    private lateinit var transposedOutput: Array<FloatArray>
     
     // Output dimensions
     private var outBatch = 0
@@ -54,13 +52,6 @@ class ObbDetector(
         outChannels = if (outShape.size >= 3) outShape[1] else 0
         outAnchors = if (outShape.size >= 3) outShape[2] else 0
 
-        rawOutput = Array(outBatch) {
-            Array(outChannels) { FloatArray(outAnchors) }
-        }
-
-        transposedOutput = Array(outAnchors) {
-            FloatArray(outChannels)
-        }
 
         floatInput = FloatArray(inWidth * inHeight * 3)
         inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
@@ -85,25 +76,13 @@ class ObbDetector(
         )
         ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
 
-        // Reshape the flat output into rawOutput[0][outChannels][outAnchors].
         val preEnd = System.nanoTime()
         val flat = rtModel.run(floatInput)[0]
         val inferEnd = System.nanoTime()
-        var idx = 0
-        for (c in 0 until outChannels) {
-            val row = rawOutput[0][c]
-            for (a in 0 until outAnchors) {
-                row[a] = flat[idx++]
-            }
-        }
-        for (i in 0 until outAnchors) {
-            for (c in 0 until outChannels) {
-                transposedOutput[i][c] = rawOutput[0][c][i]
-            }
-        }
 
+        // Decode straight from the flat [1, outChannels, outAnchors] output - no reshape or transpose copies.
         val obbDetections = postProcessOBB(
-            detections2D = transposedOutput,
+            flat = flat,
             confidenceThreshold = CONFIDENCE_THRESHOLD,
             iouThreshold = IOU_THRESHOLD,
             origWidth = origWidth,
@@ -133,42 +112,34 @@ class ObbDetector(
 
 
     private fun postProcessOBB(
-        detections2D: Array<FloatArray>,
+        flat: FloatArray,
         confidenceThreshold: Float,
         iouThreshold: Float,
         origWidth: Int,
         origHeight: Int
     ): List<OBBResult> {
-        val anchorsCount = detections2D.size
-        val numClasses = ((detections2D.firstOrNull()?.size ?: 5) - 5).coerceAtLeast(0)
+        val anchors = outAnchors
+        val numClasses = (outChannels - 5).coerceAtLeast(0)
+        val angleRow = (4 + numClasses) * anchors
 
         val detections = mutableListOf<Detection>()
 
-        for (i in 0 until anchorsCount) {
-            val data = detections2D[i]
-            val cx = data[0]
-            val cy = data[1]
-            val w  = data[2]
-            val h  = data[3]
-
-            // Check class scores
+        for (i in 0 until anchors) {
+            // Confidence first: box and angle reads are skipped for the overwhelming majority of anchors
             var bestScore = 0f
             var bestClass = 0
             for (c in 0 until numClasses) {
-                val score = data[4 + c]
+                val score = flat[(4 + c) * anchors + i]
                 if (score > bestScore) {
                     bestScore = score
                     bestClass = c
                 }
             }
+            if (bestScore < confidenceThreshold) continue
 
-            val angleIndex = 4 + numClasses
-            val angle = if (angleIndex < data.size) data[angleIndex] else 0f
-
-            if (bestScore >= confidenceThreshold) {
-                val obb = OBB(cx, cy, w, h, angle)
-                detections.add(Detection(obb, bestScore, bestClass))
-            }
+            val angle = if (angleRow + i < flat.size) flat[angleRow + i] else 0f
+            val obb = OBB(flat[i], flat[anchors + i], flat[2 * anchors + i], flat[3 * anchors + i], angle)
+            detections.add(Detection(obb, bestScore, bestClass))
         }
 
         // === NMS ===

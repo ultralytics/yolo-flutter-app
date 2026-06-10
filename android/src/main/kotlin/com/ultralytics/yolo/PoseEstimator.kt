@@ -35,7 +35,7 @@ class PoseEstimator(
     private lateinit var intValues: IntArray
     
     // Reuse output arrays to reduce allocations
-    private lateinit var outputArray: Array<Array<FloatArray>>
+    private var outDim2 = 0
     
     // Output dimensions
     private var batchSize = 0
@@ -83,12 +83,7 @@ class PoseEstimator(
             }
         }
 
-        outputArray = Array(batchSize) {
-            when (outputLayout) {
-                OutputLayout.FEATURES_FIRST -> Array(outFeatures) { FloatArray(numAnchors) }
-                OutputLayout.ANCHORS_FIRST -> Array(numAnchors) { FloatArray(outFeatures) }
-            }
-        }
+        outDim2 = outputShape[2]
 
         floatInput = FloatArray(inWidth * inHeight * 3)
         inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
@@ -107,20 +102,12 @@ class PoseEstimator(
         )
         ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
 
-        // Reshape the flat output into outputArray[0] for the existing pose postprocess.
         val preEnd = System.nanoTime()
         val flat = rtModel.run(floatInput)[0]
         val inferEnd = System.nanoTime()
-        val rows = outputArray[0]
-        var idx = 0
-        for (r in rows.indices) {
-            val row = rows[r]
-            for (c in row.indices) {
-                row[c] = flat[idx++]
-            }
-        }
+        // Decode straight from the flat output - featureValue() handles both layouts without a reshape copy.
         val rawDetections = postProcessPose(
-            features = outputArray[0],  // shape: [56][numAnchors] (FEATURES_FIRST) or [numAnchors][56] (ANCHORS_FIRST)
+            flat = flat,
             numAnchors = numAnchors,
             confidenceThreshold = confidenceThreshold,
             iouThreshold = iouThreshold,
@@ -150,7 +137,7 @@ class PoseEstimator(
     }
 
     private fun postProcessPose(
-        features: Array<FloatArray>,
+        flat: FloatArray,
         numAnchors: Int,
         confidenceThreshold: Float,
         iouThreshold: Float,
@@ -158,17 +145,17 @@ class PoseEstimator(
         origHeight: Int
     ): List<PoseDetection> {
         if (isEndToEnd) {
-            return postProcessEndToEndPose(features, confidenceThreshold, origWidth, origHeight)
+            return postProcessEndToEndPose(flat, confidenceThreshold, origWidth, origHeight)
         }
 
         val detections = mutableListOf<PoseDetection>()
 
         for (j in 0 until numAnchors) {
-            val rawX = featureValue(features, 0, j)
-            val rawY = featureValue(features, 1, j)
-            val rawW = featureValue(features, 2, j)
-            val rawH = featureValue(features, 3, j)
-            val conf = featureValue(features, 4, j)
+            val rawX = featureValue(flat, 0, j)
+            val rawY = featureValue(flat, 1, j)
+            val rawW = featureValue(flat, 2, j)
+            val rawH = featureValue(flat, 3, j)
+            val conf = featureValue(flat, 4, j)
 
             if (conf < confidenceThreshold) continue
 
@@ -190,9 +177,9 @@ class PoseEstimator(
             val kpArray = mutableListOf<Pair<Float, Float>>()
             val kpConfArray = mutableListOf<Float>()
             for (k in 0 until KEYPOINTS_COUNT) {
-                val rawKx = featureValue(features, 5 + k * 3, j)
-                val rawKy = featureValue(features, 5 + k * 3 + 1, j)
-                val kpC   = featureValue(features, 5 + k * 3 + 2, j)
+                val rawKx = featureValue(flat, 5 + k * 3, j)
+                val rawKy = featureValue(flat, 5 + k * 3 + 1, j)
+                val kpC   = featureValue(flat, 5 + k * 3 + 2, j)
 
                 val (finalKx, finalKy) = inputPointFromOutputPoint(
                     rawKx,
@@ -230,25 +217,25 @@ class PoseEstimator(
     }
 
     private fun postProcessEndToEndPose(
-        features: Array<FloatArray>,
+        flat: FloatArray,
         confidenceThreshold: Float,
         origWidth: Int,
         origHeight: Int
     ): List<PoseDetection> {
         val detections = mutableListOf<PoseDetection>()
-        val fieldCount = if (features.isNotEmpty()) features[0].size else 0
+        val fieldCount = outDim2
         val keypointStart = if ((fieldCount - 6) % 3 == 0) 6 else 5
         val keypointCount = (fieldCount - keypointStart) / 3
 
         for (j in 0 until numAnchors) {
-            val conf = featureValue(features, 4, j)
+            val conf = featureValue(flat, 4, j)
             if (conf < confidenceThreshold) continue
 
             val outputRect = RectF(
-                featureValue(features, 0, j),
-                featureValue(features, 1, j),
-                featureValue(features, 2, j),
-                featureValue(features, 3, j)
+                featureValue(flat, 0, j),
+                featureValue(flat, 1, j),
+                featureValue(flat, 2, j),
+                featureValue(flat, 3, j)
             )
             val outputIsNormalized = outputCoordinatesAreNormalized(outputRect)
             val rectF = inputRectFromOutputRect(
@@ -262,9 +249,9 @@ class PoseEstimator(
             val kpArray = mutableListOf<Pair<Float, Float>>()
             val kpConfArray = mutableListOf<Float>()
             for (k in 0 until keypointCount) {
-                val rawKx = featureValue(features, keypointStart + k * 3, j)
-                val rawKy = featureValue(features, keypointStart + k * 3 + 1, j)
-                val kpC = featureValue(features, keypointStart + k * 3 + 2, j)
+                val rawKx = featureValue(flat, keypointStart + k * 3, j)
+                val rawKy = featureValue(flat, keypointStart + k * 3 + 1, j)
+                val kpC = featureValue(flat, keypointStart + k * 3 + 2, j)
                 kpArray.add(
                     inputPointFromOutputPoint(
                         rawKx,
@@ -292,13 +279,14 @@ class PoseEstimator(
     }
 
     private fun featureValue(
-        features: Array<FloatArray>,
+        flat: FloatArray,
         featureIndex: Int,
         anchorIndex: Int
     ): Float {
+        // Row stride is outDim2 for both layouts of the flat [1, d1, d2] output
         return when (outputLayout) {
-            OutputLayout.FEATURES_FIRST -> features[featureIndex][anchorIndex]
-            OutputLayout.ANCHORS_FIRST -> features[anchorIndex][featureIndex]
+            OutputLayout.FEATURES_FIRST -> flat[featureIndex * outDim2 + anchorIndex]
+            OutputLayout.ANCHORS_FIRST -> flat[anchorIndex * outDim2 + featureIndex]
         }
     }
 
