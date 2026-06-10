@@ -70,7 +70,7 @@ what worked, and what's left on the table:
 **Shipped (in the table):**
 
 - **Flat-output decode** for detect/pose/OBB: postprocess dropped from ~12 ms to 0.7-2.4 ms on every backend by
-  reading the model output directly (no reshape copies, no JNI nested-array marshalling, confidence checked before
+  reading the model output directly (no reshape copies, no JNI nested-array marshaling, confidence checked before
   box reads) — the same pattern as MediaPipe's decode and the iOS SDK's raw-pointer reads.
 - **Channel-last (NHWC) QNN exports** (ultralytics#24790): removes the app's CPU transpose and the NPU's boundary
   transpose simultaneously; detect inference 7.4 → 5.8 ms.
