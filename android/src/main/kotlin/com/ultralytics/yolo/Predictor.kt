@@ -38,24 +38,28 @@ interface InferenceModel {
 
     companion object {
         /**
-         * Create the model wrapper for [modelPath]: a QNN context-binary ONNX (`*.onnx`) runs on the Snapdragon NPU
-         * via ONNX Runtime; everything else is TFLite on LiteRT. QNN models have no CPU fallback (the context binary
-         * is precompiled Hexagon code), so failures here should be handled by falling back to a TFLite model.
+         * Create the model wrapper for [modelPath]: a QNN context-binary ONNX (`*_qnn.onnx`, the Ultralytics QNN
+         * export) runs on the Snapdragon NPU via ONNX Runtime; everything else is TFLite on LiteRT. QNN models have
+         * no CPU fallback (the context binary is precompiled Hexagon code), so failures here should be handled by
+         * falling back to a TFLite model.
          */
-        fun create(context: Context, modelPath: String, useGpu: Boolean, tag: String): InferenceModel =
-            if (modelPath.lowercase().endsWith(".onnx")) {
-                try {
-                    OrtQnnModel(context, modelPath, tag)
-                } catch (e: LinkageError) {
-                    throw IllegalStateException(
-                        "QNN (.onnx) models require the optional 'com.microsoft.onnxruntime:onnxruntime-android-qnn' " +
-                            "dependency in your app's build.gradle and an arm64 device",
-                        e,
-                    )
-                }
-            } else {
-                LiteRtModel(modelPath, useGpu, tag)
+        fun create(context: Context, modelPath: String, useGpu: Boolean, tag: String): InferenceModel {
+            val lower = modelPath.lowercase()
+            if (!lower.endsWith(".onnx")) return LiteRtModel(modelPath, useGpu, tag)
+            require(lower.endsWith("_qnn.onnx")) {
+                "Generic ONNX models are not supported; use an Ultralytics QNN context-binary export (*_qnn.onnx) " +
+                    "or a .tflite model"
             }
+            return try {
+                OrtQnnModel(context, modelPath, tag)
+            } catch (e: LinkageError) {
+                throw IllegalStateException(
+                    "QNN (*_qnn.onnx) models require the optional 'com.microsoft.onnxruntime:onnxruntime-android-qnn' " +
+                        "dependency in your app's build.gradle and an arm64 device",
+                    e,
+                )
+            }
+        }
     }
 }
 

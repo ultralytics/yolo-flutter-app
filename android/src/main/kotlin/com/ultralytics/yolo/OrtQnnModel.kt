@@ -28,6 +28,7 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
     private val env = OrtEnvironment.getEnvironment()
     private val session: OrtSession
     private val inputName: String
+    private val outputNames: List<String>
     private val nchwShape: LongArray
     private val nchw: FloatArray
 
@@ -52,7 +53,9 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
             inputDims = intArrayOf(1, height, width, 3)
             nchw = FloatArray(3 * height * width)
 
-            outputDims = session.outputNames.map { name ->
+            // One ordered name list drives both shape discovery and result reads, so they can never desynchronize
+            outputNames = session.outputNames.toList()
+            outputDims = outputNames.map { name ->
                 (session.outputInfo.getValue(name).info as TensorInfo).shape.map(Long::toInt).toIntArray()
             }
             outputElementCounts = IntArray(outputDims.size) { i -> outputDims[i].fold(1) { a, b -> a * b } }
@@ -93,8 +96,8 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
         }
         OnnxTensor.createTensor(env, FloatBuffer.wrap(nchw), nchwShape).use { tensor ->
             session.run(mapOf(inputName to tensor)).use { results ->
-                return List(results.size()) { i ->
-                    val buffer = (results.get(i) as OnnxTensor).floatBuffer
+                return outputNames.map { name ->
+                    val buffer = (results.get(name).get() as OnnxTensor).floatBuffer
                     FloatArray(buffer.remaining()).also { buffer.get(it) }
                 }
             }
