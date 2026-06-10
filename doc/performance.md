@@ -30,6 +30,32 @@ Use a simple rule:
 - default app flow: start with `yolo26n`
 - custom production flow: benchmark your exact export on target devices
 
+## 📊 Measured Backend Performance
+
+End-to-end `predict()` times for the official YOLO26n models, measured on a Snapdragon 8 Elite Gen 5 phone
+(Xiaomi 17). Each cell is the mean of 15 runs after 3 warmup runs on bus.jpg, reported as
+**total (preprocess / inference / postprocess)** in milliseconds. Annotation/plotting is excluded. CPU and GPU
+rows run the default INT8 TFLite assets; QNN runs the `*_qnn.onnx` context binaries on the Hexagon NPU.
+
+| Task (imgsz) | CPU | GPU | QNN (NPU) |
+| :-- | :-- | :-- | :-- |
+| Detect (640) | 103.0 (7.7/80.9/14.3) | 28.0 (4.0/8.8/15.2) | **25.2** (3.9/8.2/13.1) |
+| Segment (640) | 100.4 (5.4/83.8/11.1) | 31.7 (3.9/18.1/9.7) | **25.9** (3.9/11.1/10.9) |
+| Semantic (1024) | 74.9 (4.2/51.6/19.1) | **55.1** (5.2/28.9/21.0) | 122.8 (13.0/56.9/52.9) |
+| Classify (224) | 6.4 (1.0/4.8/0.6) | 5.0 (1.9/2.2/0.9) | **2.3** (1.2/0.7/0.3) |
+| Pose (640) | 65.6 (3.9/59.3/2.4) | 15.7 (3.9/9.5/2.3) | **13.4** (3.8/8.2/1.4) |
+| OBB (1024) | 55.5 (3.9/49.5/2.1) | **19.1** (7.4/8.2/3.5) | 30.1 (10.8/15.0/4.2) |
+
+Takeaways:
+
+- The Hexagon NPU (QNN) wins detect, segment, pose, and classify — inference itself runs roughly 6-10x faster
+  than CPU, and pre/postprocessing dominates the remaining wall time.
+- Semantic QNN is currently slower than GPU: the context binary returns full float logits (~20M values at 1024px)
+  that are argmax-decoded on the CPU, while the TFLite graph emits a compact class map. Optimizing this output is
+  tracked as a follow-up.
+- Numbers vary by device generation and thermal state; treat these as relative guidance and benchmark your exact
+  models on your target hardware.
+
 ## 🎚️ Tune Thresholds
 
 Higher confidence thresholds reduce post-processing work and visual noise:
