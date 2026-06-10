@@ -31,6 +31,7 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
     private val outputNames: List<String>
     private val nchwShape: LongArray
     private val nchw: FloatArray
+    private val outputs: List<FloatArray>
 
     override val accelerator = "NPU"
     override val inputDims: IntArray
@@ -71,6 +72,9 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
                 (session.outputInfo.getValue(name).info as TensorInfo).shape.map(Long::toInt).toIntArray()
             }
             outputElementCounts = IntArray(outputDims.size) { i -> outputDims[i].fold(1) { a, b -> a * b } }
+            // Reused per-run output buffers: semantic logits alone are ~80MB at 1024px, so allocating fresh
+            // arrays every predict churns the Java heap into OOM on sustained inference
+            outputs = outputElementCounts.map { FloatArray(it) }
         } catch (t: Throwable) {
             close()
             throw t
@@ -108,9 +112,9 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
         }
         OnnxTensor.createTensor(env, FloatBuffer.wrap(nchw), nchwShape).use { tensor ->
             session.run(mapOf(inputName to tensor)).use { results ->
-                return outputNames.map { name ->
+                return outputNames.mapIndexed { i, name ->
                     val buffer = (results.get(name).get() as OnnxTensor).floatBuffer
-                    FloatArray(buffer.remaining()).also { buffer.get(it) }
+                    outputs[i].also { buffer.get(it, 0, buffer.remaining()) }
                 }
             }
         }
