@@ -137,7 +137,7 @@ void main() {
   testWidgets(
     'soak: sustained inference does not exhaust memory',
     (WidgetTester tester) async {
-      if (!_runSoak) {
+      if (!_runSoak || !Platform.isAndroid) {
         return;
       }
       await tester.runAsync(() async {
@@ -171,14 +171,20 @@ void main() {
       final image = await _download('https://ultralytics.com/images/bus.jpg');
       for (final entry in _tasks.entries) {
         final (id, task) = entry.value;
+        // CPU on both platforms (Android: LiteRT CPU; iOS: Core ML .cpuOnly)
         await _bench('${entry.key}|cpu', id, task, image, useGpu: false);
-        await _bench('${entry.key}|gpu', id, task, image);
-        await _bench(
-          '${entry.key}|qnn',
-          '$_releaseBase/${id}_v81_qnn.onnx',
-          task,
-          image,
-        );
+        if (Platform.isAndroid) {
+          await _bench('${entry.key}|gpu', id, task, image);
+          await _bench(
+            '${entry.key}|qnn',
+            '$_releaseBase/${id}_v81_qnn.onnx',
+            task,
+            image,
+          );
+        } else {
+          // iOS useGpu:true = Core ML .cpuAndNeuralEngine (ANE)
+          await _bench('${entry.key}|ane', id, task, image);
+        }
       }
     });
   }, timeout: const Timeout(Duration(minutes: 30)));
