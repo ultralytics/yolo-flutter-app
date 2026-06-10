@@ -37,7 +37,8 @@ class SemanticSegmenter(
 
         // fp16 semantic models output FLOAT [1, A, B, C]. The int8/uint8 output paths are dropped with LiteRT 2.x.
         outputShape = rtModel.outputDims.getOrNull(0) ?: IntArray(0)
-        require(outputShape.size == 4 && outputShape[0] == 1) {
+        // 4D [1, C, H, W]/[1, H, W, C] logits, or a 3D [1, H, W] class map from in-graph-ArgMax QNN exports
+        require((outputShape.size == 4 || outputShape.size == 3) && outputShape[0] == 1) {
             "Semantic output tensor shape not supported: ${outputShape.joinToString()}"
         }
 
@@ -87,10 +88,11 @@ class SemanticSegmenter(
     }
 
     private fun postProcessSemantic(origWidth: Int, origHeight: Int): SemanticMask? {
-        val isNCHW = outputShape[1] <= outputShape[3] || outputShape[1] == labels.size
-        val classCount = if (isNCHW) outputShape[1] else outputShape[3]
-        val maskHeight = if (isNCHW) outputShape[2] else outputShape[1]
-        val maskWidth = if (isNCHW) outputShape[3] else outputShape[2]
+        val isClassMap = outputShape.size == 3 // [1, H, W] class indices, argmax already done on the NPU
+        val isNCHW = !isClassMap && (outputShape[1] <= outputShape[3] || outputShape[1] == labels.size)
+        val classCount = if (isClassMap) labels.size.coerceAtLeast(2) else if (isNCHW) outputShape[1] else outputShape[3]
+        val maskHeight = if (isClassMap) outputShape[1] else if (isNCHW) outputShape[2] else outputShape[1]
+        val maskWidth = if (isClassMap) outputShape[2] else if (isNCHW) outputShape[3] else outputShape[2]
         if (classCount <= 0 || maskWidth <= 0 || maskHeight <= 0) return null
 
         val crop = modelMaskCropRect(maskWidth, maskHeight, origWidth, origHeight)
@@ -114,7 +116,9 @@ class SemanticSegmenter(
             val sourceY = y + top
             for (x in 0 until width) {
                 val sourceX = x + left
-                val classIndex = if (classCount == 1) {
+                val classIndex = if (isClassMap) {
+                    out[sourceY * maskWidth + sourceX].toInt().coerceIn(0, classCount - 1)
+                } else if (classCount == 1) {
                     0
                 } else if (isNCHW) {
                     val planeOffset = sourceY * maskWidth + sourceX

@@ -29,7 +29,8 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
     private val session: OrtSession
     private val inputName: String
     private val outputNames: List<String>
-    private val nchwShape: LongArray
+    private val inputShape: LongArray
+    private val nhwcInput: Boolean
     private val nchw: FloatArray
     private val outputs: List<FloatArray>
 
@@ -57,14 +58,16 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
         }
         try {
             inputName = session.inputNames.first()
-            nchwShape = (session.inputInfo.getValue(inputName).info as TensorInfo).shape // [1, 3, H, W]
-            require(nchwShape.size == 4 && nchwShape[1] == 3L) {
-                "Expected an NCHW [1, 3, H, W] input, got ${nchwShape.toList()} for '$inputName'"
+            inputShape = (session.inputInfo.getValue(inputName).info as TensorInfo).shape
+            // Channel-last QNN exports take [1, H, W, 3] directly (no CPU transpose); legacy exports are NCHW
+            nhwcInput = inputShape.size == 4 && inputShape[3] == 3L && inputShape[1] != 3L
+            require(inputShape.size == 4 && (nhwcInput || inputShape[1] == 3L)) {
+                "Expected a [1, 3, H, W] or [1, H, W, 3] input, got ${inputShape.toList()} for '$inputName'"
             }
-            val height = nchwShape[2].toInt()
-            val width = nchwShape[3].toInt()
+            val height = (if (nhwcInput) inputShape[1] else inputShape[2]).toInt()
+            val width = (if (nhwcInput) inputShape[2] else inputShape[3]).toInt()
             inputDims = intArrayOf(1, height, width, 3)
-            nchw = FloatArray(3 * height * width)
+            nchw = if (nhwcInput) FloatArray(0) else FloatArray(3 * height * width)
 
             // One ordered name list drives both shape discovery and result reads, so they can never desynchronize
             outputNames = session.outputNames.toList()
@@ -101,23 +104,43 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
         throw IllegalArgumentException("QNN model not found at '$modelPath' (filesystem or assets)")
     }
 
-    /** Run inference: transpose [input] from NHWC to NCHW, run, and return each output as a flat float array. */
+    /** Run inference on NHWC interleaved-RGB floats, returning each output as a flat float array. */
     override fun run(input: FloatArray): List<FloatArray> {
-        val hw = nchw.size / 3
-        for (i in 0 until hw) {
-            val j = i * 3
-            nchw[i] = input[j]
-            nchw[hw + i] = input[j + 1]
-            nchw[2 * hw + i] = input[j + 2]
+        val floats = if (nhwcInput) {
+            input // channel-last graph: feed the predictors' NHWC buffer directly
+        } else {
+            val hw = nchw.size / 3
+            for (i in 0 until hw) {
+                val j = i * 3
+                nchw[i] = input[j]
+                nchw[hw + i] = input[j + 1]
+                nchw[2 * hw + i] = input[j + 2]
+            }
+            nchw
         }
-        OnnxTensor.createTensor(env, FloatBuffer.wrap(nchw), nchwShape).use { tensor ->
+        OnnxTensor.createTensor(env, FloatBuffer.wrap(floats), inputShape).use { tensor ->
             session.run(mapOf(inputName to tensor)).use { results ->
                 return outputNames.mapIndexed { i, name ->
-                    val buffer = (results.get(name).get() as OnnxTensor).floatBuffer
-                    outputs[i].also { buffer.get(it, 0, buffer.remaining()) }
+                    readOutput(results.get(name).get() as OnnxTensor, outputs[i])
                 }
             }
         }
+    }
+
+    /** Copy a result tensor into [target] as floats; uint8 outputs (e.g. semantic class maps) are widened. */
+    private fun readOutput(tensor: OnnxTensor, target: FloatArray): FloatArray {
+        val info = tensor.info
+        if (info.type == ai.onnxruntime.OnnxJavaType.UINT8 || info.type == ai.onnxruntime.OnnxJavaType.INT8) {
+            val bytes = tensor.byteBuffer
+            val count = bytes.remaining()
+            for (i in 0 until count) {
+                target[i] = (bytes.get(i).toInt() and 0xFF).toFloat()
+            }
+        } else {
+            val buffer = tensor.floatBuffer
+            buffer.get(target, 0, buffer.remaining())
+        }
+        return target
     }
 
     override fun close() {
