@@ -166,7 +166,9 @@ object YOLOFileUtils {
      * labels, ...).
      */
     fun loadModelMetadata(context: Context, modelPath: String): Map<String, Any>? {
-        if (modelPath.lowercase().endsWith(".onnx")) return loadMetadataFromSidecarYaml(context, modelPath)
+        if (modelPath.lowercase().endsWith(".onnx")) {
+            return loadMetadataFromOnnx(context, modelPath) ?: loadMetadataFromSidecarYaml(context, modelPath)
+        }
         loadMetadataFromAppendedZip(context, modelPath)?.let { return it }
         return loadMetadataFromFlatbuffer(context, modelPath)
     }
@@ -193,25 +195,141 @@ object YOLOFileUtils {
         null
     }
 
-    /** Metadata for QNN ONNX exports: the `metadata.yaml` the Ultralytics exporter writes next to the model. */
-    private fun loadMetadataFromSidecarYaml(context: Context, modelPath: String): Map<String, Any>? {
+    /**
+     * Metadata embedded in an ONNX model's `metadata_props` — the Ultralytics ONNX exporter writes task, names, etc.
+     * there, and QNN context-binary generation preserves them, so a `*_qnn.onnx` is fully self-contained. Only the
+     * top-level protobuf fields are scanned; the large graph field is skipped, so this stays cheap for big models.
+     */
+    private fun loadMetadataFromOnnx(context: Context, modelPath: String): Map<String, Any>? = try {
+        openModelStream(context, modelPath)?.use { stream ->
+            val props = readOnnxMetadataProps(stream)
+            buildMap<String, Any> {
+                props["task"]?.takeIf { it.isNotEmpty() }?.let { put("task", it) }
+                props["names"]?.let { names ->
+                    // names is a dict-style string like "{0: 'person', 1: 'bicycle'}", valid as a YAML flow map
+                    parseNames(org.yaml.snakeyaml.Yaml().load<Any?>(names))?.let { put("labels", it) }
+                }
+            }.ifEmpty { null }
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "ONNX metadata_props read failed for $modelPath: ${e.message}")
+        null
+    }
+
+    /** Fallback metadata for QNN ONNX exports: the `metadata.yaml` the Ultralytics exporter writes next to the model. */
+    private fun loadMetadataFromSidecarYaml(context: Context, modelPath: String): Map<String, Any>? = try {
         val dir = modelPath.substringBeforeLast('/', "")
         val sidecarPath = if (dir.isEmpty()) "metadata.yaml" else "$dir/metadata.yaml"
-        val file = File(sidecarPath)
-        val text = if (file.isAbsolute && file.exists()) {
-            file.readText()
-        } else {
-            listOf(sidecarPath, sidecarPath.removePrefix("flutter_assets/"), "flutter_assets/$sidecarPath")
-                .distinct()
-                .firstNotNullOfOrNull { path ->
-                    try {
-                        context.assets.open(path).use { String(it.readBytes(), StandardCharsets.UTF_8) }
-                    } catch (_: IOException) {
-                        null
+        openModelStream(context, sidecarPath)?.use { stream ->
+            parseMetadataYaml(String(stream.readBytes(), StandardCharsets.UTF_8))
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "Sidecar metadata.yaml read failed for $modelPath: ${e.message}")
+        null
+    }
+
+    /** Open [path] from the filesystem or Flutter assets (trying the usual asset prefixes). */
+    private fun openModelStream(context: Context, path: String): InputStream? {
+        val file = File(path)
+        if (file.isAbsolute) return if (file.exists()) file.inputStream() else null
+        return listOf(path, path.removePrefix("flutter_assets/"), "flutter_assets/$path").distinct()
+            .firstNotNullOfOrNull { candidate ->
+                try {
+                    context.assets.open(candidate)
+                } catch (_: IOException) {
+                    null
+                }
+            }
+    }
+
+    /** Scan top-level ONNX ModelProto fields for `metadata_props` (field 14) key/value entries. */
+    private fun readOnnxMetadataProps(stream: InputStream): Map<String, String> {
+        val input = BufferedInputStream(stream)
+
+        fun readVarint(): Long? {
+            var result = 0L
+            var shift = 0
+            while (shift < 64) {
+                val b = input.read()
+                if (b < 0) return null
+                result = result or ((b.toLong() and 0x7F) shl shift)
+                if (b and 0x80 == 0) return result
+                shift += 7
+            }
+            return null
+        }
+
+        fun skipFully(count: Long) {
+            var remaining = count
+            while (remaining > 0) {
+                val skipped = input.skip(remaining)
+                if (skipped > 0) remaining -= skipped else if (input.read() < 0) return else remaining--
+            }
+        }
+
+        val props = mutableMapOf<String, String>()
+        while (true) {
+            val tag = readVarint() ?: break
+            when ((tag and 7L).toInt()) {
+                0 -> readVarint() ?: break
+                1 -> skipFully(8)
+                5 -> skipFully(4)
+                2 -> {
+                    val length = readVarint() ?: break
+                    if ((tag ushr 3).toInt() == 14) { // metadata_props: StringStringEntryProto { key = 1; value = 2 }
+                        val entry = ByteArray(length.toInt())
+                        var offset = 0
+                        while (offset < entry.size) {
+                            val read = input.read(entry, offset, entry.size - offset)
+                            if (read < 0) break
+                            offset += read
+                        }
+                        var i = 0
+                        var key: String? = null
+                        var value: String? = null
+                        fun entryVarint(): Long {
+                            var result = 0L
+                            var shift = 0
+                            while (i < entry.size) {
+                                val b = entry[i].toInt()
+                                i++
+                                result = result or ((b.toLong() and 0x7F) shl shift)
+                                if (b and 0x80 == 0) break
+                                shift += 7
+                            }
+                            return result
+                        }
+                        while (i < entry.size) {
+                            val fieldTag = entryVarint()
+                            if ((fieldTag and 7L).toInt() != 2) break
+                            val textLength = entryVarint().toInt()
+                            val end = i + textLength
+                            if (end > entry.size || end < i) break
+                            val text = String(entry, i, end - i, StandardCharsets.UTF_8)
+                            i = end
+                            when ((fieldTag ushr 3).toInt()) {
+                                1 -> key = text
+                                2 -> value = text
+                            }
+                        }
+                        if (key != null && value != null) props[key] = value
+                    } else {
+                        skipFully(length)
                     }
                 }
-        } ?: return null
-        return parseMetadataYaml(text)
+                else -> return props // unknown wire type: stop scanning
+            }
+        }
+        return props
+    }
+
+    /** Convert a parsed `names` value (index→name map or plain list) into an ordered label list. */
+    private fun parseNames(names: Any?): List<String>? = when (names) {
+        is Map<*, *> -> names.entries
+            .sortedBy { (k, _) -> k.toString().toIntOrNull() ?: Int.MAX_VALUE }
+            .map { (_, v) -> v.toString() }
+        is List<*> -> names.map { it.toString() }
+        else -> null
     }
 
     /** Parse Ultralytics metadata YAML text into the standard metadata map shape (keys: task, labels). */
@@ -219,16 +337,7 @@ object YOLOFileUtils {
         val parsed = org.yaml.snakeyaml.Yaml().load<Any?>(text) as? Map<*, *> ?: return null
         val map = buildMap<String, Any> {
             (parsed["task"] as? String)?.takeIf { it.isNotEmpty() }?.let { put("task", it) }
-            when (val names = parsed["names"]) {
-                is Map<*, *> -> {
-                    val sorted = names.entries.sortedBy { (k, _) ->
-                        k.toString().toIntOrNull() ?: Int.MAX_VALUE
-                    }
-                    put("labels", sorted.map { (_, v) -> v.toString() })
-                }
-                is List<*> -> put("labels", names.map { it.toString() })
-                else -> {}
-            }
+            parseNames(parsed["names"])?.let { put("labels", it) }
         }
         return map.ifEmpty { null }
     }

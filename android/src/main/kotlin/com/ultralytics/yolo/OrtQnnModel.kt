@@ -37,24 +37,29 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
     override val outputElementCounts: IntArray
 
     init {
-        val options = OrtSession.SessionOptions()
-        options.addQnn(mapOf("backend_path" to "libQnnHtp.so", "htp_performance_mode" to "burst"))
-        session = createSession(context, modelPath, options)
-
-        inputName = session.inputNames.first()
-        nchwShape = (session.inputInfo.getValue(inputName).info as TensorInfo).shape // [1, 3, H, W]
-        require(nchwShape.size == 4 && nchwShape[1] == 3L) {
-            "Expected an NCHW [1, 3, H, W] input, got ${nchwShape.toList()} for '$inputName'"
+        session = OrtSession.SessionOptions().use { options ->
+            options.addQnn(mapOf("backend_path" to "libQnnHtp.so", "htp_performance_mode" to "burst"))
+            createSession(context, modelPath, options)
         }
-        val height = nchwShape[2].toInt()
-        val width = nchwShape[3].toInt()
-        inputDims = intArrayOf(1, height, width, 3)
-        nchw = FloatArray(3 * height * width)
+        try {
+            inputName = session.inputNames.first()
+            nchwShape = (session.inputInfo.getValue(inputName).info as TensorInfo).shape // [1, 3, H, W]
+            require(nchwShape.size == 4 && nchwShape[1] == 3L) {
+                "Expected an NCHW [1, 3, H, W] input, got ${nchwShape.toList()} for '$inputName'"
+            }
+            val height = nchwShape[2].toInt()
+            val width = nchwShape[3].toInt()
+            inputDims = intArrayOf(1, height, width, 3)
+            nchw = FloatArray(3 * height * width)
 
-        outputDims = session.outputNames.map { name ->
-            (session.outputInfo.getValue(name).info as TensorInfo).shape.map(Long::toInt).toIntArray()
+            outputDims = session.outputNames.map { name ->
+                (session.outputInfo.getValue(name).info as TensorInfo).shape.map(Long::toInt).toIntArray()
+            }
+            outputElementCounts = IntArray(outputDims.size) { i -> outputDims[i].fold(1) { a, b -> a * b } }
+        } catch (t: Throwable) {
+            close()
+            throw t
         }
-        outputElementCounts = IntArray(outputDims.size) { i -> outputDims[i].fold(1) { a, b -> a * b } }
 
         Log.i(
             tag,

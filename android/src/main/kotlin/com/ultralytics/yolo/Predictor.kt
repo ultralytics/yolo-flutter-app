@@ -46,10 +46,10 @@ interface InferenceModel {
             if (modelPath.lowercase().endsWith(".onnx")) {
                 try {
                     OrtQnnModel(context, modelPath, tag)
-                } catch (e: NoClassDefFoundError) {
+                } catch (e: LinkageError) {
                     throw IllegalStateException(
                         "QNN (.onnx) models require the optional 'com.microsoft.onnxruntime:onnxruntime-android-qnn' " +
-                            "dependency in your app's build.gradle",
+                            "dependency in your app's build.gradle and an arm64 device",
                         e,
                     )
                 }

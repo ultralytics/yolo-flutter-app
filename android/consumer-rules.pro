@@ -21,3 +21,6 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+
+# ONNX Runtime QNN is an optional (compileOnly) dependency; apps that don't add it must not fail R8 shrinking.
+-dontwarn ai.onnxruntime.**
