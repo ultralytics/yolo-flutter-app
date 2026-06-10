@@ -37,14 +37,14 @@ Qualcomm [Snapdragon 8 Elite Gen 5](https://www.qualcomm.com/products/mobile/sna
 a Qualcomm Oryon CPU with an Adreno GPU and the Hexagon NPU (HTP architecture v81). Each cell shows the **total time**
 with the preprocess / inference / postprocess split beneath it.
 
-| Model        | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>INT8 TFLite<br>(ms)</sup> | GPU Adreno<br><sup>INT8 TFLite<br>(ms)</sup> | NPU Hexagon<br><sup>QNN A16W8<br>(ms)</sup> |
-| ------------ | -------- | --------------------------- | -------------------------------------- | --------------------------------------------- | --------------------------------------------- |
-| YOLO26n      | Detect   | 640                         | 53.3<br><sup>3.6 / 47.4 / 2.4</sup>    | 17.2<br><sup>3.6 / 9.1 / 4.5</sup>            | **11.3**<br><sup>3.5 / 5.6 / 2.2</sup>        |
-| YOLO26n-seg  | Segment  | 640                         | 76.0<br><sup>3.6 / 64.7 / 7.7</sup>    | 23.9<br><sup>3.6 / 11.8 / 8.6</sup>           | **21.3**<br><sup>3.5 / 7.9 / 10.0</sup>       |
-| YOLO26n-sem  | Semantic | 1024                        | 66.6<br><sup>3.6 / 46.3 / 16.8</sup>   | **37.7**<br><sup>3.6 / 17.4 / 16.7</sup>      | 49.1<sup>1</sup><br><sup>8.8 / 20.8 / 19.5</sup> |
-| YOLO26n-cls  | Classify | 224                         | 5.2<br><sup>0.8 / 4.0 / 0.5</sup>      | 4.5<br><sup>1.6 / 2.2 / 0.7</sup>             | **2.4**<br><sup>1.1 / 0.6 / 0.7</sup>         |
-| YOLO26n-pose | Pose     | 640                         | 57.7<br><sup>3.5 / 52.4 / 1.8</sup>    | 15.2<br><sup>3.6 / 9.7 / 1.9</sup>            | **10.8**<br><sup>3.5 / 5.6 / 1.8</sup>        |
-| YOLO26n-obb  | OBB      | 1024                        | 50.3<br><sup>3.6 / 45.4 / 1.3</sup>    | **13.9**<br><sup>3.8 / 8.2 / 1.8</sup>        | 21.0<br><sup>8.8 / 10.9 / 1.3</sup>           |
+| Model        | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>INT8 TFLite<br>(ms)</sup> | GPU Adreno<br><sup>INT8 TFLite<br>(ms)</sup> | NPU Hexagon<br><sup>QNN A16W8<br>(ms)</sup>      |
+| ------------ | -------- | --------------------------- | ------------------------------------- | -------------------------------------------- | ------------------------------------------------ |
+| YOLO26n      | Detect   | 640                         | 53.3<br><sup>3.6 / 47.4 / 2.4</sup>   | 17.2<br><sup>3.6 / 9.1 / 4.5</sup>           | **11.3**<br><sup>3.5 / 5.6 / 2.2</sup>           |
+| YOLO26n-seg  | Segment  | 640                         | 76.0<br><sup>3.6 / 64.7 / 7.7</sup>   | 23.9<br><sup>3.6 / 11.8 / 8.6</sup>          | **21.3**<br><sup>3.5 / 7.9 / 10.0</sup>          |
+| YOLO26n-sem  | Semantic | 1024                        | 66.6<br><sup>3.6 / 46.3 / 16.8</sup>  | **37.7**<br><sup>3.6 / 17.4 / 16.7</sup>     | 49.1<sup>1</sup><br><sup>8.8 / 20.8 / 19.5</sup> |
+| YOLO26n-cls  | Classify | 224                         | 5.2<br><sup>0.8 / 4.0 / 0.5</sup>     | 4.5<br><sup>1.6 / 2.2 / 0.7</sup>            | **2.4**<br><sup>1.1 / 0.6 / 0.7</sup>            |
+| YOLO26n-pose | Pose     | 640                         | 57.7<br><sup>3.5 / 52.4 / 1.8</sup>   | 15.2<br><sup>3.6 / 9.7 / 1.9</sup>           | **10.8**<br><sup>3.5 / 5.6 / 1.8</sup>           |
+| YOLO26n-obb  | OBB      | 1024                        | 50.3<br><sup>3.6 / 45.4 / 1.3</sup>   | **13.9**<br><sup>3.8 / 8.2 / 1.8</sup>       | 21.0<br><sup>8.8 / 10.9 / 1.3</sup>              |
 
 - **Speed** values are the full `predict()` time — preprocessing + inference + postprocessing, excluding annotation
   drawing — as the mean of 15 runs after 3 warmup runs on [bus.jpg](https://ultralytics.com/images/bus.jpg).
