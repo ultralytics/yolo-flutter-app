@@ -27,7 +27,7 @@ class SemanticSegmenter(
     init {
         YOLOFileUtils.loadModelLabels(context, modelPath)?.let { labels = it }
 
-        rtModel = LiteRtModel(modelPath, useGpu, "SemanticSegmenter")
+        rtModel = InferenceModel.create(context, modelPath, useGpu, "SemanticSegmenter")
 
         val inDims = rtModel.inputDims
         val inHeight = if (inDims.size >= 4) inDims[1] else 640

@@ -166,6 +166,7 @@ object YOLOFileUtils {
      * labels, ...).
      */
     fun loadModelMetadata(context: Context, modelPath: String): Map<String, Any>? {
+        if (modelPath.lowercase().endsWith(".onnx")) return loadMetadataFromSidecarYaml(context, modelPath)
         loadMetadataFromAppendedZip(context, modelPath)?.let { return it }
         return loadMetadataFromFlatbuffer(context, modelPath)
     }
@@ -182,24 +183,7 @@ object YOLOFileUtils {
         extractor.associatedFileNames?.forEach { name ->
             if (result == null) {
                 extractor.getAssociatedFile(name)?.use { stream ->
-                    val text = String(stream.readBytes(), StandardCharsets.UTF_8)
-                    val parsed = org.yaml.snakeyaml.Yaml().load<Any?>(text)
-                    if (parsed is Map<*, *>) {
-                        val map = buildMap<String, Any> {
-                            (parsed["task"] as? String)?.takeIf { it.isNotEmpty() }?.let { put("task", it) }
-                            when (val names = parsed["names"]) {
-                                is Map<*, *> -> {
-                                    val sorted = names.entries.sortedBy { (k, _) ->
-                                        k.toString().toIntOrNull() ?: Int.MAX_VALUE
-                                    }
-                                    put("labels", sorted.map { (_, v) -> v.toString() })
-                                }
-                                is List<*> -> put("labels", names.map { it.toString() })
-                                else -> {}
-                            }
-                        }
-                        if (map.isNotEmpty()) result = map
-                    }
+                    result = parseMetadataYaml(String(stream.readBytes(), StandardCharsets.UTF_8))
                 }
             }
         }
@@ -207,6 +191,46 @@ object YOLOFileUtils {
     } catch (e: Exception) {
         Log.w(TAG, "Embedded FlatBuffers metadata read failed for $modelPath: ${e.message}")
         null
+    }
+
+    /** Metadata for QNN ONNX exports: the `metadata.yaml` the Ultralytics exporter writes next to the model. */
+    private fun loadMetadataFromSidecarYaml(context: Context, modelPath: String): Map<String, Any>? {
+        val dir = modelPath.substringBeforeLast('/', "")
+        val sidecarPath = if (dir.isEmpty()) "metadata.yaml" else "$dir/metadata.yaml"
+        val file = File(sidecarPath)
+        val text = if (file.isAbsolute && file.exists()) {
+            file.readText()
+        } else {
+            listOf(sidecarPath, sidecarPath.removePrefix("flutter_assets/"), "flutter_assets/$sidecarPath")
+                .distinct()
+                .firstNotNullOfOrNull { path ->
+                    try {
+                        context.assets.open(path).use { String(it.readBytes(), StandardCharsets.UTF_8) }
+                    } catch (_: IOException) {
+                        null
+                    }
+                }
+        } ?: return null
+        return parseMetadataYaml(text)
+    }
+
+    /** Parse Ultralytics metadata YAML text into the standard metadata map shape (keys: task, labels). */
+    private fun parseMetadataYaml(text: String): Map<String, Any>? {
+        val parsed = org.yaml.snakeyaml.Yaml().load<Any?>(text) as? Map<*, *> ?: return null
+        val map = buildMap<String, Any> {
+            (parsed["task"] as? String)?.takeIf { it.isNotEmpty() }?.let { put("task", it) }
+            when (val names = parsed["names"]) {
+                is Map<*, *> -> {
+                    val sorted = names.entries.sortedBy { (k, _) ->
+                        k.toString().toIntOrNull() ?: Int.MAX_VALUE
+                    }
+                    put("labels", sorted.map { (_, v) -> v.toString() })
+                }
+                is List<*> -> put("labels", names.map { it.toString() })
+                else -> {}
+            }
+        }
+        return map.ifEmpty { null }
     }
 
     private fun closeResources(afd: AssetFileDescriptor?, fis: FileInputStream?, fileChannel: FileChannel?, reason: String) {

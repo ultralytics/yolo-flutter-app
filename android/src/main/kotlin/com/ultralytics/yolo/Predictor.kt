@@ -2,6 +2,7 @@
 
 package com.ultralytics.yolo
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.graphics.RectF
@@ -11,6 +12,52 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+
+/**
+ * Runtime-agnostic inference model behind the predictors: NHWC interleaved-RGB float32 in, flat float32 outputs out.
+ * Implemented by [LiteRtModel] (TFLite on LiteRT, GPU→CPU ladder) and [OrtQnnModel] (QNN context-binary ONNX on the
+ * Snapdragon NPU).
+ */
+interface InferenceModel {
+    /** Accelerator in use: "NPU", "GPU" or "CPU". */
+    val accelerator: String
+
+    /** Input tensor dimensions in NHWC convention, e.g. [1, 640, 640, 3]. */
+    val inputDims: IntArray
+
+    /** Float element count of each output buffer, in order. */
+    val outputElementCounts: IntArray
+
+    /** Output tensor dimensions, in order (e.g. [[1, 84, 8400]] for detect). */
+    val outputDims: List<IntArray>
+
+    /** Run inference on NHWC interleaved-RGB floats, returning each output as a flat float array. */
+    fun run(input: FloatArray): List<FloatArray>
+
+    fun close()
+
+    companion object {
+        /**
+         * Create the model wrapper for [modelPath]: a QNN context-binary ONNX (`*.onnx`) runs on the Snapdragon NPU
+         * via ONNX Runtime; everything else is TFLite on LiteRT. QNN models have no CPU fallback (the context binary
+         * is precompiled Hexagon code), so failures here should be handled by falling back to a TFLite model.
+         */
+        fun create(context: Context, modelPath: String, useGpu: Boolean, tag: String): InferenceModel =
+            if (modelPath.lowercase().endsWith(".onnx")) {
+                try {
+                    OrtQnnModel(context, modelPath, tag)
+                } catch (e: NoClassDefFoundError) {
+                    throw IllegalStateException(
+                        "QNN (.onnx) models require the optional 'com.microsoft.onnxruntime:onnxruntime-android-qnn' " +
+                            "dependency in your app's build.gradle",
+                        e,
+                    )
+                }
+            } else {
+                LiteRtModel(modelPath, useGpu, tag)
+            }
+    }
+}
 
 interface Predictor {
     /**
@@ -38,7 +85,7 @@ interface Predictor {
 abstract class BasePredictor : Predictor {
     override var isUpdating: Boolean = false
     override lateinit var labels: List<String>
-    protected lateinit var rtModel: LiteRtModel
+    protected lateinit var rtModel: InferenceModel
     override lateinit var inputSize: Size
     protected lateinit var modelInputSize: Pair<Int, Int>
     protected fun isInterpreterInitialized() = this::rtModel.isInitialized

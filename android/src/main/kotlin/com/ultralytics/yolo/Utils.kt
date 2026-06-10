@@ -115,10 +115,12 @@ object YOLOUtils {
     }
     
     /**
-     * Ensure the model path has a .tflite extension
+     * Ensure the model path has a model extension, appending .tflite (the default runtime) when missing.
+     * QNN context-binary ONNX paths (.onnx) pass through unchanged.
      */
     fun ensureTFLiteExtension(modelPath: String): String {
-        return if (!modelPath.lowercase().endsWith(".tflite")) {
+        val lower = modelPath.lowercase()
+        return if (!lower.endsWith(".tflite") && !lower.endsWith(".onnx")) {
             "$modelPath.tflite"
         } else {
             modelPath

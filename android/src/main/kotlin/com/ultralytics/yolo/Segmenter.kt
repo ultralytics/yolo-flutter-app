@@ -45,7 +45,7 @@ class Segmenter(
             Log.w("Segmenter", "No embedded labels found and none provided; detections may lack class names.")
         }
 
-        rtModel = LiteRtModel(modelPath, useGpu, "Segmenter")
+        rtModel = InferenceModel.create(context, modelPath, useGpu, "Segmenter")
 
         val inDims = rtModel.inputDims
         val inHeight = if (inDims.size >= 4) inDims[1] else 640

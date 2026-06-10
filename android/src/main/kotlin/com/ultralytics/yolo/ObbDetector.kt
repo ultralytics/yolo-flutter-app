@@ -41,7 +41,7 @@ class ObbDetector(
             Log.w("ObbDetector", "No embedded labels found and none provided; detections may lack class names.")
         }
 
-        rtModel = LiteRtModel(modelPath, useGpu, "ObbDetector")
+        rtModel = InferenceModel.create(context, modelPath, useGpu, "ObbDetector")
 
         val inDims = rtModel.inputDims
         val inHeight = if (inDims.size >= 4) inDims[1] else 640

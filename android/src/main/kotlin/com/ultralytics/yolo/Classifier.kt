@@ -39,7 +39,7 @@ class Classifier(
             }
         }
 
-        rtModel = LiteRtModel(modelPath, useGpu, "Classifier")
+        rtModel = InferenceModel.create(context, modelPath, useGpu, "Classifier")
 
         // Input dims [1, H, W, C].
         val inDims = rtModel.inputDims

@@ -18,7 +18,7 @@ import com.google.ai.edge.litert.TensorBuffer
  *
  * Tensor names follow the Ultralytics tflite export convention: input `images`, outputs `Identity`, `Identity_1`, ...
  */
-class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
+class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) : InferenceModel {
     private data class PreparedModel(
         val model: CompiledModel,
         val inputBuffers: List<TensorBuffer>,
@@ -33,16 +33,16 @@ class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
     private val outputBuffers: List<TensorBuffer>
 
     /** Accelerator actually in use after the ladder resolves: "GPU" or "CPU". */
-    val accelerator: String
+    override val accelerator: String
 
     /** Input tensor dimensions, e.g. [1, 640, 640, 3]. Empty if the model doesn't use the conventional `images` name. */
-    val inputDims: IntArray
+    override val inputDims: IntArray
 
     /** Float element count of each output buffer, in order. */
-    val outputElementCounts: IntArray
+    override val outputElementCounts: IntArray
 
     /** Output tensor dimensions, in order (e.g. [[1, 84, 8400]] for detect). Empty entries if a name doesn't resolve. */
-    val outputDims: List<IntArray>
+    override val outputDims: List<IntArray>
 
     init {
         var prepared: PreparedModel? = null
@@ -121,13 +121,13 @@ class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
     }
 
     /** Run inference: write [input] floats into the first input buffer, run, and return each output as a flat float array. */
-    fun run(input: FloatArray): List<FloatArray> {
+    override fun run(input: FloatArray): List<FloatArray> {
         inputBuffers[0].writeFloat(input)
         model.run(inputBuffers, outputBuffers)
         return List(outputBuffers.size) { outputBuffers[it].readFloat() }
     }
 
-    fun close() {
+    override fun close() {
         closeBuffers(inputBuffers, outputBuffers)
         try {
             model.close()

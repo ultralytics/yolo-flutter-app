@@ -46,7 +46,7 @@ class ObjectDetector(
             Log.w(TAG, "No embedded labels found and none provided; detections may lack class names.")
         }
 
-        rtModel = LiteRtModel(modelPath, useGpu, "ObjectDetector")
+        rtModel = InferenceModel.create(context, modelPath, useGpu, "ObjectDetector")
 
         // Input dims [1, H, W, 3].
         val inDims = rtModel.inputDims
