@@ -38,6 +38,18 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
     override val outputElementCounts: IntArray
 
     init {
+        // Point the Hexagon DSP loader at the APK's own QAIRT Skel libraries; otherwise fastrpc falls back to
+        // /vendor/lib/rfsa/adsp and pairs the in-process Stub with whatever QAIRT vintage the device vendor shipped,
+        // which fails QnnDevice_create with INVALID_CONFIG on version mismatches.
+        try {
+            android.system.Os.setenv(
+                "ADSP_LIBRARY_PATH",
+                context.applicationInfo.nativeLibraryDir + ";/vendor/lib/rfsa/adsp;/system/lib/rfsa/adsp",
+                true,
+            )
+        } catch (e: Throwable) {
+            Log.w(tag, "Could not set ADSP_LIBRARY_PATH: ${e.message}")
+        }
         session = OrtSession.SessionOptions().use { options ->
             options.addQnn(mapOf("backend_path" to "libQnnHtp.so", "htp_performance_mode" to "burst"))
             createSession(context, modelPath, options)
