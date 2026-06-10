@@ -54,8 +54,11 @@ with the preprocess / inference / postprocess split beneath it.
   the same release via the ONNX Runtime QNN Execution Provider.
 - <sup>1</sup> Semantic QNN currently returns full float logits (~20M values at 1024px) that are argmax-decoded on the
   CPU, while the TFLite graph emits a compact class map — embedding the argmax in the export is a tracked follow-up.
-- Numbers vary with device generation and thermal state; treat them as relative guidance and benchmark your exact
-  models on your target hardware.
+- **These are single-image burst latencies**, not sustained camera frame times: one photo through `predict()` on a
+  thermally rested device. Real-time camera operation runs higher — full-sensor frames are letterboxed to the model
+  input every frame and the silicon thermally settles under load (on an iPhone 17 Pro, YOLO26n detect measures
+  ~3.8 ms burst but ~16 ms/frame sustained in the live camera). Watch the in-app pre/inference/post HUD line for
+  your device's steady-state numbers, and benchmark your exact models on your target hardware.
 
 ## 🎚️ Tune Thresholds
 
