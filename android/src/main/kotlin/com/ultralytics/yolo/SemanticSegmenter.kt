@@ -37,7 +37,7 @@ class SemanticSegmenter(
 
         // fp16 semantic models output FLOAT [1, A, B, C]. The int8/uint8 output paths are dropped with LiteRT 2.x.
         outputShape = rtModel.outputDims.getOrNull(0) ?: IntArray(0)
-        // 4D [1, C, H, W]/[1, H, W, C] logits, or a 3D [1, H, W] class map from in-graph-ArgMax QNN exports
+        // 4D [1, C, H, W]/[1, H, W, C] logits, or a 3D [1, H, W] class map from in-graph-ArgMax exports
         require((outputShape.size == 4 || outputShape.size == 3) && outputShape[0] == 1) {
             "Semantic output tensor shape not supported: ${outputShape.joinToString()}"
         }
