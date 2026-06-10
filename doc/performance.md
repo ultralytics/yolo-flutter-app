@@ -87,6 +87,11 @@ what worked, and what's left on the table:
   output destroys scores. A16W8 stays the export default.
 - **fp16 GPU variants**: identical inference time to INT8 on the LiteRT GPU accelerator (it computes in fp16
   internally either way) — no reason to ship larger fp16 assets.
+- **In-graph ArgMax for semantic TFLite**: the GPU delegate cannot compile `ARG_MAX` with int64 indices (what
+  onnx2tf emits; its argmax-replacement flags no longer exist), so the whole graph falls back to CPU — 137 ms vs
+  37.6 ms for GPU logits + the app's NHWC argmax. The class-map export stays QNN/Core ML-only.
+- **int32 class maps for QNN**: the int32 `Cast` falls off the Hexagon NPU and drags the full float logits to the
+  CPU execution provider — 1054 ms vs 44 ms for the uint8 class map. uint8 stays the class-map dtype.
 
 **Future exploration (in expected-value order):**
 
