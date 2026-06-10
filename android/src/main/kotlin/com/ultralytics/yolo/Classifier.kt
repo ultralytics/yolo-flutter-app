@@ -102,7 +102,9 @@ class Classifier(
             ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues, INPUT_MEAN, INPUT_STD)
         }
 
+        val preEnd = System.nanoTime()
         val scores = rtModel.run(floatInput)[0] // flat FloatArray(numClass)
+        val inferEnd = System.nanoTime()
         val indexedScores = scores.mapIndexed { index, score -> index to score }
         val sorted = indexedScores.sortedByDescending { it.second }
 
@@ -128,12 +130,15 @@ class Classifier(
             top5Indices = top5Indices
         )
 
-        val timing = finishTiming()
+        val timing = finishTiming(preEnd, inferEnd)
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
             probs = probs,
             speed = timing.speedMs,
             fps = timing.fps,
+            preMs = timing.preMs,
+            inferenceMs = timing.inferenceMs,
+            postMs = timing.postMs,
             names = labels
         )
     }

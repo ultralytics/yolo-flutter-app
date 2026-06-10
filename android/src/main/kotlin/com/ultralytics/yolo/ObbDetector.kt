@@ -86,7 +86,9 @@ class ObbDetector(
         ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
 
         // Reshape the flat output into rawOutput[0][outChannels][outAnchors].
+        val preEnd = System.nanoTime()
         val flat = rtModel.run(floatInput)[0]
+        val inferEnd = System.nanoTime()
         var idx = 0
         for (c in 0 until outChannels) {
             val row = rawOutput[0][c]
@@ -115,13 +117,16 @@ class ObbDetector(
             drawOBBsOnBitmap(bitmap, limitedDetections, origWidth, origHeight)
         }
 
-        val timing = finishTiming()
+        val timing = finishTiming(preEnd, inferEnd)
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
             obb = limitedDetections,
             annotatedImage = annotatedImage,
             speed = timing.speedMs,
             fps = timing.fps,
+            preMs = timing.preMs,
+            inferenceMs = timing.inferenceMs,
+            postMs = timing.postMs,
             names = labels
         )
     }

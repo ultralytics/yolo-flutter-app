@@ -106,20 +106,25 @@ class Segmenter(
 
         numClasses = out0NumFeatures - boxFeatureLength - maskConfidenceLength
 
+        val preEnd = System.nanoTime()
         val outs = try {
             rtModel.run(floatInput)
         } catch (e: Exception) {
             Log.e("Segmenter", "Inference error: ${e.message}")
-            val timing = finishTiming()
+            val timing = finishTiming(preEnd, System.nanoTime())
             return YOLOResult(
                 origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
                 boxes = emptyList(),
                 speed = timing.speedMs,
                 fps = timing.fps,
+                preMs = timing.preMs,
+                inferenceMs = timing.inferenceMs,
+                postMs = timing.postMs,
                 names = labels
             )
         }
 
+        val inferEnd = System.nanoTime()
         // Index the flat run() outputs directly — no per-frame reshape into jagged nested arrays.
         val detFlat = outs[detOutIndex]
         val maskFlat = outs[maskOutIndex]
@@ -154,13 +159,16 @@ class Segmenter(
             returnIndividualMasks = includeRawMaskData
         )
         val masks = Masks(probMasks ?: emptyList(), combinedMask)
-        val timing = finishTiming()
+        val timing = finishTiming(preEnd, inferEnd)
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
             masks = masks,
             speed = timing.speedMs,
             fps = timing.fps,
+            preMs = timing.preMs,
+            inferenceMs = timing.inferenceMs,
+            postMs = timing.postMs,
             names = labels
         )
     }

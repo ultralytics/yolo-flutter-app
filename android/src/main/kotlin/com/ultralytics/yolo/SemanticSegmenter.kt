@@ -66,10 +66,12 @@ class SemanticSegmenter(
         ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
 
         // Keep the model output flat; postProcessSemantic indexes it directly (no per-frame reshape copy).
+        val preEnd = System.nanoTime()
         flatOutput = rtModel.run(floatInput)[0]
+        val inferEnd = System.nanoTime()
         val semanticMask = postProcessSemantic(origWidth, origHeight)
         val annotatedImage = drawSemanticOverlay(bitmap, semanticMask)
-        val timing = finishTiming()
+        val timing = finishTiming(preEnd, inferEnd)
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
             boxes = emptyList(),
@@ -77,6 +79,9 @@ class SemanticSegmenter(
             annotatedImage = annotatedImage,
             speed = timing.speedMs,
             fps = timing.fps,
+            preMs = timing.preMs,
+            inferenceMs = timing.inferenceMs,
+            postMs = timing.postMs,
             names = labels
         )
     }

@@ -111,7 +111,9 @@ class ObjectDetector(
         )
 
         // ======== Inference ============
+        val preEnd = System.nanoTime()
         val outputs = rtModel.run(floatInput)
+        val inferEnd = System.nanoTime()
 
         // Reshape the flat [out1*out2] output back into rawOutput[0][out1][out2] for the existing postprocess.
         val flat = outputs[0]
@@ -160,13 +162,16 @@ class ObjectDetector(
             }
         }
 
-        val timing = finishTiming()
+        val timing = finishTiming(preEnd, inferEnd)
 
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
             speed = timing.speedMs,
             fps = timing.fps,
+            preMs = timing.preMs,
+            inferenceMs = timing.inferenceMs,
+            postMs = timing.postMs,
             names = labels
         )
     }

@@ -113,10 +113,14 @@ abstract class BasePredictor : Predictor {
 
     protected data class FrameTiming(
         val speedMs: Double,
-        val fps: Double
+        val fps: Double,
+        val preMs: Double,
+        val inferenceMs: Double,
+        val postMs: Double,
     )
 
-    protected fun finishTiming(): FrameTiming {
+    /** Finalize per-frame timing. [preEnd] and [inferEnd] are nanoTime stamps after preprocessing and inference. */
+    protected fun finishTiming(preEnd: Long, inferEnd: Long): FrameTiming {
         val now = System.nanoTime()
         val dtMs = (now - t0) / 1_000_000.0
         t2 = 0.05 * dtMs + 0.95 * t2
@@ -124,7 +128,10 @@ abstract class BasePredictor : Predictor {
         t3 = now
         return FrameTiming(
             speedMs = dtMs,
-            fps = if (t4 > 0.0) 1.0 / t4 else 0.0
+            fps = if (t4 > 0.0) 1.0 / t4 else 0.0,
+            preMs = (preEnd - t0) / 1_000_000.0,
+            inferenceMs = (inferEnd - preEnd) / 1_000_000.0,
+            postMs = (now - inferEnd) / 1_000_000.0,
         )
     }
 

@@ -108,7 +108,9 @@ class PoseEstimator(
         ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
 
         // Reshape the flat output into outputArray[0] for the existing pose postprocess.
+        val preEnd = System.nanoTime()
         val flat = rtModel.run(floatInput)[0]
+        val inferEnd = System.nanoTime()
         val rows = outputArray[0]
         var idx = 0
         for (r in rows.indices) {
@@ -132,7 +134,7 @@ class PoseEstimator(
         val boxes = limitedDetections.map { it.box }
         val keypointsList = limitedDetections.map { it.keypoints }
 
-        val timing = finishTiming()
+        val timing = finishTiming(preEnd, inferEnd)
         // Pack into YOLOResult and return
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
@@ -140,6 +142,9 @@ class PoseEstimator(
             keypointsList = keypointsList,
             speed = timing.speedMs,
             fps = timing.fps,
+            preMs = timing.preMs,
+            inferenceMs = timing.inferenceMs,
+            postMs = timing.postMs,
             names = labels
         )
     }
