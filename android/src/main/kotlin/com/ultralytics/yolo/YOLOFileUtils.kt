@@ -166,9 +166,7 @@ object YOLOFileUtils {
      * labels, ...).
      */
     fun loadModelMetadata(context: Context, modelPath: String): Map<String, Any>? {
-        if (modelPath.lowercase().endsWith(".onnx")) {
-            return loadMetadataFromOnnx(context, modelPath) ?: loadMetadataFromSidecarYaml(context, modelPath)
-        }
+        if (modelPath.lowercase().endsWith(".onnx")) return loadMetadataFromOnnx(context, modelPath)
         loadMetadataFromAppendedZip(context, modelPath)?.let { return it }
         return loadMetadataFromFlatbuffer(context, modelPath)
     }
@@ -213,18 +211,6 @@ object YOLOFileUtils {
         }
     } catch (e: Exception) {
         Log.w(TAG, "ONNX metadata_props read failed for $modelPath: ${e.message}")
-        null
-    }
-
-    /** Fallback metadata for QNN ONNX exports: the `metadata.yaml` the Ultralytics exporter writes next to the model. */
-    private fun loadMetadataFromSidecarYaml(context: Context, modelPath: String): Map<String, Any>? = try {
-        val dir = modelPath.substringBeforeLast('/', "")
-        val sidecarPath = if (dir.isEmpty()) "metadata.yaml" else "$dir/metadata.yaml"
-        openModelStream(context, sidecarPath)?.use { stream ->
-            parseMetadataYaml(String(stream.readBytes(), StandardCharsets.UTF_8))
-        }
-    } catch (e: Exception) {
-        Log.w(TAG, "Sidecar metadata.yaml read failed for $modelPath: ${e.message}")
         null
     }
 

@@ -13,7 +13,7 @@
 -keep interface org.tensorflow.** { *; }
 -dontwarn org.tensorflow.**
 
-# SnakeYAML parses model metadata.yaml and uses reflection over its own classes.
+# SnakeYAML parses embedded model metadata and uses reflection over its own classes.
 -keep class org.yaml.snakeyaml.** { *; }
 -dontwarn org.yaml.snakeyaml.**
 
