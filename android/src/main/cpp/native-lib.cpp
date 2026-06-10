@@ -105,7 +105,7 @@ Java_com_ultralytics_yolo_ObjectDetector_postprocess(
         jint num_items_threshold,
         jint num_classes) {
 
-    // Read the flat [h x w] prediction tensor directly - one pin, no per-row marshalling or nested copies.
+    // Read the flat [h x w] prediction tensor directly - one pin, no per-row marshaling or nested copies.
     jfloat *data = env->GetFloatArrayElements(recognitions, nullptr);
     if (data == nullptr) return NULL;
 
