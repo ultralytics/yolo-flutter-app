@@ -14,7 +14,7 @@ class MainActivity : FlutterFragmentActivity() {
         // transparent through the supported API on every Android version (and disables the navigation
         // bar contrast scrim where it applies).
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
