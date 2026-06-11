@@ -53,8 +53,12 @@ class PerformanceLabel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 2),
+        // Both timing lines keep their height before the first result arrives (blank text, not absent
+        // widgets), so the rows below don't shift down when inference starts.
         Text(
-          '${fps.toStringAsFixed(1)} FPS - ${inferenceMs.toStringAsFixed(1)} ms',
+          fps > 0
+              ? '${fps.toStringAsFixed(1)} FPS - ${inferenceMs.toStringAsFixed(1)} ms'
+              : ' ',
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Colors.white,
@@ -62,16 +66,17 @@ class PerformanceLabel extends StatelessWidget {
             fontWeight: FontWeight.w400,
           ),
         ),
-        if (preMs + modelMs + postMs > 0)
-          Text(
-            '${preMs.toStringAsFixed(1)} pre · ${modelMs.toStringAsFixed(1)} inference · ${postMs.toStringAsFixed(1)} post',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-            ),
+        Text(
+          preMs + modelMs + postMs > 0
+              ? '${preMs.toStringAsFixed(1)} pre · ${modelMs.toStringAsFixed(1)} inference · ${postMs.toStringAsFixed(1)} post'
+              : ' ',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
           ),
+        ),
       ],
     );
   }
