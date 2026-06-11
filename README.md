@@ -21,10 +21,10 @@ The main goal is simple integration: use an official model ID, or drop in your o
 
 <div align="center">
   <br>
-  <a href="https://apps.apple.com/us/app/idetection/id1452689527" target="_blank"><img width="100%" src="https://github.com/user-attachments/assets/d5dab2e7-f473-47ce-bc63-69bef89ba52a" alt="Ultralytics YOLO iOS App previews"></a>
+  <a href="https://apps.apple.com/us/app/ultralytics-yolo/id1452689527" target="_blank"><img width="100%" src="https://github.com/user-attachments/assets/d5dab2e7-f473-47ce-bc63-69bef89ba52a" alt="Ultralytics YOLO iOS App previews"></a>
   <br>
   <br>
-  <a href="https://apps.apple.com/us/app/idetection/id1452689527" style="text-decoration:none;">
+  <a href="https://apps.apple.com/us/app/ultralytics-yolo/id1452689527" style="text-decoration:none;">
     <img src="https://raw.githubusercontent.com/ultralytics/assets/main/app/app-store.svg" width="15%" alt="Apple App store"></a>
   &nbsp;&nbsp;
   <a href="https://play.google.com/store/apps/details?id=com.ultralytics.yolo" style="text-decoration:none;">
@@ -62,7 +62,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.5.1
+  ultralytics_yolo: ^0.6.2
 ```
 
 ```bash
