@@ -40,18 +40,18 @@ The main goal is simple integration: use an official model ID, or drop in your o
 - Controls for thresholds, accelerator selection, and result streaming
 - YOLO26 and YOLO11 model families supported
 
-| Feature                               | Android | iOS | Details                                                          |
-| ------------------------------------- | ------- | --- | ---------------------------------------------------------------- |
-| Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores                    |
-| Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                            |
-| Semantic Segmentation                 | ✅      | ✅  | Dense class masks for every pixel                                |
-| Image Classification                  | ✅      | ✅  | Top class predictions and scores                                 |
-| Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores                       |
-| Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                                |
-| Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                             |
-| Single-Image Inference                | ✅      | ✅  | `YOLO` for image bytes                                           |
-| Official Models                       | ✅      | ✅  | Discovery, download, and caching for packaged model IDs          |
-| Custom Models                         | ✅      | ✅  | LiteRT (TFLite) on Android, Core ML on iOS, metadata-first tasks |
+| Feature                               | Android | iOS | Details                                                            |
+| ------------------------------------- | ------- | --- | ------------------------------------------------------------------ |
+| Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores                      |
+| Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                              |
+| Semantic Segmentation                 | ✅      | ✅  | Dense class masks for every pixel                                  |
+| Image Classification                  | ✅      | ✅  | Top class predictions and scores                                   |
+| Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores                         |
+| Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                                  |
+| Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                               |
+| Single-Image Inference                | ✅      | ✅  | `YOLO` for image bytes                                             |
+| Official Models                       | ✅      | ✅  | Discovery, download, and caching for packaged model IDs            |
+| Custom Models                         | ✅      | ✅  | LiteRT (TFLite) on Android, Core ML on iOS, metadata-first tasks   |
 | Qualcomm NPU (QNN)                    | ✅      | —   | Opt-in Hexagon NPU inference for `*_qnn.onnx` models on Snapdragon |
 
 ## ⚡ Quick Start
@@ -112,11 +112,11 @@ Call `YOLO.officialModels()` to see which official IDs are available on the curr
 
 Official assets are maintained as GitHub release assets:
 
-| Platform               | Runtime asset                 | Release                                                                                          |
-| ---------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| Android                | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
-| Android NPU (opt-in)   | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
-| iOS                    | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+| Platform             | Runtime asset                 | Release                                                                                          |
+| -------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| Android              | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| Android NPU (opt-in) | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| iOS                  | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms. These release tags are intentionally pinned for reproducible first-use downloads. See the [model guide](doc/models.md) for the official export matrix, URL patterns, and model properties.
 

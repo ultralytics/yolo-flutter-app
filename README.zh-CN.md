@@ -112,11 +112,11 @@ final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 
 官方资产以 GitHub release 资产的形式维护：
 
-| 平台                  | 运行时资产                    | Release                                                                                          |
-| --------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| Android               | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
-| Android NPU（可选）   | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
-| iOS                   | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+| 平台                | 运行时资产                    | Release                                                                                          |
+| ------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| Android             | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| Android NPU（可选） | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| iOS                 | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 Flutter 解析器在 Android 上使用 TFLite release，在 Apple 平台上使用 Core ML release。这些 release 标签被刻意固定，以保证首次下载可复现。官方导出矩阵、URL 模式与模型属性详见[模型指南](doc/models.md)。
 
