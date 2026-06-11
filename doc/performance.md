@@ -90,8 +90,8 @@ what worked, and what's left on the table:
 - **In-graph ArgMax for semantic TFLite**: the GPU delegate cannot compile `ARG_MAX` with int64 indices (what
   onnx2tf emits; its argmax-replacement flags no longer exist), so the whole graph falls back to CPU — 137 ms vs
   37.6 ms for GPU logits + the app's NHWC argmax. The class-map export stays QNN/Core ML-only.
-- **int32 class maps for QNN**: the int32 `Cast` falls off the Hexagon NPU and drags the full float logits to the
-  CPU execution provider — 1054 ms vs 44 ms for the uint8 class map. uint8 stays the class-map dtype.
+- **int32 class maps**: uint8 quarters the NPU→CPU output transfer and every consumer reads it (Core ML promotes
+  it to int32 in-spec); int32 indices are reserved for >256-class models. uint8 stays the class-map dtype.
 
 **Future exploration (in expected-value order):**
 
