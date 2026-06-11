@@ -223,6 +223,8 @@ class YOLOViewController {
         'throttleIntervalMs': config.throttleInterval?.inMilliseconds,
         'inferenceFrequency': config.inferenceFrequency,
         'skipFrames': config.skipFrames,
+        'analysisWidth': config.analysisResolution?.width.round(),
+        'analysisHeight': config.analysisResolution?.height.round(),
       });
 
   Future<void> stop() => _invoke('stop');

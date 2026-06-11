@@ -1,5 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'dart:ui' show Size;
+
 /// Configuration class for customizing YOLO streaming behavior.
 ///
 /// This class allows fine-grained control over what data is included in
@@ -112,6 +114,21 @@ class YOLOStreamingConfig {
   /// `skipFrames` takes precedence.
   final int? skipFrames;
 
+  /// Requested camera analysis resolution (Android only).
+  ///
+  /// By default CameraX delivers analysis frames at its default size
+  /// (typically 640x480), which caps the detail available to models with
+  /// larger inputs - small objects can be lost to the upscale. Set this to
+  /// request a higher analysis resolution, e.g. `Size(1280, 960)` for an
+  /// 800px model. The camera falls back to the nearest supported size, and
+  /// detection coordinates are normalized so overlays are unaffected.
+  ///
+  /// Higher resolutions increase the per-frame copy and downscale cost, so
+  /// leave this null (the default) unless small-object detail matters more
+  /// than peak FPS. iOS analysis frames already track the capture session
+  /// resolution and ignore this setting.
+  final Size? analysisResolution;
+
   /// Creates a YOLOStreamingConfig with custom settings.
   ///
   /// This constructor allows full customization of streaming behavior.
@@ -129,6 +146,7 @@ class YOLOStreamingConfig {
     this.throttleInterval,
     this.inferenceFrequency,
     this.skipFrames,
+    this.analysisResolution,
   });
 
   /// Creates a minimal configuration optimized for maximum performance.
@@ -155,7 +173,8 @@ class YOLOStreamingConfig {
       maxFPS = null,
       throttleInterval = null,
       inferenceFrequency = null,
-      skipFrames = null;
+      skipFrames = null,
+      analysisResolution = null;
 
   /// Creates a custom configuration with specified parameters.
   ///
@@ -182,6 +201,7 @@ class YOLOStreamingConfig {
     this.throttleInterval,
     this.inferenceFrequency,
     this.skipFrames,
+    this.analysisResolution,
   }) : includeDetections = includeDetections ?? true,
        includeClassifications = includeClassifications ?? true,
        includeProcessingTimeMs = includeProcessingTimeMs ?? true,
@@ -209,7 +229,8 @@ class YOLOStreamingConfig {
       maxFPS = null,
       throttleInterval = null,
       inferenceFrequency = null,
-      skipFrames = null;
+      skipFrames = null,
+      analysisResolution = null;
 
   /// Creates a configuration with pose keypoints.
   ///
@@ -229,7 +250,8 @@ class YOLOStreamingConfig {
       maxFPS = null,
       throttleInterval = null,
       inferenceFrequency = null,
-      skipFrames = null;
+      skipFrames = null,
+      analysisResolution = null;
 
   /// Creates a full configuration with all data included.
   ///
@@ -255,7 +277,8 @@ class YOLOStreamingConfig {
       maxFPS = null,
       throttleInterval = null,
       inferenceFrequency = null,
-      skipFrames = null;
+      skipFrames = null,
+      analysisResolution = null;
 
   /// Creates a debug configuration with all data and images.
   ///
@@ -278,7 +301,8 @@ class YOLOStreamingConfig {
       maxFPS = null,
       throttleInterval = null,
       inferenceFrequency = null,
-      skipFrames = null;
+      skipFrames = null,
+      analysisResolution = null;
 
   /// Creates a throttled configuration with specified FPS limit.
   ///
@@ -387,6 +411,7 @@ class YOLOStreamingConfig {
         'maxFPS: $maxFPS, '
         'throttleInterval: ${throttleInterval?.inMilliseconds}ms, '
         'inferenceFrequency: $inferenceFrequency, '
-        'skipFrames: $skipFrames)';
+        'skipFrames: $skipFrames, '
+        'analysisResolution: $analysisResolution)';
   }
 }

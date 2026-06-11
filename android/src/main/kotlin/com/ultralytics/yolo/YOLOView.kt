@@ -18,6 +18,8 @@ import android.os.Build
 import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.core.*
 import androidx.camera.core.Camera
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import android.util.SizeF
@@ -179,8 +181,13 @@ class YOLOView @JvmOverloads constructor(
     
     /** Set streaming configuration */
     fun setStreamConfig(config: YOLOStreamConfig?) {
+        val resolutionChanged = config?.analysisWidth != streamConfig?.analysisWidth ||
+            config?.analysisHeight != streamConfig?.analysisHeight
         this.streamConfig = config
         setupThrottlingFromConfig()
+        if (resolutionChanged && camera != null) {
+            startCamera() // rebind so the new analysis resolution takes effect
+        }
     }
 
     /** Set streaming callback */
@@ -778,14 +785,31 @@ class YOLOView @JvmOverloads constructor(
                         .setTargetRotation(targetRotation)
                         .build()
 
-                    imageAnalysisUseCase = ImageAnalysis.Builder()
+                    val analysisBuilder = ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                         .setTargetRotation(targetRotation)
                         // Ask CameraX for RGBA frames so toBitmap() is a direct buffer copy. The default YUV_420_888
                         // forced a per-frame JPEG encode@100 + decode round-trip (~100ms/frame, ~5 FPS).
                         .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-                        .build()
+                    val analysisWidth = streamConfig?.analysisWidth
+                    val analysisHeight = streamConfig?.analysisHeight
+                    if (analysisWidth != null && analysisHeight != null) {
+                        // Opt-in higher analysis resolution: by default CameraX delivers ~640x480 frames, which caps
+                        // the detail reaching models with larger inputs. CameraX picks the nearest supported size.
+                        analysisBuilder.setResolutionSelector(
+                            ResolutionSelector.Builder()
+                                .setResolutionStrategy(
+                                    ResolutionStrategy(
+                                        android.util.Size(analysisWidth, analysisHeight),
+                                        ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+                                    )
+                                )
+                                .build()
+                        )
+                    } else {
+                        analysisBuilder.setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                    }
+                    imageAnalysisUseCase = analysisBuilder.build()
 
                     cameraExecutor = Executors.newSingleThreadExecutor()
                     val myGeneration = cameraGeneration.incrementAndGet()
