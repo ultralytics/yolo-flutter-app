@@ -53,9 +53,9 @@ with the preprocess / inference / postprocess split beneath it.
   `useGpu: false` / `true`. **NPU** runs the `*_v81_qnn.onnx` context binaries (INT8 weights, 16-bit activations) from
   the same release via the ONNX Runtime QNN Execution Provider.
 - <sup>1</sup> Semantic QNN uses the in-graph ArgMax class-map exports (ultralytics#24790), which replaced erratic
-  123-1065 ms logits decoding with a stable ~49 ms; the GPU remains slightly faster for semantic at 1024px. QNN
-  columns reflect the channel-last exports from the same PR — the official release assets are refreshed in this
-  format once it ships.
+  123-1065 ms logits decoding with a stable ~49 ms; the GPU remains slightly faster for semantic at 1024px. The
+  official `v0.3.5` QNN release assets ship in this channel-last class-map format, exported with ultralytics
+  8.4.65.
 - **These are single-image burst latencies**, not sustained camera frame times: one photo through `predict()` on a
   thermally rested device. Real-time camera operation runs higher — full-sensor frames are letterboxed to the model
   input every frame and the silicon thermally settles under load (on an iPhone 17 Pro, YOLO26n detect measures
