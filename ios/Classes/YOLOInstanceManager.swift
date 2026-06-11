@@ -473,8 +473,11 @@ class YOLOInstanceManager {
       }
     }
 
-    // Include speed metric
-    resultDict["speed"] = result.speed
+    // Include timing: total speed plus the pre/inference/post breakdown (milliseconds)
+    resultDict["speed"] = result.speed * 1000  // align with Android: milliseconds
+    resultDict["preMs"] = result.preMs
+    resultDict["inferenceMs"] = result.inferenceMs
+    resultDict["postMs"] = result.postMs
 
     return resultDict
   }
