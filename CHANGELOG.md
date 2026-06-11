@@ -1,3 +1,15 @@
+## 0.6.4
+
+- **Feature**: Opt-in camera analysis resolution on Android — `YOLOStreamingConfig.analysisResolution` requests a
+  higher CameraX analysis size (with closest-size fallback) so models with large inputs keep small-object detail;
+  the default ~640x480 behavior is unchanged (#529).
+- **Feature**: iOS results now carry the same `preMs`/`inferenceMs`/`postMs` per-stage timing as Android, in both
+  single-image predictions and camera streams (requires the UltralyticsYOLO 8.9.5 pod).
+- **Bug Fix**: iOS single-image `speed` is now reported in milliseconds — it was seconds, a 1000x discrepancy
+  against Android.
+- **Enhancement**: Replace deprecated window system-bar color setters with `SystemBarStyle`, resolving the Play
+  Console Android 15 edge-to-edge warning.
+
 ## 0.6.3
 
 - **Feature**: Qualcomm NPU support on Android — official `*_qnn.onnx` context-binary models (now published per HTP
