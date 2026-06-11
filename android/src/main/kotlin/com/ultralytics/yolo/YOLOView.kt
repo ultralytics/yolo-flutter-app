@@ -793,7 +793,7 @@ class YOLOView @JvmOverloads constructor(
                         .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                     val analysisWidth = streamConfig?.analysisWidth
                     val analysisHeight = streamConfig?.analysisHeight
-                    if (analysisWidth != null && analysisHeight != null) {
+                    if (analysisWidth != null && analysisHeight != null && analysisWidth > 0 && analysisHeight > 0) {
                         // Opt-in higher analysis resolution: by default CameraX delivers ~640x480 frames, which caps
                         // the detail reaching models with larger inputs. CameraX picks the nearest supported size.
                         analysisBuilder.setResolutionSelector(
@@ -807,6 +807,9 @@ class YOLOView @JvmOverloads constructor(
                                 .build()
                         )
                     } else {
+                        if (analysisWidth != null || analysisHeight != null) {
+                            Log.w(TAG, "Ignoring invalid analysisResolution ${analysisWidth}x${analysisHeight}")
+                        }
                         analysisBuilder.setTargetAspectRatio(AspectRatio.RATIO_4_3)
                     }
                     imageAnalysisUseCase = analysisBuilder.build()
