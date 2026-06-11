@@ -152,7 +152,9 @@ class YOLOPlatformView(
                 maxFPS = (streamingConfigParam["maxFPS"] as? Number)?.toInt(),
                 throttleIntervalMs = (streamingConfigParam["throttleIntervalMs"] as? Number)?.toInt(),
                 inferenceFrequency = (streamingConfigParam["inferenceFrequency"] as? Number)?.toInt(),
-                skipFrames = (streamingConfigParam["skipFrames"] as? Number)?.toInt()
+                skipFrames = (streamingConfigParam["skipFrames"] as? Number)?.toInt(),
+                analysisWidth = (streamingConfigParam["analysisWidth"] as? Number)?.toInt(),
+                analysisHeight = (streamingConfigParam["analysisHeight"] as? Number)?.toInt()
             )
         } else {
             // Create default config when no streaming config is provided
@@ -424,7 +426,9 @@ class YOLOPlatformView(
                             maxFPS = (configMap["maxFPS"] as? Number)?.toInt(),
                             throttleIntervalMs = (configMap["throttleIntervalMs"] as? Number)?.toInt(),
                             inferenceFrequency = (configMap["inferenceFrequency"] as? Number)?.toInt(),
-                            skipFrames = (configMap["skipFrames"] as? Number)?.toInt()
+                            skipFrames = (configMap["skipFrames"] as? Number)?.toInt(),
+                            analysisWidth = (configMap["analysisWidth"] as? Number)?.toInt(),
+                            analysisHeight = (configMap["analysisHeight"] as? Number)?.toInt()
                         )
                         yoloView.setStreamConfig(streamConfig)
                         result.success(null)

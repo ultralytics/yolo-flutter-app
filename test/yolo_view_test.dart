@@ -342,6 +342,7 @@ void main() {
                 throttleInterval: Duration(milliseconds: 120),
                 inferenceFrequency: 3,
                 skipFrames: 2,
+                analysisResolution: Size(1280, 960),
               ),
               onResult: results.addAll,
               onPerformanceMetrics: metrics.add,
@@ -376,6 +377,8 @@ void main() {
           'throttleIntervalMs': 120,
           'inferenceFrequency': 3,
           'skipFrames': 2,
+          'analysisWidth': 1280,
+          'analysisHeight': 960,
         });
         expect(loadedModels, ['camera_model.tflite']);
 

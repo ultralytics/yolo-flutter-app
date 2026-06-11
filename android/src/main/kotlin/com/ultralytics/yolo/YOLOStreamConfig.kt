@@ -27,7 +27,12 @@ data class YOLOStreamConfig(
     
     // Inference frequency controls
     val inferenceFrequency: Int? = null,  // Target inference frequency in FPS (e.g., 5, 10, 15, 30)
-    val skipFrames: Int? = null           // Skip frames between inferences (alternative to inferenceFrequency)
+    val skipFrames: Int? = null,          // Skip frames between inferences (alternative to inferenceFrequency)
+
+    // Requested CameraX analysis resolution; null keeps the CameraX default (~640x480). The camera
+    // falls back to the nearest supported size, so any request is safe on any device.
+    val analysisWidth: Int? = null,
+    val analysisHeight: Int? = null
     
     // Note: annotatedImage is intentionally excluded for YOLOView
     // YOLOView uses Canvas drawing (real-time overlay), not bitmap generation

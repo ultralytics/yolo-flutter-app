@@ -2079,6 +2079,9 @@ extension YOLOView {
     // Add performance metrics (if enabled)
     if config.includeProcessingTimeMs {
       map["processingTimeMs"] = result.speed * 1000
+      map["preMs"] = result.preMs
+      map["inferenceMs"] = result.inferenceMs
+      map["postMs"] = result.postMs
     }
 
     if config.includeFps {

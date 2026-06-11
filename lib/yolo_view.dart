@@ -489,6 +489,11 @@ class _YOLOViewState extends State<YOLOView> {
       if (widget.streamingConfig!.skipFrames != null) {
         streamConfig['skipFrames'] = widget.streamingConfig!.skipFrames;
       }
+      final analysisResolution = widget.streamingConfig!.analysisResolution;
+      if (analysisResolution != null) {
+        streamConfig['analysisWidth'] = analysisResolution.width.round();
+        streamConfig['analysisHeight'] = analysisResolution.height.round();
+      }
 
       creationParams['streamingConfig'] = streamConfig;
     }
