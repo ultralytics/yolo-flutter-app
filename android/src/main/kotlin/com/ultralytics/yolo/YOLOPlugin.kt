@@ -375,8 +375,11 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
               if (annotated !== bitmap) annotated.recycle()
             }
   
-            // Include inference speed
+            // Include timing: total speed plus the pre/inference/post breakdown
             response["speed"] = yoloResult.speed
+            response["preMs"] = yoloResult.preMs
+            response["inferenceMs"] = yoloResult.inferenceMs
+            response["postMs"] = yoloResult.postMs
   
             result.success(response)
           } finally {

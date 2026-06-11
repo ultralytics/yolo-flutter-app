@@ -87,7 +87,14 @@ Add permissions to `android/app/src/main/AndroidManifest.xml`:
 <uses-permission android:name="android.permission.CAMERA" />
 ```
 
-#### 3. ProGuard / R8 Configuration (Release Builds)
+#### 3. Qualcomm NPU (Optional)
+
+TFLite is the default Android engine and needs no configuration. To run `*_qnn.onnx` models on the Hexagon NPU
+(Snapdragon 8 Gen 2 or newer), add the ONNX Runtime QNN runtime to your app — see the
+[NPU section of the README](../README.md#4-qualcomm-npu-models-android-opt-in) for the three required
+`build.gradle` additions.
+
+#### 4. ProGuard / R8 Configuration (Release Builds)
 
 The plugin ships consumer R8 rules that keep the LiteRT 2.x classes (`com.google.ai.edge.litert.**`) and metadata classes its native code reaches via JNI/reflection, so a standard release build needs no extra configuration.
 

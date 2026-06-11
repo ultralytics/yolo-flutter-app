@@ -2272,6 +2272,9 @@ class YOLOView @JvmOverloads constructor(
         if (config.includeProcessingTimeMs) {
             val processingTimeMs = result.speed.toDouble()
             map["processingTimeMs"] = processingTimeMs
+            map["preMs"] = result.preMs
+            map["inferenceMs"] = result.inferenceMs
+            map["postMs"] = result.postMs
         }
         
         if (config.includeFps) {

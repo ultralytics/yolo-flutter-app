@@ -88,10 +88,10 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // High-frequency values driven by native event streams (zoom/lens) and per-inference-frame metrics. These are
   // ValueNotifiers — NOT setState fields — so updating them rebuilds only the small leaf widgets that display them
   // (FPS/ms line, zoom HUD, lens highlight) instead of the whole tree (camera platform view + every control) ~30x/sec.
-  final ValueNotifier<({double fps, double ms})> _metrics = ValueNotifier((
-    fps: 0,
-    ms: 0,
-  ));
+  final ValueNotifier<
+    ({double fps, double ms, double pre, double infer, double post})
+  >
+  _metrics = ValueNotifier((fps: 0, ms: 0, pre: 0, infer: 0, post: 0));
   final ValueNotifier<double> _zoom = ValueNotifier(1);
   final ValueNotifier<String> _lensLabel = ValueNotifier('');
 
@@ -640,7 +640,13 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   void _onPerformanceMetrics(YOLOPerformanceMetrics metrics) {
     // Update the notifier, NOT setState: this fires every inference frame (~30 fps). A setState here rebuilt the whole
     // tree — camera platform view and all controls — 30x/sec, which was the primary source of the lag.
-    _metrics.value = (fps: metrics.fps, ms: metrics.processingTimeMs);
+    _metrics.value = (
+      fps: metrics.fps,
+      ms: metrics.processingTimeMs,
+      pre: metrics.preMs,
+      infer: metrics.inferenceMs,
+      post: metrics.postMs,
+    );
   }
 
   static String _taskLabel(YOLOTask task) {
@@ -898,7 +904,10 @@ class _ShowcaseOverlay extends StatelessWidget {
   });
 
   final String modelName;
-  final ValueListenable<({double fps, double ms})> metrics;
+  final ValueListenable<
+    ({double fps, double ms, double pre, double infer, double post})
+  >
+  metrics;
   final YOLOTask task;
   final String size;
   final Set<String> availableSizes;
@@ -1038,12 +1047,17 @@ class _ShowcaseOverlay extends StatelessWidget {
   Widget _topControls() {
     return Column(
       children: [
-        ValueListenableBuilder<({double fps, double ms})>(
+        ValueListenableBuilder<
+          ({double fps, double ms, double pre, double infer, double post})
+        >(
           valueListenable: metrics,
           builder: (context, m, _) => PerformanceLabel(
             modelName: modelName,
             fps: m.fps,
             inferenceMs: m.ms,
+            preMs: m.pre,
+            modelMs: m.infer,
+            postMs: m.post,
           ),
         ),
         const SizedBox(height: _topGap),

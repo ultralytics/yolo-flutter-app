@@ -23,7 +23,6 @@ class ObjectDetector(
     private var out1 = 0
     private var out2 = 0
     // Reuse inference output array ([1][out1][out2])
-    private lateinit var rawOutput: Array<Array<FloatArray>>
 
     // ======== Workspace for fast preprocessing ========
     // (1) Temporary letterboxed Bitmap matching model input size
@@ -46,7 +45,7 @@ class ObjectDetector(
             Log.w(TAG, "No embedded labels found and none provided; detections may lack class names.")
         }
 
-        rtModel = LiteRtModel(modelPath, useGpu, "ObjectDetector")
+        rtModel = InferenceModel.create(context, modelPath, useGpu, "ObjectDetector")
 
         // Input dims [1, H, W, 3].
         val inDims = rtModel.inputDims
@@ -70,7 +69,6 @@ class ObjectDetector(
         }
 
         initPreprocessingResources(inWidth, inHeight)
-        rawOutput = Array(1) { Array(out1) { FloatArray(out2) } }
     }
 
     private fun initPreprocessingResources(width: Int, height: Int) {
@@ -111,31 +109,19 @@ class ObjectDetector(
         )
 
         // ======== Inference ============
-        val outputs = rtModel.run(floatInput)
+        val preEnd = System.nanoTime()
+        val flat = rtModel.run(floatInput)[0]
+        val inferEnd = System.nanoTime()
 
-        // Reshape the flat [out1*out2] output back into rawOutput[0][out1][out2] for the existing postprocess.
-        val flat = outputs[0]
-        val rows = rawOutput[0]
-        var idx = 0
-        for (i in 0 until out1) {
-            val row = rows[i]
-            for (j in 0 until out2) {
-                row[j] = flat[idx++]
-            }
-        }
-
-        // ======== Post-processing (same as existing code) ============
-        val outHeight = rawOutput[0].size      // out1
-        val outWidth = rawOutput[0][0].size      // out2
-
-        val resultBoxes = if (outWidth < outHeight && outWidth >= 6) {
-            postprocessEndToEnd(rawOutput[0])
+        // ======== Post-processing: decode straight from the flat [out1 x out2] output (no reshape copies) ========
+        val resultBoxes = if (out2 < out1 && out2 >= 6) {
+            postprocessEndToEnd(flat, rows = out1, rowLen = out2)
         } else {
-            val classCount = (outHeight - 4).coerceAtLeast(0)
+            val classCount = (out1 - 4).coerceAtLeast(0)
             postprocess(
-                rawOutput[0],
-                w = outWidth,   // width is out2
-                h = outHeight,  // height is out1
+                flat,
+                w = out2,   // anchors
+                h = out1,   // features
                 confidenceThreshold = confidenceThreshold,
                 iouThreshold = iouThreshold,
                 numItemsThreshold = numItemsThreshold,
@@ -160,13 +146,16 @@ class ObjectDetector(
             }
         }
 
-        val timing = finishTiming()
+        val timing = finishTiming(preEnd, inferEnd)
 
         return YOLOResult(
             origShape = com.ultralytics.yolo.Size(origWidth, origHeight),
             boxes = boxes,
             speed = timing.speedMs,
             fps = timing.fps,
+            preMs = timing.preMs,
+            inferenceMs = timing.inferenceMs,
+            postMs = timing.postMs,
             names = labels
         )
     }
@@ -200,7 +189,7 @@ class ObjectDetector(
 
     // Post-processing via JNI
     private external fun postprocess(
-        predictions: Array<FloatArray>,
+        predictions: FloatArray,
         w: Int,
         h: Int,
         confidenceThreshold: Float,
@@ -209,23 +198,22 @@ class ObjectDetector(
         numClasses: Int
     ): Array<FloatArray>
 
-    private fun postprocessEndToEnd(predictions: Array<FloatArray>): Array<FloatArray> {
+    private fun postprocessEndToEnd(flat: FloatArray, rows: Int, rowLen: Int): Array<FloatArray> {
         val boxes = mutableListOf<FloatArray>()
-        for (row in predictions) {
-            val confidence = row[4]
+        for (i in 0 until rows) {
+            val base = i * rowLen
+            val confidence = flat[base + 4]
             if (confidence <= confidenceThreshold) continue
-            val x1 = row[0]
-            val y1 = row[1]
-            val x2 = row[2]
-            val y2 = row[3]
+            val x1 = flat[base]
+            val y1 = flat[base + 1]
             boxes.add(
                 floatArrayOf(
                     x1,
                     y1,
-                    x2 - x1,
-                    y2 - y1,
+                    flat[base + 2] - x1,
+                    flat[base + 3] - y1,
                     confidence,
-                    row[5]
+                    flat[base + 5]
                 )
             )
             if (boxes.size >= numItemsThreshold) break

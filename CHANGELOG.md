@@ -1,3 +1,20 @@
+## 0.6.3
+
+- **Feature**: Qualcomm NPU support on Android — official `*_qnn.onnx` context-binary models (now published per HTP
+  arch as `_v73`/`_v81` release assets) run on the Hexagon NPU through the ONNX Runtime QNN Execution Provider, with
+  the runtime dependency kept out of pub.dev consumers' builds (`compileOnly`; opt in from the app).
+- **Feature**: Per-stage timing in results and the showcase HUD: `preMs`, `inferenceMs` and `postMs` accompany
+  `speed` on both platforms, shown as a breakdown line under the FPS readout.
+- **Performance**: Detect/pose/OBB postprocessing decodes the flat model output directly (no reshape copies or JNI
+  nested-array marshaling) and semantic segmentation consumes in-graph-ArgMax class maps — single-image semantic on
+  the NPU drops from erratic 123-1065 ms to a stable ~44 ms.
+- **Performance**: LiteRT GPU programs are cached on disk (`GpuOptions.serializationDir`), removing OpenCL
+  recompilation from model re-opens.
+- **Bug Fix**: LiteRT and ONNX Runtime outputs are read by their declared element type; probing integer tensors with
+  float reads could crash the process.
+- **Enhancement**: The model size row no longer stretches edge to edge in landscape; it fills width up to a
+  portrait-phone cap and stays centered.
+
 ## 0.6.2
 
 - **Bug Fix**: Compile the Android example app's Kotlin `MainActivity` into release bundles so Play Store installs can

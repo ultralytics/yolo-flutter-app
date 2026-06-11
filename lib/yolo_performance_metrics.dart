@@ -16,6 +16,15 @@ class YOLOPerformanceMetrics {
   /// but excludes camera capture and UI rendering time.
   final double processingTimeMs;
 
+  /// Preprocessing time (letterbox + normalization) in milliseconds.
+  final double preMs;
+
+  /// Model inference time in milliseconds.
+  final double inferenceMs;
+
+  /// Postprocessing time (decode + NMS/masks) in milliseconds.
+  final double postMs;
+
   /// Sequential frame number since detection started.
   ///
   /// Useful for tracking dropped frames or debugging timing issues.
@@ -34,6 +43,9 @@ class YOLOPerformanceMetrics {
     required this.processingTimeMs,
     required this.frameNumber,
     required this.timestamp,
+    this.preMs = 0.0,
+    this.inferenceMs = 0.0,
+    this.postMs = 0.0,
   });
 
   /// Creates performance metrics from a raw data map.
@@ -48,6 +60,9 @@ class YOLOPerformanceMetrics {
       processingTimeMs: (data['processingTimeMs'] as num?)?.toDouble() ?? 0.0,
       frameNumber: (data['frameNumber'] as num?)?.toInt() ?? 0,
       timestamp: DateTime.now(), // Use current time as fallback
+      preMs: (data['preMs'] as num?)?.toDouble() ?? 0.0,
+      inferenceMs: (data['inferenceMs'] as num?)?.toDouble() ?? 0.0,
+      postMs: (data['postMs'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -60,6 +75,9 @@ class YOLOPerformanceMetrics {
       'processingTimeMs': processingTimeMs,
       'frameNumber': frameNumber,
       'timestamp': timestamp.millisecondsSinceEpoch,
+      'preMs': preMs,
+      'inferenceMs': inferenceMs,
+      'postMs': postMs,
     };
   }
 
@@ -83,12 +101,18 @@ class YOLOPerformanceMetrics {
     double? processingTimeMs,
     int? frameNumber,
     DateTime? timestamp,
+    double? preMs,
+    double? inferenceMs,
+    double? postMs,
   }) {
     return YOLOPerformanceMetrics(
       fps: fps ?? this.fps,
       processingTimeMs: processingTimeMs ?? this.processingTimeMs,
       frameNumber: frameNumber ?? this.frameNumber,
       timestamp: timestamp ?? this.timestamp,
+      preMs: preMs ?? this.preMs,
+      inferenceMs: inferenceMs ?? this.inferenceMs,
+      postMs: postMs ?? this.postMs,
     );
   }
 

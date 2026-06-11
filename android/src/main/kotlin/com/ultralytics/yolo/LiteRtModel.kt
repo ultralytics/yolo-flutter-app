@@ -6,6 +6,7 @@ import android.util.Log
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
 import com.google.ai.edge.litert.TensorBuffer
+import com.google.ai.edge.litert.TensorType
 
 /**
  * Wraps a LiteRT 2.x [CompiledModel] behind a simple float-in / float-out API so the predictors don't deal with
@@ -18,7 +19,12 @@ import com.google.ai.edge.litert.TensorBuffer
  *
  * Tensor names follow the Ultralytics tflite export convention: input `images`, outputs `Identity`, `Identity_1`, ...
  */
-class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
+class LiteRtModel(
+    private val context: android.content.Context,
+    modelPath: String,
+    useGpu: Boolean,
+    private val tag: String,
+) : InferenceModel {
     private data class PreparedModel(
         val model: CompiledModel,
         val inputBuffers: List<TensorBuffer>,
@@ -26,23 +32,25 @@ class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
         val inputDims: IntArray,
         val outputElementCounts: IntArray,
         val outputDims: List<IntArray>,
+        val outputTypes: List<TensorType.ElementType?>,
     )
 
     private val model: CompiledModel
     private val inputBuffers: List<TensorBuffer>
     private val outputBuffers: List<TensorBuffer>
+    private val outputTypes: List<TensorType.ElementType?>
 
     /** Accelerator actually in use after the ladder resolves: "GPU" or "CPU". */
-    val accelerator: String
+    override val accelerator: String
 
     /** Input tensor dimensions, e.g. [1, 640, 640, 3]. Empty if the model doesn't use the conventional `images` name. */
-    val inputDims: IntArray
+    override val inputDims: IntArray
 
     /** Float element count of each output buffer, in order. */
-    val outputElementCounts: IntArray
+    override val outputElementCounts: IntArray
 
     /** Output tensor dimensions, in order (e.g. [[1, 84, 8400]] for detect). Empty entries if a name doesn't resolve. */
-    val outputDims: List<IntArray>
+    override val outputDims: List<IntArray>
 
     init {
         var prepared: PreparedModel? = null
@@ -67,6 +75,7 @@ class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
         inputDims = prepared.inputDims
         outputElementCounts = prepared.outputElementCounts
         outputDims = prepared.outputDims
+        outputTypes = prepared.outputTypes
 
         Log.i(
             tag,
@@ -76,7 +85,16 @@ class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
     }
 
     private fun prepareModel(modelPath: String, accelerator: Accelerator): PreparedModel {
-        val compiled = CompiledModel.create(modelPath, CompiledModel.Options(accelerator))
+        val options = CompiledModel.Options(accelerator)
+        if (accelerator == Accelerator.GPU) {
+            // Serialize compiled GPU programs so subsequent model opens skip CL compilation entirely.
+            options.gpuOptions = CompiledModel.GpuOptions(
+                serializationDir = context.codeCacheDir.absolutePath,
+                modelCacheKey = "${java.io.File(modelPath).name}_${java.io.File(modelPath).length()}",
+                serializeProgramCache = true,
+            )
+        }
+        val compiled = CompiledModel.create(modelPath, options)
         val inputs: List<TensorBuffer>
         val outputs: List<TensorBuffer>
         try {
@@ -103,16 +121,18 @@ class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
                 inputs[0].writeFloat(FloatArray(inputFloats))
                 compiled.run(inputs, outputs)
             }
-            val elementCounts = IntArray(outputs.size) { outputs[it].readFloat().size }
-            val outputShapes = List(outputs.size) { i ->
+            val outputTensorTypes = List(outputs.size) { i ->
                 val name = if (i == 0) "Identity" else "Identity_$i"
                 try {
-                    compiled.getOutputTensorType(outputName = name).layout?.dimensions?.toIntArray() ?: IntArray(0)
+                    compiled.getOutputTensorType(outputName = name)
                 } catch (e: Throwable) {
-                    IntArray(0)
+                    null // also thrown for element types the Kotlin API can't read (e.g. uint8)
                 }
             }
-            return PreparedModel(compiled, inputs, outputs, dims, elementCounts, outputShapes)
+            val outputShapes = outputTensorTypes.map { it?.layout?.dimensions?.toIntArray() ?: IntArray(0) }
+            val types = outputTensorTypes.map { it?.elementType }
+            val elementCounts = IntArray(outputs.size) { readAsFloats(outputs[it], types[it]).size }
+            return PreparedModel(compiled, inputs, outputs, dims, elementCounts, outputShapes, types)
         } catch (e: Throwable) {
             closeBuffers(inputs, outputs)
             runCatching { compiled.close() }
@@ -121,13 +141,24 @@ class LiteRtModel(modelPath: String, useGpu: Boolean, private val tag: String) {
     }
 
     /** Run inference: write [input] floats into the first input buffer, run, and return each output as a flat float array. */
-    fun run(input: FloatArray): List<FloatArray> {
+    override fun run(input: FloatArray): List<FloatArray> {
         inputBuffers[0].writeFloat(input)
         model.run(inputBuffers, outputBuffers)
-        return List(outputBuffers.size) { outputBuffers[it].readFloat() }
+        return List(outputBuffers.size) { readAsFloats(outputBuffers[it], outputTypes[it]) }
     }
 
-    fun close() {
+    /**
+     * Read a tensor buffer as floats; integer outputs (e.g. semantic class maps) are widened. Dispatch on the
+     * declared element type - the native read functions don't type-check, so a mistyped read corrupts memory.
+     */
+    private fun readAsFloats(buffer: TensorBuffer, type: TensorType.ElementType?): FloatArray = when (type) {
+        TensorType.ElementType.INT -> buffer.readInt().let { v -> FloatArray(v.size) { v[it].toFloat() } }
+        TensorType.ElementType.INT8 -> widenToFloats(buffer.readInt8())
+        TensorType.ElementType.INT64 -> buffer.readLong().let { v -> FloatArray(v.size) { v[it].toFloat() } }
+        else -> buffer.readFloat() // FLOAT, or null when the type can't be read (all official assets are float)
+    }
+
+    override fun close() {
         closeBuffers(inputBuffers, outputBuffers)
         try {
             model.close()

@@ -2,6 +2,7 @@
 
 package com.ultralytics.yolo
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.graphics.RectF
@@ -11,6 +12,60 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+
+/**
+ * Runtime-agnostic inference model behind the predictors: NHWC interleaved-RGB float32 in, flat float32 outputs out.
+ * Implemented by [LiteRtModel] (TFLite on LiteRT, GPU→CPU ladder) and [OrtQnnModel] (QNN context-binary ONNX on the
+ * Snapdragon NPU).
+ */
+interface InferenceModel {
+    /** Accelerator in use: "NPU", "GPU" or "CPU". */
+    val accelerator: String
+
+    /** Input tensor dimensions in NHWC convention, e.g. [1, 640, 640, 3]. */
+    val inputDims: IntArray
+
+    /** Float element count of each output buffer, in order. */
+    val outputElementCounts: IntArray
+
+    /** Output tensor dimensions, in order (e.g. [[1, 84, 8400]] for detect). */
+    val outputDims: List<IntArray>
+
+    /** Run inference on NHWC interleaved-RGB floats, returning each output as a flat float array. */
+    fun run(input: FloatArray): List<FloatArray>
+
+    fun close()
+
+    companion object {
+        /**
+         * Create the model wrapper for [modelPath]: a QNN context-binary ONNX (`*_qnn.onnx`, the Ultralytics QNN
+         * export) runs on the Snapdragon NPU via ONNX Runtime; everything else is TFLite on LiteRT. QNN models have
+         * no CPU fallback (the context binary is precompiled Hexagon code), so failures here should be handled by
+         * falling back to a TFLite model.
+         */
+        fun create(context: Context, modelPath: String, useGpu: Boolean, tag: String): InferenceModel {
+            val lower = modelPath.lowercase()
+            if (!lower.endsWith(".onnx")) return LiteRtModel(context, modelPath, useGpu, tag)
+            require(lower.endsWith("_qnn.onnx")) {
+                "Generic ONNX models are not supported; use an Ultralytics QNN context-binary export (*_qnn.onnx) " +
+                    "or a .tflite model"
+            }
+            return try {
+                OrtQnnModel(context, modelPath, tag)
+            } catch (e: LinkageError) {
+                throw IllegalStateException(
+                    "QNN (*_qnn.onnx) models require the optional 'com.microsoft.onnxruntime:onnxruntime-android-qnn' " +
+                        "dependency in your app's build.gradle and an arm64 device",
+                    e,
+                )
+            }
+        }
+    }
+}
+
+/** Widen unsigned 8-bit model outputs (e.g. semantic class maps) into the predictors' float pipeline. */
+internal fun widenToFloats(bytes: ByteArray): FloatArray =
+    FloatArray(bytes.size) { i -> (bytes[i].toInt() and 0xFF).toFloat() }
 
 interface Predictor {
     /**
@@ -38,7 +93,7 @@ interface Predictor {
 abstract class BasePredictor : Predictor {
     override var isUpdating: Boolean = false
     override lateinit var labels: List<String>
-    protected lateinit var rtModel: LiteRtModel
+    protected lateinit var rtModel: InferenceModel
     override lateinit var inputSize: Size
     protected lateinit var modelInputSize: Pair<Int, Int>
     protected fun isInterpreterInitialized() = this::rtModel.isInitialized
@@ -62,10 +117,14 @@ abstract class BasePredictor : Predictor {
 
     protected data class FrameTiming(
         val speedMs: Double,
-        val fps: Double
+        val fps: Double,
+        val preMs: Double,
+        val inferenceMs: Double,
+        val postMs: Double,
     )
 
-    protected fun finishTiming(): FrameTiming {
+    /** Finalize per-frame timing. [preEnd] and [inferEnd] are nanoTime stamps after preprocessing and inference. */
+    protected fun finishTiming(preEnd: Long, inferEnd: Long): FrameTiming {
         val now = System.nanoTime()
         val dtMs = (now - t0) / 1_000_000.0
         t2 = 0.05 * dtMs + 0.95 * t2
@@ -73,7 +132,10 @@ abstract class BasePredictor : Predictor {
         t3 = now
         return FrameTiming(
             speedMs = dtMs,
-            fps = if (t4 > 0.0) 1.0 / t4 else 0.0
+            fps = if (t4 > 0.0) 1.0 / t4 else 0.0,
+            preMs = (preEnd - t0) / 1_000_000.0,
+            inferenceMs = (inferEnd - preEnd) / 1_000_000.0,
+            postMs = (now - inferEnd) / 1_000_000.0,
         )
     }
 

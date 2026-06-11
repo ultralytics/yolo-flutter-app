@@ -31,27 +31,28 @@ The main goal is simple integration: use an official model ID, or drop in your o
     <img src="https://raw.githubusercontent.com/ultralytics/assets/main/app/google-play.svg" width="15%" alt="Get it on Google Play"></a>
 </div>
 
-## ✨ Why This Plugin
+## ✨ Features
 
 - Official Ultralytics plugin for Flutter
 - One Dart API for Android and iOS
 - Metadata-first model loading with official model download and caching
 - Real-time camera inference and single-image inference
-- Production-ready controls for thresholds, GPU use, and streaming
+- Controls for thresholds, accelerator selection, and result streaming
 - YOLO26 and YOLO11 model families supported
 
-| Feature                               | Android | iOS | Details                                                          |
-| ------------------------------------- | ------- | --- | ---------------------------------------------------------------- |
-| Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores                    |
-| Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                            |
-| Semantic Segmentation                 | ✅      | ✅  | Dense class masks for every pixel                                |
-| Image Classification                  | ✅      | ✅  | Top class predictions and scores                                 |
-| Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores                       |
-| Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                                |
-| Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                             |
-| Single-Image Inference                | ✅      | ✅  | `YOLO` for image bytes                                           |
-| Official Models                       | ✅      | ✅  | Discovery, download, and caching for packaged model IDs          |
-| Custom Models                         | ✅      | ✅  | LiteRT (TFLite) on Android, Core ML on iOS, metadata-first tasks |
+| Feature                               | Android | iOS | Details                                                            |
+| ------------------------------------- | ------- | --- | ------------------------------------------------------------------ |
+| Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores                      |
+| Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                              |
+| Semantic Segmentation                 | ✅      | ✅  | Dense class masks for every pixel                                  |
+| Image Classification                  | ✅      | ✅  | Top class predictions and scores                                   |
+| Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores                         |
+| Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                                  |
+| Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                               |
+| Single-Image Inference                | ✅      | ✅  | `YOLO` for image bytes                                             |
+| Official Models                       | ✅      | ✅  | Discovery, download, and caching for packaged model IDs            |
+| Custom Models                         | ✅      | ✅  | LiteRT (TFLite) on Android, Core ML on iOS, metadata-first tasks   |
+| Qualcomm NPU (QNN)                    | ✅      | —   | Opt-in Hexagon NPU inference for `*_qnn.onnx` models on Snapdragon |
 
 ## ⚡ Quick Start
 
@@ -111,10 +112,11 @@ Call `YOLO.officialModels()` to see which official IDs are available on the curr
 
 Official assets are maintained as GitHub release assets:
 
-| Platform | Runtime asset                 | Release                                                                                          |
-| -------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| Android  | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
-| iOS      | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+| Platform             | Runtime asset                 | Release                                                                                          |
+| -------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| Android              | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| Android NPU (opt-in) | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| iOS                  | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms. These release tags are intentionally pinned for reproducible first-use downloads. See the [model guide](doc/models.md) for the official export matrix, URL patterns, and model properties.
 
@@ -139,6 +141,42 @@ final yolo = YOLO(
 
 Pass an `http` or `https` URL and the plugin will download it into app storage before loading it.
 
+### 4. Qualcomm NPU models (Android, opt-in)
+
+Android ships with LiteRT (TFLite) and that remains the default — nothing changes for existing apps, and the
+QNN support adds zero bytes to your build. Any model path ending in `_qnn.onnx` (a Qualcomm QNN context binary
+exported with `yolo export format=qnn`) is routed to the Hexagon NPU through the ONNX Runtime QNN Execution
+Provider instead.
+
+Running QNN models requires a Snapdragon device with a Hexagon HTP (Snapdragon 8 Gen 2 or newer for the official
+`_v73` assets; `_v81` targets Snapdragon 8 Elite Gen 5) and three additions to your app's
+`android/app/build.gradle`:
+
+```groovy
+android {
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true // the Hexagon DSP loader needs real .so files, not APK-mmapped ones
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android-qnn:1.26.0'
+    implementation 'com.qualcomm.qti:qnn-runtime:2.46.0' // newer than the AAR's bundled QAIRT; required for the latest Snapdragons
+}
+```
+
+```dart
+final yolo = YOLO(
+  modelPath: 'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5/yolo26n_v73_qnn.onnx',
+  task: YOLOTask.detect,
+);
+```
+
+Without the Gradle opt-in, loading a `_qnn.onnx` model fails with a clear error and TFLite models are unaffected.
+See the [performance guide](doc/performance.md) for measured CPU/GPU/NPU numbers and tuning notes.
+
 ## 🧭 Official vs. Custom
 
 | Use case                                              | Recommended path                  |
@@ -151,7 +189,7 @@ Pass an `http` or `https` URL and the plugin will download it into app storage b
 
 For official models, start with `YOLO.defaultOfficialModel()` or `YOLO.officialModels()`. For custom models, start with the exported file you actually plan to ship.
 
-## 📥 Drop Your Own Model Into an App
+## 📥 Using Your Own Model
 
 For custom models, keep the app-side setup minimal.
 
@@ -191,7 +229,7 @@ from ultralytics import YOLO
 YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
 ```
 
-## 🎯 Choose The Right API
+## 🎯 Choosing an API
 
 Use `YOLO` when you already have image bytes and want one prediction at a time:
 

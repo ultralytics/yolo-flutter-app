@@ -47,9 +47,10 @@ Official assets are maintained as GitHub release assets:
 URL patterns:
 
 - Android TFLite: `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5/<model>_int8.tflite`
+- Android QNN (opt-in NPU): `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5/<model>_v73_qnn.onnx` (Snapdragon 8 Gen 2+; `_v81` for 8 Elite Gen 5)
 - iOS Core ML: `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.mlpackage.zip`
 
-The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms. The native iOS app uses the same Core ML release through `RemoteModels.swift`. These release tags are intentionally pinned in code for reproducible first-use downloads; when official assets move to a new release, update the resolver constants, docs, and URL tests in the same PR.
+The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms. QNN models are not auto-resolved by model ID — pass their URL or file path explicitly; any path ending in `_qnn.onnx` runs on the Hexagon NPU via the ONNX Runtime QNN Execution Provider (see the README's NPU section for the required Gradle opt-in). QNN assets are nano-only, exported with `ultralytics` 8.4.65 (channel-last input, in-graph ArgMax class maps for semantic). The native iOS app uses the same Core ML release through `RemoteModels.swift`. These release tags are intentionally pinned in code for reproducible first-use downloads; when official assets move to a new release, update the resolver constants, docs, and URL tests in the same PR.
 
 Official export properties:
 

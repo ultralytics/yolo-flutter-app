@@ -54,10 +54,27 @@ android {
     lint {
         checkReleaseBuilds false
     }
+
+    // The Hexagon DSP loads QNN Skel libraries via filesystem paths (ADSP_LIBRARY_PATH), so they must exist as
+    // real files in nativeLibraryDir rather than being mmapped out of the APK.
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Snapdragon NPU support for QNN context-binary ONNX models (*_qnn.onnx). The plugin declares this compileOnly;
+    // apps opt in to the ~70MB arm64 runtime by adding it here.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android-qnn:1.26.0")
+    // Override the AAR's transitive QAIRT 2.42 with 2.46: 2.42's device table predates the
+    // Snapdragon 8 Elite Gen 5 (SM8850), failing QnnDevice_create with INVALID_CONFIG.
+    implementation("com.qualcomm.qti:qnn-runtime:2.46.0")
 }
 
 // Bundle the nano YOLO models into the app at build time. They are NOT committed to git (large binaries, gitignored);

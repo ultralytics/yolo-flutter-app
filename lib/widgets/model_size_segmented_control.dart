@@ -105,10 +105,16 @@ class ModelSizeSegmentedControl extends StatelessWidget {
           },
         );
 
-        // Full-width when there is enough room, matching the iOS model row. On constrained layouts, lay the control
-        // out at its natural width and scale down so Cupertino never receives impossible per-segment constraints.
+        // Full-width up to a portrait-phone cap, matching the iOS model row - in landscape the row centers at the
+        // cap instead of stretching edge to edge. On constrained layouts, lay the control out at its natural width
+        // and scale down so Cupertino never receives impossible per-segment constraints.
         if (!constraints.hasBoundedWidth || constraints.maxWidth >= 280) {
-          return SizedBox(width: double.infinity, child: control);
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: SizedBox(width: double.infinity, child: control),
+            ),
+          );
         }
 
         return Center(

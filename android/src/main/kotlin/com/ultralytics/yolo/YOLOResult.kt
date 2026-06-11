@@ -17,6 +17,9 @@ data class YOLOResult(
     val annotatedImage: Bitmap? = null,
     val speed: Double,
     val fps: Double? = null,
+    val preMs: Double = 0.0,
+    val inferenceMs: Double = 0.0,
+    val postMs: Double = 0.0,
     val originalImage: Bitmap? = null,
     val names: List<String>
 )

@@ -30,6 +30,81 @@ Use a simple rule:
 - default app flow: start with `yolo26n`
 - custom production flow: benchmark your exact export on target devices
 
+## 📊 Measured Backend Performance
+
+End-to-end `predict()` speeds for the official YOLO26n models on a [Xiaomi 17](https://www.mi.com/) phone powered by the
+Qualcomm [Snapdragon 8 Elite Gen 5](https://www.qualcomm.com/products/mobile/snapdragon/smartphones) (SM8850), which pairs
+a Qualcomm Oryon CPU with an Adreno GPU and the Hexagon NPU (HTP architecture v81). Each cell shows the **total time**
+with the preprocess / inference / postprocess split beneath it.
+
+| Model        | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>INT8 TFLite<br>(ms)</sup> | GPU Adreno<br><sup>INT8 TFLite<br>(ms)</sup> | NPU Hexagon<br><sup>QNN A16W8<br>(ms)</sup>      |
+| ------------ | -------- | --------------------------- | ------------------------------------- | -------------------------------------------- | ------------------------------------------------ |
+| YOLO26n      | Detect   | 640                         | 53.3<br><sup>3.6 / 47.4 / 2.4</sup>   | 17.2<br><sup>3.6 / 9.1 / 4.5</sup>           | **11.3**<br><sup>3.5 / 5.6 / 2.2</sup>           |
+| YOLO26n-seg  | Segment  | 640                         | 76.0<br><sup>3.6 / 64.7 / 7.7</sup>   | 23.9<br><sup>3.6 / 11.8 / 8.6</sup>          | **21.3**<br><sup>3.5 / 7.9 / 10.0</sup>          |
+| YOLO26n-sem  | Semantic | 1024                        | 66.6<br><sup>3.6 / 46.3 / 16.8</sup>  | **37.7**<br><sup>3.6 / 17.4 / 16.7</sup>     | 49.1<sup>1</sup><br><sup>8.8 / 20.8 / 19.5</sup> |
+| YOLO26n-cls  | Classify | 224                         | 5.2<br><sup>0.8 / 4.0 / 0.5</sup>     | 4.5<br><sup>1.6 / 2.2 / 0.7</sup>            | **2.4**<br><sup>1.1 / 0.6 / 0.7</sup>            |
+| YOLO26n-pose | Pose     | 640                         | 57.7<br><sup>3.5 / 52.4 / 1.8</sup>   | 15.2<br><sup>3.6 / 9.7 / 1.9</sup>           | **10.8**<br><sup>3.5 / 5.6 / 1.8</sup>           |
+| YOLO26n-obb  | OBB      | 1024                        | 50.3<br><sup>3.6 / 45.4 / 1.3</sup>   | **13.9**<br><sup>3.8 / 8.2 / 1.8</sup>       | 21.0<br><sup>8.8 / 10.9 / 1.3</sup>              |
+
+- **Speed** values are the full `predict()` time — preprocessing + inference + postprocessing, excluding annotation
+  drawing — as the mean of 15 runs after 3 warmup runs on [bus.jpg](https://ultralytics.com/images/bus.jpg).
+  <br>Reproduce with `flutter test integration_test/qnn_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true`
+- **CPU** and **GPU** run the default official INT8 TFLite assets the plugin auto-downloads, on LiteRT with
+  `useGpu: false` / `true`. **NPU** runs the `*_v81_qnn.onnx` context binaries (INT8 weights, 16-bit activations) from
+  the same release via the ONNX Runtime QNN Execution Provider.
+- <sup>1</sup> Semantic QNN uses the in-graph ArgMax class-map exports (ultralytics#24790), which replaced erratic
+  123-1065 ms logits decoding with a stable ~49 ms; the GPU remains slightly faster for semantic at 1024px. The
+  official `v0.3.5` QNN release assets ship in this channel-last class-map format, exported with ultralytics
+  8.4.65.
+- **These are single-image burst latencies**, not sustained camera frame times: one photo through `predict()` on a
+  thermally rested device. Real-time camera operation runs higher — full-sensor frames are letterboxed to the model
+  input every frame and the silicon thermally settles under load (on an iPhone 17 Pro, YOLO26n detect measures
+  ~3.8 ms burst but ~16 ms/frame sustained in the live camera). Watch the in-app pre/inference/post HUD line for
+  your device's steady-state numbers, and benchmark your exact models on your target hardware.
+
+## 🔭 Optimization Findings and Future Exploration
+
+The table above reflects a device-validated optimization pass (Snapdragon 8 Elite Gen 5, June 2026). What was tried,
+what worked, and what's left on the table:
+
+**Shipped (in the table):**
+
+- **Flat-output decode** for detect/pose/OBB: postprocess dropped from ~12 ms to 0.7-2.4 ms on every backend by
+  reading the model output directly (no reshape copies, no JNI nested-array marshaling, confidence checked before
+  box reads) — the same pattern as MediaPipe's decode and the iOS SDK's raw-pointer reads.
+- **Channel-last (NHWC) QNN exports** (ultralytics#24790): removes the app's CPU transpose and the NPU's boundary
+  transpose simultaneously; detect inference 7.4 → 5.8 ms.
+- **In-graph ArgMax semantic QNN exports** (ultralytics#24790): a uint8 class map replaces ~80 MB of float logits;
+  stable ~50 ms vs 123-1065 ms (erratic) before.
+- **GPU program cache** (`GpuOptions.serializationDir`): model re-opens skip OpenCL compilation.
+
+**Tested and intentionally NOT changed (don't re-litigate without new evidence):**
+
+- `htp_performance_mode`: burst/sustained/high_performance are identical for our use — ORT votes the same max DCVS
+  corner for burst and sustained; the default stays `burst`.
+- `offload_graph_io_quantization=0`: no measurable effect on normal-sized outputs.
+- **Naive A8W8 quantization**: 33% faster inference but zero detections — a shared uint8 scale on the concatenated
+  output destroys scores. A16W8 stays the export default.
+- **fp16 GPU variants**: identical inference time to INT8 on the LiteRT GPU accelerator (it computes in fp16
+  internally either way) — no reason to ship larger fp16 assets.
+- **In-graph ArgMax for semantic TFLite**: the GPU delegate cannot compile `ARG_MAX` with int64 indices (what
+  onnx2tf emits; its argmax-replacement flags no longer exist), so the whole graph falls back to CPU — 137 ms vs
+  37.6 ms for GPU logits + the app's NHWC argmax. The class-map export stays QNN/Core ML-only.
+- **int32 class maps**: uint8 quarters the NPU→CPU output transfer and every consumer reads it (Core ML promotes
+  it to int32 in-spec); int32 indices are reserved for >256-class models. uint8 stays the class-map dtype.
+
+**Future exploration (in expected-value order):**
+
+1. **A8W8 with mixed precision**: Qualcomm's "LiteMP" recipe (per-channel weights + ~10% of layers promoted to
+   16-bit via `init_overrides`) recovers full accuracy at near-A8 speed — potential further ~30% NPU inference cut,
+   needs an mAP validation loop in the exporter.
+2. **Zero-copy I/O**: LiteRT supports AHardwareBuffer/GL/CL tensor interop and ORT QNN has a shared-memory
+   allocator (`QnnHtpShared`), but both are C/C++-API-only today — revisit when the Kotlin/Java surfaces catch up,
+   or via a small JNI shim. Attacks the remaining ~3.5 ms preprocess copy.
+3. **RGBA camera input**: feeding 4-channel frames avoids the RGB repack (the GPU's native layout is 4-channel).
+4. **Per-run HTP power votes** (`qnn.htp_perf_mode` run options): vote high during camera sessions, low after —
+   battery/thermal optimization for sustained use rather than a latency win.
+
 ## 🎚️ Tune Thresholds
 
 Higher confidence thresholds reduce post-processing work and visual noise:
