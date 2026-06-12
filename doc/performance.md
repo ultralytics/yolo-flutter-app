@@ -33,7 +33,7 @@ Use a simple rule:
 ## 📊 Measured Backend Performance
 
 End-to-end `predict()` speeds for the official YOLO26n models on a [Xiaomi 17](https://www.mi.com/) phone powered by the
-Qualcomm [Snapdragon 8 Elite Gen 5](https://www.qualcomm.com/products/mobile/snapdragon/smartphones) (SM8850), which pairs
+Qualcomm [Snapdragon 8 Elite Gen 5](https://www.qualcomm.com/smartphones) (SM8850), which pairs
 a Qualcomm Oryon CPU with an Adreno GPU and the Hexagon NPU (HTP architecture v81). Each cell shows the **total time**
 with the preprocess / inference / postprocess split beneath it.
 
