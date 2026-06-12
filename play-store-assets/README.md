@@ -5,7 +5,7 @@ ignored by git and excluded from the pub package; only this README and the featu
 
 Useful links:
 
-- [Google Play Console](https://play.google.com/console)
+- [Google Play Console](https://play.google.com/console/about/)
 - [Prepare and roll out a release](https://support.google.com/googleplay/android-developer/answer/9859348)
 - [Upload your app to Play Console](https://developer.android.com/studio/publish/upload-bundle)
 - [Inspect app versions in Latest releases and bundles](https://support.google.com/googleplay/android-developer/answer/9844279)
@@ -64,7 +64,7 @@ scripts/build_play_store_assets.sh --notes /path/to/whats-new.txt
 
 ## 3. Upload To Play Console
 
-Open [Google Play Console](https://play.google.com/console), select the Ultralytics YOLO app, then create a new
+Open [Google Play Console](https://play.google.com/console/about/), select the Ultralytics YOLO app, then create a new
 release in the target track. The usual navigation is **Test and release > Production** for production releases, or the
 matching testing track for internal, closed, or open testing releases.
 
