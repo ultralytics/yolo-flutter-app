@@ -43,6 +43,8 @@ SIZES = ("n", "s", "m", "l", "x")
 
 @dataclass(frozen=True)
 class TaskSpec:
+    """Export settings for one YOLO task family."""
+
     suffix: str
     imgsz: int
 
@@ -60,6 +62,7 @@ _TASK_NAMES_CACHE: dict[str, dict[int, str]] = {}
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--repo", default=DEFAULT_REPO)
@@ -86,6 +89,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def verify_tflite(path: Path) -> list[tuple[int, ...]]:
+    """Run one zero-input inference and return output tensor shapes."""
     import tensorflow as tf
 
     interpreter = tf.lite.Interpreter(model_path=str(path), num_threads=1)
@@ -102,6 +106,7 @@ def verify_tflite(path: Path) -> list[tuple[int, ...]]:
 
 
 def tflite_metadata(path: Path) -> dict | None:
+    """Return embedded Ultralytics TFLite metadata when present."""
     try:
         with zipfile.ZipFile(path) as zf:
             infos = [
@@ -115,6 +120,7 @@ def tflite_metadata(path: Path) -> dict | None:
 
 
 def task_names(task_name: str, suffix: str) -> dict[int, str]:
+    """Return class names for the representative model in a task family."""
     if task_name not in _TASK_NAMES_CACHE:
         from ultralytics import YOLO
 
@@ -125,6 +131,7 @@ def task_names(task_name: str, suffix: str) -> dict[int, str]:
 
 
 def append_tflite_metadata(path: Path, model_id: str, task_name: str, task: TaskSpec) -> None:
+    """Append Ultralytics metadata to a TFLite model archive."""
     metadata = {
         "description": f"Ultralytics {model_id} int8 TFLite model",
         "author": "Ultralytics",
@@ -146,6 +153,7 @@ def append_tflite_metadata(path: Path, model_id: str, task_name: str, task: Task
 
 
 def ensure_tflite_metadata(path: Path, model_id: str, task_name: str, task: TaskSpec) -> None:
+    """Add TFLite metadata when it is missing or incomplete."""
     metadata = tflite_metadata(path)
     names = (metadata or {}).get("names")
     if (
@@ -162,6 +170,7 @@ def ensure_tflite_metadata(path: Path, model_id: str, task_name: str, task: Task
 
 
 def upload_assets(repo: str, tag: str, assets: list[Path]) -> None:
+    """Upload generated assets to a GitHub release."""
     if not assets:
         return
     command = ["gh", "release", "upload", tag, "--repo", repo, "--clobber", *(str(path) for path in assets)]
@@ -169,6 +178,7 @@ def upload_assets(repo: str, tag: str, assets: list[Path]) -> None:
 
 
 def display_path(path: Path) -> str:
+    """Return a repository-relative path when possible."""
     try:
         return str(path.relative_to(ROOT))
     except ValueError:
@@ -176,6 +186,7 @@ def display_path(path: Path) -> str:
 
 
 def export_one(model_id: str, imgsz: int, data: str, output_dir: Path) -> None:
+    """Export one YOLO model to int8 TFLite."""
     from ultralytics import YOLO
 
     os.chdir(output_dir)
@@ -191,6 +202,7 @@ def export_one(model_id: str, imgsz: int, data: str, output_dir: Path) -> None:
 
 
 def ensure_coco128_dataset() -> Path:
+    """Download coco128 under /datasets when it is missing."""
     dataset_root = Path("/datasets/coco128")
     images_dir = dataset_root / "images" / "train2017"
     if images_dir.is_dir():
@@ -206,6 +218,7 @@ def ensure_coco128_dataset() -> Path:
 
 
 def classify_calibration_data(data: str, output_dir: Path) -> str:
+    """Return classification calibration data derived from the requested source."""
     source = Path(data)
     if source.is_dir():
         return str(source.resolve())
@@ -237,6 +250,7 @@ def classify_calibration_data(data: str, output_dir: Path) -> str:
 
 
 def image_only_calibration_data(data: str, output_dir: Path, task_name: str) -> str:
+    """Return image-only calibration data for tasks that cannot use labels."""
     source = Path(data)
     if source.is_file():
         if data != "coco128.yaml":
@@ -276,6 +290,7 @@ def image_only_calibration_data(data: str, output_dir: Path, task_name: str) -> 
 
 
 def calibration_data(task_name: str, data: str | None, output_dir: Path) -> str:
+    """Return calibration data for a task and optional override."""
     if data is None:
         from ultralytics.cfg import TASK2CALIBRATIONDATA
 
@@ -288,6 +303,7 @@ def calibration_data(task_name: str, data: str | None, output_dir: Path) -> str:
 
 
 def exported_tflite_path(output_dir: Path, model_id: str) -> Path | None:
+    """Find an exported TFLite file for a model."""
     saved_model_dirs = [
         output_dir / f"{model_id}_saved_model",
         Path("/ultralytics/weights") / f"{model_id}_saved_model",
@@ -304,6 +320,7 @@ def exported_tflite_path(output_dir: Path, model_id: str) -> Path | None:
 
 
 def wait_for_stable_file(path: Path, checks: int = 2, interval: float = 1.0) -> bool:
+    """Wait until a file size remains stable across consecutive checks."""
     last_size = -1
     stable_checks = 0
     while path.exists():
@@ -320,6 +337,7 @@ def wait_for_stable_file(path: Path, checks: int = 2, interval: float = 1.0) -> 
 
 
 def stop_process(process: subprocess.Popen[bytes]) -> None:
+    """Terminate a worker process and kill it if it does not exit."""
     process.terminate()
     try:
         process.wait(timeout=15)
@@ -335,6 +353,7 @@ def run_export_worker(
     output_dir: Path,
     data: str,
 ) -> Path:
+    """Run a child export process and return the generated TFLite path."""
     command = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -368,6 +387,7 @@ def run_export_worker(
 
 
 def main() -> None:
+    """Export requested YOLO TFLite release assets."""
     args = parse_args()
     output_dir = args.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
