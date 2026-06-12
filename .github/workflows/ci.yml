@@ -82,13 +82,6 @@ jobs:
         working-directory: example
         run: flutter build apk --debug
 
-      - name: Build example Android release bundle
-        working-directory: example
-        run: flutter build appbundle --release
-
-      - name: Verify example Android release bundle
-        run: scripts/build_play_store_assets.sh --verify-aab example/build/app/outputs/bundle/release/app-release.aab
-
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -100,7 +93,7 @@ jobs:
         with:
           api-level: 34
           arch: x86_64
-          target: google_apis
+          target: default
           working-directory: example
           script: |
             set -eux
@@ -110,6 +103,13 @@ jobs:
             sleep 10
             adb shell pidof com.ultralytics.yolo
             adb shell dumpsys activity activities | grep com.ultralytics.yolo
+
+      - name: Build example Android release bundle
+        working-directory: example
+        run: flutter build appbundle --release
+
+      - name: Verify example Android release bundle
+        run: scripts/build_play_store_assets.sh --verify-aab example/build/app/outputs/bundle/release/app-release.aab
 
   example-ios:
     runs-on: macos-26
