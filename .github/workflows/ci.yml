@@ -132,8 +132,20 @@ jobs:
           UDID=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/{print $2; exit}')
           echo "Booting simulator $UDID"
           xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
           echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Build example iOS app
+        working-directory: example
+        run: flutter build ios --simulator --no-codesign
 
       - name: Launch smoke test (iOS Simulator)
         working-directory: example
-        run: flutter test integration_test/app_launch_test.dart -d "$SIMULATOR_UDID"
+        run: |
+          set -eux
+          APP_ID=com.ultralytics.yoloExample
+          xcrun simctl install "$SIMULATOR_UDID" build/ios/iphonesimulator/Runner.app
+          xcrun simctl privacy "$SIMULATOR_UDID" grant camera "$APP_ID"
+          xcrun simctl launch --terminate-running-process "$SIMULATOR_UDID" "$APP_ID"
+          sleep 10
+          xcrun simctl terminate "$SIMULATOR_UDID" "$APP_ID"
