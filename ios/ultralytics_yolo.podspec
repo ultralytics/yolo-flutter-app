@@ -13,9 +13,11 @@ Flutter plugin for YOLO (You Only Look Once) models, supporting object detection
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'Ultralytics' => 'info@ultralytics.com' }
   s.source           = { :path => '.' }
-  # Restrict to Swift/Obj-C sources — globbing `**/*` was sweeping in `Classes/README.md` and triggering a
-  # `no rule to process file ... net.daringfireball.markdown` warning on every Xcode build.
-  s.source_files = 'Classes/**/*.{swift,h,m}'
+  # Shared source tree with the Swift Package (ios/ultralytics_yolo/Package.swift) so CocoaPods and SwiftPM compile
+  # the exact same files. Glob only Swift sources: the co-located README.md and PrivacyInfo.xcprivacy are handled by
+  # SwiftPM's `exclude`/resources and the resource_bundles below, and restricting the glob avoids the markdown
+  # "no rule to process file ... net.daringfireball.markdown" warning Xcode emits when README.md is swept in.
+  s.source_files = 'ultralytics_yolo/Sources/ultralytics_yolo/**/*.swift'
   s.dependency 'Flutter'
   s.dependency 'UltralyticsYOLO', '>= 8.9.5', '< 9.0'
   s.platform = :ios, '13.0'
@@ -28,5 +30,5 @@ Flutter plugin for YOLO (You Only Look Once) models, supporting object detection
   # required reason APIs, update the PrivacyInfo.xcprivacy file to describe your
   # plugin's privacy impact, and then uncomment this line. For more information,
   # see https://developer.apple.com/documentation/bundleresources/privacy-manifest-files
-  s.resource_bundles = {'ultralytics_yolo_privacy' => ['Resources/PrivacyInfo.xcprivacy']}
+  s.resource_bundles = {'ultralytics_yolo_privacy' => ['ultralytics_yolo/Sources/ultralytics_yolo/PrivacyInfo.xcprivacy']}
 end

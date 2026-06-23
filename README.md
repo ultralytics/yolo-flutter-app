@@ -337,7 +337,7 @@ This repository provides:
 - Optimized for iOS performance
 
 > [!NOTE]
-> On iOS this plugin is built on the shared [`UltralyticsYOLO` Swift package](https://github.com/ultralytics/yolo-ios-app) (`import UltralyticsYOLO`) — the same inference core used by the native iOS app — so both stay in sync from a single source of truth. The plugin's `ios/Classes` directory holds only the Flutter bridge and the camera/view components.
+> On iOS this plugin is built on the shared [`UltralyticsYOLO` Swift package](https://github.com/ultralytics/yolo-ios-app) (`import UltralyticsYOLO`) — the same inference core used by the native iOS app — so both stay in sync from a single source of truth. The plugin's iOS sources (`ios/ultralytics_yolo/`) hold only the Flutter bridge and the camera/view components, and ship for both Swift Package Manager and CocoaPods.
 
 ## 📮 Contact
 

@@ -18,7 +18,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.5.1 # Latest version
+  ultralytics_yolo: ^0.6.5 # Latest version
 ```
 
 Run the installation command:
@@ -31,14 +31,18 @@ flutter pub get
 
 ### iOS Configuration
 
+The plugin ships for **both Swift Package Manager and CocoaPods**, so it works whichever build system your app uses — no plugin-specific setup is required either way. CocoaPods is Flutter's default; opt into Swift Package Manager with `flutter config --enable-swift-package-manager`. On iOS the YOLO inference core is the shared [`UltralyticsYOLO` Swift package](https://github.com/ultralytics/yolo-ios-app), resolved automatically by whichever build system is active.
+
 #### 1. Update iOS Deployment Target
 
-Edit `ios/Podfile` and set the minimum iOS version:
+Set the minimum iOS version to 13.0. For CocoaPods apps, edit `ios/Podfile`:
 
 ```ruby
 # ios/Podfile
 platform :ios, '13.0'  # Minimum iOS 13.0 required
 ```
+
+For Swift Package Manager apps, set the **iOS Deployment Target** to 13.0 on the Runner target in Xcode.
 
 #### 2. Camera Permission (Optional)
 
@@ -53,10 +57,9 @@ If using camera features, add permissions to `ios/Info.plist`:
 #### 3. Clean and Rebuild
 
 ```bash
-cd ios
 flutter clean
 flutter pub get
-cd ios && pod install --repo-update
+cd ios && pod install --repo-update # CocoaPods apps only; Swift Package Manager resolves on build
 cd .. && flutter run
 ```
 
@@ -240,8 +243,10 @@ flutter run
 **Issue**: iOS build fails with "No such module"
 
 ```bash
-# Solution: Update pods
+# CocoaPods apps: refresh pods
 cd ios && pod install --repo-update
+# Swift Package Manager apps: re-resolve packages
+flutter clean && flutter pub get
 ```
 
 **Issue**: Android build fails with "API level" error

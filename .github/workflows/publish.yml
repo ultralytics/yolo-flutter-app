@@ -75,7 +75,15 @@ jobs:
           channel: "stable"
           cache: true
       - run: flutter pub get
-      - run: dart pub publish --dry-run
+      - name: Validate pub.dev package (includes the iOS Swift Package)
+        shell: bash
+        run: |
+          set -o pipefail
+          dart pub publish --dry-run 2>&1 | tee dry-run.txt
+          # Guarantee the SwiftPM manifest ships in the published archive so Swift Package Manager consumers can
+          # resolve the plugin from pub.dev (the CocoaPods podspec ships alongside it for CocoaPods consumers).
+          grep -q 'Package.swift' dry-run.txt || { echo "::error::ios/ultralytics_yolo/Package.swift is missing from the pub.dev package"; exit 1; }
+          rm -f dry-run.txt
       - uses: actions/upload-artifact@v7
         with:
           name: package

@@ -4,6 +4,8 @@
 
 This directory contains the **Flutter-specific** iOS layer of the plugin. The shared YOLO inference core (Core ML model loading, metadata parsing, and the task-specific predictors) lives in the [`UltralyticsYOLO` Swift package](https://github.com/ultralytics/yolo-ios-app) and is consumed here via `import UltralyticsYOLO`, so the plugin and the native iOS app share a single source of truth.
 
+These sources are compiled by **both** build systems from this same tree: the Swift Package manifest at `ios/ultralytics_yolo/Package.swift` (Swift Package Manager) and `ios/ultralytics_yolo.podspec` (CocoaPods). Both pin the same `UltralyticsYOLO` version range — bump them together.
+
 ## What Lives Here
 
 - the platform view + method-channel bridge to the Dart API (`YOLOPlugin`, `YOLOInstanceManager`, `SwiftYOLOPlatformView`)
