@@ -7,8 +7,8 @@
 // using the native speed (pre + inference + post, no plotting). CPU and GPU rows use the default
 // official int8 TFLite assets (what the app ships); QNN rows use the release context binaries.
 //
-// Run with:
-//   flutter test integration_test/qnn_benchmark_test.dart -d <device> [--dart-define=RUN_BENCH=1]
+// Run with (the QNN runtime is opt-in, off by default):
+//   ENABLE_QNN=1 flutter test integration_test/qnn_benchmark_test.dart -d <device> [--dart-define=RUN_BENCH=1]
 
 import 'dart:io';
 import 'dart:typed_data';

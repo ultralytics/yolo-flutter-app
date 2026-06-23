@@ -15,6 +15,11 @@ def hasReleaseSigning = keystoreProperties["storeFile"] &&
     (keystoreProperties["keyPassword"] ?: System.getenv("ANDROID_KEY_PASSWORD")) &&
     (keystoreProperties["storePassword"] ?: System.getenv("ANDROID_STORE_PASSWORD"))
 
+// Snapdragon NPU (QNN) runtime is optional and OFF by default — it adds ~230 MB of uncompressed arm64 native libs.
+// Opt in for on-device NPU testing with the ENABLE_QNN env var (reliable through the `flutter` CLI) or a -Pqnn
+// Gradle property, e.g.:  ENABLE_QNN=1 flutter build appbundle --release
+def qnnEnabled = project.hasProperty("qnn") || (System.getenv("ENABLE_QNN") in ["1", "true", "TRUE", "yes"])
+
 android {
     namespace = "com.ultralytics.yolo"
     compileSdk = flutter.compileSdkVersion
@@ -55,11 +60,12 @@ android {
         checkReleaseBuilds false
     }
 
-    // The Hexagon DSP loads QNN Skel libraries via filesystem paths (ADSP_LIBRARY_PATH), so they must exist as
-    // real files in nativeLibraryDir rather than being mmapped out of the APK.
+    // When QNN is enabled the Hexagon DSP loads its Skel libraries via filesystem paths (ADSP_LIBRARY_PATH), so they
+    // must be real files in nativeLibraryDir rather than mmapped out of the APK. Only needed for the QNN runtime, so
+    // it is off by default — the standard release then packs native libs compressed.
     packagingOptions {
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = qnnEnabled
         }
     }
 }
@@ -69,12 +75,16 @@ flutter {
 }
 
 dependencies {
-    // Snapdragon NPU support for QNN context-binary ONNX models (*_qnn.onnx). The plugin declares this compileOnly;
-    // apps opt in to the ~70MB arm64 runtime by adding it here.
-    implementation("com.microsoft.onnxruntime:onnxruntime-android-qnn:1.26.0")
-    // Override the AAR's transitive QAIRT 2.42 with 2.46: 2.42's device table predates the
-    // Snapdragon 8 Elite Gen 5 (SM8850), failing QnnDevice_create with INVALID_CONFIG.
-    implementation("com.qualcomm.qti:qnn-runtime:2.46.0")
+    // Snapdragon NPU support for QNN context-binary ONNX models (*_qnn.onnx). The plugin declares this compileOnly,
+    // and the runtime adds ~230 MB of uncompressed arm64 native libs, so it is OFF BY DEFAULT to keep the release
+    // AAB lean — QNN acceleration is optional. Opt in (see `qnnEnabled` above) for on-device NPU testing, e.g.:
+    //   ENABLE_QNN=1 flutter build appbundle --release
+    if (qnnEnabled) {
+        implementation("com.microsoft.onnxruntime:onnxruntime-android-qnn:1.26.0")
+        // Override the AAR's transitive QAIRT 2.42 with 2.46: 2.42's device table predates the
+        // Snapdragon 8 Elite Gen 5 (SM8850), failing QnnDevice_create with INVALID_CONFIG.
+        implementation("com.qualcomm.qti:qnn-runtime:2.46.0")
+    }
 }
 
 // Bundle the nano YOLO models into the app at build time. They are NOT committed to git (large binaries, gitignored);
