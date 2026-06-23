@@ -1,3 +1,11 @@
+## 0.6.5
+
+- **Feature**: The iOS plugin now supports Swift Package Manager alongside CocoaPods. Sources moved to the SwiftPM
+  layout (`ios/ultralytics_yolo/Sources/ultralytics_yolo/`) with a new `Package.swift` that pulls the shared
+  `UltralyticsYOLO` inference core from yolo-ios-app over SPM; the podspec compiles the same tree, so existing
+  CocoaPods consumers are unaffected. The example app now builds via SPM by default. Opt in from your own app with
+  `flutter config --enable-swift-package-manager` (#541).
+
 ## 0.6.4
 
 - **Feature**: Opt-in camera analysis resolution on Android — `YOLOStreamingConfig.analysisResolution` requests a

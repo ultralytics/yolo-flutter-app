@@ -331,7 +331,7 @@ Ultralytics 提供两种许可证，以适应不同需求：
 - 针对 iOS 性能的优化
 
 > [!NOTE]
-> 在 iOS 上，本插件构建于共享的 [`UltralyticsYOLO` Swift 包](https://github.com/ultralytics/yolo-ios-app)（`import UltralyticsYOLO`）之上——与原生 iOS 应用使用同一推理核心——两者通过单一事实来源保持同步。插件的 `ios/Classes` 目录仅包含 Flutter 桥接层和相机/视图组件。
+> 在 iOS 上，本插件构建于共享的 [`UltralyticsYOLO` Swift 包](https://github.com/ultralytics/yolo-ios-app)（`import UltralyticsYOLO`）之上——与原生 iOS 应用使用同一推理核心——两者通过单一事实来源保持同步。插件的 iOS 源代码（`ios/ultralytics_yolo/`）仅包含 Flutter 桥接层和相机/视图组件，并同时面向 Swift Package Manager 和 CocoaPods 发布。
 
 ## 📮 联系方式
 

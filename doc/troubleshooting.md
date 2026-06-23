@@ -15,7 +15,7 @@ This guide focuses on the current plugin flow: metadata-first model resolution, 
 ```bash
 flutter clean
 flutter pub get
-cd ios && pod install --repo-update
+cd ios && pod install --repo-update  # CocoaPods apps only; Swift Package Manager resolves on build
 cd ..
 flutter run
 ```
@@ -25,7 +25,7 @@ flutter run
 Make sure:
 
 - the iOS deployment target is `13.0` or higher
-- CocoaPods is installed
+- CocoaPods is installed (CocoaPods apps), or Swift Package Manager is enabled via `flutter config --enable-swift-package-manager` (the plugin supports both)
 - the app was fully restarted after adding the plugin
 
 ### Android SDK / API errors

@@ -113,7 +113,7 @@ jobs:
 
   example-ios:
     runs-on: macos-26
-    timeout-minutes: 25
+    timeout-minutes: 35
 
     steps:
       - uses: actions/checkout@v7
@@ -135,9 +135,13 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
 
-      - name: Build example iOS app
+      # Primary path: the example ships SPM-migrated, so build it the way it's published — the plugin's Package.swift
+      # resolves the shared UltralyticsYOLO core from yolo-ios-app over Swift Package Manager.
+      - name: Build example iOS app (Swift Package Manager)
         working-directory: example
-        run: flutter build ios --simulator --no-codesign
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter build ios --simulator --no-codesign
 
       - name: Launch smoke test (iOS Simulator)
         working-directory: example
@@ -149,3 +153,11 @@ jobs:
           xcrun simctl launch --terminate-running-process "$SIMULATOR_UDID" "$APP_ID"
           sleep 10
           xcrun simctl terminate "$SIMULATOR_UDID" "$APP_ID"
+
+      # Regression guard for pub.dev's CocoaPods consumers: the same sources must still compile through the podspec.
+      - name: Build example iOS app (CocoaPods regression)
+        working-directory: example
+        run: |
+          flutter config --no-enable-swift-package-manager
+          flutter clean
+          flutter build ios --simulator --no-codesign
