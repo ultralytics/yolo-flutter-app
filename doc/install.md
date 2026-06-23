@@ -59,7 +59,7 @@ If using camera features, add permissions to `ios/Info.plist`:
 ```bash
 flutter clean
 flutter pub get
-cd ios && pod install --repo-update  # CocoaPods apps only; Swift Package Manager resolves on build
+cd ios && pod install --repo-update # CocoaPods apps only; Swift Package Manager resolves on build
 cd .. && flutter run
 ```
 

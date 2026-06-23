@@ -15,7 +15,7 @@ This guide focuses on the current plugin flow: metadata-first model resolution, 
 ```bash
 flutter clean
 flutter pub get
-cd ios && pod install --repo-update  # CocoaPods apps only; Swift Package Manager resolves on build
+cd ios && pod install --repo-update # CocoaPods apps only; Swift Package Manager resolves on build
 cd ..
 flutter run
 ```
