@@ -170,7 +170,7 @@ final yolo = YOLO(
 );
 ```
 
-未添加上述 Gradle 配置时，加载 `_qnn.onnx` 模型会返回明确的错误信息，TFLite 模型不受影响。CPU/GPU/NPU 实测数据与调优说明见[性能指南](doc/performance.md)。
+未添加上述 Gradle 配置时，加载 `_qnn.onnx` 模型会返回明确的错误信息，TFLite 模型不受影响。随附的示例应用同样采用此可选启用方式——默认不包含 QNN 运行时以保持较小的下载体积，如需在设备上测试 NPU 路径，请使用 `ENABLE_QNN=1` 构建（例如 `ENABLE_QNN=1 flutter run --release`）。CPU/GPU/NPU 实测数据与调优说明见[性能指南](doc/performance.md)。
 
 ## 🧭 官方模型还是自定义模型
 

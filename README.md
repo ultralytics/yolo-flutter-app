@@ -175,7 +175,7 @@ final yolo = YOLO(
 );
 ```
 
-Without the Gradle opt-in, loading a `_qnn.onnx` model fails with a clear error and TFLite models are unaffected.
+Without the Gradle opt-in, loading a `_qnn.onnx` model fails with a clear error and TFLite models are unaffected. The bundled example app follows the same opt-in — it ships without the QNN runtime to keep its download small, so build it with `ENABLE_QNN=1` (e.g. `ENABLE_QNN=1 flutter run --release`) to test the NPU path on a device.
 See the [performance guide](doc/performance.md) for measured CPU/GPU/NPU numbers and tuning notes.
 
 ## 🧭 Official vs. Custom

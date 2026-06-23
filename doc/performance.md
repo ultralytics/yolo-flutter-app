@@ -48,7 +48,7 @@ with the preprocess / inference / postprocess split beneath it.
 
 - **Speed** values are the full `predict()` time — preprocessing + inference + postprocessing, excluding annotation
   drawing — as the mean of 15 runs after 3 warmup runs on [bus.jpg](https://ultralytics.com/images/bus.jpg).
-  <br>Reproduce with `flutter test integration_test/qnn_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true`
+  <br>Reproduce with `ENABLE_QNN=1 flutter test integration_test/qnn_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true` (the example app's QNN runtime is opt-in)
 - **CPU** and **GPU** run the default official INT8 TFLite assets the plugin auto-downloads, on LiteRT with
   `useGpu: false` / `true`. **NPU** runs the `*_v81_qnn.onnx` context binaries (INT8 weights, 16-bit activations) from
   the same release via the ONNX Runtime QNN Execution Provider.

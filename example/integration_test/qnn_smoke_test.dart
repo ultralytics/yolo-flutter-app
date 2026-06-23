@@ -6,7 +6,8 @@
 // through the ONNX Runtime QNN Execution Provider (Hexagon NPU), and verifies
 // real detections on bus.jpg.
 //
-// Run with:  flutter test integration_test/qnn_smoke_test.dart -d <device>
+// Run with (the QNN runtime is opt-in, off by default):
+//   ENABLE_QNN=1 flutter test integration_test/qnn_smoke_test.dart -d <device>
 
 import 'dart:io';
 import 'dart:typed_data';
