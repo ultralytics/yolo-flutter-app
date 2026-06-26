@@ -59,7 +59,7 @@ Official export properties:
 | Model IDs      | `yolo26{n,s,m,l,x}`                               | `yolo26{n,s,m,l,x}`                 |
 | Tasks          | detect, seg, sem, cls, pose, obb                  | detect, seg, sem, cls, pose, obb    |
 | Format         | `.tflite`                                         | `.mlpackage.zip`                    |
-| Quantization   | int8 dynamic range TFLite from `int8=True` export | int8 Core ML                        |
+| Quantization   | int8 dynamic range TFLite from `quantize=8` export | int8 Core ML                        |
 | `imgsz`        | `224` cls; `640` others                           | `224` cls; `1024` OBB; `640` others |
 | `nms`          | `False`                                           | `False`                             |
 | `end2end`      | `False`                                           | `True`                              |
@@ -209,7 +209,7 @@ Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator la
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="tflite", quantize=16, nms=False, end2end=False, imgsz=640)
 ```
 
 ## 🔄 Switching Models
