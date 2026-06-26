@@ -227,7 +227,7 @@ Android inference runs on [LiteRT](https://developers.google.com/edge/litert) 2.
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="tflite", quantize=16, nms=False, end2end=False, imgsz=640)
 ```
 
 ## 🎯 Choosing an API

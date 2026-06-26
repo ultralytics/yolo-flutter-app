@@ -157,7 +157,7 @@ fp16 non-end-to-end TFLite exports are still useful for GPU benchmarking:
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="tflite", quantize=16, nms=False, end2end=False, imgsz=640)
 ```
 
 Use CPU when:
@@ -223,7 +223,7 @@ This is the canonical record of the on-device profiling behind the Ultralytics Y
 
 - **Device (ground truth):** Samsung Galaxy S26 (`SM S9420`), Android 16 / API 36.
 - **Build:** Flutter example debug APK, package `com.ultralytics.yolo`.
-- **Model:** `yolo26n_int8.tflite`, official YOLO26 detect asset, 640x640 input, `int8=True`, `nms=False`, `end2end=False`.
+- **Model:** `yolo26n_int8.tflite`, official YOLO26 detect asset, 640x640 input, `quantize=8`, `nms=False`, `end2end=False`.
 - **Runtime:** Android LiteRT 2.x `CompiledModel` with `useGpu: true`.
 - **UI:** `YOLOShowcase` real-time camera view with the default task/size controls and threshold sliders.
 - **Numbers:** EMA-smoothed app metrics after the camera and model are warm.
@@ -322,7 +322,7 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 ### Current Shipped Configuration
 
 - Android official assets: YOLO26 int8 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `v0.3.5`.
-- Android export settings: `int8=True`, `nms=False`, `end2end=False`; classify `imgsz=224`, all other tasks `imgsz=640`; calibration from `ultralytics.cfg.TASK2CALIBRATIONDATA`.
+- Android export settings: `quantize=8`, `nms=False`, `end2end=False`; classify `imgsz=224`, all other tasks `imgsz=640`; calibration from `ultralytics.cfg.TASK2CALIBRATIONDATA`.
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
 - Example UI: controls expose all six tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.
 - Bundled models: local/release builds fetch the six `yolo26n` nano models into `example/assets/models/` at build time (gitignored, not committed; skipped under CI), so nano tasks work offline with no first-run download; larger sizes download on demand.

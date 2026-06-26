@@ -221,7 +221,7 @@ Android 推理运行在 [LiteRT](https://developers.google.com/edge/litert) 2.x 
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="tflite", quantize=16, nms=False, end2end=False, imgsz=640)
 ```
 
 ## 🎯 该用哪个 API

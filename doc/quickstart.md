@@ -64,7 +64,7 @@ Task and labels are auto-detected from the model's embedded metadata. If your cu
 Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core ML. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. fp16 non-end-to-end exports are useful for GPU benchmarking:
 
 ```python
-YOLO("yolo26n.pt").export(format="tflite", half=True, nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="tflite", quantize=16, nms=False, end2end=False, imgsz=640)
 ```
 
 ## ⚡ Step 4: Minimal Detection Code

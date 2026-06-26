@@ -192,7 +192,7 @@ def export_one(model_id: str, imgsz: int, data: str, output_dir: Path) -> None:
     os.chdir(output_dir)
     YOLO(f"{model_id}.pt").export(
         format="tflite",
-        int8=True,
+        quantize=8,
         data=data,
         nms=False,
         end2end=False,
