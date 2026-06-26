@@ -54,17 +54,17 @@ The Flutter resolver uses the TFLite release for Android and the Core ML release
 
 Official export properties:
 
-| Property       | TFLite                                            | Core ML                             |
-| -------------- | ------------------------------------------------- | ----------------------------------- |
-| Model IDs      | `yolo26{n,s,m,l,x}`                               | `yolo26{n,s,m,l,x}`                 |
-| Tasks          | detect, seg, sem, cls, pose, obb                  | detect, seg, sem, cls, pose, obb    |
-| Format         | `.tflite`                                         | `.mlpackage.zip`                    |
+| Property       | TFLite                                             | Core ML                             |
+| -------------- | -------------------------------------------------- | ----------------------------------- |
+| Model IDs      | `yolo26{n,s,m,l,x}`                                | `yolo26{n,s,m,l,x}`                 |
+| Tasks          | detect, seg, sem, cls, pose, obb                   | detect, seg, sem, cls, pose, obb    |
+| Format         | `.tflite`                                          | `.mlpackage.zip`                    |
 | Quantization   | int8 dynamic range TFLite from `quantize=8` export | int8 Core ML                        |
-| `imgsz`        | `224` cls; `640` others                           | `224` cls; `1024` OBB; `640` others |
-| `nms`          | `False`                                           | `False`                             |
-| `end2end`      | `False`                                           | `True`                              |
-| Calibration    | `ultralytics.cfg.TASK2CALIBRATIONDATA` per task   | exporter default                    |
-| Postprocessing | Android native                                    | Swift/Core ML                       |
+| `imgsz`        | `224` cls; `640` others                            | `224` cls; `1024` OBB; `640` others |
+| `nms`          | `False`                                            | `False`                             |
+| `end2end`      | `False`                                            | `True`                              |
+| Calibration    | `ultralytics.cfg.TASK2CALIBRATIONDATA` per task    | exporter default                    |
+| Postprocessing | Android native                                     | Swift/Core ML                       |
 
 The TFLite export script passes both `nms=False` and `end2end=False`. `nms=False` excludes an exported NMS operator, while `end2end=False` disables the YOLO26 end-to-end head for the Android LiteRT conversion path. Core ML assets use `end2end=True`, which is the YOLO26 output contract consumed by the Swift decoders. For Android calibration, the script uses the Ultralytics `TASK2CALIBRATIONDATA` mapping by default: detect `coco128.yaml`, segment `coco128-seg.yaml`, classify `imagenet100`, pose `coco8-pose.yaml`, OBB `dota128.yaml`, and semantic `cityscapes8.yaml`.
 
