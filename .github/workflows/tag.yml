@@ -79,4 +79,4 @@ jobs:
           webhook-type: incoming-webhook
           webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUBWEB }}
           payload: |
-            text: "<!channel> GitHub Actions success for ${{ github.workflow }} ✅\n\n\n*Repository:* https://github.com/${{ github.repository }}\n*Action:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Author:* ${{ github.actor }}\n*Event:* New tag and release `${{ github.event.inputs.tag_name }}` published 🎉\n*Job Status:* ${{ job.status }}\n*Release Notes:* https://github.com/${{ github.repository }}/releases/tag/${{ github.event.inputs.tag_name }}"
+            text: "<!subteam^S07NKMNECKH> *${{ github.workflow }}* ✅ `${{ github.repository }}` ${{ github.event.inputs.tag_name }}  <https://github.com/${{ github.repository }}/releases/tag/${{ github.event.inputs.tag_name }}|*Release*>  ·  <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|*Run*>"
