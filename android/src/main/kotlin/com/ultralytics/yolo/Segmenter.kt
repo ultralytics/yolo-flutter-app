@@ -25,6 +25,7 @@ class Segmenter(
     private var maskH = 0
     private var maskW = 0
     private var maskC = 0
+    private var protoNchw = false // litert-torch proto is NCHW [1,32,H,W]; legacy onnx2tf is NHWC [1,H,W,32]
     private var isEndToEnd = false
 
     // Reusable float input for the CompiledModel input buffer.
@@ -70,10 +71,18 @@ class Segmenter(
             out0NumAnchors = out0Shape[2]
         }
 
-        // Mask proto shape (example: [1,160,160,32]); kept flat and indexed in place.
-        maskH = out1Shape[1]
-        maskW = out1Shape[2]
-        maskC = out1Shape[3]
+        // Mask proto: litert-torch exports are NCHW [1,32,H,W]; legacy onnx2tf are NHWC [1,H,W,32]. Detect from the
+        // channel position (mask-coeff count == maskConfidenceLength) and index accordingly in generateMasks().
+        protoNchw = out1Shape.size == 4 && out1Shape[1] == maskConfidenceLength
+        if (protoNchw) {
+            maskC = out1Shape[1]
+            maskH = out1Shape[2]
+            maskW = out1Shape[3]
+        } else {
+            maskH = out1Shape[1]
+            maskW = out1Shape[2]
+            maskC = out1Shape[3]
+        }
 
         floatInput = FloatArray(inWidth * inHeight * 3)
         inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
@@ -341,18 +350,25 @@ class Segmenter(
                 }
                 return@forEach
             }
-            // proto is HWC flat: protos[y][x][c] == protoFlat[(y * maskW + x) * maskC + c]. Walking c contiguously
-            // keeps each coeff dot-product on one cache line.
+            // proto flat layout: NHWC -> protoFlat[(y*maskW + x)*maskC + c]; NCHW -> protoFlat[c*planeSize + y*maskW + x].
+            val planeSize = maskH * maskW
             for (y in outputBox.top until outputBox.bottom) {
                 val rowBase = y * maskW
                 for (x in outputBox.left until outputBox.right) {
-                    val base = (rowBase + x) * maskC
+                    val pix = rowBase + x
                     var v = 0f
-                    for (c in 0 until coeffCount) {
-                        v += det.maskCoeffs[c] * protoFlat[base + c]
+                    if (protoNchw) {
+                        for (c in 0 until coeffCount) {
+                            v += det.maskCoeffs[c] * protoFlat[c * planeSize + pix]
+                        }
+                    } else {
+                        val base = pix * maskC
+                        for (c in 0 until coeffCount) {
+                            v += det.maskCoeffs[c] * protoFlat[base + c]
+                        }
                     }
                     if (v > threshold) {
-                        combinedPixels[rowBase + x] = color
+                        combinedPixels[pix] = color
                         instanceMask?.get(y - contentRect.top)?.set(x - contentRect.left, v)
                     }
                 }
