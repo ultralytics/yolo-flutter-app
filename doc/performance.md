@@ -152,12 +152,12 @@ On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU acceler
 
 The official YOLO26 int8 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph. For example, a Galaxy S26 compiled `yolo26n_int8.tflite` fully with the OpenCL delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran at about **15 FPS / 32 ms** in the live camera example app. Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
 
-fp16 non-end-to-end TFLite exports are still useful for GPU benchmarking:
+non-end-to-end LiteRT exports are still useful for GPU benchmarking (the GPU delegate runs them in FP16):
 
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="tflite", quantize=16, nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
 ```
 
 Use CPU when:

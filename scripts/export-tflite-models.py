@@ -1,20 +1,16 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-"""Export official YOLO26 TFLite assets for the Flutter Android release.
+"""Export official YOLO26 LiteRT (.tflite) assets for the Flutter Android release.
 
-Run in a Linux Python 3.13 environment. The macOS Python 3.13+ TFLite path is
-blocked by the ai-edge-litert macOS wheel.
+Uses the Ultralytics `format=litert` export (litert-torch + ai-edge-quantizer), which requires `ultralytics>=8.4.83`
+and runs on Linux x86 or macOS with Python>=3.10.
 
 Usage from the repository root:
 
-    uv venv --python 3.13 .venv
+    uv venv --python 3.12 .venv
     uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-    uv pip install -e "../ultralytics" "tensorflow>2.19.0" "onnx>=1.20.0" "onnxslim>=0.1.82" \
-      "tf_keras>2.19.0" "sng4onnx>=1.0.1" "onnx_graphsurgeon>=0.3.26" \
-      "ai-edge-litert>=1.2.0" "onnxruntime" "protobuf>=6.31.1,<7.0.0" \
-      --extra-index-url https://pypi.ngc.nvidia.com --index-strategy unsafe-best-match
+    uv pip install "ultralytics[export-litert]>=8.4.83"
     uv pip uninstall opencv-python
     uv pip install opencv-python-headless
-    uv pip install --no-deps "onnx2tf>=2.3.0,<2.3.16"
     uv run python scripts/export-tflite-models.py --verify
 """
 
@@ -136,14 +132,14 @@ def append_tflite_metadata(path: Path, model_id: str, task_name: str, task: Task
         "description": f"Ultralytics {model_id} int8 TFLite model",
         "author": "Ultralytics",
         "date": time.strftime("%Y-%m-%d"),
-        "version": "8.4.0",
+        "version": "8.4.83",
         "task": task_name,
         "batch": 1,
         "imgsz": [task.imgsz, task.imgsz],
         "names": task_names(task_name, task.suffix),
         "channels": 3,
         "stride": 32,
-        "format": "tflite",
+        "format": "litert",
         "int8": True,
         "nms": False,
         "end2end": False,
@@ -191,7 +187,7 @@ def export_one(model_id: str, imgsz: int, data: str, output_dir: Path) -> None:
 
     os.chdir(output_dir)
     YOLO(f"{model_id}.pt").export(
-        format="tflite",
+        format="litert",
         quantize=8,
         data=data,
         nms=False,
@@ -303,47 +299,15 @@ def calibration_data(task_name: str, data: str | None, output_dir: Path) -> str:
 
 
 def exported_tflite_path(output_dir: Path, model_id: str) -> Path | None:
-    """Find an exported TFLite file for a model."""
-    saved_model_dirs = [
-        output_dir / f"{model_id}_saved_model",
-        Path("/ultralytics/weights") / f"{model_id}_saved_model",
-    ]
-    for saved_model_dir in saved_model_dirs:
-        candidates = (
-            saved_model_dir / f"{model_id}_int8.tflite",
-            saved_model_dir / f"{model_id}_dynamic_range_quant.tflite",
-        )
-        for candidate in candidates:
-            if candidate.exists():
-                return candidate
+    """Find the exported LiteRT .tflite for a model (single-file `<model_id>_int8.tflite`)."""
+    candidates = (
+        output_dir / f"{model_id}_int8.tflite",
+        Path("/ultralytics/weights") / f"{model_id}_int8.tflite",
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
     return None
-
-
-def wait_for_stable_file(path: Path, checks: int = 2, interval: float = 1.0) -> bool:
-    """Wait until a file size remains stable across consecutive checks."""
-    last_size = -1
-    stable_checks = 0
-    while path.exists():
-        size = path.stat().st_size
-        if size == last_size and size > 0:
-            stable_checks += 1
-            if stable_checks >= checks:
-                return True
-        else:
-            stable_checks = 0
-            last_size = size
-        time.sleep(interval)
-    return False
-
-
-def stop_process(process: subprocess.Popen[bytes]) -> None:
-    """Terminate a worker process and kill it if it does not exit."""
-    process.terminate()
-    try:
-        process.wait(timeout=15)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait()
 
 
 def run_export_worker(
@@ -353,7 +317,7 @@ def run_export_worker(
     output_dir: Path,
     data: str,
 ) -> Path:
-    """Run a child export process and return the generated TFLite path."""
+    """Run a child export process (for memory isolation) and return the generated LiteRT .tflite path."""
     command = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -366,21 +330,12 @@ def run_export_worker(
         "--worker-imgsz",
         str(task.imgsz),
     ]
-    process = subprocess.Popen(command)
-    dynamic_tflite = output_dir / f"{model_id}_saved_model" / f"{model_id}_dynamic_range_quant.tflite"
-    while process.poll() is None:
-        if dynamic_tflite.exists() and wait_for_stable_file(dynamic_tflite):
-            print(f"dynamic-range TFLite ready for {model_id}; stopping discarded full-integer conversions", flush=True)
-            stop_process(process)
-            break
-        time.sleep(2)
-
-    returncode = process.wait()
+    returncode = subprocess.run(command).returncode
     exported = exported_tflite_path(output_dir, model_id)
     if exported is None:
         if returncode != 0:
             raise subprocess.CalledProcessError(returncode, command)
-        raise FileNotFoundError(f"No TFLite export found for {model_id}")
+        raise FileNotFoundError(f"No LiteRT export found for {model_id}")
     if returncode != 0:
         print(f"worker for {model_id} exited {returncode}; using generated {exported.name}", flush=True)
     return exported

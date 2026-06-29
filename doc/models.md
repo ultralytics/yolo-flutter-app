@@ -204,12 +204,12 @@ uv run python scripts/export-tflite-models.py --verify
 
 Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.3.5` to publish the generated `.tflite` assets. The script exports YOLO26 `n/s/m/l/x` models for detect, segment, semantic, classify, pose, and OBB. Output files are written under `exports/yolo26-tflite/release-assets/` and are ignored by Git. Leave `--data` unset for official exports so the script uses `ultralytics.cfg.TASK2CALIBRATIONDATA`; pass `--data` only when intentionally benchmarking a single calibration source across tasks.
 
-Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. int8 assets are the official download artifacts for size, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. fp16 non-end-to-end TFLite exports can still be useful for GPU benchmarking on devices whose delegate supports the graph:
+Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. int8 assets are the official download artifacts for size, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. non-end-to-end LiteRT exports can still be useful for GPU benchmarking on devices whose delegate supports the graph (the GPU delegate runs them in FP16):
 
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="tflite", quantize=16, nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
 ```
 
 ## 🔄 Switching Models

@@ -18,6 +18,11 @@ import com.google.ai.edge.litert.TensorType
  * accelerator, so a model either runs fully on GPU or fully on CPU - no per-op fragmentation.
  *
  * Tensor names follow the Ultralytics tflite export convention: input `images`, outputs `Identity`, `Identity_1`, ...
+ *
+ * Input layout is detected from the input tensor shape: legacy onnx2tf exports are NHWC `[1,H,W,3]`, while
+ * `format=litert` (litert-torch) exports are NCHW `[1,3,H,W]`. [inputDims] is always reported in the NHWC convention so
+ * predictors stay layout-agnostic (matching [OrtQnnModel]); [run] feeds interleaved HWC floats, transposing them to
+ * planar CHW internally for NCHW models.
  */
 class LiteRtModel(
     private val context: android.content.Context,
@@ -30,6 +35,7 @@ class LiteRtModel(
         val inputBuffers: List<TensorBuffer>,
         val outputBuffers: List<TensorBuffer>,
         val inputDims: IntArray,
+        val nchw: Boolean,
         val outputElementCounts: IntArray,
         val outputDims: List<IntArray>,
         val outputTypes: List<TensorType.ElementType?>,
@@ -40,10 +46,16 @@ class LiteRtModel(
     private val outputBuffers: List<TensorBuffer>
     private val outputTypes: List<TensorType.ElementType?>
 
+    /** True when the model input is NCHW `[1,3,H,W]` (litert-torch) rather than NHWC `[1,H,W,3]` (legacy onnx2tf). */
+    private val nchw: Boolean
+
     /** Accelerator actually in use after the ladder resolves: "GPU" or "CPU". */
     override val accelerator: String
 
-    /** Input tensor dimensions, e.g. [1, 640, 640, 3]. Empty if the model doesn't use the conventional `images` name. */
+    /**
+     * Input tensor dimensions in NHWC convention, e.g. [1, 640, 640, 3], regardless of the model's native layout (NCHW
+     * litert-torch shapes are reported transposed). Empty if the model doesn't use the conventional `images` name.
+     */
     override val inputDims: IntArray
 
     /** Float element count of each output buffer, in order. */
@@ -73,6 +85,7 @@ class LiteRtModel(
         inputBuffers = prepared.inputBuffers
         outputBuffers = prepared.outputBuffers
         inputDims = prepared.inputDims
+        nchw = prepared.nchw
         outputElementCounts = prepared.outputElementCounts
         outputDims = prepared.outputDims
         outputTypes = prepared.outputTypes
@@ -106,12 +119,16 @@ class LiteRtModel(
         }
 
         try {
-            val dims = try {
+            val nativeDims = try {
                 compiled.getInputTensorType(inputName = "images").layout?.dimensions?.toIntArray() ?: IntArray(0)
             } catch (e: Throwable) {
                 Log.w(tag, "Could not read input tensor type: ${e.message}")
                 IntArray(0)
             }
+            // litert-torch exports are NCHW [1,3,H,W]; legacy onnx2tf exports are NHWC [1,H,W,3]. Detect from the shape
+            // and report NHWC to predictors either way so they stay layout-agnostic (run() transposes for NCHW).
+            val nchw = nativeDims.size >= 4 && nativeDims[1] == 3 && nativeDims.last() != 3
+            val dims = if (nchw) intArrayOf(nativeDims[0], nativeDims[2], nativeDims[3], 3) else nativeDims
 
             // Warm up once with a zeroed input to (a) prime the accelerator and (b) learn each output's element count,
             // which the predictors use to reshape the flat float outputs. Keep this inside the accelerator fallback
@@ -132,7 +149,7 @@ class LiteRtModel(
             val outputShapes = outputTensorTypes.map { it?.layout?.dimensions?.toIntArray() ?: IntArray(0) }
             val types = outputTensorTypes.map { it?.elementType }
             val elementCounts = IntArray(outputs.size) { readAsFloats(outputs[it], types[it]).size }
-            return PreparedModel(compiled, inputs, outputs, dims, elementCounts, outputShapes, types)
+            return PreparedModel(compiled, inputs, outputs, dims, nchw, elementCounts, outputShapes, types)
         } catch (e: Throwable) {
             closeBuffers(inputs, outputs)
             runCatching { compiled.close() }
@@ -140,11 +157,28 @@ class LiteRtModel(
         }
     }
 
-    /** Run inference: write [input] floats into the first input buffer, run, and return each output as a flat float array. */
+    /**
+     * Run inference: write [input] floats (interleaved HWC, as the predictors produce) into the first input buffer, run,
+     * and return each output as a flat float array. NCHW models get an HWC→CHW transpose first.
+     */
     override fun run(input: FloatArray): List<FloatArray> {
-        inputBuffers[0].writeFloat(input)
+        inputBuffers[0].writeFloat(if (nchw) hwcToChw(input) else input)
         model.run(inputBuffers, outputBuffers)
         return List(outputBuffers.size) { readAsFloats(outputBuffers[it], outputTypes[it]) }
+    }
+
+    /** Transpose interleaved HWC RGB floats (r,g,b,r,g,b,...) to planar CHW (all R, then all G, then all B). */
+    private fun hwcToChw(hwc: FloatArray): FloatArray {
+        val n = hwc.size / 3
+        val chw = FloatArray(hwc.size)
+        var j = 0
+        for (i in 0 until n) {
+            chw[i] = hwc[j]
+            chw[n + i] = hwc[j + 1]
+            chw[2 * n + i] = hwc[j + 2]
+            j += 3
+        }
+        return chw
     }
 
     /**

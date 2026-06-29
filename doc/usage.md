@@ -121,10 +121,10 @@ final yolo = YOLO(
 );
 ```
 
-On Android, inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. For GPU benchmarking, fp16 non-end-to-end exports are also useful:
+On Android, inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. For GPU benchmarking, non-end-to-end exports are also useful (the GPU delegate runs them in FP16):
 
 ```python
-YOLO("yolo26n.pt").export(format="tflite", quantize=16, nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
 ```
 
 Keep `useGpu: true` for automatic GPU -> CPU fallback and verify actual delegate placement on target devices.
