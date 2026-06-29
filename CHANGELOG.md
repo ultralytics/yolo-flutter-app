@@ -1,3 +1,8 @@
+## 0.6.6
+
+- **Change**: Android release assets are now exported with the Ultralytics `format=litert` path (litert-torch + ai-edge-quantizer, requires `ultralytics>=8.4.83`), replacing the legacy onnx2tf TFLite export. Assets remain int8 `.tflite`.
+- **Enhancement**: Android inference auto-detects the `.tflite` input layout — NCHW `[1,3,H,W]` (litert-torch, input `args_0`) vs NHWC `[1,H,W,3]` (legacy onnx2tf, input `images`) — and the segmentation mask-proto layout (NCHW vs NHWC), so both new `format=litert` exports and existing `.tflite` models run correctly.
+
 ## 0.6.5
 
 - **Feature**: The iOS plugin now supports Swift Package Manager alongside CocoaPods. Sources moved to the SwiftPM
