@@ -255,6 +255,20 @@ object ImageUtils {
         }
     }
 
+    // Transpose interleaved HWC RGB floats (r,g,b,r,g,b,...) into planar CHW (all R, then all G, then all B) in `dst`.
+    // Shared by the NCHW inference backends (LiteRT litert-torch, ONNX/QNN); `dst` must match `src` length (w*h*3).
+    @JvmStatic
+    fun hwcToChw(src: FloatArray, dst: FloatArray) {
+        val n = src.size / 3
+        var j = 0
+        for (i in 0 until n) {
+            dst[i] = src[j]
+            dst[n + i] = src[j + 1]
+            dst[2 * n + i] = src[j + 2]
+            j += 3
+        }
+    }
+
     /**
      * Process grayscale image for 1-channel classification models
      * Optimized for handwriting recognition (EMNIST-like models)

@@ -49,6 +49,9 @@ class LiteRtModel(
     /** True when the model input is NCHW `[1,3,H,W]` (litert-torch) rather than NHWC `[1,H,W,3]` (legacy onnx2tf). */
     private val nchw: Boolean
 
+    /** Reusable planar CHW scratch buffer for NCHW models, allocated once to avoid per-frame churn (see [run]). */
+    private var chwScratch = FloatArray(0)
+
     /** Accelerator actually in use after the ladder resolves: "GPU" or "CPU". */
     override val accelerator: String
 
@@ -162,23 +165,16 @@ class LiteRtModel(
      * and return each output as a flat float array. NCHW models get an HWC→CHW transpose first.
      */
     override fun run(input: FloatArray): List<FloatArray> {
-        inputBuffers[0].writeFloat(if (nchw) hwcToChw(input) else input)
+        val buffer = if (nchw) {
+            if (chwScratch.size != input.size) chwScratch = FloatArray(input.size)
+            ImageUtils.hwcToChw(input, chwScratch)
+            chwScratch
+        } else {
+            input
+        }
+        inputBuffers[0].writeFloat(buffer)
         model.run(inputBuffers, outputBuffers)
         return List(outputBuffers.size) { readAsFloats(outputBuffers[it], outputTypes[it]) }
-    }
-
-    /** Transpose interleaved HWC RGB floats (r,g,b,r,g,b,...) to planar CHW (all R, then all G, then all B). */
-    private fun hwcToChw(hwc: FloatArray): FloatArray {
-        val n = hwc.size / 3
-        val chw = FloatArray(hwc.size)
-        var j = 0
-        for (i in 0 until n) {
-            chw[i] = hwc[j]
-            chw[n + i] = hwc[j + 1]
-            chw[2 * n + i] = hwc[j + 2]
-            j += 3
-        }
-        return chw
     }
 
     /**

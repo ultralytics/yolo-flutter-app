@@ -109,13 +109,7 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
         val floats = if (nhwcInput) {
             input // channel-last graph: feed the predictors' NHWC buffer directly
         } else {
-            val hw = nchw.size / 3
-            for (i in 0 until hw) {
-                val j = i * 3
-                nchw[i] = input[j]
-                nchw[hw + i] = input[j + 1]
-                nchw[2 * hw + i] = input[j + 2]
-            }
+            ImageUtils.hwcToChw(input, nchw) // transpose into the preallocated planar CHW buffer
             nchw
         }
         OnnxTensor.createTensor(env, FloatBuffer.wrap(floats), inputShape).use { tensor ->
