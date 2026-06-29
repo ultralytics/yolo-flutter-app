@@ -86,9 +86,10 @@ def parse_args() -> argparse.Namespace:
 
 def verify_tflite(path: Path) -> list[tuple[int, ...]]:
     """Run one zero-input inference and return output tensor shapes."""
-    import tensorflow as tf
+    # ai_edge_litert ships with ultralytics[export-litert]; TensorFlow is not installed in that environment
+    from ai_edge_litert.interpreter import Interpreter
 
-    interpreter = tf.lite.Interpreter(model_path=str(path), num_threads=1)
+    interpreter = Interpreter(model_path=str(path))
     interpreter.allocate_tensors()
     input_detail = interpreter.get_input_details()[0]
     shape = input_detail["shape"]
