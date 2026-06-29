@@ -151,11 +151,11 @@ def ensure_tflite_metadata(path: Path, model_id: str, task_name: str, task: Task
     """Add TFLite metadata when it is missing or incomplete."""
     metadata = tflite_metadata(path)
     names = (metadata or {}).get("names")
+    # The ultralytics LiteRT export already embeds a metadata.json with the fields the app reads (task, imgsz, names,
+    # end2end, ...); only re-append when one of those is missing/wrong, so a complete export is left single-entry.
     if (
         metadata is None
         or metadata.get("task") != task_name
-        or metadata.get("int8") is not True
-        or metadata.get("nms") is not False
         or metadata.get("end2end") is not False
         or metadata.get("imgsz") != [task.imgsz, task.imgsz]
         or not isinstance(names, dict)
