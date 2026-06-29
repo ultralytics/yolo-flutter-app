@@ -185,20 +185,16 @@ Official release assets are generated from YOLO26 checkpoints with task/size loo
 
 `scripts/export-tflite-models.py` is the source of truth for Android export settings, verification, output names, and optional release upload. The Core ML counterpart in `../yolo-ios-app` owns the Apple asset export settings and packaging.
 
-### Export Android TFLite Assets
+### Export Android LiteRT Assets
 
-Use Linux Python 3.13 for TFLite export. macOS Python 3.13+ is blocked by the `ai-edge-litert` macOS wheel.
+Use Linux x86 or macOS with Python 3.12 for LiteRT export.
 
 ```bash
-uv venv --python 3.13 .venv
+uv venv --python 3.12 .venv
 uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-uv pip install -e "../ultralytics" "tensorflow>2.19.0" "onnx>=1.20.0" "onnxslim>=0.1.82" \
-  "tf_keras>2.19.0" "sng4onnx>=1.0.1" "onnx_graphsurgeon>=0.3.26" \
-  "ai-edge-litert>=1.2.0" "onnxruntime" "protobuf>=6.31.1,<7.0.0" \
-  --extra-index-url https://pypi.ngc.nvidia.com --index-strategy unsafe-best-match
+uv pip install -e "../ultralytics[export-litert]" --index-strategy unsafe-best-match
 uv pip uninstall opencv-python
 uv pip install opencv-python-headless
-uv pip install --no-deps "onnx2tf>=2.3.0,<2.3.16"
 uv run python scripts/export-tflite-models.py --verify
 ```
 
