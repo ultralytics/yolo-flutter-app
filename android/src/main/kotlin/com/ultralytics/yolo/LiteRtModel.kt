@@ -17,7 +17,8 @@ import com.google.ai.edge.litert.TensorType
  * end2end graphs). Unlike the old `Interpreter`+`GpuDelegate`, `CompiledModel` compiles the whole graph for one
  * accelerator, so a model either runs fully on GPU or fully on CPU - no per-op fragmentation.
  *
- * Tensor names follow the Ultralytics tflite export convention: input `images`, outputs `Identity`, `Identity_1`, ...
+ * Input tensor name is `images` for legacy onnx2tf exports and `args_0` for litert-torch (`format=litert`) exports;
+ * outputs follow `Identity`, `Identity_1`, ... .
  *
  * Input layout is detected from the input tensor shape: legacy onnx2tf exports are NHWC `[1,H,W,3]`, while
  * `format=litert` (litert-torch) exports are NCHW `[1,3,H,W]`. [inputDims] is always reported in the NHWC convention so
@@ -57,7 +58,7 @@ class LiteRtModel(
 
     /**
      * Input tensor dimensions in NHWC convention, e.g. [1, 640, 640, 3], regardless of the model's native layout (NCHW
-     * litert-torch shapes are reported transposed). Empty if the model doesn't use the conventional `images` name.
+     * litert-torch shapes are reported transposed). Model load fails if the input shape can't be read by name.
      */
     override val inputDims: IntArray
 
@@ -122,12 +123,18 @@ class LiteRtModel(
         }
 
         try {
-            val nativeDims = try {
-                compiled.getInputTensorType(inputName = "images").layout?.dimensions?.toIntArray() ?: IntArray(0)
-            } catch (e: Throwable) {
-                Log.w(tag, "Could not read input tensor type: ${e.message}")
-                IntArray(0)
-            }
+            // Read the input shape by name. litert-torch (format=litert) names the input `args_0`; legacy onnx2tf
+            // exports name it `images`. Try both and refuse to guess on a miss: silently assuming NHWC would feed an
+            // NCHW graph raw HWC data (wrong detections, no crash), which is worse than failing loudly at load.
+            val nativeDims = sequenceOf("images", "args_0").firstNotNullOfOrNull { name ->
+                try {
+                    compiled.getInputTensorType(inputName = name).layout?.dimensions?.toIntArray()?.takeIf { it.isNotEmpty() }
+                } catch (e: Throwable) {
+                    null
+                }
+            } ?: throw IllegalStateException(
+                "Could not read LiteRT input tensor shape by name (tried 'images', 'args_0'); unknown input layout."
+            )
             // litert-torch exports are NCHW [1,3,H,W]; legacy onnx2tf exports are NHWC [1,H,W,3]. Detect from the shape
             // and report NHWC to predictors either way so they stay layout-agnostic (run() transposes for NCHW).
             val nchw = nativeDims.size >= 4 && nativeDims[1] == 3 && nativeDims.last() != 3
