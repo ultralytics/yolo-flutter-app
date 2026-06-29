@@ -8,9 +8,7 @@ Usage from the repository root:
 
     uv venv --python 3.12 .venv
     uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-    uv pip install "ultralytics[export-litert]>=8.4.83"
-    uv pip uninstall opencv-python
-    uv pip install opencv-python-headless
+    uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.83"
     uv run python scripts/export-tflite-models.py --verify
 """
 

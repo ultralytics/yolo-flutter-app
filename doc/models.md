@@ -187,14 +187,12 @@ Official release assets are generated from YOLO26 checkpoints with task/size loo
 
 ### Export Android LiteRT Assets
 
-Use Linux x86 or macOS with Python 3.12 for LiteRT export.
+Use Linux x86 or macOS with Python ≥3.10 for LiteRT export.
 
 ```bash
 uv venv --python 3.12 .venv
 uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-uv pip install -e "../ultralytics[export-litert]" --index-strategy unsafe-best-match
-uv pip uninstall opencv-python
-uv pip install opencv-python-headless
+uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.83"
 uv run python scripts/export-tflite-models.py --verify
 ```
 

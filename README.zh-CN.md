@@ -199,18 +199,12 @@ final yolo = YOLO(
 
 Android TFLite release 资产由 [`scripts/export-tflite-models.py`](scripts/export-tflite-models.py) 生成。该脚本定义了官方 YOLO26 任务/尺寸矩阵、int8 导出设置、Ultralytics 任务专用校准数据、可选的一次性 TFLite 推理验证，以及可选的 GitHub release 上传。脚本默认读取 `ultralytics.cfg.TASK2CALIBRATIONDATA`，使每个任务使用与 Ultralytics 导出器相同的规范校准数据集。
 
-请在 Linux Python 3.13 环境中运行：
+请在 Linux x86 或 macOS 上使用 Python ≥3.10 运行：
 
 ```bash
-uv venv --python 3.13 .venv
+uv venv --python 3.12 .venv
 uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-uv pip install -e "../ultralytics" "tensorflow>2.19.0" "onnx>=1.20.0" "onnxslim>=0.1.82" \
-  "tf_keras>2.19.0" "sng4onnx>=1.0.1" "onnx_graphsurgeon>=0.3.26" \
-  "ai-edge-litert>=1.2.0" "onnxruntime" "protobuf>=6.31.1,<7.0.0" \
-  --extra-index-url https://pypi.ngc.nvidia.com --index-strategy unsafe-best-match
-uv pip uninstall opencv-python
-uv pip install opencv-python-headless
-uv pip install --no-deps "onnx2tf>=2.3.0,<2.3.16"
+uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.83"
 uv run python scripts/export-tflite-models.py --verify
 ```
 
