@@ -19,7 +19,7 @@ Flutter plugin for YOLO (You Only Look Once) models, supporting object detection
   # "no rule to process file ... net.daringfireball.markdown" warning Xcode emits when README.md is swept in.
   s.source_files = 'ultralytics_yolo/Sources/ultralytics_yolo/**/*.swift'
   s.dependency 'Flutter'
-  s.dependency 'UltralyticsYOLO', '>= 8.9.5', '< 9.0'
+  s.dependency 'UltralyticsYOLO', '>= 8.9.10', '< 9.0'
   s.platform = :ios, '13.0'
 
   # Flutter.framework does not contain a i386 slice.

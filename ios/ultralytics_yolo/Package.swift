@@ -18,8 +18,8 @@ let package = Package(
   ],
   dependencies: [
     // Shared YOLO inference core, the single source of truth for iOS (https://github.com/ultralytics/yolo-ios-app).
-    // Mirrors the CocoaPods `s.dependency 'UltralyticsYOLO', '>= 8.9.5', '< 9.0'` range in the podspec.
-    .package(url: "https://github.com/ultralytics/yolo-ios-app.git", "8.9.5"..<"9.0.0")
+    // Mirrors the CocoaPods `s.dependency 'UltralyticsYOLO', '>= 8.9.10', '< 9.0'` range in the podspec.
+    .package(url: "https://github.com/ultralytics/yolo-ios-app.git", "8.9.10"..<"9.0.0")
   ],
   targets: [
     .target(
