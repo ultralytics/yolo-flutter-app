@@ -1,7 +1,8 @@
 ## 0.6.6
 
-- **Change**: Android release assets are now exported with the Ultralytics `format=litert` path (litert-torch + ai-edge-quantizer, requires `ultralytics>=8.4.83`), replacing the legacy onnx2tf TFLite export. Assets remain int8 `.tflite`.
+- **Change**: Android release assets are now exported with the Ultralytics `format=litert` path (litert-torch + ai-edge-quantizer, requires `ultralytics>=8.4.83`), replacing the legacy onnx2tf TFLite export. The official assets switch to `w8a32` quantization (int8 weights, FP32 activations; `_w8a32.tflite`) on a new `v0.6.6` release — the smallest format that compiles on the LiteRT GPU delegate, requiring no calibration data. The previous `v0.3.5` int8 assets are left untouched so already-installed apps keep working.
 - **Enhancement**: Android inference auto-detects the `.tflite` input layout — NCHW `[1,3,H,W]` (litert-torch, input `args_0`) vs NHWC `[1,H,W,3]` (legacy onnx2tf, input `images`) — and the segmentation mask-proto layout (NCHW vs NHWC), so both new `format=litert` exports and existing `.tflite` models run correctly.
+- **Fix**: Segment, semantic, and pose models exported with `format=litert` now run correctly on Android. Their output tensors are named `output_N` rather than the legacy onnx2tf `Identity_N`, which the runtime now resolves so the predictors read the correct output shapes instead of failing.
 
 ## 0.6.5
 

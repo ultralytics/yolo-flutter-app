@@ -197,7 +197,7 @@ final yolo = YOLO(
 
 ### 官方资产维护
 
-Android TFLite release 资产由 [`scripts/export-tflite-models.py`](scripts/export-tflite-models.py) 生成。该脚本定义了官方 YOLO26 任务/尺寸矩阵、int8 导出设置、Ultralytics 任务专用校准数据、可选的一次性 TFLite 推理验证，以及可选的 GitHub release 上传。脚本默认读取 `ultralytics.cfg.TASK2CALIBRATIONDATA`，使每个任务使用与 Ultralytics 导出器相同的规范校准数据集。
+Android TFLite release 资产由 [`scripts/export-tflite-models.py`](scripts/export-tflite-models.py) 生成。该脚本定义了官方 YOLO26 任务/尺寸矩阵、w8a32 导出设置（int8 权重、FP32 激活——动态范围量化，无需校准数据）、可选的一次性 TFLite 推理验证，以及可选的 GitHub release 上传。
 
 请在 Linux x86 或 macOS 上使用 Python ≥3.10 运行：
 
@@ -210,7 +210,7 @@ uv run python scripts/export-tflite-models.py --verify
 
 使用 `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` 将生成的 `.tflite` 资产发布到规范的 Android release。配套的 Core ML 资产由 `../yolo-ios-app/scripts/export-models.py` 生成，托管在 iOS `v8.3.0` release 上。
 
-Android 推理运行在 [LiteRT](https://developers.google.com/edge/litert) 2.x 之上，带有自动的 GPU -> CPU 加速器降级链。int8 资产因体积优势作为官方下载产物，但 int8 的 GPU 覆盖取决于设备驱动和计算图；GPU 无法编译的计算图会回退到 CPU。在 delegate 支持该计算图的设备上，非端到端（non-end-to-end）LiteRT 导出仍可用于 GPU 基准测试（GPU delegate 以 FP16 运行 FP32 计算图）：
+Android 推理运行在 [LiteRT](https://developers.google.com/edge/litert) 2.x 之上，带有自动的 GPU -> CPU 加速器降级链。w8a32 资产作为官方下载产物（最小的可在 GPU 上编译的 litert 格式）；在受支持的设备上，GPU delegate 会编译整个计算图，否则回退到 CPU。GPU 覆盖仍取决于设备驱动和计算图，因此请在目标硬件上确认 delegate 的放置（GPU delegate 以 FP16 运行计算图）：
 
 ```python
 from ultralytics import YOLO

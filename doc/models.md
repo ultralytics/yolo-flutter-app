@@ -59,14 +59,14 @@ Official export properties:
 | Model IDs      | `yolo26{n,s,m,l,x}`                             | `yolo26{n,s,m,l,x}`                 |
 | Tasks          | detect, seg, sem, cls, pose, obb                | detect, seg, sem, cls, pose, obb    |
 | Format         | `.tflite`                                       | `.mlpackage.zip`                    |
-| Quantization   | int8 LiteRT from `quantize=8` export            | int8 Core ML                        |
+| Quantization   | w8a32 LiteRT (int8 weights, FP32 activations)   | int8 Core ML                        |
 | `imgsz`        | `224` cls; `640` others                         | `224` cls; `1024` OBB; `640` others |
 | `nms`          | `False`                                         | `False`                             |
 | `end2end`      | `False`                                         | `True`                              |
-| Calibration    | `ultralytics.cfg.TASK2CALIBRATIONDATA` per task | exporter default                    |
+| Calibration    | None (w8a32 dynamic-range)                      | exporter default                    |
 | Postprocessing | Android native                                  | Swift/Core ML                       |
 
-The TFLite export script passes both `nms=False` and `end2end=False`. `nms=False` excludes an exported NMS operator, while `end2end=False` disables the YOLO26 end-to-end head for the Android LiteRT conversion path. Core ML assets use `end2end=True`, which is the YOLO26 output contract consumed by the Swift decoders. For Android calibration, the script uses the Ultralytics `TASK2CALIBRATIONDATA` mapping by default: detect `coco128.yaml`, segment `coco128-seg.yaml`, classify `imagenet100`, pose `coco8-pose.yaml`, OBB `dota128.yaml`, and semantic `cityscapes8.yaml`.
+The TFLite export script passes both `nms=False` and `end2end=False`. `nms=False` excludes an exported NMS operator, while `end2end=False` disables the YOLO26 end-to-end head for the Android LiteRT conversion path. Core ML assets use `end2end=True`, which is the YOLO26 output contract consumed by the Swift decoders. The Android `w8a32` export is dynamic-range quantization (int8 weights, FP32 activations), so it needs no calibration data.
 
 If you want the simplest “start from the default Ultralytics model” entry point, prefer `YOLO.defaultOfficialModel()`.
 
@@ -198,7 +198,7 @@ uv run python scripts/export-tflite-models.py --verify
 
 Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` to publish the generated `.tflite` assets. The script exports YOLO26 `n/s/m/l/x` models for detect, segment, semantic, classify, pose, and OBB. Output files are written under `exports/yolo26-tflite/release-assets/` and are ignored by Git. The `w8a32` format (int8 weights, FP32 activations) is dynamic-range quantization, so no calibration data is required.
 
-Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. int8 assets are the official download artifacts for size, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. non-end-to-end LiteRT exports can still be useful for GPU benchmarking on devices whose delegate supports the graph (the GPU delegate runs them in FP16):
+Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. w8a32 assets are the official download artifacts (the smallest GPU-compatible litert format); the GPU delegate compiles the whole graph on supported devices and otherwise falls back to CPU. GPU coverage still depends on the device driver and graph, so confirm delegate placement on your target hardware (the GPU delegate runs the graph in FP16):
 
 ```python
 from ultralytics import YOLO
