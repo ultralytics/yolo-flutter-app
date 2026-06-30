@@ -49,9 +49,10 @@ with the preprocess / inference / postprocess split beneath it.
 - **Speed** values are the full `predict()` time — preprocessing + inference + postprocessing, excluding annotation
   drawing — as the mean of 15 runs after 3 warmup runs on [bus.jpg](https://ultralytics.com/images/bus.jpg).
   <br>Reproduce with `ENABLE_QNN=1 flutter test integration_test/qnn_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true` (the example app's QNN runtime is opt-in)
-- **CPU** and **GPU** run the default official INT8 TFLite assets the plugin auto-downloads, on LiteRT with
-  `useGpu: false` / `true`. **NPU** runs the `*_v81_qnn.onnx` context binaries (INT8 weights, 16-bit activations) from
-  the same release via the ONNX Runtime QNN Execution Provider.
+- **CPU** and **GPU** run the legacy official INT8 TFLite assets (the prior `v0.3.5` default; the current default is
+  w8a32 LiteRT — see the migration table below), on LiteRT with `useGpu: false` / `true`. **NPU** runs the
+  `*_v81_qnn.onnx` context binaries (INT8 weights, 16-bit activations) from the same release via the ONNX Runtime QNN
+  Execution Provider.
 - <sup>1</sup> Semantic QNN uses the in-graph ArgMax class-map exports (ultralytics#24790), which replaced erratic
   123-1065 ms logits decoding with a stable ~49 ms; the GPU remains slightly faster for semantic at 1024px. The
   official `v0.3.5` QNN release assets ship in this channel-last class-map format, exported with ultralytics
@@ -61,6 +62,30 @@ with the preprocess / inference / postprocess split beneath it.
   input every frame and the silicon thermally settles under load (on an iPhone 17 Pro, YOLO26n detect measures
   ~3.8 ms burst but ~16 ms/frame sustained in the live camera). Watch the in-app pre/inference/post HUD line for
   your device's steady-state numbers, and benchmark your exact models on your target hardware.
+
+### Format migration: legacy INT8 TFLite → w8a32 LiteRT
+
+The official Android assets moved from the legacy onnx2tf **INT8 TFLite** format (NHWC, `v0.3.5`) to **w8a32 LiteRT**
+(int8 weights + FP32 activations, NCHW, `v0.6.6`) — the smallest GPU-compatible litert format, which needs no
+calibration data. The CPU/GPU columns above are the legacy INT8 baseline; the table below compares the four litert
+quantization formats against it on the same Xiaomi 17.
+
+Same-device yolo26n detect, Adreno GPU, measured in one sustained sweep — so **inference** (the format-dependent stage)
+is the comparable metric; preprocessing reflects the warmed-up thermal state of the back-to-back run:
+
+| Android format                       | size (MB) | GPU inference (ms) | GPU-compiles |
+| ------------------------------------ | --------- | ------------------ | ------------ |
+| onnx2tf INT8 (legacy, `v0.3.5`)      | 2.9       | 8.6                | yes          |
+| **w8a32 LiteRT (official, `v0.6.6`)**| **2.9**   | **8.4**            | **yes**      |
+| INT8 LiteRT                          | 2.9       | 11.0               | yes          |
+| FP32 LiteRT                          | 10.0      | 8.8                | yes          |
+| w8a16 LiteRT                         | 3.0       | (CPU fallback)     | no — fails   |
+
+- **w8a32 lands within noise of the retired onnx2tf INT8 model on the GPU** and is the smallest download, so the
+  migration does not regress GPU inference. Unlike the old onnx2tf INT8 (which fell back to CPU on many devices), all
+  three GPU-capable litert formats compile fully on the Adreno GPU here.
+- INT8 LiteRT is the slowest litert format and still needs calibration; FP32 ties w8a32 on speed but is ~3.4× the
+  download; **w8a16 fails to compile on the GPU delegate** and runs ~40× slower on CPU, so it is not used.
 
 ## 🔭 Optimization Findings and Future Exploration
 
