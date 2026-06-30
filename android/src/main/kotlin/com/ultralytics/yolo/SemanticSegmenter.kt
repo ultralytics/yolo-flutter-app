@@ -4,7 +4,6 @@ package com.ultralytics.yolo
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
 import android.util.Log
 import kotlin.math.roundToInt
@@ -73,13 +72,14 @@ class SemanticSegmenter(
         flatOutput = rtModel.run(floatInput)[0]
         val inferEnd = System.nanoTime()
         val semanticMask = postProcessSemantic(origWidth, origHeight)
-        val annotatedImage = drawSemanticOverlay(bitmap, semanticMask)
         val timing = finishTiming(preEnd, inferEnd)
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
             boxes = emptyList(),
             semanticMask = semanticMask,
-            annotatedImage = annotatedImage,
+            // Don't build the full-resolution overlay composite here: it is always discarded. YOLOView renders
+            // semanticMask.maskImage natively, and YOLO.predict() overwrites annotatedImage with drawAnnotations().
+            annotatedImage = null,
             speed = timing.speedMs,
             fps = timing.fps,
             preMs = timing.preMs,
@@ -187,27 +187,6 @@ class SemanticSegmenter(
             Color.argb(255, Color.red(color), Color.green(color), Color.blue(color))
         }
         return colorCache
-    }
-
-    private fun drawSemanticOverlay(bitmap: Bitmap, semanticMask: SemanticMask?): Bitmap {
-        val output = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-        val mask = semanticMask?.maskImage ?: return output
-        val scaledMask = if (mask.width == output.width && mask.height == output.height) {
-            mask
-        } else {
-            Bitmap.createScaledBitmap(mask, output.width, output.height, true)
-        }
-        Canvas(output).drawBitmap(
-            scaledMask,
-            0f,
-            0f,
-            android.graphics.Paint().apply {
-                alpha = 128
-                isFilterBitmap = true
-            }
-        )
-        if (scaledMask !== mask) scaledMask.recycle()
-        return output
     }
 
     companion object {
