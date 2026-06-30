@@ -37,6 +37,9 @@ class Segmenter(
     private var classBestScore = FloatArray(0)
     private var classBestIndex = IntArray(0)
 
+    // Reusable per-pixel accumulator for NCHW mask generation (sized to the proto plane on first use).
+    private var maskAccum = FloatArray(0)
+
     // CompiledModel output indices: detection head (rank-3) and mask proto (rank-4) may be returned in either order.
     private var detOutIndex = 0
     private var maskOutIndex = 1
@@ -359,24 +362,54 @@ class Segmenter(
             }
             // proto flat layout: NHWC -> protoFlat[(y*maskW + x)*maskC + c]; NCHW -> protoFlat[c*planeSize + y*maskW + x].
             val planeSize = maskH * maskW
-            for (y in outputBox.top until outputBox.bottom) {
-                val rowBase = y * maskW
-                for (x in outputBox.left until outputBox.right) {
-                    val pix = rowBase + x
-                    var v = 0f
-                    if (protoNchw) {
-                        for (c in 0 until coeffCount) {
-                            v += det.maskCoeffs[c] * protoFlat[c * planeSize + pix]
+            if (protoNchw) {
+                // Plane-major accumulation for the NCHW proto: stream each coeff's proto plane over the box into a
+                // per-pixel accumulator (cache-friendly), instead of gathering coeffCount planeSize-strided reads per
+                // pixel. The per-pixel add order over c is unchanged, so the accumulated value is identical to the
+                // per-pixel dot product. The accumulator is cleared over this box first; detections are independent.
+                if (maskAccum.size < planeSize) maskAccum = FloatArray(planeSize)
+                val acc = maskAccum
+                for (y in outputBox.top until outputBox.bottom) {
+                    val rowBase = y * maskW
+                    java.util.Arrays.fill(acc, rowBase + outputBox.left, rowBase + outputBox.right, 0f)
+                }
+                for (c in 0 until coeffCount) {
+                    val coeff = det.maskCoeffs[c]
+                    val planeBase = c * planeSize
+                    for (y in outputBox.top until outputBox.bottom) {
+                        val rowBase = y * maskW
+                        val protoRow = planeBase + rowBase
+                        for (x in outputBox.left until outputBox.right) {
+                            acc[rowBase + x] += coeff * protoFlat[protoRow + x]
                         }
-                    } else {
+                    }
+                }
+                for (y in outputBox.top until outputBox.bottom) {
+                    val rowBase = y * maskW
+                    for (x in outputBox.left until outputBox.right) {
+                        val pix = rowBase + x
+                        val v = acc[pix]
+                        if (v > threshold) {
+                            combinedPixels[pix] = color
+                            instanceMask?.get(y - contentRect.top)?.set(x - contentRect.left, v)
+                        }
+                    }
+                }
+            } else {
+                // NHWC proto: classes are contiguous per pixel, so the per-pixel dot product already streams cache lines.
+                for (y in outputBox.top until outputBox.bottom) {
+                    val rowBase = y * maskW
+                    for (x in outputBox.left until outputBox.right) {
+                        val pix = rowBase + x
                         val base = pix * maskC
+                        var v = 0f
                         for (c in 0 until coeffCount) {
                             v += det.maskCoeffs[c] * protoFlat[base + c]
                         }
-                    }
-                    if (v > threshold) {
-                        combinedPixels[pix] = color
-                        instanceMask?.get(y - contentRect.top)?.set(x - contentRect.left, v)
+                        if (v > threshold) {
+                            combinedPixels[pix] = color
+                            instanceMask?.get(y - contentRect.top)?.set(x - contentRect.left, v)
+                        }
                     }
                 }
             }
