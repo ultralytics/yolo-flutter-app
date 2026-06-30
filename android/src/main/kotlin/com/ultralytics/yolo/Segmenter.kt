@@ -409,13 +409,14 @@ class Segmenter(
                         }
                     }
                 }
-                for (y in outputBox.top until outputBox.bottom) {
-                    val rowBase = y * maskW
-                    for (x in outputBox.left until outputBox.right) {
-                        val pix = rowBase + x
-                        val v = acc[pix]
-                        if (v > threshold) {
-                            instanceMask?.get(y - contentRect.top)?.set(x - contentRect.left, v)
+                if (instanceMask != null) {
+                    for (y in outputBox.top until outputBox.bottom) {
+                        val rowBase = y * maskW
+                        for (x in outputBox.left until outputBox.right) {
+                            val v = acc[rowBase + x]
+                            if (v > threshold) {
+                                instanceMask.get(y - contentRect.top)?.set(x - contentRect.left, v)
+                            }
                         }
                     }
                 }
