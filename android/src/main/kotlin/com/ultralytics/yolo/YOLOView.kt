@@ -2239,7 +2239,9 @@ class YOLOView @JvmOverloads constructor(
         if (config.includeMasks) {
             result.semanticMask?.let { semanticMask ->
                 map["semanticMask"] = mapOf(
-                    "classMap" to semanticMask.classMap.toList(),
+                    // Send the IntArray straight through: StandardMessageCodec encodes it as a compact Int32List and
+                    // the Dart decoder reads it unchanged, avoiding a per-frame boxing copy of the dense class map.
+                    "classMap" to semanticMask.classMap,
                     "width" to semanticMask.width,
                     "height" to semanticMask.height
                 )
