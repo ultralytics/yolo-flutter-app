@@ -73,13 +73,13 @@ quantization formats against it on the same Xiaomi 17.
 Same-device yolo26n detect, Adreno GPU, measured in one sustained sweep — so **inference** (the format-dependent stage)
 is the comparable metric; preprocessing reflects the warmed-up thermal state of the back-to-back run:
 
-| Android format                       | size (MB) | GPU inference (ms) | GPU-compiles |
-| ------------------------------------ | --------- | ------------------ | ------------ |
-| onnx2tf INT8 (legacy, `v0.3.5`)      | 2.9       | 8.6                | yes          |
-| **w8a32 LiteRT (official, `v0.6.6`)**| **2.9**   | **8.4**            | **yes**      |
-| INT8 LiteRT                          | 2.9       | 11.0               | yes          |
-| FP32 LiteRT                          | 10.0      | 8.8                | yes          |
-| w8a16 LiteRT                         | 3.0       | (CPU fallback)     | no — fails   |
+| Android format                        | size (MB) | GPU inference (ms) | GPU-compiles |
+| ------------------------------------- | --------- | ------------------ | ------------ |
+| onnx2tf INT8 (legacy, `v0.3.5`)       | 2.9       | 8.6                | yes          |
+| **w8a32 LiteRT (official, `v0.6.6`)** | **2.9**   | **8.4**            | **yes**      |
+| INT8 LiteRT                           | 2.9       | 11.0               | yes          |
+| FP32 LiteRT                           | 10.0      | 8.8                | yes          |
+| w8a16 LiteRT                          | 3.0       | (CPU fallback)     | no — fails   |
 
 - **w8a32 lands within noise of the retired onnx2tf INT8 model on the GPU** and is the smallest download, so the
   migration does not regress GPU inference. Unlike the old onnx2tf INT8 (which fell back to CPU on many devices), all
