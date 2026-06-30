@@ -23,6 +23,8 @@ class SemanticSegmenter(
     private var flatOutput: FloatArray = FloatArray(0)
     private lateinit var outputShape: IntArray
     private var colorCache = IntArray(0)
+    // Reusable running-best-score buffer for the class-major NCHW argmax (see postProcessSemantic).
+    private var scoreScratch = FloatArray(0)
 
     init {
         YOLOFileUtils.loadModelLabels(context, modelPath)?.let { labels = it }
@@ -109,48 +111,67 @@ class SemanticSegmenter(
         val colors = semanticColors(classCount)
         val out = flatOutput
         val plane = maskWidth * maskHeight
-        // Strides into the flat [1, d1, d2, d3] output. NCHW: out[(cls*maskHeight + y)*maskWidth + x] — the class
-        // stride jumps a whole plane (unavoidable for that layout). NHWC: out[(y*maskWidth + x)*classCount + cls] —
-        // classes are contiguous, so argmax walks one cache line per pixel.
-        for (y in 0 until height) {
-            val sourceY = y + top
-            for (x in 0 until width) {
-                val sourceX = x + left
-                val classIndex = if (isClassMap) {
-                    out[sourceY * maskWidth + sourceX].toInt().coerceIn(0, classCount - 1)
-                } else if (classCount == 1) {
-                    0
-                } else if (isNCHW) {
-                    val planeOffset = sourceY * maskWidth + sourceX
-                    var bestIndex = 0
-                    var bestScore = out[planeOffset]
-                    var off = planeOffset + plane
-                    for (c in 1 until classCount) {
-                        val score = out[off]
-                        if (score > bestScore) {
-                            bestScore = score
-                            bestIndex = c
-                        }
-                        off += plane
-                    }
-                    bestIndex
-                } else {
-                    val base = (sourceY * maskWidth + sourceX) * classCount
-                    var bestIndex = 0
-                    var bestScore = out[base]
-                    for (c in 1 until classCount) {
-                        val score = out[base + c]
-                        if (score > bestScore) {
-                            bestScore = score
-                            bestIndex = c
-                        }
-                    }
-                    bestIndex
+        if (isNCHW && classCount > 1) {
+            // Class-major argmax for the NCHW [1, C, H, W] logits: walk each class plane's crop rows sequentially
+            // (cache-friendly) keeping a running best per output pixel, instead of jumping a whole plane per class
+            // for every pixel. ~640x640x19 reads become 19 streaming passes rather than 12M strided gathers.
+            if (scoreScratch.size != width * height) scoreScratch = FloatArray(width * height)
+            val best = scoreScratch
+            for (y in 0 until height) {
+                var src = (y + top) * maskWidth + left
+                var dst = y * width
+                for (x in 0 until width) {
+                    best[dst] = out[src]
+                    classMap[dst] = 0
+                    src++
+                    dst++
                 }
-                val outputIndex = y * width + x
-                classMap[outputIndex] = classIndex
-                pixels[outputIndex] = colors[classIndex]
             }
+            for (c in 1 until classCount) {
+                val planeBase = c * plane
+                for (y in 0 until height) {
+                    var src = planeBase + (y + top) * maskWidth + left
+                    var dst = y * width
+                    for (x in 0 until width) {
+                        val score = out[src]
+                        if (score > best[dst]) {
+                            best[dst] = score
+                            classMap[dst] = c
+                        }
+                        src++
+                        dst++
+                    }
+                }
+            }
+        } else {
+            // isClassMap: out is already a [1, H, W] class map (NPU in-graph ArgMax). classCount == 1: single class.
+            // NHWC: classes are contiguous per pixel, so argmax walks one cache line per pixel.
+            for (y in 0 until height) {
+                val sourceY = y + top
+                for (x in 0 until width) {
+                    val sourceX = x + left
+                    classMap[y * width + x] = if (isClassMap) {
+                        out[sourceY * maskWidth + sourceX].toInt().coerceIn(0, classCount - 1)
+                    } else if (classCount == 1) {
+                        0
+                    } else {
+                        val base = (sourceY * maskWidth + sourceX) * classCount
+                        var bestIndex = 0
+                        var bestScore = out[base]
+                        for (c in 1 until classCount) {
+                            val score = out[base + c]
+                            if (score > bestScore) {
+                                bestScore = score
+                                bestIndex = c
+                            }
+                        }
+                        bestIndex
+                    }
+                }
+            }
+        }
+        for (i in classMap.indices) {
+            pixels[i] = colors[classMap[i]]
         }
 
         val maskImage = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
