@@ -140,6 +140,10 @@ what worked, and what's left on the table:
   every score; semantic keeps dense class maps as `IntArray` until Flutter serialization; segment NMS buckets
   detections once by class instead of filtering the full candidate list per class; native detect NMS stops once
   `numItemsThreshold` boxes are kept. Outputs and Flutter payloads are unchanged.
+- **Postprocess follow-ups** (#550): the model-resolution mask skips its per-instance probability-mask loop entirely
+  on the default path (raw masks not requested) instead of scanning each detection box for a no-op; the semantic
+  class map is sent to Flutter as a compact `Int32List` rather than a boxed `List<Int>` copy, dropping a per-frame
+  copy of the dense map (decoded identically on the Dart side). Outputs unchanged.
 
 **Tested and intentionally NOT changed (don't re-litigate without new evidence):**
 
