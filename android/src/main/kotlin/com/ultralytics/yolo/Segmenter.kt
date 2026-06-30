@@ -33,6 +33,10 @@ class Segmenter(
     private lateinit var inputBitmap: Bitmap
     private lateinit var intValues: IntArray
 
+    // Reusable per-anchor class-argmax scratch (sized to the anchor count on first use).
+    private var classBestScore = FloatArray(0)
+    private var classBestIndex = IntArray(0)
+
     // CompiledModel output indices: detection head (rank-3) and mask proto (rank-4) may be returned in either order.
     private var detOutIndex = 0
     private var maskOutIndex = 1
@@ -193,52 +197,55 @@ class Segmenter(
         }
 
         // The detection head is flat in feature-major order: feature[f][anchor] == detFlat[f * numAnchors + anchor].
-        // Estimated capacity for results list to reduce reallocations
-        val estimatedCapacity = (numAnchors * 0.05).toInt() // Assume ~5% will pass threshold
-        val results = ArrayList<Detection>(estimatedCapacity)
-
-        // Apply early filtering - Optimization: early pruning strategy
-        val earlyThreshold = confidenceThreshold * 0.8f // Slightly lower threshold for first pass
         val classBase = 4 * numAnchors
 
-        for (j in 0 until numAnchors) {
-            // Check all classes instead of just first 3 to avoid bias
-            var quickMaxScore = 0f
-            for (c in 0 until numClasses) {
-                quickMaxScore = max(quickMaxScore, detFlat[classBase + c * numAnchors + j])
+        // Class argmax in class-major order: read each class plane (numAnchors contiguous floats) sequentially into
+        // a per-anchor running best, instead of a per-anchor scan that strides ~33 KB across the class dimension and
+        // misses cache on every step. Identical result, far friendlier memory access. The scratch buffers are reused
+        // across frames and cleared each frame — bestClass to 0 so an anchor whose class scores are all 0 still yields
+        // class 0 when it survives a zero confidence threshold, matching the pre-optimization default.
+        if (classBestScore.size < numAnchors) {
+            classBestScore = FloatArray(numAnchors)
+            classBestIndex = IntArray(numAnchors)
+        }
+        val bestScore = classBestScore
+        val bestClass = classBestIndex
+        java.util.Arrays.fill(bestScore, 0, numAnchors, 0f)
+        java.util.Arrays.fill(bestClass, 0, numAnchors, 0)
+        for (c in 0 until numClasses) {
+            val planeBase = classBase + c * numAnchors
+            for (j in 0 until numAnchors) {
+                val score = detFlat[planeBase + j]
+                if (score > bestScore[j]) {
+                    bestScore[j] = score
+                    bestClass[j] = c
+                }
             }
+        }
 
-            // Skip further processing if clearly below threshold
-            if (quickMaxScore < earlyThreshold) continue
-
-            // Continue with full processing for potential detections
+        // Collect candidates above threshold; box + mask coeffs are read only for the few survivors.
+        val estimatedCapacity = (numAnchors * 0.05).toInt() // Assume ~5% will pass threshold
+        val results = ArrayList<Detection>(estimatedCapacity)
+        val maskBase = (4 + numClasses) * numAnchors
+        for (j in 0 until numAnchors) {
+            val maxScore = bestScore[j]
+            if (maxScore < confidenceThreshold) continue
             val cx = detFlat[j]
             val cy = detFlat[numAnchors + j]
             val w = detFlat[2 * numAnchors + j]
             val h = detFlat[3 * numAnchors + j]
-            var maxScore = 0f
-            var maxClassIdx = 0
-
-            for (c in 0 until numClasses) {
-                val score = detFlat[classBase + c * numAnchors + j]
-                if (score > maxScore) {
-                    maxScore = score
-                    maxClassIdx = c
-                }
+            val maskCoeffs = FloatArray(maskConfidenceLength)
+            for (m in 0 until maskConfidenceLength) {
+                maskCoeffs[m] = detFlat[maskBase + m * numAnchors + j]
             }
-
-            if (maxScore >= confidenceThreshold) {
-                val maskCoeffs = FloatArray(maskConfidenceLength)
-                val base = (4 + numClasses) * numAnchors
-                for (m in 0 until maskConfidenceLength) {
-                    maskCoeffs[m] = detFlat[base + m * numAnchors + j]
-                }
-                val left = cx - w / 2f
-                val top = cy - h / 2f
-                val right = cx + w / 2f
-                val bottom = cy + h / 2f
-                results.add(Detection(RectF(left, top, right, bottom), maxClassIdx, maxScore, maskCoeffs))
-            }
+            results.add(
+                Detection(
+                    RectF(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f),
+                    bestClass[j],
+                    maxScore,
+                    maskCoeffs
+                )
+            )
         }
         val finalDetections = mutableListOf<Detection>()
         for (classIndex in 0 until numClasses) {
