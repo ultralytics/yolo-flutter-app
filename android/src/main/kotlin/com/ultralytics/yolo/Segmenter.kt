@@ -5,6 +5,8 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.*
 import android.util.Log
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -39,6 +41,10 @@ class Segmenter(
 
     // Reusable per-pixel accumulator for NCHW mask generation (sized to the proto plane on first use).
     private var maskAccum = FloatArray(0)
+    private var combinedMaskPixels = IntArray(0)
+    private var scaledX0 = IntArray(0)
+    private var scaledX1 = IntArray(0)
+    private var scaledXWeight = FloatArray(0)
 
     // CompiledModel output indices: detection head (rank-3) and mask proto (rank-4) may be returned in either order.
     private var detOutIndex = 0
@@ -328,7 +334,14 @@ class Segmenter(
         if (maskW <= 0 || maskH <= 0 || maskC <= 0) return Pair(null, null)
         val contentRect = modelMaskCropRect(maskW, maskH, origWidth, origHeight)
             ?: Rect(0, 0, maskW, maskH)
-        val combinedPixels = IntArray(maskW * maskH) { Color.TRANSPARENT }
+        val targetWidth = max(1, (contentRect.width().toFloat() / maskW * modelInputSize.first).roundToInt())
+        val targetHeight = max(1, (contentRect.height().toFloat() / maskH * modelInputSize.second).roundToInt())
+        val displayScaleX = targetWidth.toFloat() / contentRect.width()
+        val displayScaleY = targetHeight.toFloat() / contentRect.height()
+        val pixelCount = targetWidth * targetHeight
+        if (combinedMaskPixels.size < pixelCount) combinedMaskPixels = IntArray(pixelCount)
+        val combinedPixels = combinedMaskPixels
+        java.util.Arrays.fill(combinedPixels, 0, pixelCount, Color.TRANSPARENT)
         val probabilityMasks = if (returnIndividualMasks) mutableListOf<List<List<Float>>>() else null
         val coeffCount = min(maskConfidenceLength, maskC)
         detections.forEach { det ->
@@ -362,6 +375,16 @@ class Segmenter(
             }
             // proto flat layout: NHWC -> protoFlat[(y*maskW + x)*maskC + c]; NCHW -> protoFlat[c*planeSize + y*maskW + x].
             val planeSize = maskH * maskW
+            val targetLeft = max(0, floor((outputBox.left - contentRect.left) * displayScaleX).toInt())
+            val targetTop = max(0, floor((outputBox.top - contentRect.top) * displayScaleY).toInt())
+            val targetRight = min(targetWidth, ceil((outputBox.right - contentRect.left) * displayScaleX).toInt())
+            val targetBottom = min(targetHeight, ceil((outputBox.bottom - contentRect.top) * displayScaleY).toInt())
+            if (targetLeft >= targetRight || targetTop >= targetBottom) {
+                instanceMask?.let { mask ->
+                    probabilityMasks?.add(mask.map { it.toList() })
+                }
+                return@forEach
+            }
             if (protoNchw) {
                 // Plane-major accumulation for the NCHW proto: stream each coeff's proto plane over the box into a
                 // per-pixel accumulator (cache-friendly), instead of gathering coeffCount planeSize-strided reads per
@@ -390,13 +413,30 @@ class Segmenter(
                         val pix = rowBase + x
                         val v = acc[pix]
                         if (v > threshold) {
-                            combinedPixels[pix] = color
                             instanceMask?.get(y - contentRect.top)?.set(x - contentRect.left, v)
                         }
                     }
                 }
+                paintScaledMask(
+                    logits = acc,
+                    sourceWidth = maskW,
+                    sourceBox = outputBox,
+                    contentRect = contentRect,
+                    targetLeft = targetLeft,
+                    targetTop = targetTop,
+                    targetRight = targetRight,
+                    targetBottom = targetBottom,
+                    scaleX = displayScaleX,
+                    scaleY = displayScaleY,
+                    threshold = threshold,
+                    color = color,
+                    pixels = combinedPixels,
+                    targetWidth = targetWidth
+                )
             } else {
                 // NHWC proto: classes are contiguous per pixel, so the per-pixel dot product already streams cache lines.
+                if (maskAccum.size < planeSize) maskAccum = FloatArray(planeSize)
+                val acc = maskAccum
                 for (y in outputBox.top until outputBox.bottom) {
                     val rowBase = y * maskW
                     for (x in outputBox.left until outputBox.right) {
@@ -406,36 +446,88 @@ class Segmenter(
                         for (c in 0 until coeffCount) {
                             v += det.maskCoeffs[c] * protoFlat[base + c]
                         }
+                        acc[pix] = v
                         if (v > threshold) {
-                            combinedPixels[pix] = color
                             instanceMask?.get(y - contentRect.top)?.set(x - contentRect.left, v)
                         }
                     }
                 }
+                paintScaledMask(
+                    logits = acc,
+                    sourceWidth = maskW,
+                    sourceBox = outputBox,
+                    contentRect = contentRect,
+                    targetLeft = targetLeft,
+                    targetTop = targetTop,
+                    targetRight = targetRight,
+                    targetBottom = targetBottom,
+                    scaleX = displayScaleX,
+                    scaleY = displayScaleY,
+                    threshold = threshold,
+                    color = color,
+                    pixels = combinedPixels,
+                    targetWidth = targetWidth
+                )
             }
             instanceMask?.let { mask ->
                 probabilityMasks?.add(mask.map { it.toList() })
             }
         }
-        val bmp = Bitmap.createBitmap(maskW, maskH, Bitmap.Config.ARGB_8888)
-        bmp.setPixels(combinedPixels, 0, maskW, 0, 0, maskW, maskH)
-        val croppedBmp = if (
-            contentRect.left == 0 &&
-            contentRect.top == 0 &&
-            contentRect.right == maskW &&
-            contentRect.bottom == maskH
-        ) {
-            bmp
-        } else {
-            Bitmap.createBitmap(
-                bmp,
-                contentRect.left,
-                contentRect.top,
-                contentRect.width(),
-                contentRect.height()
-            ).also { bmp.recycle() }
+        val bmp = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
+        bmp.setPixels(combinedPixels, 0, targetWidth, 0, 0, targetWidth, targetHeight)
+        return Pair(bmp, probabilityMasks)
+    }
+
+    private fun paintScaledMask(
+        logits: FloatArray,
+        sourceWidth: Int,
+        sourceBox: Rect,
+        contentRect: Rect,
+        targetLeft: Int,
+        targetTop: Int,
+        targetRight: Int,
+        targetBottom: Int,
+        scaleX: Float,
+        scaleY: Float,
+        threshold: Float,
+        color: Int,
+        pixels: IntArray,
+        targetWidth: Int
+    ) {
+        val columnCount = targetRight - targetLeft
+        if (scaledX0.size < columnCount) {
+            scaledX0 = IntArray(columnCount)
+            scaledX1 = IntArray(columnCount)
+            scaledXWeight = FloatArray(columnCount)
         }
-        return Pair(croppedBmp, probabilityMasks)
+        for (i in 0 until columnCount) {
+            val sourceX = contentRect.left + (targetLeft + i + 0.5f) / scaleX - 0.5f
+            val x0 = floor(sourceX).toInt().coerceIn(sourceBox.left, sourceBox.right - 1)
+            scaledX0[i] = x0
+            scaledX1[i] = min(x0 + 1, sourceBox.right - 1)
+            scaledXWeight[i] = (sourceX - x0).coerceIn(0f, 1f)
+        }
+
+        for (ty in targetTop until targetBottom) {
+            val sourceY = contentRect.top + (ty + 0.5f) / scaleY - 0.5f
+            val y0 = floor(sourceY).toInt().coerceIn(sourceBox.top, sourceBox.bottom - 1)
+            val y1 = min(y0 + 1, sourceBox.bottom - 1)
+            val yWeight = (sourceY - y0).coerceIn(0f, 1f)
+            val row0 = y0 * sourceWidth
+            val row1 = y1 * sourceWidth
+            var pixelIndex = ty * targetWidth + targetLeft
+            for (i in 0 until columnCount) {
+                val x0 = scaledX0[i]
+                val x1 = scaledX1[i]
+                val xWeight = scaledXWeight[i]
+                val top = logits[row0 + x0] * (1f - xWeight) + logits[row0 + x1] * xWeight
+                val bottom = logits[row1 + x0] * (1f - xWeight) + logits[row1 + x1] * xWeight
+                if (top * (1f - yWeight) + bottom * yWeight > threshold) {
+                    pixels[pixelIndex] = color
+                }
+                pixelIndex++
+            }
+        }
     }
 
     private fun maskBoxForDetection(outputBox: RectF, maskW: Int, maskH: Int): Rect {

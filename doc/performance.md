@@ -130,6 +130,10 @@ what worked, and what's left on the table:
   detection box into a reused per-pixel accumulator. A further **−1.2 ms / −13%** off segment postprocess
   (thermally matched at ~22 ms inference), bit-identical. NHWC (legacy onnx2tf) proto is already pixel-contiguous
   and was left unchanged.
+- **High-resolution segment overlays** (#549): the visible combined mask now scales logits to model-input resolution
+  before thresholding, matching the iOS SDK's sharp segment overlay path instead of upscaling a 160x160 RGBA mask.
+  On the Xiaomi 17 GPU path this measured **7.6-8.6 ms postprocess** for `yolo26n-seg`, trading ~1.5-2.5 ms for
+  model-resolution masks while keeping the cache-local decode/mask-gen wins above.
 
 **Tested and intentionally NOT changed (don't re-litigate without new evidence):**
 

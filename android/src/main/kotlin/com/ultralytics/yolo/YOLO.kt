@@ -375,21 +375,21 @@ class YOLO(
                         mask,
                         output.width,
                         output.height,
-                        true
+                        false
                     )
                     paint.style = Paint.Style.FILL
                     paint.alpha = 128
-                    paint.isFilterBitmap = true
+                    paint.isFilterBitmap = false
                     canvas.drawBitmap(maskScaled, 0f, 0f, paint)
                     if (maskScaled !== mask) maskScaled.recycle()
                 }
             }
             YOLOTask.SEMANTIC -> {
                 result.semanticMask?.maskImage?.let { mask ->
-                    val maskScaled = Bitmap.createScaledBitmap(mask, output.width, output.height, true)
+                    val maskScaled = Bitmap.createScaledBitmap(mask, output.width, output.height, false)
                     paint.style = Paint.Style.FILL
                     paint.alpha = 128
-                    paint.isFilterBitmap = true
+                    paint.isFilterBitmap = false
                     canvas.drawBitmap(maskScaled, 0f, 0f, paint)
                     paint.alpha = 255
                     if (maskScaled !== mask) maskScaled.recycle()

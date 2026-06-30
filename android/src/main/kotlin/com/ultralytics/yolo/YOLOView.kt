@@ -1746,7 +1746,7 @@ class YOLOView @JvmOverloads constructor(
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
                         val maskPaint = Paint().apply {
                             alpha = 128
-                            isFilterBitmap = true
+                            isFilterBitmap = false
                         }
                         
                         if (isFrontCamera) {
@@ -1771,7 +1771,7 @@ class YOLOView @JvmOverloads constructor(
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
                         val maskPaint = Paint().apply {
                             alpha = 128
-                            isFilterBitmap = true
+                            isFilterBitmap = false
                         }
 
                         if (isFrontCamera) {
