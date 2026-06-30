@@ -132,8 +132,10 @@ what worked, and what's left on the table:
   and was left unchanged.
 - **High-resolution segment overlays** (#549): the visible combined mask now scales logits to model-input resolution
   before thresholding, matching the iOS SDK's sharp segment overlay path instead of upscaling a 160x160 RGBA mask.
-  On the Xiaomi 17 GPU path this measured **7.6-8.6 ms postprocess** for `yolo26n-seg`, trading ~1.5-2.5 ms for
-  model-resolution masks while keeping the cache-local decode/mask-gen wins above.
+  A naive Kotlin bilinear paint measured **15.5 ms postprocess** and was rejected; caching per-column interpolation
+  reduced the Xiaomi 17 GPU path to **7.6-8.6 ms postprocess** for `yolo26n-seg`, trading ~1.5-2.5 ms for
+  model-resolution masks while keeping the cache-local decode/mask-gen wins above. Raw mask payloads remain at the
+  existing cropped proto resolution.
 
 **Tested and intentionally NOT changed (don't re-litigate without new evidence):**
 
