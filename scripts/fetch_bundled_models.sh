@@ -102,5 +102,14 @@ for f in "${FILES[@]}"; do
   fetch "$f"
 done
 
+# Keep assets/models/ single-platform: Flutter bundles the whole folder, so the other platform's models would
+# otherwise ship in this build — e.g. the iOS Core ML packages (~14 MB) are dead weight in the Android APK and never
+# loaded. The folder is gitignored and re-fetched on demand, so pruning the wrong-platform files here is safe.
+if [ "$PLATFORM" = "android" ]; then
+  rm -f "$DEST"/*.mlpackage.zip
+else
+  rm -f "$DEST"/*.tflite
+fi
+
 # Always succeed: bundling is an optimization, never a hard build dependency.
 exit 0

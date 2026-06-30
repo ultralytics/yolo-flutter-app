@@ -41,6 +41,10 @@ name, builds the signed release bundle from `example/`, verifies the AAB signatu
 
 If `ultralytics-yolo-feature-graphic.png` is present, the script preserves it and includes it in the checksum file.
 
+The Android bundle ships only the nano `*_w8a32.tflite` models. The iOS Core ML packages (`*.mlpackage.zip`) that
+`assets/models/` also holds for local convenience are pruned from the build by `scripts/fetch_bundled_models.sh` (which
+keeps the folder single-platform), so they don't bloat the per-device download.
+
 After a successful run, this directory should look like:
 
 ```text
