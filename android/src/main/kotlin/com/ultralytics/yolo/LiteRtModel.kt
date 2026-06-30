@@ -7,6 +7,8 @@ import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
 import com.google.ai.edge.litert.TensorBuffer
 import com.google.ai.edge.litert.TensorType
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
  * Wraps a LiteRT 2.x [CompiledModel] behind a simple float-in / float-out API so the predictors don't deal with
@@ -124,17 +126,32 @@ class LiteRtModel(
 
         try {
             // Read the input shape by name. litert-torch (format=litert) names the input `args_0`; legacy onnx2tf
-            // exports name it `images`. Try both and refuse to guess on a miss: silently assuming NHWC would feed an
-            // NCHW graph raw HWC data (wrong detections, no crash), which is worse than failing loudly at load.
-            val nativeDims = sequenceOf("images", "args_0").firstNotNullOfOrNull { name ->
-                try {
-                    compiled.getInputTensorType(inputName = name).layout?.dimensions?.toIntArray()?.takeIf { it.isNotEmpty() }
-                } catch (e: Throwable) {
-                    null
+            // exports name it `images`. Custom (non-Ultralytics) TFLite models may use other signature input names, so
+            // also try a few common ones — litert 2.1.5 exposes the input shape only by name (no by-index lookup).
+            val nativeDims = sequenceOf("images", "args_0", "input", "input_1", "serving_default_input")
+                .firstNotNullOfOrNull { name ->
+                    try {
+                        compiled.getInputTensorType(inputName = name).layout?.dimensions?.toIntArray()?.takeIf { it.isNotEmpty() }
+                    } catch (e: Throwable) {
+                        null
+                    }
+                } ?: run {
+                    // Unrecognized input name: size the (already-created) input buffer and fall back to NHWC [1,H,W,3]
+                    // for a single square 3-channel image — the common non-Ultralytics TFLite layout. litert-torch NCHW
+                    // exports are always named args_0 (handled above), so an unrecognized input is almost certainly
+                    // NHWC; warn since the layout can't be confirmed from the name. Only fail when even that is
+                    // impossible (non-square or non-3-channel input), which would otherwise feed the graph wrong data.
+                    val count = inputs[0].readFloat().size
+                    val side = if (count > 0 && count % 3 == 0) sqrt((count / 3).toDouble()).roundToInt() else 0
+                    if (side > 0 && side * side * 3 == count) {
+                        Log.w(tag, "Input tensor name not recognized; assuming NHWC [1, $side, $side, 3] from buffer size $count.")
+                        intArrayOf(1, side, side, 3)
+                    } else {
+                        throw IllegalStateException(
+                            "Could not read LiteRT input tensor shape: unrecognized input name and buffer size $count is not a square 3-channel image."
+                        )
+                    }
                 }
-            } ?: throw IllegalStateException(
-                "Could not read LiteRT input tensor shape by name (tried 'images', 'args_0'); unknown input layout."
-            )
             // litert-torch exports are NCHW [1,3,H,W]; legacy onnx2tf exports are NHWC [1,H,W,3]. Detect from the shape
             // and report NHWC to predictors either way so they stay layout-agnostic (run() transposes for NCHW).
             val nchw = nativeDims.size >= 4 && nativeDims[1] == 3 && nativeDims.last() != 3
