@@ -148,7 +148,7 @@ what worked, and what's left on the table:
 - **Class-major argmax for detect / OBB decode**: the cache reorganization that won on segment (above) showed no
   benefit on detect — already native C++, where the JNI `GetFloatArrayElements` copy of the ~705k-float output
   dominates, not the argmax — and a slight regression on OBB, which has only ~15 classes so the per-frame buffer
-  clear plus extra pass outweighs the small cache gain. Both reverted: the win needs *both* many classes and the
+  clear plus extra pass outweighs the small cache gain. Both reverted: the win needs _both_ many classes and the
   Kotlin path. Semantic argmax was already class-major (NCHW logits), so it was already optimal.
 
 **Future exploration (in expected-value order):**
