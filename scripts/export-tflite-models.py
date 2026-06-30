@@ -1,8 +1,9 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """Export official YOLO26 LiteRT (.tflite) assets for the Flutter Android release.
 
-Uses the Ultralytics `format=litert` export (litert-torch + ai-edge-quantizer), which requires `ultralytics>=8.4.83`
-and runs on Linux x86 or macOS with Python>=3.10.
+Uses the Ultralytics `format=litert` export (litert-torch + ai-edge-quantizer) with `quantize="w8a32"` (dynamic INT8:
+int8 weights + FP32 activations), which requires `ultralytics>=8.4.83` and runs on Linux x86 or macOS with Python>=3.10.
+w8a32 needs no calibration data, compiles on the LiteRT GPU delegate, and is the smallest of the GPU-capable formats.
 
 Usage from the repository root:
 
@@ -21,7 +22,6 @@ import shutil
 import subprocess
 import sys
 import time
-import urllib.request
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,7 +31,8 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = ROOT / "exports" / "yolo26-tflite"
 DEFAULT_REPO = "ultralytics/yolo-flutter-app"
-DEFAULT_TAG = "v0.3.5"
+DEFAULT_TAG = "v0.6.6"
+QUANTIZE = "w8a32"
 SIZES = ("n", "s", "m", "l", "x")
 
 
@@ -61,13 +62,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--repo", default=DEFAULT_REPO)
     parser.add_argument("--tag", default=DEFAULT_TAG)
-    parser.add_argument(
-        "--data",
-        help=(
-            "Override calibration data for every task. By default the script uses "
-            "ultralytics.cfg.TASK2CALIBRATIONDATA per task."
-        ),
-    )
     parser.add_argument("--sizes", nargs="+", choices=SIZES, default=list(SIZES))
     parser.add_argument("--tasks", nargs="+", choices=TASKS.keys(), default=list(TASKS))
     parser.add_argument("--verify", action="store_true", help="Run one zero-input TFLite inference per exported file.")
@@ -128,7 +122,7 @@ def task_names(task_name: str, suffix: str) -> dict[int, str]:
 def append_tflite_metadata(path: Path, model_id: str, task_name: str, task: TaskSpec) -> None:
     """Append Ultralytics metadata to a TFLite model archive."""
     metadata = {
-        "description": f"Ultralytics {model_id} int8 TFLite model",
+        "description": f"Ultralytics {model_id} w8a32 LiteRT model",
         "author": "Ultralytics",
         "date": time.strftime("%Y-%m-%d"),
         "version": "8.4.83",
@@ -139,7 +133,7 @@ def append_tflite_metadata(path: Path, model_id: str, task_name: str, task: Task
         "channels": 3,
         "stride": 32,
         "format": "litert",
-        "int8": True,
+        "int8": False,
         "nms": False,
         "end2end": False,
     }
@@ -180,15 +174,14 @@ def display_path(path: Path) -> str:
         return str(path)
 
 
-def export_one(model_id: str, imgsz: int, data: str, output_dir: Path) -> None:
-    """Export one YOLO model to int8 TFLite."""
+def export_one(model_id: str, imgsz: int, output_dir: Path) -> None:
+    """Export one YOLO model to w8a32 LiteRT (no calibration data required)."""
     from ultralytics import YOLO
 
     os.chdir(output_dir)
     YOLO(f"{model_id}.pt").export(
         format="litert",
-        quantize=8,
-        data=data,
+        quantize=QUANTIZE,
         nms=False,
         end2end=False,
         imgsz=imgsz,
@@ -196,112 +189,11 @@ def export_one(model_id: str, imgsz: int, data: str, output_dir: Path) -> None:
     )
 
 
-def ensure_coco128_dataset() -> Path:
-    """Download coco128 under /datasets when it is missing."""
-    dataset_root = Path("/datasets/coco128")
-    images_dir = dataset_root / "images" / "train2017"
-    if images_dir.is_dir():
-        return dataset_root
-    datasets_dir = Path("/datasets")
-    datasets_dir.mkdir(parents=True, exist_ok=True)
-    archive = datasets_dir / "coco128.zip"
-    if not archive.exists():
-        urllib.request.urlretrieve("https://ultralytics.com/assets/coco128.zip", archive)
-    with zipfile.ZipFile(archive) as zf:
-        zf.extractall(datasets_dir)
-    return dataset_root
-
-
-def classify_calibration_data(data: str, output_dir: Path) -> str:
-    """Return classification calibration data derived from the requested source."""
-    source = Path(data)
-    if source.is_dir():
-        return str(source.resolve())
-    if data != "coco128.yaml":
-        return data
-
-    coco128 = ensure_coco128_dataset()
-    images = sorted((coco128 / "images" / "train2017").glob("*.jpg"))
-    if not images:
-        raise FileNotFoundError(f"No coco128 calibration images found under {coco128}")
-
-    cls_root = output_dir / "coco128-cls-calibration"
-    train_dir = cls_root / "train" / "coco128"
-    val_dir = cls_root / "val" / "coco128"
-    train_dir.mkdir(parents=True, exist_ok=True)
-    val_dir.mkdir(parents=True, exist_ok=True)
-
-    for i, image in enumerate(images):
-        target_dir = val_dir if i % 5 == 0 else train_dir
-        target = target_dir / image.name
-        if target.exists():
-            continue
-        try:
-            target.symlink_to(image)
-        except OSError:
-            shutil.copy2(image, target)
-
-    return str(cls_root)
-
-
-def image_only_calibration_data(data: str, output_dir: Path, task_name: str) -> str:
-    """Return image-only calibration data for tasks that cannot use labels."""
-    source = Path(data)
-    if source.is_file():
-        if data != "coco128.yaml":
-            return data
-    elif source.exists():
-        return str(source.resolve())
-
-    coco128 = ensure_coco128_dataset()
-    images = sorted((coco128 / "images" / "train2017").glob("*.jpg"))
-    if not images:
-        raise FileNotFoundError(f"No coco128 calibration images found under {coco128}")
-
-    calib_root = output_dir / f"coco128-{task_name}-calibration"
-    image_dir = calib_root / "images" / "val"
-    image_dir.mkdir(parents=True, exist_ok=True)
-    for image in images:
-        target = image_dir / image.name
-        if target.exists():
-            continue
-        try:
-            target.symlink_to(image)
-        except OSError:
-            shutil.copy2(image, target)
-
-    yaml_lines = [
-        f"path: {calib_root}",
-        "train: images/val",
-        "val: images/val",
-        "names:",
-        "  0: coco128",
-    ]
-    if task_name == "pose":
-        yaml_lines.append("kpt_shape: [17, 3]")
-    yaml_path = calib_root / "data.yaml"
-    yaml_path.write_text("\n".join(yaml_lines) + "\n")
-    return str(yaml_path)
-
-
-def calibration_data(task_name: str, data: str | None, output_dir: Path) -> str:
-    """Return calibration data for a task and optional override."""
-    if data is None:
-        from ultralytics.cfg import TASK2CALIBRATIONDATA
-
-        return TASK2CALIBRATIONDATA[task_name]
-    if task_name == "classify":
-        return classify_calibration_data(data, output_dir)
-    if task_name in {"pose", "obb"}:
-        return image_only_calibration_data(data, output_dir, task_name)
-    return data
-
-
 def exported_tflite_path(output_dir: Path, model_id: str) -> Path | None:
-    """Find the exported LiteRT .tflite for a model (single-file `<model_id>_int8.tflite`)."""
+    """Find the exported LiteRT .tflite for a model (single-file `<model_id>_w8a32.tflite`)."""
     candidates = (
-        output_dir / f"{model_id}_int8.tflite",
-        Path("/ultralytics/weights") / f"{model_id}_int8.tflite",
+        output_dir / f"{model_id}_{QUANTIZE}.tflite",
+        Path("/ultralytics/weights") / f"{model_id}_{QUANTIZE}.tflite",
     )
     for candidate in candidates:
         if candidate.exists():
@@ -309,21 +201,13 @@ def exported_tflite_path(output_dir: Path, model_id: str) -> Path | None:
     return None
 
 
-def run_export_worker(
-    model_id: str,
-    task: TaskSpec,
-    args: argparse.Namespace,
-    output_dir: Path,
-    data: str,
-) -> Path:
+def run_export_worker(model_id: str, task: TaskSpec, output_dir: Path) -> Path:
     """Run a child export process (for memory isolation) and return the generated LiteRT .tflite path."""
     command = [
         sys.executable,
         str(Path(__file__).resolve()),
         "--output-dir",
         str(output_dir),
-        "--data",
-        data,
         "--worker-model-id",
         model_id,
         "--worker-imgsz",
@@ -341,14 +225,14 @@ def run_export_worker(
 
 
 def main() -> None:
-    """Export requested YOLO TFLite release assets."""
+    """Export requested YOLO LiteRT release assets."""
     args = parse_args()
     output_dir = args.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     if args.worker_model_id:
         if args.worker_imgsz is None:
             raise ValueError("--worker-imgsz is required with --worker-model-id")
-        export_one(args.worker_model_id, args.worker_imgsz, args.data, output_dir)
+        export_one(args.worker_model_id, args.worker_imgsz, output_dir)
         return
 
     os.chdir(output_dir)
@@ -360,34 +244,31 @@ def main() -> None:
         task = TASKS[task_name]
         for size in args.sizes:
             model_id = f"yolo26{size}{task.suffix}"
-            target = release_dir / f"{model_id}_int8.tflite"
+            target = release_dir / f"{model_id}_{QUANTIZE}.tflite"
             if target.exists() and not args.force:
                 ensure_tflite_metadata(target, model_id, task_name, task)
                 outputs = verify_tflite(target) if args.verify else []
                 suffix = f" outputs={outputs}" if outputs else ""
-                print(f"\nSkipping {model_id}; asset exists at {target.relative_to(ROOT)}{suffix}")
+                print(f"\nSkipping {model_id}; asset exists at {display_path(target)}{suffix}")
                 assets.append(target)
                 continue
-            export_data = calibration_data(task_name, args.data, output_dir)
-            print(f"\nExporting {model_id} ({task_name}, imgsz={task.imgsz}, data={export_data})")
-            if args.data and export_data != args.data:
-                print(f"using {task_name} calibration data from {args.data}: {export_data}")
+            print(f"\nExporting {model_id} ({task_name}, imgsz={task.imgsz}, quantize={QUANTIZE})")
             exported = exported_tflite_path(output_dir, model_id)
             if exported is not None and not args.force:
                 print(f"using existing generated {display_path(exported)}")
             else:
-                exported = run_export_worker(model_id, task, args, output_dir, export_data)
+                exported = run_export_worker(model_id, task, output_dir)
             shutil.copy2(exported, target)
             ensure_tflite_metadata(target, model_id, task_name, task)
             outputs = verify_tflite(target) if args.verify else []
             suffix = f" outputs={outputs}" if outputs else ""
-            print(f"asset {target.relative_to(ROOT)} size={target.stat().st_size / 1_000_000:.2f} MB{suffix}")
+            print(f"asset {display_path(target)} size={target.stat().st_size / 1_000_000:.2f} MB{suffix}")
             assets.append(target)
 
     if args.upload:
         upload_assets(args.repo, args.tag, assets)
 
-    print(f"\nPrepared {len(assets)} TFLite release assets in {release_dir}")
+    print(f"\nPrepared {len(assets)} LiteRT release assets in {release_dir}")
 
 
 if __name__ == "__main__":

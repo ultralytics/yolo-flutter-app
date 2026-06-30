@@ -41,12 +41,12 @@ Official assets are maintained as GitHub release assets:
 
 | Platform | Runtime asset                 | Release                                                                                          |
 | -------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| Android  | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| Android  | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | iOS      | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 URL patterns:
 
-- Android TFLite: `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5/<model>_int8.tflite`
+- Android LiteRT: `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6/<model>_w8a32.tflite`
 - Android QNN (opt-in NPU): `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5/<model>_v73_qnn.onnx` (Snapdragon 8 Gen 2+; `_v81` for 8 Elite Gen 5)
 - iOS Core ML: `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.mlpackage.zip`
 
@@ -180,7 +180,7 @@ Official release assets are generated from YOLO26 checkpoints with task/size loo
 
 | Runtime      | Source script                                                           | Release                                                                                          |
 | ------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| TFLite int8  | [`scripts/export-tflite-models.py`](../scripts/export-tflite-models.py) | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| LiteRT w8a32 | [`scripts/export-tflite-models.py`](../scripts/export-tflite-models.py) | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | Core ML int8 | `../yolo-ios-app/scripts/export-models.py`                              | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 `scripts/export-tflite-models.py` is the source of truth for Android export settings, verification, output names, and optional release upload. The Core ML counterpart in `../yolo-ios-app` owns the Apple asset export settings and packaging.
@@ -196,7 +196,7 @@ uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.83"
 uv run python scripts/export-tflite-models.py --verify
 ```
 
-Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.3.5` to publish the generated `.tflite` assets. The script exports YOLO26 `n/s/m/l/x` models for detect, segment, semantic, classify, pose, and OBB. Output files are written under `exports/yolo26-tflite/release-assets/` and are ignored by Git. Leave `--data` unset for official exports so the script uses `ultralytics.cfg.TASK2CALIBRATIONDATA`; pass `--data` only when intentionally benchmarking a single calibration source across tasks.
+Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` to publish the generated `.tflite` assets. The script exports YOLO26 `n/s/m/l/x` models for detect, segment, semantic, classify, pose, and OBB. Output files are written under `exports/yolo26-tflite/release-assets/` and are ignored by Git. The `w8a32` format (int8 weights, FP32 activations) is dynamic-range quantization, so no calibration data is required.
 
 Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. int8 assets are the official download artifacts for size, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. non-end-to-end LiteRT exports can still be useful for GPU benchmarking on devices whose delegate supports the graph (the GPU delegate runs them in FP16):
 

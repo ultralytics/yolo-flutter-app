@@ -40,9 +40,11 @@ class YOLOResolvedModel {
 
 class YOLOModelResolver {
   // Pinned release assets provide reproducible first-use downloads. Update these constants, docs, and URL tests together
-  // when the official model asset set moves to a new release.
+  // when the official model asset set moves to a new release. The official Android assets are LiteRT `_w8a32.tflite`
+  // models on v0.6.6; the opt-in QNN `_qnn.onnx` assets are NOT regenerated and stay on v0.3.5 (referenced by explicit
+  // paths, not model-ID resolution).
   static const String _androidModelReleaseBaseUrl =
-      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5';
+      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6';
   static const String _iosModelReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
@@ -75,7 +77,7 @@ class YOLOModelResolver {
     return _OfficialModelArtifact(
       id: id,
       task: task,
-      androidAssetName: '${id}_int8.tflite',
+      androidAssetName: '${id}_w8a32.tflite',
       iosArchiveName: '$id.mlpackage.zip',
     );
   }

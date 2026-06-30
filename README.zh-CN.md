@@ -115,7 +115,7 @@ final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 
 | 平台                | 运行时资产                    | Release                                                                                          |
 | ------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| Android             | TFLite int8 `.tflite`         | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
+| Android             | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | Android NPU（可选） | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5) |
 | iOS                 | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
@@ -208,7 +208,7 @@ uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.83"
 uv run python scripts/export-tflite-models.py --verify
 ```
 
-使用 `--upload --repo ultralytics/yolo-flutter-app --tag v0.3.5` 将生成的 `.tflite` 资产发布到规范的 Android release。配套的 Core ML 资产由 `../yolo-ios-app/scripts/export-models.py` 生成，托管在 iOS `v8.3.0` release 上。
+使用 `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` 将生成的 `.tflite` 资产发布到规范的 Android release。配套的 Core ML 资产由 `../yolo-ios-app/scripts/export-models.py` 生成，托管在 iOS `v8.3.0` release 上。
 
 Android 推理运行在 [LiteRT](https://developers.google.com/edge/litert) 2.x 之上，带有自动的 GPU -> CPU 加速器降级链。int8 资产因体积优势作为官方下载产物，但 int8 的 GPU 覆盖取决于设备驱动和计算图；GPU 无法编译的计算图会回退到 CPU。在 delegate 支持该计算图的设备上，非端到端（non-end-to-end）LiteRT 导出仍可用于 GPU 基准测试（GPU delegate 以 FP16 运行 FP32 计算图）：
 
