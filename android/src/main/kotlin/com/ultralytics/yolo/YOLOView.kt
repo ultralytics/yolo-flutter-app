@@ -1746,7 +1746,7 @@ class YOLOView @JvmOverloads constructor(
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
                         val maskPaint = Paint().apply {
                             alpha = 128
-                            isFilterBitmap = true
+                            isFilterBitmap = false
                         }
                         
                         if (isFrontCamera) {
@@ -1771,7 +1771,7 @@ class YOLOView @JvmOverloads constructor(
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
                         val maskPaint = Paint().apply {
                             alpha = 128
-                            isFilterBitmap = true
+                            isFilterBitmap = false
                         }
 
                         if (isFrontCamera) {
@@ -2239,7 +2239,7 @@ class YOLOView @JvmOverloads constructor(
         if (config.includeMasks) {
             result.semanticMask?.let { semanticMask ->
                 map["semanticMask"] = mapOf(
-                    "classMap" to semanticMask.classMap,
+                    "classMap" to semanticMask.classMap.toList(),
                     "width" to semanticMask.width,
                     "height" to semanticMask.height
                 )

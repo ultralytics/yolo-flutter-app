@@ -38,7 +38,7 @@ data class Masks(
 )
 
 data class SemanticMask(
-    val classMap: List<Int>,
+    val classMap: IntArray,
     val width: Int,
     val height: Int,
     val maskImage: Bitmap?

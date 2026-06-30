@@ -105,21 +105,32 @@ class Classifier(
         val preEnd = System.nanoTime()
         val scores = rtModel.run(floatInput)[0] // flat FloatArray(numClass)
         val inferEnd = System.nanoTime()
-        val indexedScores = scores.mapIndexed { index, score -> index to score }
-        val sorted = indexedScores.sortedByDescending { it.second }
 
-        // Top1
-        val top1 = sorted.firstOrNull()
-        // Top5
-        val top5 = sorted.take(5)
+        val topCount = minOf(5, scores.size)
+        val topIndices = IntArray(topCount) { -1 }
+        val topScores = FloatArray(topCount) { Float.NEGATIVE_INFINITY }
+        for (index in scores.indices) {
+            val score = scores[index]
+            var insert = 0
+            while (insert < topCount && score <= topScores[insert]) insert++
+            if (insert == topCount) continue
+            var move = topCount - 1
+            while (move > insert) {
+                topScores[move] = topScores[move - 1]
+                topIndices[move] = topIndices[move - 1]
+                move--
+            }
+            topScores[insert] = score
+            topIndices[insert] = index
+        }
 
-        val top1Label = if (top1 != null) labelName(top1.first) else "class 0"
-        val top1Score = top1?.second ?: 0f
-        val top1Index: Int = if (top1 != null) top1.first else 0
+        val top1Index = topIndices.firstOrNull()?.takeIf { it >= 0 } ?: 0
+        val top1Score = topScores.firstOrNull()?.takeIf { top1Index >= 0 } ?: 0f
+        val top1Label = labelName(top1Index)
 
-        val top5Indices = top5.map { it.first }
-        val top5Labels = top5.map { (idx, _) -> labelName(idx) }
-        val top5Scores = top5.map { it.second }
+        val top5Indices = topIndices.filter { it >= 0 }
+        val top5Labels = top5Indices.map { labelName(it) }
+        val top5Scores = topScores.take(top5Indices.size)
 
         val probs = Probs(
             top1Label = top1Label,

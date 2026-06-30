@@ -176,7 +176,7 @@ class SemanticSegmenter(
 
         val maskImage = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         maskImage.setPixels(pixels, 0, width, 0, 0, width, height)
-        return SemanticMask(classMap.toList(), width, height, maskImage)
+        return SemanticMask(classMap, width, height, maskImage)
     }
 
     private fun semanticColors(classCount: Int): IntArray {
