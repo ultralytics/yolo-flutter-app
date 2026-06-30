@@ -233,8 +233,7 @@ class Segmenter(
         }
 
         // Collect candidates above threshold; box + mask coeffs are read only for the few survivors.
-        val estimatedCapacity = (numAnchors * 0.05).toInt() // Assume ~5% will pass threshold
-        val results = ArrayList<Detection>(estimatedCapacity)
+        val detectionsByClass = arrayOfNulls<ArrayList<Detection>>(numClasses)
         val maskBase = (4 + numClasses) * numAnchors
         for (j in 0 until numAnchors) {
             val maxScore = bestScore[j]
@@ -247,18 +246,21 @@ class Segmenter(
             for (m in 0 until maskConfidenceLength) {
                 maskCoeffs[m] = detFlat[maskBase + m * numAnchors + j]
             }
-            results.add(
-                Detection(
-                    RectF(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f),
-                    bestClass[j],
-                    maxScore,
-                    maskCoeffs
-                )
+            val detection = Detection(
+                RectF(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f),
+                bestClass[j],
+                maxScore,
+                maskCoeffs
             )
+            val classDetections = detectionsByClass[detection.cls] ?: ArrayList<Detection>().also {
+                detectionsByClass[detection.cls] = it
+            }
+            classDetections.add(detection)
         }
         val finalDetections = mutableListOf<Detection>()
-        for (classIndex in 0 until numClasses) {
-            val sameClass = results.filter { it.cls == classIndex }.sortedByDescending { it.score }
+        for (sameClassUnsorted in detectionsByClass) {
+            if (sameClassUnsorted == null) continue
+            val sameClass = sameClassUnsorted.sortedByDescending { it.score }
             val picked = mutableListOf<Detection>()
             val used = BooleanArray(sameClass.size)
             for (i in sameClass.indices) {

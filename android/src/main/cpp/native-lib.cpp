@@ -69,7 +69,7 @@ static float intersection_area(const DetectedObject &a, const DetectedObject &b)
 }
 
 // Non-Maximum Suppression (NMS) implementation (for already sorted proposals)
-static void nms_sorted_bboxes(const std::vector<DetectedObject>& objects, std::vector<int>& picked, float nms_threshold) {
+static void nms_sorted_bboxes(const std::vector<DetectedObject>& objects, std::vector<int>& picked, float nms_threshold, int max_picked) {
     picked.clear();
     int n = objects.size();
     std::vector<float> areas(n);
@@ -88,8 +88,10 @@ static void nms_sorted_bboxes(const std::vector<DetectedObject>& objects, std::v
                 break;
             }
         }
-        if (keep)
+        if (keep) {
             picked.push_back(i);
+            if (max_picked > 0 && (int)picked.size() >= max_picked) break;
+        }
     }
 }
 
@@ -148,7 +150,7 @@ Java_com_ultralytics_yolo_ObjectDetector_postprocess(
 
     // Apply Non-Maximum Suppression (NMS)
     std::vector<int> picked;
-    nms_sorted_bboxes(proposals, picked, iou_threshold);
+    nms_sorted_bboxes(proposals, picked, iou_threshold, num_items_threshold);
 
     int count = std::min((int)picked.size(), (int)num_items_threshold);
     std::vector<DetectedObject> objects(count);

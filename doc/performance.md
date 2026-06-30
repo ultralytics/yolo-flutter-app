@@ -136,6 +136,10 @@ what worked, and what's left on the table:
   reduced the Xiaomi 17 GPU path to **7.6-8.6 ms postprocess** for `yolo26n-seg`, trading ~1.5-2.5 ms for
   model-resolution masks while keeping the cache-local decode/mask-gen wins above. Raw mask payloads remain at the
   existing cropped proto resolution.
+- **Postprocess overhead cleanup** (#549): classifier top-5 now uses fixed-size linear insertion instead of sorting
+  every score; semantic keeps dense class maps as `IntArray` until Flutter serialization; segment NMS buckets
+  detections once by class instead of filtering the full candidate list per class; native detect NMS stops once
+  `numItemsThreshold` boxes are kept. Outputs and Flutter payloads are unchanged.
 
 **Tested and intentionally NOT changed (don't re-litigate without new evidence):**
 

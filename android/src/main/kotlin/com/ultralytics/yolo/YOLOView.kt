@@ -2239,7 +2239,7 @@ class YOLOView @JvmOverloads constructor(
         if (config.includeMasks) {
             result.semanticMask?.let { semanticMask ->
                 map["semanticMask"] = mapOf(
-                    "classMap" to semanticMask.classMap,
+                    "classMap" to semanticMask.classMap.toList(),
                     "width" to semanticMask.width,
                     "height" to semanticMask.height
                 )
