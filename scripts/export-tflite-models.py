@@ -121,11 +121,13 @@ def task_names(task_name: str, suffix: str) -> dict[int, str]:
 
 def append_tflite_metadata(path: Path, model_id: str, task_name: str, task: TaskSpec) -> None:
     """Append Ultralytics metadata to a TFLite model archive."""
+    from ultralytics import __version__ as ultralytics_version
+
     metadata = {
         "description": f"Ultralytics {model_id} w8a32 LiteRT model",
         "author": "Ultralytics",
         "date": time.strftime("%Y-%m-%d"),
-        "version": "8.4.83",
+        "version": ultralytics_version,
         "task": task_name,
         "batch": 1,
         "imgsz": [task.imgsz, task.imgsz],
