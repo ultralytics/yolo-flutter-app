@@ -49,9 +49,10 @@ with the preprocess / inference / postprocess split beneath it.
 - **Speed** values are the full `predict()` time — preprocessing + inference + postprocessing, excluding annotation
   drawing — as the mean of 15 runs after 3 warmup runs on [bus.jpg](https://ultralytics.com/images/bus.jpg).
   <br>Reproduce with `ENABLE_QNN=1 flutter test integration_test/qnn_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true` (the example app's QNN runtime is opt-in)
-- **CPU** and **GPU** run the default official INT8 TFLite assets the plugin auto-downloads, on LiteRT with
-  `useGpu: false` / `true`. **NPU** runs the `*_v81_qnn.onnx` context binaries (INT8 weights, 16-bit activations) from
-  the same release via the ONNX Runtime QNN Execution Provider.
+- **CPU** and **GPU** run the legacy official INT8 TFLite assets (the prior `v0.3.5` default; the current default is
+  w8a32 LiteRT — see the migration table below), on LiteRT with `useGpu: false` / `true`. **NPU** runs the
+  `*_v81_qnn.onnx` context binaries (INT8 weights, 16-bit activations) from the same release via the ONNX Runtime QNN
+  Execution Provider.
 - <sup>1</sup> Semantic QNN uses the in-graph ArgMax class-map exports (ultralytics#24790), which replaced erratic
   123-1065 ms logits decoding with a stable ~49 ms; the GPU remains slightly faster for semantic at 1024px. The
   official `v0.3.5` QNN release assets ship in this channel-last class-map format, exported with ultralytics
@@ -61,6 +62,47 @@ with the preprocess / inference / postprocess split beneath it.
   input every frame and the silicon thermally settles under load (on an iPhone 17 Pro, YOLO26n detect measures
   ~3.8 ms burst but ~16 ms/frame sustained in the live camera). Watch the in-app pre/inference/post HUD line for
   your device's steady-state numbers, and benchmark your exact models on your target hardware.
+
+### Format migration: legacy INT8 TFLite → w8a32 LiteRT
+
+The official Android assets moved from the legacy onnx2tf **INT8 TFLite** format (NHWC, `v0.3.5`) to **w8a32 LiteRT**
+(int8 weights + FP32 activations, NCHW, `v0.6.6`) — the smallest GPU-compatible litert format, which needs no
+calibration data. The CPU/GPU columns above are the legacy INT8 baseline; the table below compares the four litert
+quantization formats against it on the same Xiaomi 17.
+
+Same-device yolo26n detect, Adreno GPU, measured in one sustained sweep — so **inference** (the format-dependent stage)
+is the comparable metric; preprocessing reflects the warmed-up thermal state of the back-to-back run:
+
+| Android format                        | size (MB) | GPU inference (ms) | GPU-compiles |
+| ------------------------------------- | --------- | ------------------ | ------------ |
+| onnx2tf INT8 (legacy, `v0.3.5`)       | 2.9       | 8.6                | yes          |
+| **w8a32 LiteRT (official, `v0.6.6`)** | **2.9**   | **8.4**            | **yes**      |
+| INT8 LiteRT                           | 2.9       | 11.0               | yes          |
+| FP32 LiteRT                           | 10.0      | 8.8                | yes          |
+| w8a16 LiteRT                          | 3.0       | (CPU fallback)     | no — fails   |
+
+- **w8a32 lands within noise of the retired onnx2tf INT8 model on the GPU** and is the smallest download, so the
+  migration does not regress GPU inference. Unlike the old onnx2tf INT8 (which fell back to CPU on many devices), all
+  three GPU-capable litert formats compile fully on the Adreno GPU here.
+- INT8 LiteRT is the slowest litert format and still needs calibration; FP32 ties w8a32 on speed but is ~3.4× the
+  download; **w8a16 fails to compile on the GPU delegate** and runs ~40× slower on CPU, so it is not used.
+
+Per-task before/after on the Adreno GPU — the legacy onnx2tf **INT8 TFLite** assets vs the new **w8a32 LiteRT** assets,
+both measured in the same run on the Xiaomi 17 at the shipped Android `imgsz` (224 classify, 640 others). Each cell is
+the **total** with the preprocess / inference / postprocess split beneath it:
+
+| Model        | Task     | size<br><sup>(pixels)</sup> | Before<br><sup>onnx2tf INT8 TFLite<br>(ms)</sup> | After<br><sup>w8a32 LiteRT<br>(ms)</sup> |
+| ------------ | -------- | --------------------------- | ------------------------------------------------ | ---------------------------------------- |
+| YOLO26n      | Detect   | 640                         | 18.8<br><sup>7.8 / 8.3 / 2.7</sup>               | **17.4**<br><sup>6.2 / 8.6 / 2.6</sup>   |
+| YOLO26n-seg  | Segment  | 640                         | 45.2<br><sup>7.8 / 22.9 / 14.4</sup>             | **43.4**<br><sup>7.7 / 21.9 / 13.7</sup> |
+| YOLO26n-sem  | Semantic | 640                         | **50.5**<br><sup>6.5 / 27.7 / 16.3</sup>         | 59.4<br><sup>7.5 / 34.4 / 17.5</sup>     |
+| YOLO26n-cls  | Classify | 224                         | 5.9<br><sup>1.5 / 2.0 / 2.5</sup>                | **4.9**<br><sup>1.7 / 2.0 / 1.3</sup>    |
+| YOLO26n-pose | Pose     | 640                         | **22.5**<br><sup>7.8 / 9.8 / 4.8</sup>           | 24.0<br><sup>9.1 / 10.4 / 4.5</sup>      |
+| YOLO26n-obb  | OBB      | 640                         | 19.0<br><sup>7.7 / 8.4 / 2.9</sup>               | **18.4**<br><sup>7.7 / 8.6 / 2.0</sup>   |
+
+w8a32 matches or beats the legacy onnx2tf INT8 format on four of six tasks; **semantic is the clear regression**
+(+9 ms, from the NCHW FP32-activation inference and host-side argmax) and pose is ~1.5 ms slower. The legacy onnx2tf
+models run unchanged on LiteRT 2.x alongside the new NCHW exports, confirming the runtime's layout-adaptive path.
 
 ## 🔭 Optimization Findings and Future Exploration
 
@@ -150,14 +192,14 @@ final yolo = YOLO(
 
 On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the whole model for the GPU when it can; models the GPU cannot compile fall back to XNNPACK CPU. (iOS uses Core ML.)
 
-The official YOLO26 int8 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph. For example, a Galaxy S26 compiled `yolo26n_int8.tflite` fully with the OpenCL delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran at about **15 FPS / 32 ms** in the live camera example app. Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
+The official YOLO26 Android assets (w8a32 LiteRT) compile on the LiteRT GPU path on supported devices, though GPU coverage still depends on the device driver and graph. For example, a Galaxy S26 compiled the legacy `yolo26n_int8.tflite` fully with the OpenCL delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran at about **15 FPS / 32 ms** in the live camera example app. Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
 
-fp16 non-end-to-end TFLite exports are still useful for GPU benchmarking:
+non-end-to-end LiteRT exports are still useful for GPU benchmarking (the GPU delegate runs them in FP16):
 
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="tflite", quantize=16, nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
 ```
 
 Use CPU when:
@@ -321,8 +363,8 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 
 ### Current Shipped Configuration
 
-- Android official assets: YOLO26 int8 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `v0.3.5`.
-- Android export settings: `quantize=8`, `nms=False`, `end2end=False`; classify `imgsz=224`, all other tasks `imgsz=640`; calibration from `ultralytics.cfg.TASK2CALIBRATIONDATA`.
+- Android official assets: YOLO26 w8a32 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `v0.6.6`.
+- Android export settings: `quantize=w8a32` (int8 weights, FP32 activations — dynamic-range, no calibration), `nms=False`, `end2end=False`; classify `imgsz=224`, all other tasks `imgsz=640`.
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
 - Example UI: controls expose all six tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.
 - Bundled models: local/release builds fetch the six `yolo26n` nano models into `example/assets/models/` at build time (gitignored, not committed; skipped under CI), so nano tasks work offline with no first-run download; larger sizes download on demand.

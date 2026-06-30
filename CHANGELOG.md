@@ -1,3 +1,9 @@
+## 0.6.6
+
+- **Change**: Android release assets are now exported with the Ultralytics `format=litert` path (litert-torch + ai-edge-quantizer, requires `ultralytics>=8.4.83`), replacing the legacy onnx2tf TFLite export. The official assets switch to `w8a32` quantization (int8 weights, FP32 activations; `_w8a32.tflite`) on a new `v0.6.6` release — the smallest format that compiles on the LiteRT GPU delegate, requiring no calibration data. The previous `v0.3.5` int8 assets are left untouched so already-installed apps keep working.
+- **Enhancement**: Android inference auto-detects the `.tflite` input layout — NCHW `[1,3,H,W]` (litert-torch, input `args_0`) vs NHWC `[1,H,W,3]` (legacy onnx2tf, input `images`) — and the segmentation mask-proto layout (NCHW vs NHWC), so both new `format=litert` exports and existing `.tflite` models run correctly.
+- **Fix**: Segment, semantic, and pose models exported with `format=litert` now run correctly on Android. Their output tensors are named `output_N` rather than the legacy onnx2tf `Identity_N`, which the runtime now resolves so the predictors read the correct output shapes instead of failing.
+
 ## 0.6.5
 
 - **Feature**: The iOS plugin now supports Swift Package Manager alongside CocoaPods. Sources moved to the SwiftPM
@@ -116,7 +122,7 @@
 - **Enhancement**: Plugin now bundles `assets/ultralytics_yolo_logotype.png` and `assets/focus_reticle.png` so consumers no longer need to copy them.
 - **Enhancement**: Replace the third-party ZIP package used for iOS `.mlpackage.zip` extraction with a hardened internal extractor that validates central-directory metadata, CRC-32 checksums, unsafe paths, unsupported ZIP features, and implausible decompression sizes.
 - **Feature**: Migrate Android inference to LiteRT 2.x (`com.google.ai.edge.litert:litert:2.1.5`, Google's rebrand of TensorFlow Lite) via the `CompiledModel` API, with an automatic GPU → CPU accelerator ladder: compatible graphs compile for the GPU, while unsupported graphs or ops may fall back to XNNPACK on CPU. NNAPI is no longer used (Google deprecated it and it was slower on modern devices). iOS continues to use Core ML.
-- **Feature**: Add a fp16, non-end-to-end TFLite path for Android GPU benchmarking — export with `half=True, nms=False` to get fp16 weights and a raw detection head the GPU accelerator can compile (the plugin runs NMS on CPU in well under a millisecond). Official int8 assets remain the canonical downloads; int8 GPU coverage is device and graph dependent, so verify delegate placement on the target device.
+- **Feature**: Add a non-end-to-end LiteRT path for Android GPU benchmarking — export with `nms=False, end2end=False` to get a raw detection head the GPU accelerator can compile, which the GPU delegate runs in FP16 (the plugin runs NMS on CPU in well under a millisecond). Official int8 assets remain the canonical downloads; int8 GPU coverage is device and graph dependent, so verify delegate placement on the target device.
 - **Breaking**: Android now requires `minSdkVersion 23` because LiteRT 2.x declares API 23 as its minimum supported Android level.
 - **Feature**: Auto-detect `task` and class labels for custom models from embedded model metadata — Ultralytics' appended-ZIP, with a standard TFLite (FlatBuffers) metadata fallback — so drag-and-drop custom models resolve their task and labels without explicit configuration.
 - **Enhancement**: Ship consumer ProGuard/R8 keep rules so release builds don't strip LiteRT classes; consumers get this automatically.

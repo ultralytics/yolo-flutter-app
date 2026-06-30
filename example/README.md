@@ -27,7 +27,7 @@ flutter run
 
 Example assets come from the same canonical release locations as the package resolver. They autodownload on first use and cache in app storage:
 
-- Android TFLite int8: [yolo-flutter-app `v0.3.5`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.3.5)
+- Android LiteRT w8a32: [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6)
 - iOS Core ML int8: [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)
 
 ## 🧠 Why The Example Is Small

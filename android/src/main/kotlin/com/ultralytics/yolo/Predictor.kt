@@ -16,7 +16,8 @@ import kotlin.math.roundToInt
 /**
  * Runtime-agnostic inference model behind the predictors: NHWC interleaved-RGB float32 in, flat float32 outputs out.
  * Implemented by [LiteRtModel] (TFLite on LiteRT, GPU→CPU ladder) and [OrtQnnModel] (QNN context-binary ONNX on the
- * Snapdragon NPU).
+ * Snapdragon NPU). Implementations that run an NCHW model (e.g. `format=litert` litert-torch exports) transpose the
+ * interleaved input internally and still report [inputDims] in NHWC convention, so predictors stay layout-agnostic.
  */
 interface InferenceModel {
     /** Accelerator in use: "NPU", "GPU" or "CPU". */

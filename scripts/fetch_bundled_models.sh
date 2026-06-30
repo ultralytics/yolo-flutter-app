@@ -13,7 +13,7 @@
 # to override.
 #
 # Usage: fetch_bundled_models.sh <android|ios>
-#   android -> *_int8.tflite from the yolo-flutter-app release
+#   android -> *_w8a32.tflite from the yolo-flutter-app release
 #   ios     -> *.mlpackage.zip from the yolo-ios-app release (the resolver extracts these on first use)
 #
 # Keep the release tags and the nano file list in sync with lib/core/yolo_model_resolver.dart.
@@ -39,17 +39,17 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 DEST="$REPO_ROOT/example/assets/models"
 
 # Release sources (must match YOLOModelResolver constants).
-ANDROID_BASE="https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5"
+ANDROID_BASE="https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6"
 IOS_BASE="https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0"
 
 # The nano task family bundled by default: detect, segment, semantic, classify, pose, obb.
 ANDROID_FILES=(
-  "yolo26n_int8.tflite"
-  "yolo26n-seg_int8.tflite"
-  "yolo26n-sem_int8.tflite"
-  "yolo26n-cls_int8.tflite"
-  "yolo26n-pose_int8.tflite"
-  "yolo26n-obb_int8.tflite"
+  "yolo26n_w8a32.tflite"
+  "yolo26n-seg_w8a32.tflite"
+  "yolo26n-sem_w8a32.tflite"
+  "yolo26n-cls_w8a32.tflite"
+  "yolo26n-pose_w8a32.tflite"
+  "yolo26n-obb_w8a32.tflite"
 )
 IOS_FILES=(
   "yolo26n.mlpackage.zip"
