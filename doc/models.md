@@ -54,17 +54,17 @@ The Flutter resolver uses the TFLite release for Android and the Core ML release
 
 Official export properties:
 
-| Property       | TFLite                                          | Core ML                             |
-| -------------- | ----------------------------------------------- | ----------------------------------- |
-| Model IDs      | `yolo26{n,s,m,l,x}`                             | `yolo26{n,s,m,l,x}`                 |
-| Tasks          | detect, seg, sem, cls, pose, obb                | detect, seg, sem, cls, pose, obb    |
-| Format         | `.tflite`                                       | `.mlpackage.zip`                    |
-| Quantization   | w8a32 LiteRT (int8 weights, FP32 activations)   | int8 Core ML                        |
-| `imgsz`        | `224` cls; `640` others                         | `224` cls; `1024` OBB; `640` others |
-| `nms`          | `False`                                         | `False`                             |
-| `end2end`      | `False`                                         | `True`                              |
-| Calibration    | None (w8a32 dynamic-range)                      | exporter default                    |
-| Postprocessing | Android native                                  | Swift/Core ML                       |
+| Property       | TFLite                                        | Core ML                             |
+| -------------- | --------------------------------------------- | ----------------------------------- |
+| Model IDs      | `yolo26{n,s,m,l,x}`                           | `yolo26{n,s,m,l,x}`                 |
+| Tasks          | detect, seg, sem, cls, pose, obb              | detect, seg, sem, cls, pose, obb    |
+| Format         | `.tflite`                                     | `.mlpackage.zip`                    |
+| Quantization   | w8a32 LiteRT (int8 weights, FP32 activations) | int8 Core ML                        |
+| `imgsz`        | `224` cls; `640` others                       | `224` cls; `1024` OBB; `640` others |
+| `nms`          | `False`                                       | `False`                             |
+| `end2end`      | `False`                                       | `True`                              |
+| Calibration    | None (w8a32 dynamic-range)                    | exporter default                    |
+| Postprocessing | Android native                                | Swift/Core ML                       |
 
 The TFLite export script passes both `nms=False` and `end2end=False`. `nms=False` excludes an exported NMS operator, while `end2end=False` disables the YOLO26 end-to-end head for the Android LiteRT conversion path. Core ML assets use `end2end=True`, which is the YOLO26 output contract consumed by the Swift decoders. The Android `w8a32` export is dynamic-range quantization (int8 weights, FP32 activations), so it needs no calibration data.
 
