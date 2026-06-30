@@ -63,9 +63,11 @@ IOS_FILES=(
 if [ "$PLATFORM" = "android" ]; then
   BASE="$ANDROID_BASE"
   FILES=("${ANDROID_FILES[@]}")
+  OTHER_FILES=("${IOS_FILES[@]}")
 else
   BASE="$IOS_BASE"
   FILES=("${IOS_FILES[@]}")
+  OTHER_FILES=("${ANDROID_FILES[@]}")
 fi
 
 mkdir -p "$DEST"
@@ -100,6 +102,14 @@ fetch() {
 
 for f in "${FILES[@]}"; do
   fetch "$f"
+done
+
+# Keep assets/models/ single-platform: Flutter bundles the whole folder, so the other platform's bundled models would
+# otherwise ship in this build — e.g. the iOS Core ML packages (~14 MB) are dead weight in the Android APK and never
+# loaded. Only the known auto-fetched filenames are removed (re-fetched on demand), so any custom or benchmark model a
+# developer dropped into assets/models/ is left untouched.
+for f in "${OTHER_FILES[@]}"; do
+  rm -f "$DEST/$f"
 done
 
 # Always succeed: bundling is an optimization, never a hard build dependency.
