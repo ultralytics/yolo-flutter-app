@@ -119,6 +119,17 @@ what worked, and what's left on the table:
 - **In-graph ArgMax semantic QNN exports** (ultralytics#24790): a uint8 class map replaces ~80 MB of float logits;
   stable ~50 ms vs 123-1065 ms (erratic) before.
 - **GPU program cache** (`GpuOptions.serializationDir`): model re-opens skip OpenCL compilation.
+- **Cache-local segment decode** (#549): the class-argmax over the `[1, 4+nc+32, 8400]` head read each class
+  ~33 KB apart — a cache miss per class per anchor. Reorganized to class-major (each class plane streamed
+  sequentially into a per-anchor running best) and dropped a redundant early-reject scan. Segment postprocess
+  ~9.6 → 7.3 ms (**−24%**) on the 80-class model, output bit-identical (matching detection counts before/after). The
+  win scales with class count: an isolated 20-class decode dropped −57%, 1-class is within noise (so custom
+  few-class models never regress).
+- **Cache-local segment mask generation** (#549): the NCHW mask `Σ coeff·proto` gathered 32 proto values
+  `planeSize` (~102 KB) apart per pixel. Reorganized to plane-major accumulation — stream each proto plane over the
+  detection box into a reused per-pixel accumulator. A further **−1.2 ms / −13%** off segment postprocess
+  (thermally matched at ~22 ms inference), bit-identical. NHWC (legacy onnx2tf) proto is already pixel-contiguous
+  and was left unchanged.
 
 **Tested and intentionally NOT changed (don't re-litigate without new evidence):**
 
@@ -134,6 +145,11 @@ what worked, and what's left on the table:
   37.6 ms for GPU logits + the app's NHWC argmax. The class-map export stays QNN/Core ML-only.
 - **int32 class maps**: uint8 quarters the NPU→CPU output transfer and every consumer reads it (Core ML promotes
   it to int32 in-spec); int32 indices are reserved for >256-class models. uint8 stays the class-map dtype.
+- **Class-major argmax for detect / OBB decode**: the cache reorganization that won on segment (above) showed no
+  benefit on detect — already native C++, where the JNI `GetFloatArrayElements` copy of the ~705k-float output
+  dominates, not the argmax — and a slight regression on OBB, which has only ~15 classes so the per-frame buffer
+  clear plus extra pass outweighs the small cache gain. Both reverted: the win needs *both* many classes and the
+  Kotlin path. Semantic argmax was already class-major (NCHW logits), so it was already optimal.
 
 **Future exploration (in expected-value order):**
 
