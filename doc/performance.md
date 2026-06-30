@@ -73,19 +73,36 @@ quantization formats against it on the same Xiaomi 17.
 Same-device yolo26n detect, Adreno GPU, measured in one sustained sweep — so **inference** (the format-dependent stage)
 is the comparable metric; preprocessing reflects the warmed-up thermal state of the back-to-back run:
 
-| YOLO26n detect format             | GPU inference (ms) |
-| --------------------------------- | ------------------ |
-| onnx2tf INT8 TFLite (before)      | 8.6                |
-| **w8a32 LiteRT (after, shipped)** | **8.4**            |
-| INT8 LiteRT                       | 11.0               |
-| FP32 LiteRT                       | 8.8                |
-| w8a16 LiteRT                      | — (fails on GPU)   |
+| Android format                        | size (MB) | GPU inference (ms) | GPU-compiles |
+| ------------------------------------- | --------- | ------------------ | ------------ |
+| onnx2tf INT8 (legacy, `v0.3.5`)       | 2.9       | 8.6                | yes          |
+| **w8a32 LiteRT (official, `v0.6.6`)** | **2.9**   | **8.4**            | **yes**      |
+| INT8 LiteRT                           | 2.9       | 11.0               | yes          |
+| FP32 LiteRT                           | 10.0      | 8.8                | yes          |
+| w8a16 LiteRT                          | 3.0       | (CPU fallback)     | no — fails   |
 
 - **w8a32 lands within noise of the retired onnx2tf INT8 model on the GPU** and is the smallest download, so the
   migration does not regress GPU inference. Unlike the old onnx2tf INT8 (which fell back to CPU on many devices), all
   three GPU-capable litert formats compile fully on the Adreno GPU here.
 - INT8 LiteRT is the slowest litert format and still needs calibration; FP32 ties w8a32 on speed but is ~3.4× the
   download; **w8a16 fails to compile on the GPU delegate** and runs ~40× slower on CPU, so it is not used.
+
+Per-task before/after on the Adreno GPU — the legacy onnx2tf **INT8 TFLite** assets vs the new **w8a32 LiteRT** assets,
+both measured in the same run on the Xiaomi 17 at the shipped Android `imgsz` (224 classify, 640 others). Each cell is
+the **total** with the preprocess / inference / postprocess split beneath it:
+
+| Model        | Task     | size<br><sup>(pixels)</sup> | Before<br><sup>onnx2tf INT8 TFLite<br>(ms)</sup> | After<br><sup>w8a32 LiteRT<br>(ms)</sup> |
+| ------------ | -------- | --------------------------- | ------------------------------------------------ | ---------------------------------------- |
+| YOLO26n      | Detect   | 640                         | 18.8<br><sup>7.8 / 8.3 / 2.7</sup>               | **17.4**<br><sup>6.2 / 8.6 / 2.6</sup>   |
+| YOLO26n-seg  | Segment  | 640                         | 45.2<br><sup>7.8 / 22.9 / 14.4</sup>             | **43.4**<br><sup>7.7 / 21.9 / 13.7</sup> |
+| YOLO26n-sem  | Semantic | 640                         | **50.5**<br><sup>6.5 / 27.7 / 16.3</sup>         | 59.4<br><sup>7.5 / 34.4 / 17.5</sup>     |
+| YOLO26n-cls  | Classify | 224                         | 5.9<br><sup>1.5 / 2.0 / 2.5</sup>                | **4.9**<br><sup>1.7 / 2.0 / 1.3</sup>    |
+| YOLO26n-pose | Pose     | 640                         | **22.5**<br><sup>7.8 / 9.8 / 4.8</sup>           | 24.0<br><sup>9.1 / 10.4 / 4.5</sup>      |
+| YOLO26n-obb  | OBB      | 640                         | 19.0<br><sup>7.7 / 8.4 / 2.9</sup>               | **18.4**<br><sup>7.7 / 8.6 / 2.0</sup>   |
+
+w8a32 matches or beats the legacy onnx2tf INT8 format on four of six tasks; **semantic is the clear regression**
+(+9 ms, from the NCHW FP32-activation inference and host-side argmax) and pose is ~1.5 ms slower. The legacy onnx2tf
+models run unchanged on LiteRT 2.x alongside the new NCHW exports, confirming the runtime's layout-adaptive path.
 
 ## 🔭 Optimization Findings and Future Exploration
 
