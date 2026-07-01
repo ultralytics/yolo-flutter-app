@@ -1,3 +1,7 @@
+## 0.6.7
+
+- **Fix**: iOS share/capture composites overlays by lifting the live preview sublayers above the frozen frame instead of reconstructing them, so segmentation masks and pose keypoints now appear in shared images, oriented (OBB) boxes keep their rotation, and overlays stay below the on-screen controls. Simplifies `renderShareImage` to mirror the upstream YOLO iOS implementation.
+
 ## 0.6.6
 
 - **Change**: Android release assets are now exported with the Ultralytics `format=litert` path (litert-torch + ai-edge-quantizer, requires `ultralytics>=8.4.83`), replacing the legacy onnx2tf TFLite export. The official assets switch to `w8a32` quantization (int8 weights, FP32 activations; `_w8a32.tflite`) on a new `v0.6.6` release — the smallest format that compiles on the LiteRT GPU delegate, requiring no calibration data. The previous `v0.3.5` int8 assets are left untouched so already-installed apps keep working.
