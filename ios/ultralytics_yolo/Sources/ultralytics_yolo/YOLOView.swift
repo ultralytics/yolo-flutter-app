@@ -1547,6 +1547,8 @@ extension YOLOView {
   /// `drawHierarchy`. Mirrors upstream YOLO iOS `renderShareImage`. Mutates the layer hierarchy transiently and
   /// restores it before returning.
   fileprivate func renderShareImage(_ image: UIImage) -> UIImage? {
+    guard let previewLayer = videoCapture.previewLayer else { return image }
+
     var isCameraFront = false
     if let currentInput = self.videoCapture.captureSession.inputs.first as? AVCaptureDeviceInput,
       currentInput.device.position == .front
@@ -1569,94 +1571,27 @@ extension YOLOView {
       oriented = UIImage(cgImage: cgImage)
     }
 
-    let imageView = UIImageView(image: oriented)
-    imageView.contentMode = .scaleAspectFill
-    imageView.frame = self.frame
-    let imageLayer = imageView.layer
-    self.layer.insertSublayer(imageLayer, above: videoCapture.previewLayer)
-
-    var tempMaskLayer: CALayer?
-    if let maskLayer = self.maskLayer, !maskLayer.isHidden {
-      let tempLayer = CALayer()
-      let overlayFrame = self.overlayLayer.frame
-      let maskFrame = maskLayer.frame
-      tempLayer.frame = CGRect(
-        x: overlayFrame.origin.x + maskFrame.origin.x,
-        y: overlayFrame.origin.y + maskFrame.origin.y,
-        width: maskFrame.width,
-        height: maskFrame.height
-      )
-      tempLayer.contents = maskLayer.contents
-      tempLayer.contentsGravity = maskLayer.contentsGravity
-      tempLayer.contentsRect = maskLayer.contentsRect
-      tempLayer.contentsCenter = maskLayer.contentsCenter
-      tempLayer.opacity = maskLayer.opacity
-      tempLayer.compositingFilter = maskLayer.compositingFilter
-      tempLayer.transform = maskLayer.transform
-      tempLayer.masksToBounds = maskLayer.masksToBounds
-      self.layer.insertSublayer(tempLayer, above: imageLayer)
-      tempMaskLayer = tempLayer
-    }
-
-    var tempPoseLayer: CALayer?
-    if let poseLayer = self.poseLayer {
-      let tempLayer = CALayer()
-      // poseLayer now occupies the aspect-fill image rect (not the full overlay), and overlayLayer is at the view
-      // origin, so the captured-image copy must sit at poseLayer's own frame to match the live keypoints.
-      let poseFrame = poseLayer.frame
-      tempLayer.frame = CGRect(
-        x: poseFrame.origin.x,
-        y: poseFrame.origin.y,
-        width: poseFrame.width,
-        height: poseFrame.height
-      )
-      tempLayer.opacity = poseLayer.opacity
-      if let sublayers = poseLayer.sublayers {
-        for sublayer in sublayers {
-          let copyLayer = CALayer()
-          copyLayer.frame = sublayer.frame
-          copyLayer.backgroundColor = sublayer.backgroundColor
-          copyLayer.cornerRadius = sublayer.cornerRadius
-          copyLayer.opacity = sublayer.opacity
-          if let shapeLayer = sublayer as? CAShapeLayer {
-            let copyShapeLayer = CAShapeLayer()
-            copyShapeLayer.frame = shapeLayer.frame
-            copyShapeLayer.path = shapeLayer.path
-            copyShapeLayer.strokeColor = shapeLayer.strokeColor
-            copyShapeLayer.lineWidth = shapeLayer.lineWidth
-            copyShapeLayer.fillColor = shapeLayer.fillColor
-            copyShapeLayer.opacity = shapeLayer.opacity
-            tempLayer.addSublayer(copyShapeLayer)
-          } else {
-            tempLayer.addSublayer(copyLayer)
-          }
-        }
-      }
-      self.layer.insertSublayer(tempLayer, above: imageLayer)
-      tempPoseLayer = tempLayer
-    }
-
-    var tempViews = [UIView]()
-    let boundingBoxInfos = makeBoundingBoxInfos(from: boundingBoxViews)
-    for info in boundingBoxInfos where !info.isHidden {
-      let boxView = createBoxView(from: info)
-      boxView.frame = info.rect
-      self.addSubview(boxView)
-      tempViews.append(boxView)
-    }
-
     // Snapshot the YOLOView's own bounds — UIScreen.main.bounds would crop the wrong rect under split view, embedded
     // layouts, or any non-fullscreen host and would misalign overlays in the shared image.
     let bounds = self.bounds
+    let imageView = UIImageView(image: oriented)
+    imageView.contentMode = .scaleAspectFill
+    imageView.frame = bounds
+    let imageLayer = imageView.layer
+    self.layer.insertSublayer(imageLayer, above: previewLayer)
+
+    // The frozen frame now covers the preview layer and every overlay nested inside it (boxes, mask,
+    // pose). Lift those overlays above the frozen frame so `drawHierarchy` captures them, then restore.
+    let overlays = previewLayer.sublayers ?? []
+    overlays.forEach { self.layer.addSublayer($0) }
+
     UIGraphicsBeginImageContextWithOptions(bounds.size, true, 0.0)
     drawHierarchy(in: bounds, afterScreenUpdates: true)
     let snapshot = UIGraphicsGetImageFromCurrentImageContext()
     UIGraphicsEndImageContext()
 
     imageLayer.removeFromSuperlayer()
-    tempMaskLayer?.removeFromSuperlayer()
-    tempPoseLayer?.removeFromSuperlayer()
-    for v in tempViews { v.removeFromSuperview() }
+    overlays.forEach { previewLayer.addSublayer($0) }
 
     return snapshot
   }
