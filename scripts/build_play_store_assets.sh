@@ -5,6 +5,7 @@
 # Build the local Google Play Console upload assets for the example Android app.
 
 set -euo pipefail
+shopt -s dotglob
 
 usage() {
   echo "Usage: $0 [--notes path/to/whats-new.txt] | --verify-aab path/to/app.aab" >&2
@@ -81,6 +82,24 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 STORE_DIR="$REPO_ROOT/play-store-assets"
 EXAMPLE_DIR="$REPO_ROOT/example"
+MODEL_DIR="$EXAMPLE_DIR/assets/models"
+TMP_STORE_DIR=""
+MODEL_STASH_DIR=""
+
+cleanup() {
+  local path
+  if [ -n "$MODEL_STASH_DIR" ] && [ -d "$MODEL_STASH_DIR" ]; then
+    for path in "$MODEL_STASH_DIR"/*; do
+      [ -e "$path" ] || continue
+      mv -f "$path" "$MODEL_DIR/"
+    done
+    rmdir "$MODEL_STASH_DIR"
+  fi
+  if [ -n "$TMP_STORE_DIR" ]; then
+    rm -rf "$TMP_STORE_DIR"
+  fi
+}
+trap cleanup EXIT
 
 pubspec_version() {
   awk -F': *' '$1 == "version" { gsub(/"/, "", $2); print $2; exit }' "$1"
@@ -168,13 +187,31 @@ extract_changelog_notes() {
 
 echo "build_play_store_assets: building ultralytics_yolo $VERSION_NAME+$VERSION_CODE"
 
+mkdir -p "$STORE_DIR"
+mkdir -p "$MODEL_DIR"
+MODEL_STASH_DIR="$(mktemp -d "$STORE_DIR/.tmp-model-assets.XXXXXX")"
+for path in "$MODEL_DIR"/*; do
+  [ -e "$path" ] || continue
+  [ -f "$path" ] || continue
+  case "$(basename "$path")" in
+    .gitkeep | \
+      yolo26n_w8a32.tflite | \
+      yolo26n-seg_w8a32.tflite | \
+      yolo26n-sem_w8a32.tflite | \
+      yolo26n-cls_w8a32.tflite | \
+      yolo26n-pose_w8a32.tflite | \
+      yolo26n-obb_w8a32.tflite) ;;
+    *)
+      mv "$path" "$MODEL_STASH_DIR/"
+      ;;
+  esac
+done
+
 (cd "$REPO_ROOT" && flutter pub get)
 (cd "$EXAMPLE_DIR" && flutter pub get)
 (cd "$EXAMPLE_DIR" && flutter build appbundle --release)
 
-mkdir -p "$STORE_DIR"
 TMP_STORE_DIR="$(mktemp -d "$STORE_DIR/.tmp-play-store-assets.XXXXXX")"
-trap 'rm -rf "$TMP_STORE_DIR"' EXIT
 
 AAB_SOURCE="$EXAMPLE_DIR/build/app/outputs/bundle/release/app-release.aab"
 AAB_DEST="$STORE_DIR/ultralytics-yolo-$VERSION_NAME-build$VERSION_CODE.aab"
