@@ -65,7 +65,12 @@ class SemanticSegmenter(
             isFrontCamera = isFrontCamera,
             rotationDegrees = cameraRotationDegrees
         )
-        ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
+        ImageUtils.copyRgbBitmapToFloatArray(
+            inputBitmap,
+            floatInput,
+            intValues,
+            channelsFirst = rtModel.inputUsesNchw
+        )
 
         // Keep the model output flat; postProcessSemantic indexes it directly (no per-frame reshape copy).
         val preEnd = System.nanoTime()

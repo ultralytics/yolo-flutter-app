@@ -24,8 +24,7 @@ import kotlin.math.sqrt
  *
  * Input layout is detected from the input tensor shape: legacy onnx2tf exports are NHWC `[1,H,W,3]`, while
  * `format=litert` (litert-torch) exports are NCHW `[1,3,H,W]`. [inputDims] is always reported in the NHWC convention so
- * predictors stay layout-agnostic (matching [OrtQnnModel]); [run] feeds interleaved HWC floats, transposing them to
- * planar CHW internally for NCHW models.
+ * predictors stay layout-agnostic (matching [OrtQnnModel]); [inputUsesNchw] tells them when to write CHW directly.
  */
 class LiteRtModel(
     private val context: android.content.Context,
@@ -50,10 +49,7 @@ class LiteRtModel(
     private val outputTypes: List<TensorType.ElementType?>
 
     /** True when the model input is NCHW `[1,3,H,W]` (litert-torch) rather than NHWC `[1,H,W,3]` (legacy onnx2tf). */
-    private val nchw: Boolean
-
-    /** Reusable planar CHW scratch buffer for NCHW models, allocated once to avoid per-frame churn (see [run]). */
-    private var chwScratch = FloatArray(0)
+    override val inputUsesNchw: Boolean
 
     /** Accelerator actually in use after the ladder resolves: "GPU" or "CPU". */
     override val accelerator: String
@@ -91,7 +87,7 @@ class LiteRtModel(
         inputBuffers = prepared.inputBuffers
         outputBuffers = prepared.outputBuffers
         inputDims = prepared.inputDims
-        nchw = prepared.nchw
+        inputUsesNchw = prepared.nchw
         outputElementCounts = prepared.outputElementCounts
         outputDims = prepared.outputDims
         outputTypes = prepared.outputTypes
@@ -153,7 +149,7 @@ class LiteRtModel(
                     }
                 }
             // litert-torch exports are NCHW [1,3,H,W]; legacy onnx2tf exports are NHWC [1,H,W,3]. Detect from the shape
-            // and report NHWC to predictors either way so they stay layout-agnostic (run() transposes for NCHW).
+            // and report NHWC to predictors either way so they stay layout-agnostic.
             val nchw = nativeDims.size >= 4 && nativeDims[1] == 3 && nativeDims.last() != 3
             val dims = if (nchw) intArrayOf(nativeDims[0], nativeDims[2], nativeDims[3], 3) else nativeDims
 
@@ -191,18 +187,11 @@ class LiteRtModel(
     }
 
     /**
-     * Run inference: write [input] floats (interleaved HWC, as the predictors produce) into the first input buffer, run,
-     * and return each output as a flat float array. NCHW models get an HWC→CHW transpose first.
+     * Run inference: write [input] floats in the model's native layout into the first input buffer, run, and return
+     * each output as a flat float array.
      */
     override fun run(input: FloatArray): List<FloatArray> {
-        val buffer = if (nchw) {
-            if (chwScratch.size != input.size) chwScratch = FloatArray(input.size)
-            ImageUtils.hwcToChw(input, chwScratch)
-            chwScratch
-        } else {
-            input
-        }
-        inputBuffers[0].writeFloat(buffer)
+        inputBuffers[0].writeFloat(input)
         model.run(inputBuffers, outputBuffers)
         return List(outputBuffers.size) { readAsFloats(outputBuffers[it], outputTypes[it]) }
     }

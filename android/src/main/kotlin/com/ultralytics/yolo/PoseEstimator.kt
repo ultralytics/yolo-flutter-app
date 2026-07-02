@@ -100,7 +100,12 @@ class PoseEstimator(
             isFrontCamera = isFrontCamera,
             rotationDegrees = cameraRotationDegrees
         )
-        ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
+        ImageUtils.copyRgbBitmapToFloatArray(
+            inputBitmap,
+            floatInput,
+            intValues,
+            channelsFirst = rtModel.inputUsesNchw
+        )
 
         val preEnd = System.nanoTime()
         val flat = rtModel.run(floatInput)[0]

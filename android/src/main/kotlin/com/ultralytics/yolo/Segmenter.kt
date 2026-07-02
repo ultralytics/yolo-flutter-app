@@ -124,7 +124,12 @@ class Segmenter(
             isFrontCamera = isFrontCamera,
             rotationDegrees = cameraRotationDegrees
         )
-        ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues)
+        ImageUtils.copyRgbBitmapToFloatArray(
+            inputBitmap,
+            floatInput,
+            intValues,
+            channelsFirst = rtModel.inputUsesNchw
+        )
 
         numClasses = out0NumFeatures - boxFeatureLength - maskConfidenceLength
 

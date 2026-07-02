@@ -105,7 +105,8 @@ class ObjectDetector(
             floatInput,
             intValues,
             INPUT_MEAN,
-            INPUT_STANDARD_DEVIATION
+            INPUT_STANDARD_DEVIATION,
+            channelsFirst = rtModel.inputUsesNchw
         )
 
         // ======== Inference ============

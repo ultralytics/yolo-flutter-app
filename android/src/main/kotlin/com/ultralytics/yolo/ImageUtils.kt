@@ -12,7 +12,8 @@ import kotlin.math.roundToInt
 
 object ImageUtils {
     // Shared read-only paint for frame preprocessing.
-    private val filterPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
+    private val filterPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val blackPaint = Paint().apply { color = Color.BLACK }
 
     data class LetterboxTransform(
         val gain: Float,
@@ -192,7 +193,7 @@ object ImageUtils {
             ?: return targetBitmap
 
         Canvas(targetBitmap).apply {
-            drawColor(Color.BLACK)
+            clearLetterboxPadding(transform, targetWidth, targetHeight)
             save()
             translate(transform.padX + transform.resizedWidth / 2f, transform.padY + transform.resizedHeight / 2f)
             rotate(degrees.toFloat())
@@ -201,6 +202,21 @@ object ImageUtils {
             restore()
         }
         return targetBitmap
+    }
+
+    private fun Canvas.clearLetterboxPadding(
+        transform: LetterboxTransform,
+        targetWidth: Int,
+        targetHeight: Int
+    ) {
+        val left = transform.padX.coerceAtLeast(0f)
+        val top = transform.padY.coerceAtLeast(0f)
+        val right = (targetWidth - transform.padRight).coerceAtMost(targetWidth.toFloat())
+        val bottom = (targetHeight - transform.padBottom).coerceAtMost(targetHeight.toFloat())
+        if (left > 0f) drawRect(0f, 0f, left, targetHeight.toFloat(), blackPaint)
+        if (right < targetWidth) drawRect(right, 0f, targetWidth.toFloat(), targetHeight.toFloat(), blackPaint)
+        if (top > 0f) drawRect(left, 0f, right, top, blackPaint)
+        if (bottom < targetHeight) drawRect(left, bottom, right, targetHeight.toFloat(), blackPaint)
     }
 
     private fun cameraRotationDegrees(
@@ -228,7 +244,9 @@ object ImageUtils {
         byteBuffer.clear()
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
 
-        for (pixel in pixels) {
+        val pixelCount = bitmap.width * bitmap.height
+        for (i in 0 until pixelCount) {
+            val pixel = pixels[i]
             byteBuffer.putFloat((((pixel shr 16) and 0xFF) - inputMean) / inputStd)
             byteBuffer.putFloat((((pixel shr 8) and 0xFF) - inputMean) / inputStd)
             byteBuffer.putFloat(((pixel and 0xFF) - inputMean) / inputStd)
@@ -237,35 +255,38 @@ object ImageUtils {
     }
 
     // FloatArray variant for the LiteRT 2.x CompiledModel path (TensorBuffer.writeFloat takes a float[], not a
-    // ByteBuffer). Writes planar-free interleaved RGB, normalized to [0,1] by default. `out` must be width*height*3.
+    // ByteBuffer). Writes interleaved HWC or planar CHW RGB, normalized to [0,1] by default.
     @JvmStatic
     fun copyRgbBitmapToFloatArray(
         bitmap: Bitmap,
         out: FloatArray,
         pixels: IntArray,
         inputMean: Float = 0f,
-        inputStd: Float = 255f
+        inputStd: Float = 255f,
+        channelsFirst: Boolean = false
     ) {
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-        var j = 0
-        for (pixel in pixels) {
-            out[j++] = (((pixel shr 16) and 0xFF) - inputMean) / inputStd
-            out[j++] = (((pixel shr 8) and 0xFF) - inputMean) / inputStd
-            out[j++] = ((pixel and 0xFF) - inputMean) / inputStd
-        }
-    }
-
-    // Transpose interleaved HWC RGB floats (r,g,b,r,g,b,...) into planar CHW (all R, then all G, then all B) in `dst`.
-    // Shared by the NCHW inference backends (LiteRT litert-torch, ONNX/QNN); `dst` must match `src` length (w*h*3).
-    @JvmStatic
-    fun hwcToChw(src: FloatArray, dst: FloatArray) {
-        val n = src.size / 3
-        var j = 0
-        for (i in 0 until n) {
-            dst[i] = src[j]
-            dst[n + i] = src[j + 1]
-            dst[2 * n + i] = src[j + 2]
-            j += 3
+        val pixelCount = bitmap.width * bitmap.height
+        val invStd = 1f / inputStd
+        if (channelsFirst) {
+            val plane = pixelCount
+            var r = 0
+            var g = plane
+            var b = plane * 2
+            for (i in 0 until pixelCount) {
+                val pixel = pixels[i]
+                out[r++] = (((pixel shr 16) and 0xFF) - inputMean) * invStd
+                out[g++] = (((pixel shr 8) and 0xFF) - inputMean) * invStd
+                out[b++] = ((pixel and 0xFF) - inputMean) * invStd
+            }
+        } else {
+            var j = 0
+            for (i in 0 until pixelCount) {
+                val pixel = pixels[i]
+                out[j++] = (((pixel shr 16) and 0xFF) - inputMean) * invStd
+                out[j++] = (((pixel shr 8) and 0xFF) - inputMean) * invStd
+                out[j++] = ((pixel and 0xFF) - inputMean) * invStd
+            }
         }
     }
 
