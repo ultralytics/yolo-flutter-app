@@ -21,8 +21,8 @@ import java.nio.FloatBuffer
  * architecture at export time, so the session loads without on-device graph compilation - and without a CPU
  * fallback: on non-Snapdragon hardware session creation throws and callers should fall back to a TFLite model.
  *
- * Predictors supply NHWC interleaved-RGB floats (the TFLite layout); this wrapper transposes into the NCHW planar
- * layout ONNX models expect and reports [inputDims] in the NHWC convention so predictors stay runtime-agnostic.
+ * Reports [inputDims] in the NHWC convention so predictors stay runtime-agnostic. [inputUsesNchw] tells predictors
+ * when the ONNX input is NCHW and should be filled directly as planar RGB.
  */
 class OrtQnnModel(context: Context, modelPath: String, private val tag: String) : InferenceModel {
     private val env = OrtEnvironment.getEnvironment()
@@ -30,12 +30,11 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
     private val inputName: String
     private val outputNames: List<String>
     private val inputShape: LongArray
-    private val nhwcInput: Boolean
-    private val nchw: FloatArray
     private val outputs: List<FloatArray>
 
     override val accelerator = "NPU"
     override val inputDims: IntArray
+    override val inputUsesNchw: Boolean
     override val outputDims: List<IntArray>
     override val outputElementCounts: IntArray
 
@@ -60,14 +59,14 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
             inputName = session.inputNames.first()
             inputShape = (session.inputInfo.getValue(inputName).info as TensorInfo).shape
             // Channel-last QNN exports take [1, H, W, 3] directly (no CPU transpose); legacy exports are NCHW
-            nhwcInput = inputShape.size == 4 && inputShape[3] == 3L && inputShape[1] != 3L
-            require(inputShape.size == 4 && (nhwcInput || inputShape[1] == 3L)) {
+            val inputIsNhwc = inputShape.size == 4 && inputShape[3] == 3L && inputShape[1] != 3L
+            require(inputShape.size == 4 && (inputIsNhwc || inputShape[1] == 3L)) {
                 "Expected a [1, 3, H, W] or [1, H, W, 3] input, got ${inputShape.toList()} for '$inputName'"
             }
-            val height = (if (nhwcInput) inputShape[1] else inputShape[2]).toInt()
-            val width = (if (nhwcInput) inputShape[2] else inputShape[3]).toInt()
+            val height = (if (inputIsNhwc) inputShape[1] else inputShape[2]).toInt()
+            val width = (if (inputIsNhwc) inputShape[2] else inputShape[3]).toInt()
             inputDims = intArrayOf(1, height, width, 3)
-            nchw = if (nhwcInput) FloatArray(0) else FloatArray(3 * height * width)
+            inputUsesNchw = !inputIsNhwc
 
             // One ordered name list drives both shape discovery and result reads, so they can never desynchronize
             outputNames = session.outputNames.toList()
@@ -104,15 +103,9 @@ class OrtQnnModel(context: Context, modelPath: String, private val tag: String) 
         throw IllegalArgumentException("QNN model not found at '$modelPath' (filesystem or assets)")
     }
 
-    /** Run inference on NHWC interleaved-RGB floats, returning each output as a flat float array. */
+    /** Run inference on floats in the ONNX input layout, returning each output as a flat float array. */
     override fun run(input: FloatArray): List<FloatArray> {
-        val floats = if (nhwcInput) {
-            input // channel-last graph: feed the predictors' NHWC buffer directly
-        } else {
-            ImageUtils.hwcToChw(input, nchw) // transpose into the preallocated planar CHW buffer
-            nchw
-        }
-        OnnxTensor.createTensor(env, FloatBuffer.wrap(floats), inputShape).use { tensor ->
+        OnnxTensor.createTensor(env, FloatBuffer.wrap(input), inputShape).use { tensor ->
             session.run(mapOf(inputName to tensor)).use { results ->
                 return outputNames.mapIndexed { i, name ->
                     readOutput(results.get(name).get() as OnnxTensor, outputs[i])

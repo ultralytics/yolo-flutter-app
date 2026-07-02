@@ -1,3 +1,11 @@
+## 0.6.8
+
+- **Performance**: Speed up Android single-image preprocessing for NCHW LiteRT/QNN models by writing planar CHW input
+  directly during RGB packing and clearing only real letterbox padding. Refresh the LiteRT/TFLite benchmark tables with
+  the current Xiaomi 17 measurements, while documenting that live camera preprocessing still includes per-frame
+  CameraX rotation and letterbox work.
+- **Enhancement**: Require UltralyticsYOLO `>= 8.9.11` on iOS through both CocoaPods and Swift Package Manager.
+
 ## 0.6.7
 
 - **Fix**: iOS share/capture composites overlays by lifting the live preview sublayers above the frozen frame instead of reconstructing them, so segmentation masks and pose keypoints now appear in shared images, oriented (OBB) boxes keep their rotation, and overlays stay below the on-screen controls. Simplifies `renderShareImage` to mirror the upstream YOLO iOS implementation.

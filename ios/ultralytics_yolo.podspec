@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'ultralytics_yolo'
-  s.version          = '0.6.0'
+  s.version          = '0.6.8'
   s.summary          = 'Flutter plugin for YOLO (You Only Look Once) models'
   s.description      = <<-DESC
 Flutter plugin for YOLO (You Only Look Once) models, supporting object detection, segmentation, classification, pose estimation and oriented bounding boxes (OBB) on both Android and iOS.
@@ -19,7 +19,7 @@ Flutter plugin for YOLO (You Only Look Once) models, supporting object detection
   # "no rule to process file ... net.daringfireball.markdown" warning Xcode emits when README.md is swept in.
   s.source_files = 'ultralytics_yolo/Sources/ultralytics_yolo/**/*.swift'
   s.dependency 'Flutter'
-  s.dependency 'UltralyticsYOLO', '>= 8.9.10', '< 9.0'
+  s.dependency 'UltralyticsYOLO', '>= 8.9.11', '< 9.0'
   s.platform = :ios, '13.0'
 
   # Flutter.framework does not contain a i386 slice.

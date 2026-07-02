@@ -99,7 +99,14 @@ class Classifier(
             grayBuffer.rewind()
             grayBuffer.asFloatBuffer().get(floatInput, 0, floatInput.size)
         } else {
-            ImageUtils.copyRgbBitmapToFloatArray(inputBitmap, floatInput, intValues, INPUT_MEAN, INPUT_STD)
+            ImageUtils.copyRgbBitmapToFloatArray(
+                inputBitmap,
+                floatInput,
+                intValues,
+                INPUT_MEAN,
+                INPUT_STD,
+                channelsFirst = rtModel.inputUsesNchw
+            )
         }
 
         val preEnd = System.nanoTime()

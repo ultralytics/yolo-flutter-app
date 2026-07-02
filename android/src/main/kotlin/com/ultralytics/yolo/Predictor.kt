@@ -14,10 +14,10 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Runtime-agnostic inference model behind the predictors: NHWC interleaved-RGB float32 in, flat float32 outputs out.
+ * Runtime-agnostic inference model behind the predictors: normalized RGB float32 in, flat float32 outputs out.
  * Implemented by [LiteRtModel] (TFLite on LiteRT, GPU→CPU ladder) and [OrtQnnModel] (QNN context-binary ONNX on the
- * Snapdragon NPU). Implementations that run an NCHW model (e.g. `format=litert` litert-torch exports) transpose the
- * interleaved input internally and still report [inputDims] in NHWC convention, so predictors stay layout-agnostic.
+ * Snapdragon NPU). [inputDims] is reported in NHWC convention for every backend; [inputUsesNchw] tells predictors
+ * whether to write the float input as planar CHW instead of interleaved HWC.
  */
 interface InferenceModel {
     /** Accelerator in use: "NPU", "GPU" or "CPU". */
@@ -26,13 +26,16 @@ interface InferenceModel {
     /** Input tensor dimensions in NHWC convention, e.g. [1, 640, 640, 3]. */
     val inputDims: IntArray
 
+    /** True when [run] expects planar CHW input; false for interleaved HWC input. */
+    val inputUsesNchw: Boolean
+
     /** Float element count of each output buffer, in order. */
     val outputElementCounts: IntArray
 
     /** Output tensor dimensions, in order (e.g. [[1, 84, 8400]] for detect). */
     val outputDims: List<IntArray>
 
-    /** Run inference on NHWC interleaved-RGB floats, returning each output as a flat float array. */
+    /** Run inference on floats in the layout advertised by [inputUsesNchw], returning flat float outputs. */
     fun run(input: FloatArray): List<FloatArray>
 
     fun close()

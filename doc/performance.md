@@ -32,12 +32,12 @@ Use a simple rule:
 
 ## 📊 Measured Backend Performance
 
-End-to-end `predict()` speeds for the official YOLO26n models on a [Xiaomi 17](https://www.mi.com/) phone powered by the
+End-to-end `predict()` speeds for the official YOLO26n models on a [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) phone powered by the
 Qualcomm [Snapdragon 8 Elite Gen 5](https://www.qualcomm.com/smartphones) (SM8850), which pairs
 a Qualcomm Oryon CPU with an Adreno GPU and the Hexagon NPU (HTP architecture v81). Each cell shows the **total time**
 with the preprocess / inference / postprocess split beneath it.
 
-| Model        | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>INT8 TFLite<br>(ms)</sup> | GPU Adreno<br><sup>INT8 TFLite<br>(ms)</sup> | NPU Hexagon<br><sup>QNN A16W8<br>(ms)</sup>      |
+| Model        | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>INT8 TFLite<br>(ms)</sup> | GPU Adreno<br><sup>INT8 TFLite<br>(ms)</sup> | NPU Hexagon<br><sup>QNN W8A16<br>(ms)</sup>      |
 | ------------ | -------- | --------------------------- | ------------------------------------- | -------------------------------------------- | ------------------------------------------------ |
 | YOLO26n      | Detect   | 640                         | 53.3<br><sup>3.6 / 47.4 / 2.4</sup>   | 17.2<br><sup>3.6 / 9.1 / 4.5</sup>           | **11.3**<br><sup>3.5 / 5.6 / 2.2</sup>           |
 | YOLO26n-seg  | Segment  | 640                         | 76.0<br><sup>3.6 / 64.7 / 7.7</sup>   | 23.9<br><sup>3.6 / 11.8 / 8.6</sup>          | **21.3**<br><sup>3.5 / 7.9 / 10.0</sup>          |
@@ -49,10 +49,14 @@ with the preprocess / inference / postprocess split beneath it.
 - **Speed** values are the full `predict()` time — preprocessing + inference + postprocessing, excluding annotation
   drawing — as the mean of 15 runs after 3 warmup runs on [bus.jpg](https://ultralytics.com/images/bus.jpg).
   <br>Reproduce with `ENABLE_QNN=1 flutter test integration_test/qnn_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true` (the example app's QNN runtime is opt-in)
+- Benchmarks were run with the `ultralytics_yolo` Flutter plugin `0.6.8`; official Android LiteRT assets are hosted
+  on the [yolo-flutter-app `v0.6.6` release](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6).
 - **CPU** and **GPU** run the legacy official INT8 TFLite assets (the prior `v0.3.5` default; the current default is
   w8a32 LiteRT — see the migration table below), on LiteRT with `useGpu: false` / `true`. **NPU** runs the
   `*_v81_qnn.onnx` context binaries (INT8 weights, 16-bit activations) from the same release via the ONNX Runtime QNN
   Execution Provider.
+- This mixed CPU/GPU/NPU snapshot is kept for QNN comparison. For the current Android LiteRT CPU/GPU numbers after
+  the latest preprocessing and segment/semantic postprocess cleanup, use the migration and LiteRT tables below.
 - <sup>1</sup> Semantic QNN uses the in-graph ArgMax class-map exports (ultralytics#24790), which replaced erratic
   123-1065 ms logits decoding with a stable ~49 ms; the GPU remains slightly faster for semantic at 1024px. The
   official `v0.3.5` QNN release assets ship in this channel-last class-map format, exported with ultralytics
@@ -60,15 +64,17 @@ with the preprocess / inference / postprocess split beneath it.
 - **These are single-image burst latencies**, not sustained camera frame times: one photo through `predict()` on a
   thermally rested device. Real-time camera operation runs higher — full-sensor frames are letterboxed to the model
   input every frame and the silicon thermally settles under load (on an iPhone 17 Pro, YOLO26n detect measures
-  ~3.8 ms burst but ~16 ms/frame sustained in the live camera). Watch the in-app pre/inference/post HUD line for
-  your device's steady-state numbers, and benchmark your exact models on your target hardware.
+  ~3.8 ms burst but ~16 ms/frame sustained in the live camera). On Android, portrait live-camera preprocessing still
+  pays for CameraX frame rotation/letterbox every frame, so the in-app `pre` HUD can remain several milliseconds
+  higher than the single-image rows even after the RGB packing cleanup. Watch the in-app pre/inference/post HUD line
+  for your device's steady-state numbers, and benchmark your exact models on your target hardware.
 
 ### Format migration: legacy INT8 TFLite → w8a32 LiteRT
 
 The official Android assets moved from the legacy onnx2tf **INT8 TFLite** format (NHWC, `v0.3.5`) to **w8a32 LiteRT**
 (int8 weights + FP32 activations, NCHW, `v0.6.6`) — the smallest GPU-compatible litert format, which needs no
 calibration data. The CPU/GPU columns above are the legacy INT8 baseline; the table below compares the four litert
-quantization formats against it on the same Xiaomi 17.
+quantization formats against it on the same [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/).
 
 Same-device yolo26n detect, Adreno GPU, measured in one sustained sweep — so **inference** (the format-dependent stage)
 is the comparable metric; preprocessing reflects the warmed-up thermal state of the back-to-back run:
@@ -88,26 +94,30 @@ is the comparable metric; preprocessing reflects the warmed-up thermal state of 
   download; **w8a16 fails to compile on the GPU delegate** and runs ~40× slower on CPU, so it is not used.
 
 Per-task before/after on the Adreno GPU — the legacy onnx2tf **INT8 TFLite** assets vs the new **w8a32 LiteRT** assets,
-both measured in the same run on the Xiaomi 17 at the shipped Android `imgsz` (224 classify, 640 others). Each cell is
-the **total** with the preprocess / inference / postprocess split beneath it:
+both measured in the same run on the [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) at the shipped Android
+`imgsz` (224 classify, 640 others). Each cell is the **total** with the preprocess / inference / postprocess split
+beneath it. The runtime was `ultralytics_yolo` `0.6.8`; the `w8a32` assets come from the
+[yolo-flutter-app `v0.6.6` release](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6).
 
 | Model        | Task     | size<br><sup>(pixels)</sup> | Before<br><sup>onnx2tf INT8 TFLite<br>(ms)</sup> | After<br><sup>w8a32 LiteRT<br>(ms)</sup> |
 | ------------ | -------- | --------------------------- | ------------------------------------------------ | ---------------------------------------- |
-| YOLO26n      | Detect   | 640                         | 18.8<br><sup>7.8 / 8.3 / 2.7</sup>               | **17.4**<br><sup>6.2 / 8.6 / 2.6</sup>   |
-| YOLO26n-seg  | Segment  | 640                         | 45.2<br><sup>7.8 / 22.9 / 14.4</sup>             | **43.4**<br><sup>7.7 / 21.9 / 13.7</sup> |
-| YOLO26n-sem  | Semantic | 640                         | **50.5**<br><sup>6.5 / 27.7 / 16.3</sup>         | 59.4<br><sup>7.5 / 34.4 / 17.5</sup>     |
-| YOLO26n-cls  | Classify | 224                         | 5.9<br><sup>1.5 / 2.0 / 2.5</sup>                | **4.9**<br><sup>1.7 / 2.0 / 1.3</sup>    |
-| YOLO26n-pose | Pose     | 640                         | **22.5**<br><sup>7.8 / 9.8 / 4.8</sup>           | 24.0<br><sup>9.1 / 10.4 / 4.5</sup>      |
-| YOLO26n-obb  | OBB      | 640                         | 19.0<br><sup>7.7 / 8.4 / 2.9</sup>               | **18.4**<br><sup>7.7 / 8.6 / 2.0</sup>   |
+| YOLO26n      | Detect   | 640                         | 14.0<br><sup>1.8 / 8.1 / 4.2</sup>               | **13.5**<br><sup>1.9 / 8.1 / 3.5</sup>   |
+| YOLO26n-seg  | Segment  | 640                         | 30.1<br><sup>1.9 / 20.3 / 8.0</sup>              | **28.6**<br><sup>1.8 / 20.1 / 6.7</sup>  |
+| YOLO26n-sem  | Semantic | 640                         | **26.4**<br><sup>1.9 / 16.4 / 8.1</sup>          | 32.9<br><sup>1.8 / 23.0 / 8.2</sup>      |
+| YOLO26n-cls  | Classify | 224                         | 3.5<br><sup>0.9 / 2.2 / 0.4</sup>                | **3.2**<br><sup>1.0 / 2.2 / 0.1</sup>    |
+| YOLO26n-pose | Pose     | 640                         | 17.4<br><sup>2.4 / 9.9 / 5.1</sup>               | **14.0**<br><sup>1.9 / 9.3 / 2.8</sup>   |
+| YOLO26n-obb  | OBB      | 640                         | 13.9<br><sup>3.0 / 8.3 / 2.7</sup>               | **13.0**<br><sup>2.9 / 7.9 / 2.3</sup>   |
 
-w8a32 matches or beats the legacy onnx2tf INT8 format on four of six tasks; **semantic is the clear regression**
-(+9 ms, from the NCHW FP32-activation inference and host-side argmax) and pose is ~1.5 ms slower. The legacy onnx2tf
-models run unchanged on LiteRT 2.x alongside the new NCHW exports, confirming the runtime's layout-adaptive path.
+w8a32 matches or beats the legacy onnx2tf INT8 format on five of six tasks in total latency. **Semantic remains the
+format regression** because the w8a32 NCHW logits cost more inference time than the legacy NHWC logits, even after
+preprocessing cleanup. The legacy onnx2tf models run unchanged on LiteRT 2.x alongside the new NCHW exports,
+confirming the runtime's layout-adaptive path.
 
 ## 🔭 Optimization Findings and Future Exploration
 
-The table above reflects a device-validated optimization pass (Snapdragon 8 Elite Gen 5, June 2026). What was tried,
-what worked, and what's left on the table:
+The migration table above reflects the current Android LiteRT optimization pass on the Snapdragon 8 Elite Gen 5,
+including the segment/semantic postprocess work from #549 and #550. What was tried, what worked, and what's left on
+the table:
 
 **Shipped (in the table):**
 
@@ -133,9 +143,22 @@ what worked, and what's left on the table:
 - **High-resolution segment overlays** (#549): the visible combined mask now scales logits to model-input resolution
   before thresholding, matching the iOS SDK's sharp segment overlay path instead of upscaling a 160x160 RGBA mask.
   A naive Kotlin bilinear paint measured **15.5 ms postprocess** and was rejected; caching per-column interpolation
-  reduced the Xiaomi 17 GPU path to **7.6-8.6 ms postprocess** for `yolo26n-seg`, trading ~1.5-2.5 ms for
-  model-resolution masks while keeping the cache-local decode/mask-gen wins above. Raw mask payloads remain at the
-  existing cropped proto resolution.
+  reduced the [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) GPU path to **6.7-8.0 ms postprocess** for
+  `yolo26n-seg`, trading a small amount of time for model-resolution masks while keeping the cache-local
+  decode/mask-gen wins above. Raw mask payloads remain at the existing cropped proto resolution.
+- **Preprocessing cleanup**: the Android path writes NCHW inputs directly for NCHW LiteRT/QNN models, eliminating the
+  extra HWC→CHW float transpose, and clears only real letterbox padding instead of repainting the full target bitmap
+  every frame. On the [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) w8a32 GPU sweep, 640px preprocessing is
+  now ~1.8-1.9 ms across detect/segment/semantic/pose and ~2.9 ms for OBB, down from the old 6-9 ms range for
+  single-image `predict()` benchmarks. The live camera HUD can still show ~5-10 ms `pre` in portrait because that path
+  also rotates and letterboxes each CameraX frame before packing RGB.
+- **Rejected live-camera preprocessing prototypes**: fusing CameraX RGBA `ImageProxy` → rotated/letterboxed CHW floats
+  in Kotlin was slower than the current Bitmap/Canvas path on the [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/)
+  `yolo26n-seg` live HUD. Direct `ByteBuffer` bilinear sampling measured **55.6 ms pre**, direct nearest-neighbor
+  measured **61.1 ms pre**, and copying the RGBA plane into a reusable `ByteArray` before nearest-neighbor sampling
+  measured **10.5 ms pre**. The restored Bitmap/Canvas path measured **~7.4 ms pre** in the same validation session.
+  A 320x240 CameraX analysis stream spot-check was also neutral (**7.1 ms pre**) while reducing input detail before
+  upscaling to the 640px model input, so lower camera resolution is not a default speed fix.
 - **Postprocess overhead cleanup** (#549): classifier top-5 now uses fixed-size linear insertion instead of sorting
   every score; semantic keeps dense class maps as `IntArray` until Flutter serialization; segment NMS buckets
   detections once by class instead of filtering the full candidate list per class; native detect NMS stops once
@@ -151,7 +174,7 @@ what worked, and what's left on the table:
   corner for burst and sustained; the default stays `burst`.
 - `offload_graph_io_quantization=0`: no measurable effect on normal-sized outputs.
 - **Naive A8W8 quantization**: 33% faster inference but zero detections — a shared uint8 scale on the concatenated
-  output destroys scores. A16W8 stays the export default.
+  output destroys scores. W8A16 stays the export default.
 - **fp16 GPU variants**: identical inference time to INT8 on the LiteRT GPU accelerator (it computes in fp16
   internally either way) — no reason to ship larger fp16 assets.
 - **In-graph ArgMax for semantic TFLite**: the GPU delegate cannot compile `ARG_MAX` with int64 indices (what
