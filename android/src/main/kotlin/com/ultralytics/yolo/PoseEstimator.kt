@@ -24,9 +24,9 @@ class PoseEstimator(
     }
 
     companion object {
-        private const val BOX_CONF_FEATURES = 5
-        private const val MIN_KEYPOINT_FEATURES = 3
-        private const val END_TO_END_MAX_ROWS = 1000
+        private const val BOX_CONF_FEATURES = 5 // Normal pose prefix: box x/y/w/h plus confidence.
+        private const val KEYPOINT_FEATURES = 3 // One keypoint triplet: x, y, and confidence.
+        private const val END_TO_END_MAX_ROWS = 300 // Ultralytics default max_det for capped end-to-end outputs.
     }
 
     // Reusable float input for the CompiledModel input buffer.
@@ -307,15 +307,22 @@ class PoseEstimator(
     }
 
     private fun isPoseFeatureCount(featureCount: Int): Boolean {
-        return featureCount >= BOX_CONF_FEATURES + MIN_KEYPOINT_FEATURES &&
-            (featureCount - BOX_CONF_FEATURES) % 3 == 0
+        return featureCount >= BOX_CONF_FEATURES + KEYPOINT_FEATURES &&
+            (featureCount - BOX_CONF_FEATURES) % KEYPOINT_FEATURES == 0
     }
 
     private fun keypointCountFromFeatureCount(featureCount: Int, keypointStart: Int = BOX_CONF_FEATURES): Int {
+<<<<<<< HEAD
         require(featureCount >= keypointStart && (featureCount - keypointStart) % 3 == 0) {
             "Unexpected pose output feature size. Expected keypoint triplets after $keypointStart box fields, Actual=$featureCount"
         }
         return (featureCount - keypointStart) / 3
+=======
+        require(featureCount >= keypointStart && (featureCount - keypointStart) % KEYPOINT_FEATURES == 0) {
+            "Unexpected pose output feature size. Expected keypoint triplets after $keypointStart box fields, Actual=$featureCount"
+        }
+        return (featureCount - keypointStart) / KEYPOINT_FEATURES
+>>>>>>> c92caff (Prepare custom pose keypoint release)
     }
 
     private fun nmsPoseDetections(
