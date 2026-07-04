@@ -312,17 +312,10 @@ class PoseEstimator(
     }
 
     private fun keypointCountFromFeatureCount(featureCount: Int, keypointStart: Int = BOX_CONF_FEATURES): Int {
-<<<<<<< HEAD
-        require(featureCount >= keypointStart && (featureCount - keypointStart) % 3 == 0) {
-            "Unexpected pose output feature size. Expected keypoint triplets after $keypointStart box fields, Actual=$featureCount"
-        }
-        return (featureCount - keypointStart) / 3
-=======
         require(featureCount >= keypointStart && (featureCount - keypointStart) % KEYPOINT_FEATURES == 0) {
             "Unexpected pose output feature size. Expected keypoint triplets after $keypointStart box fields, Actual=$featureCount"
         }
         return (featureCount - keypointStart) / KEYPOINT_FEATURES
->>>>>>> c92caff (Prepare custom pose keypoint release)
     }
 
     private fun nmsPoseDetections(
