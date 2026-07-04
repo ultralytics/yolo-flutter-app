@@ -1,6 +1,3 @@
-# Files to exclude from publishing
-example/test/widget_test.dart
-
 # Development files
 .idea/
 .vscode/
