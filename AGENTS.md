@@ -33,14 +33,14 @@ After opening a PR:
 ## Commands
 
 ```bash
-flutter pub get                              # install dependencies (repeat in example/ for the example app)
-flutter test                                 # run all tests
-flutter test test/yolo_test.dart             # run one test file
-flutter test --plain-name 'exact test name'  # run one test by name
-flutter test --coverage                      # coverage; ci.yml then strips lib/platform/, lib/yolo_view.dart, and lib/widgets/yolo_showcase.dart from coverage/lcov.info with an awk filter before Codecov upload
-dart analyze --fatal-infos                   # lint gate, exactly as analyzer.yml runs it
-dart format .                                # Dart formatting (format.yml enforces via Ultralytics Actions)
-dart pub publish --dry-run                   # pub.dev package validation, run by ci.yml and publish.yml
+flutter pub get                             # install dependencies (repeat in example/ for the example app)
+flutter test                                # run all tests
+flutter test test/yolo_test.dart            # run one test file
+flutter test --plain-name 'exact test name' # run one test by name
+flutter test --coverage                     # coverage; ci.yml then strips lib/platform/, lib/yolo_view.dart, and lib/widgets/yolo_showcase.dart from coverage/lcov.info with an awk filter before Codecov upload
+dart analyze --fatal-infos                  # lint gate, exactly as analyzer.yml runs it
+dart format .                               # Dart formatting (format.yml enforces via Ultralytics Actions)
+dart pub publish --dry-run                  # pub.dev package validation, run by ci.yml and publish.yml
 ```
 
 - CI (`ci.yml`) runs three jobs on push/PR to main: `tests` (ubuntu-latest: tests + coverage + publish dry-run), `example-android` (ubuntu-latest: debug APK, API 34 emulator smoke test, release AAB verified with `scripts/build_play_store_assets.sh --verify-aab`), and `example-ios` (macos-26: SwiftPM build + simulator smoke test, then a CocoaPods regression build of the same sources).
