@@ -15,7 +15,7 @@ on:
 
 jobs:
   check:
-    if: github.repository == 'ultralytics/yolo-flutter-app' && github.actor == 'glenn-jocher'
+    if: github.repository == 'ultralytics/yolo-flutter-app' && github.actor == 'glenn-jocher' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
