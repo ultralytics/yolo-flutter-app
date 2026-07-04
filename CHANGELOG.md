@@ -1,3 +1,9 @@
+## 0.6.9
+
+- **Fix**: Android pose inference now derives the keypoint count from the model output feature width, allowing custom
+  pose models such as 21-keypoint hand landmarks to return all keypoints instead of requiring COCO's 17-keypoint shape
+  (#555).
+
 ## 0.6.8
 
 - **Performance**: Speed up Android single-image preprocessing for NCHW LiteRT/QNN models by writing planar CHW input

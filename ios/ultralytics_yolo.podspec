@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'ultralytics_yolo'
-  s.version          = '0.6.8'
+  s.version          = '0.6.9'
   s.summary          = 'Flutter plugin for YOLO (You Only Look Once) models'
   s.description      = <<-DESC
 Flutter plugin for YOLO (You Only Look Once) models, supporting object detection, segmentation, classification, pose estimation and oriented bounding boxes (OBB) on both Android and iOS.

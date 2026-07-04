@@ -26,6 +26,7 @@ class PoseEstimator(
     companion object {
         private const val BOX_CONF_FEATURES = 5
         private const val MIN_KEYPOINT_FEATURES = 3
+        private const val END_TO_END_MAX_ROWS = 1000
     }
 
     // Reusable float input for the CompiledModel input buffer.
@@ -39,6 +40,7 @@ class PoseEstimator(
     // Output dimensions
     private var batchSize = 0
     private var numAnchors = 0
+    private var keypointStart = BOX_CONF_FEATURES
     private var keypointCount = 0
     private var isEndToEnd = false
     private lateinit var outputLayout: OutputLayout
@@ -66,11 +68,16 @@ class PoseEstimator(
         }
 
         batchSize = outputShape[0]
-        isEndToEnd = outputShape[2] < outputShape[1] && outputShape[2] >= 6
+        val anchorsFirstPose = isPoseFeatureCount(outputShape[2]) && outputShape[1] > END_TO_END_MAX_ROWS
+        val featuresFirstPose = isPoseFeatureCount(outputShape[1]) && !anchorsFirstPose
+        isEndToEnd = !featuresFirstPose &&
+            !anchorsFirstPose &&
+            outputShape[1] <= END_TO_END_MAX_ROWS &&
+            outputShape[2] < outputShape[1] &&
+            outputShape[2] >= 6
         outputLayout = when {
-            isEndToEnd -> OutputLayout.ANCHORS_FIRST
-            isPoseFeatureCount(outputShape[1]) -> OutputLayout.FEATURES_FIRST
-            isPoseFeatureCount(outputShape[2]) -> OutputLayout.ANCHORS_FIRST
+            featuresFirstPose -> OutputLayout.FEATURES_FIRST
+            isEndToEnd || anchorsFirstPose -> OutputLayout.ANCHORS_FIRST
             else -> throw IllegalArgumentException(
                 "Unexpected pose output feature size. Expected 5 + keypoints * 3 features or end-to-end rows, Actual=${outputShape.contentToString()}"
             )
@@ -88,9 +95,8 @@ class PoseEstimator(
             }
         }
 
-        if (!isEndToEnd) {
-            keypointCount = keypointCountFromFeatureCount(outFeatures)
-        }
+        keypointStart = if (isEndToEnd && (outFeatures - 6) % 3 == 0) 6 else BOX_CONF_FEATURES
+        keypointCount = keypointCountFromFeatureCount(outFeatures, keypointStart)
         outDim2 = outputShape[2]
 
         floatInput = FloatArray(inWidth * inHeight * 3)
@@ -236,9 +242,6 @@ class PoseEstimator(
         origHeight: Int
     ): List<PoseDetection> {
         val detections = mutableListOf<PoseDetection>()
-        val fieldCount = outDim2
-        val keypointStart = if ((fieldCount - 6) % 3 == 0) 6 else 5
-        val keypointCount = (fieldCount - keypointStart) / 3
 
         for (j in 0 until numAnchors) {
             val conf = featureValue(flat, 4, j)
@@ -308,11 +311,11 @@ class PoseEstimator(
             (featureCount - BOX_CONF_FEATURES) % 3 == 0
     }
 
-    private fun keypointCountFromFeatureCount(featureCount: Int): Int {
-        require(isPoseFeatureCount(featureCount)) {
-            "Unexpected pose output feature size. Expected 5 + keypoints * 3, Actual=$featureCount"
+    private fun keypointCountFromFeatureCount(featureCount: Int, keypointStart: Int = BOX_CONF_FEATURES): Int {
+        require(featureCount >= keypointStart && (featureCount - keypointStart) % 3 == 0) {
+            "Unexpected pose output feature size. Expected keypoint triplets after $keypointStart box fields, Actual=$featureCount"
         }
-        return (featureCount - BOX_CONF_FEATURES) / 3
+        return (featureCount - keypointStart) / 3
     }
 
     private fun nmsPoseDetections(
