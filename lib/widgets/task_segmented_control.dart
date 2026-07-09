@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 
 /// Picks the active [YOLOTask] using a `CupertinoSlidingSegmentedControl` styled to match
-/// `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`'s storyboard-driven `UISegmentedControl` (`Det Seg Sem Cls Pose OBB`).
+/// `yolo-ios-app`'s task control (`Det Seg Sem Depth Cls Pose OBB`).
 ///
 /// Material 3's `SegmentedButton` was used previously but its pill-shaped chips don't match the iOS reference's
 /// inset rounded-rect look. The Cupertino variant gives us:
@@ -29,30 +29,9 @@ class TaskSegmentedControl extends StatelessWidget {
     this.showSemanticTask = true,
   });
 
-  // EXACT short button strings the iOS app inserts via task.shortName (yolo-ios-app ViewController.swift) —
-  // Det / Seg / Sem / Cls / Pose / OBB. The storyboard's full words are placeholders overridden at runtime.
-  static const Map<YOLOTask, String> _shortLabels = {
-    YOLOTask.detect: 'Det',
-    YOLOTask.segment: 'Seg',
-    YOLOTask.semantic: 'Sem',
-    YOLOTask.classify: 'Cls',
-    YOLOTask.pose: 'Pose',
-    YOLOTask.obb: 'OBB',
-  };
-
-  // Canonical iOS task order (Det Seg Sem Cls Pose OBB).
-  static const List<YOLOTask> _order = [
-    YOLOTask.detect,
-    YOLOTask.segment,
-    YOLOTask.semantic,
-    YOLOTask.classify,
-    YOLOTask.pose,
-    YOLOTask.obb,
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final tasks = _order
+    final tasks = YOLOTask.values
         .where((t) => showSemanticTask || t != YOLOTask.semantic)
         .toList(growable: false);
 
@@ -79,10 +58,10 @@ class TaskSegmentedControl extends StatelessWidget {
               task: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
                 child: Text(
-                  _shortLabels[task] ?? task.name,
+                  task.shortLabel,
                   style: TextStyle(
                     color: Colors.white,
-                    // 11pt + tighter padding so the 6 short tabs (Det/Seg/Sem/Cls/Pose/OBB) don't span so wide.
+                    // 11pt + tighter padding keeps the task strip compact on narrow phones.
                     fontSize: 11,
                     fontWeight: task == currentTask
                         ? FontWeight.w600

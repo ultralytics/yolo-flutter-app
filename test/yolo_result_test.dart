@@ -413,12 +413,20 @@ void main() {
           width: 2,
           height: 2,
         ),
+        depthMap: YOLODepthMap(
+          values: Float32List.fromList([1, 2, 3, 4]),
+          width: 2,
+          height: 2,
+          minDepth: 1,
+          maxDepth: 4,
+        ),
         processingTimeMs: 50.0,
       );
 
       expect(results.detections, detections);
       expect(results.annotatedImage, imageBytes);
       expect(results.semanticMask?.classMap, [0, 1, 1, 0]);
+      expect(results.depthMap?.values, [1, 2, 3, 4]);
       expect(results.processingTimeMs, 50.0);
     });
 
@@ -449,6 +457,13 @@ void main() {
           'width': 2,
           'height': 2,
         },
+        'depthMap': {
+          'values': Float32List.fromList([1.5, 2.5]),
+          'width': 2,
+          'height': 1,
+          'minDepth': 1.5,
+          'maxDepth': 2.5,
+        },
         'processingTimeMs': 50.0,
       };
 
@@ -459,6 +474,9 @@ void main() {
       expect(results.semanticMask?.classMap, [0, 1, 2, 1]);
       expect(results.semanticMask?.width, 2);
       expect(results.semanticMask?.height, 2);
+      expect(results.depthMap?.values, [1.5, 2.5]);
+      expect(results.depthMap?.minDepth, 1.5);
+      expect(results.depthMap?.maxDepth, 2.5);
       expect(results.processingTimeMs, 50.0);
       expect(results.annotatedImage, isNotNull);
     });
@@ -483,6 +501,13 @@ void main() {
           width: 2,
           height: 2,
         ),
+        depthMap: YOLODepthMap(
+          values: Float32List.fromList([2, 4]),
+          width: 2,
+          height: 1,
+          minDepth: 2,
+          maxDepth: 4,
+        ),
         processingTimeMs: 50.0,
       );
 
@@ -492,6 +517,7 @@ void main() {
       expect(map['detections'].length, 1);
       expect(map['annotatedImage'], imageBytes);
       expect(map['semanticMask']['classMap'], [2, 2, 1, 0]);
+      expect(map['depthMap']['values'], [2, 4]);
       expect(map['processingTimeMs'], 50.0);
     });
   });

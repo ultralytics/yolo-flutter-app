@@ -16,6 +16,9 @@ enum YOLOTask {
   /// Semantic segmentation - assigns a class label to each image pixel
   semantic,
 
+  /// Monocular depth estimation - predicts metric distance for each image pixel
+  depth,
+
   /// Image classification - categorizes the main subject of an image
   classify,
 
@@ -27,6 +30,36 @@ enum YOLOTask {
 }
 
 extension YOLOTaskParsing on YOLOTask {
+  String get modelSuffix => switch (this) {
+    YOLOTask.detect => '',
+    YOLOTask.segment => '-seg',
+    YOLOTask.semantic => '-sem',
+    YOLOTask.depth => '-depth',
+    YOLOTask.classify => '-cls',
+    YOLOTask.pose => '-pose',
+    YOLOTask.obb => '-obb',
+  };
+
+  String get shortLabel => switch (this) {
+    YOLOTask.detect => 'Det',
+    YOLOTask.segment => 'Seg',
+    YOLOTask.semantic => 'Sem',
+    YOLOTask.depth => 'Depth',
+    YOLOTask.classify => 'Cls',
+    YOLOTask.pose => 'Pose',
+    YOLOTask.obb => 'OBB',
+  };
+
+  String get label => switch (this) {
+    YOLOTask.detect => 'Detect',
+    YOLOTask.segment => 'Segment',
+    YOLOTask.semantic => 'Semantic',
+    YOLOTask.depth => 'Depth',
+    YOLOTask.classify => 'Classify',
+    YOLOTask.pose => 'Pose',
+    YOLOTask.obb => 'OBB',
+  };
+
   static YOLOTask? tryParse(String? value) {
     if (value == null) return null;
     for (final task in YOLOTask.values) {

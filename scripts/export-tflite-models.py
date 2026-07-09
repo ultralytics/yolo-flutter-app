@@ -48,10 +48,13 @@ TASKS: dict[str, TaskSpec] = {
     "detect": TaskSpec("", 640),
     "segment": TaskSpec("-seg", 640),
     "semantic": TaskSpec("-sem", 640),
+    "depth": TaskSpec("-depth", 640),
     "classify": TaskSpec("-cls", 224),
     "pose": TaskSpec("-pose", 640),
     "obb": TaskSpec("-obb", 640),
 }
+
+# TODO: Export all depth model sizes and upload them to release assets; only nano is currently bundled in the app.
 
 _TASK_NAMES_CACHE: dict[str, dict[int, str]] = {}
 

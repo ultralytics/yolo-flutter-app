@@ -27,6 +27,10 @@ void main() {
         modelPath: 'classify_model.tflite',
         task: YOLOTask.classify,
       );
+      final depthYolo = YOLO(
+        modelPath: 'depth_model.tflite',
+        task: YOLOTask.depth,
+      );
       final poseYolo = YOLO(
         modelPath: 'pose_model.tflite',
         task: YOLOTask.pose,
@@ -35,6 +39,7 @@ void main() {
       expect(detectYolo.task, YOLOTask.detect);
       expect(segmentYolo.task, YOLOTask.segment);
       expect(classifyYolo.task, YOLOTask.classify);
+      expect(depthYolo.task, YOLOTask.depth);
       expect(poseYolo.task, YOLOTask.pose);
     });
 

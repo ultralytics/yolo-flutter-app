@@ -281,17 +281,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   static String _composeModelId({
     required YOLOTask task,
     required String size,
-  }) {
-    const suffixes = {
-      YOLOTask.detect: '',
-      YOLOTask.segment: '-seg',
-      YOLOTask.semantic: '-sem',
-      YOLOTask.classify: '-cls',
-      YOLOTask.pose: '-pose',
-      YOLOTask.obb: '-obb',
-    };
-    return 'yolo26$size${suffixes[task] ?? ''}';
-  }
+  }) => 'yolo26$size${task.modelSuffix}';
 
   /// Maps `yolo26<size><suffix>` back to its size letter — used to route download-progress events to the matching
   /// chip.
@@ -649,23 +639,12 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     );
   }
 
-  static String _taskLabel(YOLOTask task) {
-    return switch (task) {
-      YOLOTask.detect => 'Detect',
-      YOLOTask.segment => 'Segment',
-      YOLOTask.semantic => 'Semantic',
-      YOLOTask.classify => 'Classify',
-      YOLOTask.pose => 'Pose',
-      YOLOTask.obb => 'OBB',
-    };
-  }
-
   static String _loadingTextFor(
     YOLOTask task,
     String size, {
     double? progress,
   }) {
-    final model = 'YOLO26$size ${_taskLabel(task)}';
+    final model = 'YOLO26$size ${task.label}';
     if (progress == null) return 'Loading $model';
     final percent = (progress * 100).clamp(0, 99).round();
     return 'Downloading $model $percent%';

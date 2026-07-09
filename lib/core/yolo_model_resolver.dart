@@ -50,30 +50,19 @@ class YOLOModelResolver {
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
 
   static const List<String> _yolo26Sizes = ['n', 's', 'm', 'l', 'x'];
-  static const List<({YOLOTask task, String suffix})> _yolo26Tasks = [
-    (task: YOLOTask.detect, suffix: ''),
-    (task: YOLOTask.segment, suffix: '-seg'),
-    (task: YOLOTask.semantic, suffix: '-sem'),
-    (task: YOLOTask.classify, suffix: '-cls'),
-    (task: YOLOTask.pose, suffix: '-pose'),
-    (task: YOLOTask.obb, suffix: '-obb'),
-  ];
-
   // Canonical YOLO26 task x size matrix. Keep generated so the app, docs, and export script all represent the same
-  // 6-task x 5-size official asset set. YOLO11 assets still exist on older releases but are no longer maintained for
+  // 7-task x 5-size official asset set. YOLO11 assets still exist on older releases but are no longer maintained for
   // autodownload — load them as custom paths/URLs instead.
   static final List<_OfficialModelArtifact> _officialModels = [
-    for (final task in _yolo26Tasks)
-      for (final size in _yolo26Sizes)
-        _yolo26Artifact(task: task.task, size: size, suffix: task.suffix),
+    for (final task in YOLOTask.values)
+      for (final size in _yolo26Sizes) _yolo26Artifact(task: task, size: size),
   ];
 
   static _OfficialModelArtifact _yolo26Artifact({
     required YOLOTask task,
     required String size,
-    required String suffix,
   }) {
-    final id = 'yolo26$size$suffix';
+    final id = 'yolo26$size${task.modelSuffix}';
     return _OfficialModelArtifact(
       id: id,
       task: task,

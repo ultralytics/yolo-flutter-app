@@ -238,7 +238,7 @@ class YOLOResult {
 /// Complete output from a YOLO inference.
 ///
 /// Includes detections, optional task-level outputs such as semantic masks,
-/// an optional annotated image, and processing time in milliseconds.
+/// depth maps, an optional annotated image, and processing time in milliseconds.
 class YOLODetectionResults {
   /// List of all objects detected in the image.
   ///
@@ -256,6 +256,9 @@ class YOLODetectionResults {
   /// Dense class map for semantic segmentation tasks.
   final YOLOSemanticMask? semanticMask;
 
+  /// Dense metric distance map for depth estimation tasks.
+  final YOLODepthMap? depthMap;
+
   /// The time taken to process the image in milliseconds.
   ///
   /// This includes model inference time and post-processing,
@@ -266,6 +269,7 @@ class YOLODetectionResults {
     required this.detections,
     this.annotatedImage,
     this.semanticMask,
+    this.depthMap,
     required this.processingTimeMs,
   });
 
@@ -290,6 +294,10 @@ class YOLODetectionResults {
     final semanticMask = semanticMaskRaw is Map
         ? YOLOSemanticMask.fromMap(semanticMaskRaw)
         : null;
+    final depthMapRaw = map['depthMap'];
+    final depthMap = depthMapRaw is Map
+        ? YOLODepthMap.fromMap(depthMapRaw)
+        : null;
 
     final processingTimeMs = MapConverter.safeGetDouble(
       map,
@@ -300,6 +308,7 @@ class YOLODetectionResults {
       detections: detections,
       annotatedImage: annotatedImage,
       semanticMask: semanticMask,
+      depthMap: depthMap,
       processingTimeMs: processingTimeMs,
     );
   }
@@ -309,9 +318,56 @@ class YOLODetectionResults {
       'detections': detections.map((detection) => detection.toMap()).toList(),
       'annotatedImage': annotatedImage,
       'semanticMask': semanticMask?.toMap(),
+      'depthMap': depthMap?.toMap(),
       'processingTimeMs': processingTimeMs,
     };
   }
+}
+
+/// Dense row-major metric depth output.
+class YOLODepthMap {
+  /// Distance in meters for every map pixel.
+  final Float32List values;
+
+  final int width;
+  final int height;
+  final double minDepth;
+  final double maxDepth;
+
+  YOLODepthMap({
+    required this.values,
+    required this.width,
+    required this.height,
+    required this.minDepth,
+    required this.maxDepth,
+  });
+
+  factory YOLODepthMap.fromMap(Map<dynamic, dynamic> map) {
+    final raw = map['values'];
+    final values = raw is Float32List
+        ? raw
+        : Float32List.fromList(
+            (raw as List<dynamic>? ?? const [])
+                .whereType<num>()
+                .map((value) => value.toDouble())
+                .toList(),
+          );
+    return YOLODepthMap(
+      values: values,
+      width: MapConverter.safeGetInt(map, 'width'),
+      height: MapConverter.safeGetInt(map, 'height'),
+      minDepth: MapConverter.safeGetDouble(map, 'minDepth'),
+      maxDepth: MapConverter.safeGetDouble(map, 'maxDepth'),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'values': values,
+    'width': width,
+    'height': height,
+    'minDepth': minDepth,
+    'maxDepth': maxDepth,
+  };
 }
 
 /// Dense full-image semantic segmentation result.

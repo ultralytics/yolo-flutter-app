@@ -6,7 +6,7 @@ import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/widgets/task_segmented_control.dart';
 
 void main() {
-  // On narrow screens the six task segments (Det/Seg/Sem/Cls/Pose/OBB) can exceed the available width, which made
+  // On narrow screens the task segments can exceed the available width, which made
   // CupertinoSlidingSegmentedControl compute a negative per-segment width and crash with
   // `BoxConstraints(w=-0.8) NOT NORMALIZED`. The FittedBox(scaleDown) wrapper must keep it laying out without throwing.
   testWidgets('does not throw when constrained to a narrow width', (
@@ -32,6 +32,7 @@ void main() {
     expect(find.text('Det'), findsOneWidget);
     expect(find.text('Seg'), findsOneWidget);
     expect(find.text('Sem'), findsOneWidget);
+    expect(find.text('Depth'), findsOneWidget);
     expect(find.text('Cls'), findsOneWidget);
     expect(find.text('Pose'), findsOneWidget);
     expect(find.text('OBB'), findsOneWidget);

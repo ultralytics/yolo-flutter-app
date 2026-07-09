@@ -211,6 +211,7 @@ enum YOLOTask {
   detect,      // Object detection
   segment,     // Instance segmentation
   semantic,    // Semantic segmentation
+  depth,       // Monocular depth estimation
   classify,    // Image classification
   pose,        // Pose estimation
   obb,         // Oriented bounding boxes
@@ -524,6 +525,7 @@ if (imageData != null) {
 - Detection bounding boxes with labels
 - Instance segmentation masks (for segment task)
 - Semantic segmentation masks (for semantic task)
+- Metric depth overlays (for depth task)
 - Pose keypoints and skeleton (for pose task)
 - OBB rotated boxes (for OBB task)
 - Classification results (for classify task)
@@ -684,6 +686,8 @@ class YOLOResult {
 ---
 
 Single-image semantic segmentation returns `YOLODetectionResults.semanticMask` with a row-major `classMap`, `width`, and `height`.
+
+Single-image depth estimation returns `YOLODetectionResults.depthMap` with row-major metric `values`, `width`, `height`, `minDepth`, and `maxDepth`.
 
 ---
 

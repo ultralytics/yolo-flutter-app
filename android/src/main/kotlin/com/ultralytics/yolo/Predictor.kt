@@ -92,6 +92,26 @@ interface Predictor {
     var labels: List<String>
     var isUpdating: Boolean
     var inputSize: Size
+
+    companion object {
+        fun create(
+            context: Context,
+            modelPath: String,
+            task: YOLOTask,
+            labels: List<String>,
+            useGpu: Boolean,
+            numItemsThreshold: Int = 30,
+            classifierOptions: Map<String, Any>? = null,
+        ): Predictor = when (task) {
+            YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
+            YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
+            YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels, useGpu)
+            YOLOTask.DEPTH -> DepthEstimator(context, modelPath, labels, useGpu)
+            YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu, classifierOptions)
+            YOLOTask.POSE -> PoseEstimator(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
+            YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
+        }
+    }
 }
 
 abstract class BasePredictor : Predictor {

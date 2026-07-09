@@ -15,7 +15,7 @@ import java.net.URL
 import kotlin.math.max
 
 /**
- * Unified YOLO class that can handle different tasks (detection, segmentation, classification, pose estimation, OBB detection)
+ * Unified YOLO class that can handle detection, segmentation, depth, classification, pose, and OBB tasks.
  */
 class YOLO(
     private val context: Context,
@@ -31,14 +31,7 @@ class YOLO(
     // The underlying predictor that will be initialized based on the task. LiteRT 2.x CompiledModel handles thread/
     // accelerator configuration internally (see LiteRtModel), so there are no per-interpreter options to pass.
     private val predictor: Predictor by lazy {
-        when (task) {
-            YOLOTask.DETECT -> ObjectDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
-            YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
-            YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels, useGpu)
-            YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels, useGpu, classifierOptions)
-            YOLOTask.POSE -> PoseEstimator(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
-            YOLOTask.OBB -> ObbDetector(context, modelPath, labels, useGpu, numItemsThreshold = numItemsThreshold)
-        }
+        Predictor.create(context, modelPath, task, labels, useGpu, numItemsThreshold, classifierOptions)
     }
 
     /**
@@ -384,12 +377,12 @@ class YOLO(
                     if (maskScaled !== mask) maskScaled.recycle()
                 }
             }
-            YOLOTask.SEMANTIC -> {
-                result.semanticMask?.maskImage?.let { mask ->
-                    val maskScaled = Bitmap.createScaledBitmap(mask, output.width, output.height, false)
+            YOLOTask.SEMANTIC, YOLOTask.DEPTH -> {
+                (result.semanticMask?.maskImage ?: result.depthMap?.image)?.let { mask ->
+                    val maskScaled = Bitmap.createScaledBitmap(mask, output.width, output.height, task == YOLOTask.DEPTH)
                     paint.style = Paint.Style.FILL
-                    paint.alpha = 128
-                    paint.isFilterBitmap = false
+                    paint.alpha = if (task == YOLOTask.DEPTH) 179 else 128
+                    paint.isFilterBitmap = task == YOLOTask.DEPTH
                     canvas.drawBitmap(maskScaled, 0f, 0f, paint)
                     paint.alpha = 255
                     if (maskScaled !== mask) maskScaled.recycle()

@@ -11,6 +11,7 @@ data class YOLOResult(
     val boxes: List<Box> = emptyList(),
     val masks: Masks? = null,
     val semanticMask: SemanticMask? = null,
+    val depthMap: DepthMap? = null,
     val probs: Probs? = null,
     val keypointsList: List<Keypoints> = emptyList(),
     val obb: List<OBBResult> = emptyList(),
@@ -42,6 +43,15 @@ data class SemanticMask(
     val width: Int,
     val height: Int,
     val maskImage: Bitmap?
+)
+
+data class DepthMap(
+    val values: FloatArray?,
+    val width: Int,
+    val height: Int,
+    val minDepth: Float,
+    val maxDepth: Float,
+    val image: Bitmap?,
 )
 
 data class Probs(
