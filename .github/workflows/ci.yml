@@ -52,10 +52,11 @@ jobs:
         run: dart pub publish --dry-run
 
       - name: Upload Coverage Reports to CodeCov
+        continue-on-error: true
         uses: codecov/codecov-action@v7
         with:
           use_oidc: true
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           files: coverage/lcov.info
           disable_search: true
           plugins: noop
