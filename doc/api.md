@@ -687,7 +687,7 @@ class YOLOResult {
 
 Single-image semantic segmentation returns `YOLODetectionResults.semanticMask` with a row-major `classMap`, `width`, and `height`.
 
-Single-image depth estimation returns `YOLODetectionResults.depthMap` with row-major metric `values`, `width`, `height`, `minDepth`, and `maxDepth`.
+Single-image depth estimation returns `results['depthMap']`, which can be parsed with `YOLODepthMap.fromMap()` to access row-major metric `values`, `width`, `height`, `minDepth`, and `maxDepth`.
 
 ---
 
