@@ -42,7 +42,7 @@ DEST="$REPO_ROOT/example/assets/models"
 ANDROID_BASE="https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6"
 IOS_BASE="https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0"
 
-# The nano task family bundled by default: detect, segment, semantic, depth, classify, pose, obb.
+# The nano task family bundled by default. Depth is Android-only until the published iOS SDK exposes its bridge.
 ANDROID_FILES=(
   "yolo26n_w8a32.tflite"
   "yolo26n-seg_w8a32.tflite"
@@ -56,7 +56,6 @@ IOS_FILES=(
   "yolo26n.mlpackage.zip"
   "yolo26n-seg.mlpackage.zip"
   "yolo26n-sem.mlpackage.zip"
-  "yolo26n-depth.mlpackage.zip"
   "yolo26n-cls.mlpackage.zip"
   "yolo26n-pose.mlpackage.zip"
   "yolo26n-obb.mlpackage.zip"

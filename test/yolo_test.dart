@@ -73,7 +73,7 @@ void main() {
     });
 
     test('official models are available per task', () {
-      const expected = {
+      final expected = {
         YOLOTask.detect: [
           'yolo26n',
           'yolo26s',
@@ -95,7 +95,15 @@ void main() {
           'yolo26l-sem',
           'yolo26x-sem',
         ],
-        YOLOTask.depth: [],
+        YOLOTask.depth: Platform.isIOS || Platform.isMacOS
+            ? []
+            : [
+                'yolo26n-depth',
+                'yolo26s-depth',
+                'yolo26m-depth',
+                'yolo26l-depth',
+                'yolo26x-depth',
+              ],
         YOLOTask.classify: [
           'yolo26n-cls',
           'yolo26s-cls',

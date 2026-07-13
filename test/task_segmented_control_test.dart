@@ -22,6 +22,7 @@ void main() {
               child: TaskSegmentedControl(
                 currentTask: YOLOTask.detect,
                 onTaskChanged: (_) {},
+                showDepthTask: true,
               ),
             ),
           ),
@@ -57,7 +58,7 @@ void main() {
     expect(find.text('Det'), findsOneWidget);
   });
 
-  testWidgets('hides the Depth segment when showDepthTask is false', (
+  testWidgets('hides the Depth segment by default', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -66,7 +67,6 @@ void main() {
           body: TaskSegmentedControl(
             currentTask: YOLOTask.detect,
             onTaskChanged: (_) {},
-            showDepthTask: false,
           ),
         ),
       ),
