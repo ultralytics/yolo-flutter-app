@@ -54,8 +54,6 @@ TASKS: dict[str, TaskSpec] = {
     "obb": TaskSpec("-obb", 640),
 }
 
-# TODO: Export all depth model sizes and upload them to release assets; only nano is currently bundled in the app.
-
 _TASK_NAMES_CACHE: dict[str, dict[int, str]] = {}
 
 
