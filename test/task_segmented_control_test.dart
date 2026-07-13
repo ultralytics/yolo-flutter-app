@@ -58,9 +58,7 @@ void main() {
     expect(find.text('Det'), findsOneWidget);
   });
 
-  testWidgets('hides the Depth segment by default', (
-    tester,
-  ) async {
+  testWidgets('hides the Depth segment by default', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
