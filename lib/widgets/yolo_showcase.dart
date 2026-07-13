@@ -145,7 +145,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   @override
   void initState() {
     super.initState();
-    _currentTask = widget.initialTask;
+    _currentTask = YOLO.officialModels(task: widget.initialTask).isEmpty
+        ? YOLOTask.detect
+        : widget.initialTask;
     _currentSize = widget.initialModelSize;
     _runningTask = _currentTask;
     _runningSize = _currentSize;
@@ -214,7 +216,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       setState(() {
         if (storedTask != null) {
           final parsed = YOLOTaskParsing.tryParse(storedTask);
-          if (parsed != null) _currentTask = parsed;
+          if (parsed != null && YOLO.officialModels(task: parsed).isNotEmpty) {
+            _currentTask = parsed;
+          }
         }
         // The model size always starts at nano (matches the native iOS app) and is never restored from prefs.
         // Clamp to whatever the resolver actually publishes for the active platform so we never hand `YOLOView`
@@ -1044,6 +1048,7 @@ class _ShowcaseOverlay extends StatelessWidget {
           currentTask: task,
           onTaskChanged: onTaskChanged,
           showSemanticTask: showSemanticTask,
+          showDepthTask: YOLO.officialModels(task: YOLOTask.depth).isNotEmpty,
         ),
         const SizedBox(height: 4),
         ModelSizeSegmentedControl(

@@ -156,6 +156,8 @@ print('Mask: ${semanticMask?['width']}x${semanticMask?['height']}');
 
 ### Depth Estimation
 
+Depth estimation is currently available on Android.
+
 ```dart
 final estimator = YOLO(
   modelPath: 'yolo26n-depth',

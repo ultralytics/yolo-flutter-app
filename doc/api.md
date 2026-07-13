@@ -525,7 +525,7 @@ if (imageData != null) {
 - Detection bounding boxes with labels
 - Instance segmentation masks (for segment task)
 - Semantic segmentation masks (for semantic task)
-- Metric depth overlays (for depth task)
+- Metric depth overlays (for depth task on Android)
 - Pose keypoints and skeleton (for pose task)
 - OBB rotated boxes (for OBB task)
 - Classification results (for classify task)
@@ -687,7 +687,7 @@ class YOLOResult {
 
 Single-image semantic segmentation returns `YOLODetectionResults.semanticMask` with a row-major `classMap`, `width`, and `height`.
 
-Single-image depth estimation returns `results['depthMap']`, which can be parsed with `YOLODepthMap.fromMap()` to access row-major metric `values`, `width`, `height`, `minDepth`, and `maxDepth`.
+On Android, single-image depth estimation returns `results['depthMap']`, which can be parsed with `YOLODepthMap.fromMap()` to access row-major metric `values`, `width`, `height`, `minDepth`, and `maxDepth`.
 
 ---
 

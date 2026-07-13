@@ -57,7 +57,7 @@ Official export properties:
 | Property       | TFLite                                        | Core ML                                 |
 | -------------- | --------------------------------------------- | --------------------------------------- |
 | Model IDs      | `yolo26{n,s,m,l,x}`                           | `yolo26{n,s,m,l,x}`                     |
-| Tasks          | detect, seg, sem, depth, cls, pose, obb       | detect, seg, sem, depth, cls, pose, obb |
+| Tasks          | detect, seg, sem, depth, cls, pose, obb       | detect, seg, sem, cls, pose, obb        |
 | Format         | `.tflite`                                     | `.mlpackage.zip`                        |
 | Quantization   | w8a32 LiteRT (int8 weights, FP32 activations) | int8 Core ML                            |
 | `imgsz`        | `224` cls; `640` others                       | `224` cls; `1024` OBB; `640` others     |

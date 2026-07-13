@@ -56,4 +56,22 @@ void main() {
     expect(find.text('Sem'), findsNothing);
     expect(find.text('Det'), findsOneWidget);
   });
+
+  testWidgets('hides the Depth segment when showDepthTask is false', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TaskSegmentedControl(
+            currentTask: YOLOTask.detect,
+            onTaskChanged: (_) {},
+            showDepthTask: false,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Depth'), findsNothing);
+    expect(find.text('Det'), findsOneWidget);
+  });
 }
