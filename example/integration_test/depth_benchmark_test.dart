@@ -78,8 +78,6 @@ void main() {
   testWidgets(
     'all depth models run on a physical mobile device',
     (WidgetTester tester) async {
-      if (!_runDepthBench || !(Platform.isAndroid || Platform.isIOS)) return;
-
       await tester.runAsync(() async {
         final image = await _downloadImage();
         for (final model in _depthModels) {
@@ -120,6 +118,7 @@ void main() {
         }
       });
     },
+    skip: !_runDepthBench || !(Platform.isAndroid || Platform.isIOS),
     timeout: const Timeout(Duration(minutes: 30)),
   );
 }
