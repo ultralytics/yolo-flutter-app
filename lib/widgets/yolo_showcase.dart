@@ -1048,7 +1048,6 @@ class _ShowcaseOverlay extends StatelessWidget {
           currentTask: task,
           onTaskChanged: onTaskChanged,
           showSemanticTask: showSemanticTask,
-          showDepthTask: YOLO.officialModels(task: YOLOTask.depth).isNotEmpty,
         ),
         const SizedBox(height: 4),
         ModelSizeSegmentedControl(

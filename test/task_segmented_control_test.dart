@@ -22,7 +22,6 @@ void main() {
               child: TaskSegmentedControl(
                 currentTask: YOLOTask.detect,
                 onTaskChanged: (_) {},
-                showDepthTask: true,
               ),
             ),
           ),
@@ -58,7 +57,7 @@ void main() {
     expect(find.text('Det'), findsOneWidget);
   });
 
-  testWidgets('hides the Depth segment by default', (tester) async {
+  testWidgets('shows all official tasks by default', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -69,7 +68,8 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Depth'), findsNothing);
-    expect(find.text('Det'), findsOneWidget);
+    for (final label in ['Det', 'Seg', 'Sem', 'Depth', 'Cls', 'Pose', 'OBB']) {
+      expect(find.text(label), findsOneWidget);
+    }
   });
 }

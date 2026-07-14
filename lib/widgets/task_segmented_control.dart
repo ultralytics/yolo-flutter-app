@@ -22,26 +22,21 @@ class TaskSegmentedControl extends StatelessWidget {
   /// When `false`, the `Semantic` segment is hidden for hosts that do not want to expose semantic segmentation.
   final bool showSemanticTask;
 
-  /// Whether to show the `Depth` segment.
-  final bool showDepthTask;
-
   const TaskSegmentedControl({
     super.key,
     required this.currentTask,
     required this.onTaskChanged,
     this.showSemanticTask = true,
-    this.showDepthTask = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final tasks = YOLOTask.values
         .where((t) => showSemanticTask || t != YOLOTask.semantic)
-        .where((t) => showDepthTask || t != YOLOTask.depth)
         .toList(growable: false);
 
     // Content-hug + centered (NOT full-width) so the control only uses the width it needs, like the iOS app. Wrapped in
-    // a scale-down FittedBox: on narrow screens the 6 segments can exceed the available width, which makes
+    // a scale-down FittedBox: on narrow screens the 7 segments can exceed the available width, which makes
     // CupertinoSlidingSegmentedControl compute a negative per-segment width and crash (BoxConstraints NOT NORMALIZED,
     // w=-0.8). FittedBox lays the control out at its natural (unbounded) width, then scales it down to fit, so the
     // per-segment width never goes negative.
