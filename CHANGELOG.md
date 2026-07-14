@@ -1,8 +1,7 @@
 ## 0.6.10
 
-- **Feature**: Add monocular depth estimation on Android and iOS, including typed metric-depth results and live color
-  overlays. iOS depth requires a custom Core ML model and UltralyticsYOLO `>= 8.9.12`; official model-ID downloads
-  remain Android-only until matching Core ML release assets are published.
+- **Feature**: Add monocular depth estimation on Android and iOS, including official model-ID downloads, typed
+  metric-depth results, and live color overlays. iOS requires UltralyticsYOLO `>= 8.9.12`.
 
 ## 0.6.9
 

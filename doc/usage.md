@@ -156,12 +156,11 @@ print('Mask: ${semanticMask?['width']}x${semanticMask?['height']}');
 
 ### Depth Estimation
 
-Official depth model IDs are currently available on Android. On iOS, pass the path to a custom depth `.mlpackage`;
-both platforms return the same typed metric-depth result.
+Official depth model IDs are available on Android and iOS, and both platforms return the same typed metric-depth result.
 
 ```dart
 final estimator = YOLO(
-  modelPath: 'yolo26n-depth', // Android; use a custom .mlpackage path on iOS.
+  modelPath: 'yolo26n-depth',
   task: YOLOTask.depth,
 );
 await estimator.loadModel();

@@ -46,7 +46,7 @@ The main goal is simple integration: use an official model ID, or drop in your o
 | Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores                      |
 | Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                              |
 | Semantic Segmentation                 | ✅      | ✅  | Dense class masks for every pixel                                  |
-| Monocular Depth Estimation            | ✅      | ✅  | Official Android assets; custom Core ML models on iOS              |
+| Monocular Depth Estimation            | ✅      | ✅  | Official LiteRT and Core ML models                                 |
 | Image Classification                  | ✅      | ✅  | Top class predictions and scores                                   |
 | Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores                         |
 | Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                                  |

@@ -67,7 +67,7 @@ class YOLOModelResolver {
       id: id,
       task: task,
       androidAssetName: '${id}_w8a32.tflite',
-      iosArchiveName: task == YOLOTask.depth ? null : '$id.mlpackage.zip',
+      iosArchiveName: '$id.mlpackage.zip',
     );
   }
 
