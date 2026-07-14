@@ -15,7 +15,7 @@ export 'models/yolo_task.dart';
 export 'yolo_instance_manager.dart';
 
 /// YOLO (You Only Look Once) is a class that provides machine learning inference
-/// capabilities for object detection, segmentation, semantic segmentation, Android depth estimation, classification, pose estimation,
+/// capabilities for object detection, segmentation, semantic segmentation, depth estimation, classification, pose estimation,
 /// and oriented bounding box detection.
 ///
 /// This class handles the initialization of YOLO models and provides methods

@@ -13,7 +13,7 @@
 [![Ultralytics Forums](https://img.shields.io/discourse/users?server=https%3A%2F%2Fcommunity.ultralytics.com&logo=discourse&label=Forums&color=blue)](https://community.ultralytics.com/)
 [![Ultralytics Reddit](https://img.shields.io/reddit/subreddit-subscribers/ultralytics?style=flat&logo=reddit&logoColor=white&label=Reddit&color=blue)](https://www.reddit.com/r/ultralytics/)
 
-Ultralytics YOLO Flutter is the official plugin for running YOLO models in Flutter apps on iOS and Android. It supports [detection](https://docs.ultralytics.com/tasks/detect), [instance segmentation](https://docs.ultralytics.com/tasks/segment), [semantic segmentation](https://docs.ultralytics.com/tasks/semantic), [classification](https://docs.ultralytics.com/tasks/classify), [pose](https://docs.ultralytics.com/tasks/pose), and [OBB](https://docs.ultralytics.com/tasks/obb) on both platforms, plus depth estimation on Android, with two simple entry points:
+Ultralytics YOLO Flutter is the official plugin for running YOLO models in Flutter apps on iOS and Android. It supports [detection](https://docs.ultralytics.com/tasks/detect), [instance segmentation](https://docs.ultralytics.com/tasks/segment), [semantic segmentation](https://docs.ultralytics.com/tasks/semantic), depth estimation, [classification](https://docs.ultralytics.com/tasks/classify), [pose](https://docs.ultralytics.com/tasks/pose), and [OBB](https://docs.ultralytics.com/tasks/obb) on both platforms, with two simple entry points:
 
 - `YOLO` for single-image inference
 - `YOLOView` for real-time camera inference
@@ -46,7 +46,7 @@ The main goal is simple integration: use an official model ID, or drop in your o
 | Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores                      |
 | Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                              |
 | Semantic Segmentation                 | ✅      | ✅  | Dense class masks for every pixel                                  |
-| Monocular Depth Estimation            | ✅      | —   | Dense metric distance maps and color overlays                      |
+| Monocular Depth Estimation            | ✅      | ✅  | Official Android assets; custom Core ML models on iOS              |
 | Image Classification                  | ✅      | ✅  | Top class predictions and scores                                   |
 | Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores                         |
 | Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                                  |

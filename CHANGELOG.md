@@ -1,5 +1,8 @@
 ## 0.6.9
 
+- **Feature**: Add monocular depth estimation on Android and iOS, including typed metric-depth results and live color
+  overlays. iOS depth requires a custom Core ML model and UltralyticsYOLO `>= 8.9.12`; official model-ID downloads
+  remain Android-only until matching Core ML release assets are published.
 - **Fix**: Android pose inference now derives the keypoint count from the model output feature width, allowing custom
   pose models such as 21-keypoint hand landmarks to return all keypoints instead of requiring COCO's 17-keypoint shape
   (#555).

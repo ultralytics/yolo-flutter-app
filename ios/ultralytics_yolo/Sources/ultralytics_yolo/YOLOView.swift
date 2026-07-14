@@ -91,13 +91,16 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       return
     }
 
-    if task == .segment || task == .semantic {
+    if task == .segment || task == .semantic || task == .depth {
       let maskImage =
-        self.task == .segment ? result.masks?.combinedMask : result.semanticMask?.maskImage
+        task == .segment
+        ? result.masks?.combinedMask
+        : task == .semantic ? result.semanticMask?.maskImage : result.depthMap?.image
       if let maskImage {
         guard let maskLayer = self.maskLayer else { return }
 
         maskLayer.isHidden = false
+        maskLayer.opacity = task == .depth ? 0.7 : 0.5
 
         // Fit the mask to the true aspect-fill image rect (from the actual frame size), not a hardcoded-ratio
         // overlay rect, so the mask registers with the preview. Mirrors yolo-ios-app YOLOView.
@@ -558,7 +561,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     resetLayers()
 
     switch task {
-    case .segment, .semantic:
+    case .segment, .semantic, .depth:
       setupMaskLayerIfNeeded()
     case .pose:
       setupPoseLayerIfNeeded()
@@ -1963,6 +1966,16 @@ extension YOLOView {
         "classMap": semanticMask.classMap,
         "width": semanticMask.width,
         "height": semanticMask.height,
+      ]
+    }
+
+    if config.includeMasks, let depthMap = result.depthMap {
+      map["depthMap"] = [
+        "values": depthMap.values,
+        "width": depthMap.width,
+        "height": depthMap.height,
+        "minDepth": depthMap.minDepth,
+        "maxDepth": depthMap.maxDepth,
       ]
     }
 

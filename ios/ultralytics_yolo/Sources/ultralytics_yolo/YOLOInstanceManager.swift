@@ -444,6 +444,16 @@ class YOLOInstanceManager {
       ]
     }
 
+    if let depthMap = result.depthMap {
+      resultDict["depthMap"] = [
+        "values": depthMap.values,
+        "width": depthMap.width,
+        "height": depthMap.height,
+        "minDepth": depthMap.minDepth,
+        "maxDepth": depthMap.maxDepth,
+      ]
+    }
+
     // OBB - oriented bounding boxes
     if !result.obb.isEmpty {
       var obbArray: [[String: Any]] = []
