@@ -196,14 +196,6 @@ Java_com_ultralytics_yolo_DepthEstimator_colorizeDepth(
         jint height,
         jintArray color_pixels,
         jintArray colors) {
-    if (depth_width <= 0 || left < 0 || top < 0 || width <= 0 || height <= 0 ||
-        left + width > depth_width ||
-        static_cast<jlong>(top + height) * depth_width > env->GetArrayLength(output) ||
-        static_cast<jlong>(width) * height > env->GetArrayLength(color_pixels) ||
-        env->GetArrayLength(colors) < 256) {
-        return nullptr;
-    }
-
     jfloat *depth = env->GetFloatArrayElements(output, nullptr);
     jint *pixels = env->GetIntArrayElements(color_pixels, nullptr);
     jint *color_table = env->GetIntArrayElements(colors, nullptr);

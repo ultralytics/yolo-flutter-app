@@ -47,9 +47,9 @@ class DepthEstimator(
             floatInput = FloatArray(inWidth * inHeight * 3)
             inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
             intValues = IntArray(inWidth * inHeight)
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             model.close()
-            throw e
+            throw t
         }
         rtModel = model
     }
