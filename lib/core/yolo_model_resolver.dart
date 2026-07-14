@@ -16,14 +16,14 @@ class _OfficialModelArtifact {
   const _OfficialModelArtifact({
     required this.id,
     required this.task,
-    this.androidAssetName,
-    this.iosArchiveName,
+    required this.androidAssetName,
+    required this.iosArchiveName,
   });
 
   final String id;
   final YOLOTask task;
-  final String? androidAssetName;
-  final String? iosArchiveName;
+  final String androidAssetName;
+  final String iosArchiveName;
 }
 
 class YOLOResolvedModel {
@@ -50,30 +50,19 @@ class YOLOModelResolver {
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
 
   static const List<String> _yolo26Sizes = ['n', 's', 'm', 'l', 'x'];
-  static const List<({YOLOTask task, String suffix})> _yolo26Tasks = [
-    (task: YOLOTask.detect, suffix: ''),
-    (task: YOLOTask.segment, suffix: '-seg'),
-    (task: YOLOTask.semantic, suffix: '-sem'),
-    (task: YOLOTask.classify, suffix: '-cls'),
-    (task: YOLOTask.pose, suffix: '-pose'),
-    (task: YOLOTask.obb, suffix: '-obb'),
-  ];
-
   // Canonical YOLO26 task x size matrix. Keep generated so the app, docs, and export script all represent the same
-  // 6-task x 5-size official asset set. YOLO11 assets still exist on older releases but are no longer maintained for
+  // 7-task x 5-size official asset set. YOLO11 assets still exist on older releases but are no longer maintained for
   // autodownload — load them as custom paths/URLs instead.
   static final List<_OfficialModelArtifact> _officialModels = [
-    for (final task in _yolo26Tasks)
-      for (final size in _yolo26Sizes)
-        _yolo26Artifact(task: task.task, size: size, suffix: task.suffix),
+    for (final task in YOLOTask.values)
+      for (final size in _yolo26Sizes) _yolo26Artifact(task: task, size: size),
   ];
 
   static _OfficialModelArtifact _yolo26Artifact({
     required YOLOTask task,
     required String size,
-    required String suffix,
   }) {
-    final id = 'yolo26$size$suffix';
+    final id = 'yolo26$size${task.modelSuffix}';
     return _OfficialModelArtifact(
       id: id,
       task: task,
@@ -85,7 +74,6 @@ class YOLOModelResolver {
   static List<String> officialModels({YOLOTask? task}) {
     return _officialModels
         .where((model) => task == null || model.task == task)
-        .where(_isAvailableOnCurrentPlatform)
         .map((model) => model.id)
         .toList(growable: false);
   }
@@ -105,14 +93,9 @@ class YOLOModelResolver {
   }) {
     final artifact = _officialModelForId(modelId);
     if (artifact == null) return null;
-    if (iosLike) {
-      final archiveName = artifact.iosArchiveName;
-      return archiveName == null
-          ? null
-          : '$_iosModelReleaseBaseUrl/$archiveName';
-    }
-    final assetName = artifact.androidAssetName;
-    return assetName == null ? null : '$_androidModelReleaseBaseUrl/$assetName';
+    return iosLike
+        ? '$_iosModelReleaseBaseUrl/${artifact.iosArchiveName}'
+        : '$_androidModelReleaseBaseUrl/${artifact.androidAssetName}';
   }
 
   static Future<YOLOResolvedModel> resolve({
@@ -158,12 +141,6 @@ class YOLOModelResolver {
       _resolvePath(modelPath);
 
   static Future<String> _resolvePath(String source) async {
-    final officialId = _normalizeOfficialModelId(source);
-
-    if (_officialModelForId(officialId) != null) {
-      return _resolveOfficialModel(officialId!);
-    }
-
     final uri = Uri.tryParse(source);
     if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
       return _downloadRemoteModel(uri);
@@ -173,6 +150,10 @@ class YOLOModelResolver {
       return _isIosLikePlatform
           ? _resolveIosFlutterAsset(source)
           : _copyFlutterAssetToDocuments(source);
+    }
+
+    if (_officialModelForId(source) != null) {
+      return _resolveOfficialModel(source);
     }
 
     return source;
@@ -197,12 +178,6 @@ class YOLOModelResolver {
     return null;
   }
 
-  static bool _isAvailableOnCurrentPlatform(_OfficialModelArtifact model) {
-    if (Platform.isAndroid) return model.androidAssetName != null;
-    if (_isIosLikePlatform) return model.iosArchiveName != null;
-    return model.androidAssetName != null || model.iosArchiveName != null;
-  }
-
   static Future<String> _resolveOfficialModel(String modelId) async {
     final artifact = _officialModelForId(modelId);
     if (artifact == null) {
@@ -220,7 +195,6 @@ class YOLOModelResolver {
     if (artifact == null) return false;
     final directory = await getApplicationDocumentsDirectory();
     if (_isIosLikePlatform) {
-      if (artifact.iosArchiveName == null) return false;
       if (await _hasValidMlPackage(
         Directory('${directory.path}/${artifact.id}.mlpackage'),
       )) {
@@ -232,7 +206,6 @@ class YOLOModelResolver {
           null;
     }
     final filename = artifact.androidAssetName;
-    if (filename == null) return false;
     if (File('${directory.path}/$filename').existsSync()) return true;
     return await _loadAssetBytes('assets/models/$filename') != null;
   }
@@ -241,11 +214,6 @@ class YOLOModelResolver {
     _OfficialModelArtifact artifact,
   ) async {
     final filename = artifact.androidAssetName;
-    if (filename == null) {
-      throw ModelLoadingException(
-        'Official model ${artifact.id} is not available on Android.',
-      );
-    }
     final directory = await getApplicationDocumentsDirectory();
     final modelFile = File('${directory.path}/$filename');
     if (modelFile.existsSync()) return modelFile.path;
@@ -266,11 +234,6 @@ class YOLOModelResolver {
     _OfficialModelArtifact artifact,
   ) async {
     final archiveName = artifact.iosArchiveName;
-    if (archiveName == null) {
-      throw ModelLoadingException(
-        'Official model ${artifact.id} is not available on iOS.',
-      );
-    }
     final directory = await getApplicationDocumentsDirectory();
     final modelDir = Directory('${directory.path}/${artifact.id}.mlpackage');
     if (await _hasValidMlPackage(modelDir)) return modelDir.path;

@@ -168,6 +168,7 @@ void main() {
         YOLOTask.detect,
         YOLOTask.segment,
         YOLOTask.semantic,
+        YOLOTask.depth,
         YOLOTask.classify,
         YOLOTask.pose,
         YOLOTask.obb,

@@ -62,9 +62,9 @@ with the preprocess / inference / postprocess split beneath it.
   official `v0.3.5` QNN release assets ship in this channel-last class-map format, exported with ultralytics
   8.4.65.
 - **These are single-image burst latencies**, not sustained camera frame times: one photo through `predict()` on a
-  thermally rested device. Real-time camera operation runs higher — full-sensor frames are letterboxed to the model
+  thermally rested device. Real-time camera operation runs higher — camera frames are letterboxed to the model
   input every frame and the silicon thermally settles under load (on an iPhone 17 Pro, YOLO26n detect measures
-  ~3.8 ms burst but ~16 ms/frame sustained in the live camera). On Android, portrait live-camera preprocessing still
+  ~3.8 ms burst and 11.3 ms/frame sustained with the shipped model-sized inference stream). On Android, portrait live-camera preprocessing still
   pays for CameraX frame rotation/letterbox every frame, so the in-app `pre` HUD can remain several milliseconds
   higher than the single-image rows even after the RGB packing cleanup. Watch the in-app pre/inference/post HUD line
   for your device's steady-state numbers, and benchmark your exact models on your target hardware.
@@ -96,22 +96,23 @@ is the comparable metric; preprocessing reflects the warmed-up thermal state of 
 Per-task before/after on the Adreno GPU — the legacy onnx2tf **INT8 TFLite** assets vs the new **w8a32 LiteRT** assets,
 both measured in the same run on the [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) at the shipped Android
 `imgsz` (224 classify, 640 others). Each cell is the **total** with the preprocess / inference / postprocess split
-beneath it. The runtime was `ultralytics_yolo` `0.6.8`; the `w8a32` assets come from the
+beneath it. The runtime was `ultralytics_yolo` `0.6.10`; the `w8a32` assets come from the
 [yolo-flutter-app `v0.6.6` release](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6).
 
-| Model        | Task     | size<br><sup>(pixels)</sup> | Before<br><sup>onnx2tf INT8 TFLite<br>(ms)</sup> | After<br><sup>w8a32 LiteRT<br>(ms)</sup> |
-| ------------ | -------- | --------------------------- | ------------------------------------------------ | ---------------------------------------- |
-| YOLO26n      | Detect   | 640                         | 14.0<br><sup>1.8 / 8.1 / 4.2</sup>               | **13.5**<br><sup>1.9 / 8.1 / 3.5</sup>   |
-| YOLO26n-seg  | Segment  | 640                         | 30.1<br><sup>1.9 / 20.3 / 8.0</sup>              | **28.6**<br><sup>1.8 / 20.1 / 6.7</sup>  |
-| YOLO26n-sem  | Semantic | 640                         | **26.4**<br><sup>1.9 / 16.4 / 8.1</sup>          | 32.9<br><sup>1.8 / 23.0 / 8.2</sup>      |
-| YOLO26n-cls  | Classify | 224                         | 3.5<br><sup>0.9 / 2.2 / 0.4</sup>                | **3.2**<br><sup>1.0 / 2.2 / 0.1</sup>    |
-| YOLO26n-pose | Pose     | 640                         | 17.4<br><sup>2.4 / 9.9 / 5.1</sup>               | **14.0**<br><sup>1.9 / 9.3 / 2.8</sup>   |
-| YOLO26n-obb  | OBB      | 640                         | 13.9<br><sup>3.0 / 8.3 / 2.7</sup>               | **13.0**<br><sup>2.9 / 7.9 / 2.3</sup>   |
+| Model         | Task     | size<br><sup>(pixels)</sup> | Before<br><sup>onnx2tf INT8 TFLite<br>(ms)</sup> | After<br><sup>w8a32 LiteRT<br>(ms)</sup> |
+| ------------- | -------- | --------------------------- | ------------------------------------------------ | ---------------------------------------- |
+| YOLO26n       | Detect   | 640                         | 14.0<br><sup>1.8 / 8.1 / 4.2</sup>               | **13.5**<br><sup>1.9 / 8.1 / 3.5</sup>   |
+| YOLO26n-seg   | Segment  | 640                         | 30.1<br><sup>1.9 / 20.3 / 8.0</sup>              | **28.6**<br><sup>1.8 / 20.1 / 6.7</sup>  |
+| YOLO26n-sem   | Semantic | 640                         | **26.4**<br><sup>1.9 / 16.4 / 8.1</sup>          | 32.9<br><sup>1.8 / 23.0 / 8.2</sup>      |
+| YOLO26n-depth | Depth    | 640                         | n/a                                              | **23.0**<br><sup>2.0 / 12.9 / 8.2</sup>  |
+| YOLO26n-cls   | Classify | 224                         | 3.5<br><sup>0.9 / 2.2 / 0.4</sup>                | **3.2**<br><sup>1.0 / 2.2 / 0.1</sup>    |
+| YOLO26n-pose  | Pose     | 640                         | 17.4<br><sup>2.4 / 9.9 / 5.1</sup>               | **14.0**<br><sup>1.9 / 9.3 / 2.8</sup>   |
+| YOLO26n-obb   | OBB      | 640                         | 13.9<br><sup>3.0 / 8.3 / 2.7</sup>               | **13.0**<br><sup>2.9 / 7.9 / 2.3</sup>   |
 
-w8a32 matches or beats the legacy onnx2tf INT8 format on five of six tasks in total latency. **Semantic remains the
-format regression** because the w8a32 NCHW logits cost more inference time than the legacy NHWC logits, even after
-preprocessing cleanup. The legacy onnx2tf models run unchanged on LiteRT 2.x alongside the new NCHW exports,
-confirming the runtime's layout-adaptive path.
+w8a32 matches or beats the legacy onnx2tf INT8 format on five of the six tasks that have a legacy counterpart, and
+adds the official Depth path. **Semantic remains the format regression** because the w8a32 NCHW logits cost more
+inference time than the legacy NHWC logits, even after preprocessing cleanup. The legacy onnx2tf models run unchanged
+on LiteRT 2.x alongside the new NCHW exports, confirming the runtime's layout-adaptive path.
 
 ## 🔭 Optimization Findings and Future Exploration
 
@@ -167,6 +168,49 @@ the table:
   on the default path (raw masks not requested) instead of scanning each detection box for a no-op; the semantic
   class map is sent to Flutter as a compact `Int32List` rather than a boxed `List<Int>` copy, dropping a per-frame
   copy of the dense map (decoded identically on the Dart side). Outputs unchanged.
+- **Native depth painting**: ported the iOS Accelerate depth-colorization pattern to the existing Android C++ decode
+  library, replacing bounds-checked Kotlin min/max and color sweeps while preserving the metric `Float32List`, invalid
+  pixel transparency, and near-to-far gradient. On the Xiaomi 17, postprocess fell from **50.2-54.1 ms** to
+  **8.2-9.7 ms** across all five official 640px depth models (**-82.8% mean**). The grouped physical-device test
+  verified exact native min/max equality against every positive finite output pixel and confirmed that all five models
+  compiled fully on the LiteRT GPU:
+
+  | Depth model | Preprocess | GPU inference | Post before | Post after | Optimized total |
+  | ----------- | ---------- | ------------- | ----------- | ---------- | --------------- |
+  | YOLO26n     | 2.0 ms     | 12.9 ms       | 54.1 ms     | **8.2 ms** | **23.0 ms**     |
+  | YOLO26s     | 2.2 ms     | 20.5 ms       | 50.2 ms     | **9.1 ms** | **31.8 ms**     |
+  | YOLO26m     | 2.8 ms     | 35.2 ms       | 51.0 ms     | **9.7 ms** | **47.7 ms**     |
+  | YOLO26l     | 1.9 ms     | 45.2 ms       | 51.5 ms     | **8.8 ms** | **56.0 ms**     |
+  | YOLO26x     | 2.1 ms     | 79.6 ms       | 51.9 ms     | **8.6 ms** | **90.3 ms**     |
+
+  Each row is the mean of 15 `predict()` calls after 3 warmups on `bus.jpg`; maps were 480x640 after letterbox crop.
+  Inference varied with GPU/thermal state between the before/after sweeps, so the attributable A/B result is the
+  instrumented postprocess column rather than the total-time difference.
+
+  The matching LiteRT XNNPACK CPU sweep confirms that Depth should use the GPU on this device:
+
+  | Depth model | CPU preprocess | CPU inference | CPU post | CPU total  |
+  | ----------- | -------------- | ------------- | -------- | ---------- |
+  | YOLO26n     | 5.07 ms        | 300.91 ms     | 19.15 ms | 325.13 ms  |
+  | YOLO26s     | 4.60 ms        | 413.98 ms     | 19.17 ms | 437.75 ms  |
+  | YOLO26m     | 4.75 ms        | 725.81 ms     | 19.21 ms | 749.77 ms  |
+  | YOLO26l     | 4.68 ms        | 894.44 ms     | 19.19 ms | 918.31 ms  |
+  | YOLO26x     | 4.65 ms        | 1481.00 ms    | 19.82 ms | 1505.47 ms |
+
+- **Core ML Depth backend sweep**: the same grouped physical-device harness ran all five official INT8 Core ML Depth
+  models on an iPhone 17 Pro (A19, iOS 26.5.2). Neural Engine values use `.cpuAndNeuralEngine`; CPU values use
+  `.cpuOnly`. Each row is 15 `predict()` calls after 3 warmups on `bus.jpg`, with a 480x640 typed metric map:
+
+  | Depth model | CPU inference | CPU post | CPU total | Neural Engine inference | NE post | NE total     |
+  | ----------- | ------------- | -------- | --------- | ----------------------- | ------- | ------------ |
+  | YOLO26n     | 23.90 ms      | 0.85 ms  | 24.75 ms  | 4.67 ms                 | 0.87 ms | **5.54 ms**  |
+  | YOLO26s     | 33.67 ms      | 0.90 ms  | 34.57 ms  | 6.15 ms                 | 0.85 ms | **7.01 ms**  |
+  | YOLO26m     | 55.27 ms      | 0.93 ms  | 56.21 ms  | 9.64 ms                 | 0.89 ms | **10.54 ms** |
+  | YOLO26l     | 67.32 ms      | 0.93 ms  | 68.25 ms  | 10.87 ms                | 0.94 ms | **11.80 ms** |
+  | YOLO26x     | 116.77 ms     | 0.94 ms  | 117.71 ms | 19.38 ms                | 0.93 ms | **20.30 ms** |
+
+  Vision performs scaling inside the request, so `preMs` is 0 and preprocessing is included in inference. These are
+  single-image burst measurements; the iOS app's sustained 720p camera path measures 16.5 ms/frame for YOLO26n Depth.
 
 **Tested and intentionally NOT changed (don't re-litigate without new evidence):**
 
@@ -387,7 +431,7 @@ Observed app-level result:
 
 **A:** Yes. `scripts/fetch_bundled_models.sh` downloads the six nano YOLO26 models into `example/assets/models/` at build time, wired into the Android Gradle `preBuild` and an iOS run-script build phase. The files stay gitignored and are never committed. `YOLOModelResolver` already checks `assets/models/` before a network download, so a bundled model means no first-run fetch. The download is best-effort (always exits `0`) so offline builds still succeed, and it is **skipped under CI** (`CI` / `GITHUB_ACTIONS`) so GitHub builds stay fast and off the network - CI exercises the runtime-download fallback instead.
 
-**Shipped:** Local and release builds bundle `yolo26n` for all six tasks; larger sizes still download on demand. This supersedes the earlier temporary "bundle for local validation" workaround.
+**Shipped:** Local and release builds bundle `yolo26n` for all seven tasks; larger sizes still download on demand. This supersedes the earlier temporary "bundle for local validation" workaround.
 
 **Conclusion:** Build-time bundling removes first-run download latency for the default models and makes on-device profiling reproducible without network access, while CI keeps using the runtime path.
 
@@ -416,11 +460,11 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 
 ### Current Shipped Configuration
 
-- Android official assets: YOLO26 w8a32 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `v0.6.6`.
+- Android official assets: YOLO26 w8a32 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/depth/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `v0.6.6`.
 - Android export settings: `quantize=w8a32` (int8 weights, FP32 activations — dynamic-range, no calibration), `nms=False`, `end2end=False`; classify `imgsz=224`, all other tasks `imgsz=640`.
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
-- Example UI: controls expose all six tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.
-- Bundled models: local/release builds fetch the six `yolo26n` nano models into `example/assets/models/` at build time (gitignored, not committed; skipped under CI), so nano tasks work offline with no first-run download; larger sizes download on demand.
+- Example UI: controls expose all seven tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.
+- Bundled models: local/release builds fetch the seven `yolo26n` nano models into `example/assets/models/` at build time (gitignored, not committed; skipped under CI), so nano tasks work offline with no first-run download; larger sizes download on demand.
 - iOS runtime: with `useGpu: true` (the default) on iOS 16+, Core ML is pinned to `.cpuAndNeuralEngine` (Neural Engine + CPU), not `.all` - avoids GPU contention with the live preview/overlay compositing. iOS 15 and earlier use `.all`; `useGpu: false` pins to `.cpuOnly`.
 
 ### Open Levers

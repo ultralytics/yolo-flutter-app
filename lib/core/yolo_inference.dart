@@ -89,6 +89,7 @@ class YOLOInference {
         detections.addAll(_processSegmentResults(resultMap, boxes));
         break;
       case YOLOTask.semantic:
+      case YOLOTask.depth:
         break;
       case YOLOTask.classify:
         detections.addAll(_processClassifyResults(resultMap));

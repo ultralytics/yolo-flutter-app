@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cfloat>
 #include <cstdlib>
+#include "depth-colorizer.h"
 
 // Custom rectangle structure
 struct Rect {
@@ -180,4 +181,42 @@ Java_com_ultralytics_yolo_ObjectDetector_postprocess(
         env->DeleteLocalRef(iarr);
     }
     return objArray;
+}
+
+extern "C"
+JNIEXPORT jfloatArray JNICALL
+Java_com_ultralytics_yolo_DepthEstimator_colorizeDepth(
+        JNIEnv *env,
+        jobject thiz,
+        jfloatArray output,
+        jint depth_width,
+        jint left,
+        jint top,
+        jint width,
+        jint height,
+        jintArray color_pixels,
+        jintArray colors) {
+    jfloat *depth = env->GetFloatArrayElements(output, nullptr);
+    jint *pixels = env->GetIntArrayElements(color_pixels, nullptr);
+    jint *color_table = env->GetIntArrayElements(colors, nullptr);
+    if (depth == nullptr || pixels == nullptr || color_table == nullptr) {
+        if (depth != nullptr) env->ReleaseFloatArrayElements(output, depth, JNI_ABORT);
+        if (pixels != nullptr) env->ReleaseIntArrayElements(color_pixels, pixels, 0);
+        if (color_table != nullptr) env->ReleaseIntArrayElements(colors, color_table, JNI_ABORT);
+        return nullptr;
+    }
+
+    DepthRange range;
+    const bool valid = colorize_depth(
+            depth, depth_width, left, top, width, height, pixels, color_table, range);
+
+    env->ReleaseFloatArrayElements(output, depth, JNI_ABORT);
+    env->ReleaseIntArrayElements(color_pixels, pixels, 0);
+    env->ReleaseIntArrayElements(colors, color_table, JNI_ABORT);
+
+    if (!valid) return nullptr;
+    jfloat result_range[2] = {range.min, range.max};
+    jfloatArray result = env->NewFloatArray(2);
+    if (result != nullptr) env->SetFloatArrayRegion(result, 0, 2, result_range);
+    return result;
 }

@@ -444,6 +444,10 @@ class YOLOInstanceManager {
       ]
     }
 
+    if let depthMap = result.depthMap {
+      resultDict["depthMap"] = depthMap.flutterMap
+    }
+
     // OBB - oriented bounding boxes
     if !result.obb.isEmpty {
       var obbArray: [[String: Any]] = []
@@ -480,5 +484,18 @@ class YOLOInstanceManager {
     resultDict["postMs"] = result.postMs
 
     return resultDict
+  }
+}
+
+extension DepthMap {
+  var flutterMap: [String: Any] {
+    let data = values.withUnsafeBytes { Data($0) }
+    return [
+      "values": FlutterStandardTypedData(float32: data),
+      "width": width,
+      "height": height,
+      "minDepth": minDepth,
+      "maxDepth": maxDepth,
+    ]
   }
 }

@@ -216,28 +216,12 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
           final parsed = YOLOTaskParsing.tryParse(storedTask);
           if (parsed != null) _currentTask = parsed;
         }
-        // The model size always starts at nano (matches the native iOS app) and is never restored from prefs.
-        // Clamp to whatever the resolver actually publishes for the active platform so we never hand `YOLOView`
-        // a `_currentModelId` that 404s on first launch before the chip even renders.
-        _currentSize = _clampSizeToSupported(_currentSize, _currentTask);
       });
     }
     final initial = await _scanAvailableSizes(_currentTask);
     if (mounted) setState(() => _availableSizes = initial);
     // Defer lens enumeration to after the platform view is initialized.
     unawaited(_refreshLenses());
-  }
-
-  /// Returns `size` if it's supported for `task`; otherwise the first supported size, falling back to `'n'` when even
-  /// that's missing.
-  String _clampSizeToSupported(String size, YOLOTask task) {
-    final supported = _supportedSizesForTask(task);
-    if (supported.contains(size)) return size;
-    if (supported.isEmpty) return 'n';
-    for (final s in _allSizes) {
-      if (supported.contains(s)) return s;
-    }
-    return 'n';
   }
 
   Future<void> _refreshLenses() async {
@@ -273,7 +257,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     super.dispose();
   }
 
-  static const List<String> _allSizes = ['n', 's', 'm', 'l', 'x'];
+  static const Set<String> _allSizes = {'n', 's', 'm', 'l', 'x'};
 
   String get _currentModelId =>
       _composeModelId(task: _currentTask, size: _currentSize);
@@ -281,17 +265,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   static String _composeModelId({
     required YOLOTask task,
     required String size,
-  }) {
-    const suffixes = {
-      YOLOTask.detect: '',
-      YOLOTask.segment: '-seg',
-      YOLOTask.semantic: '-sem',
-      YOLOTask.classify: '-cls',
-      YOLOTask.pose: '-pose',
-      YOLOTask.obb: '-obb',
-    };
-    return 'yolo26$size${suffixes[task] ?? ''}';
-  }
+  }) => 'yolo26$size${task.modelSuffix}';
 
   /// Maps `yolo26<size><suffix>` back to its size letter — used to route download-progress events to the matching
   /// chip.
@@ -303,25 +277,10 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     return null;
   }
 
-  /// Sizes the resolver can fetch for `task` on the current platform. Drives chip visibility — sizes outside this set
-  /// are hidden so the user can't tap a chip that would 404 at download time.
-  Set<String> _supportedSizesForTask(YOLOTask task) {
-    final declared = YOLO.officialModels(task: task);
-    final sizes = <String>{};
-    for (final size in _allSizes) {
-      if (declared.contains(_composeModelId(task: task, size: size))) {
-        sizes.add(size);
-      }
-    }
-    return sizes;
-  }
-
-  /// Probes each declared `yolo26<size><suffix>` for the active task to decide which chips are "downloaded" vs need a
-  /// `↓` glyph. Only models the resolver declares (`YOLO.officialModels`) are probed.
+  /// Probes each official size for the active task to decide which chips are downloaded vs need a `↓` glyph.
   Future<Set<String>> _scanAvailableSizes(YOLOTask task) async {
-    final supported = _supportedSizesForTask(task);
     final present = <String>{};
-    for (final size in supported) {
+    for (final size in _allSizes) {
       final id = _composeModelId(task: task, size: size);
       if (await YOLOModelResolver.isOfficialModelAvailableLocally(id)) {
         present.add(size);
@@ -407,15 +366,13 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     HapticFeedback.selectionClick();
     // Match the native iOS app: switching tasks always resets the model size to nano (the smallest/first size)
     // rather than carrying over the previously selected size.
-    final targetSize = _clampSizeToSupported('n', task);
+    const targetSize = 'n';
     YOLOModelManager.clearDownloadCancellation(
       _composeModelId(task: task, size: targetSize),
     );
     _suppressInferenceForModelSwitch();
     setState(() {
       _currentTask = task;
-      // The supported set can differ by platform. Clamp here too so a task switch never hands `YOLOView` a model id
-      // that doesn't exist on the active platform.
       _currentSize = targetSize;
       // Abandon any in-flight download chip for the previous selection (the progress listener only resurrects it for
       // the new current size).
@@ -649,23 +606,12 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     );
   }
 
-  static String _taskLabel(YOLOTask task) {
-    return switch (task) {
-      YOLOTask.detect => 'Detect',
-      YOLOTask.segment => 'Segment',
-      YOLOTask.semantic => 'Semantic',
-      YOLOTask.classify => 'Classify',
-      YOLOTask.pose => 'Pose',
-      YOLOTask.obb => 'OBB',
-    };
-  }
-
   static String _loadingTextFor(
     YOLOTask task,
     String size, {
     double? progress,
   }) {
-    final model = 'YOLO26$size ${_taskLabel(task)}';
+    final model = 'YOLO26$size ${task.label}';
     if (progress == null) return 'Loading $model';
     final percent = (progress * 100).clamp(0, 99).round();
     return 'Downloading $model $percent%';
@@ -713,7 +659,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   task: _currentTask,
                   size: _currentSize,
                   availableSizes: _availableSizes,
-                  supportedSizes: _supportedSizesForTask(_currentTask),
+                  supportedSizes: _allSizes,
                   downloadingSize: _downloadingSize,
                   downloadFraction: _downloadFraction,
                   modelErrorMessage: _modelErrorMessage,

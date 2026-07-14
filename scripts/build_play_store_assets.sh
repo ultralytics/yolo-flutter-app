@@ -198,6 +198,7 @@ for path in "$MODEL_DIR"/*; do
       yolo26n_w8a32.tflite | \
       yolo26n-seg_w8a32.tflite | \
       yolo26n-sem_w8a32.tflite | \
+      yolo26n-depth_w8a32.tflite | \
       yolo26n-cls_w8a32.tflite | \
       yolo26n-pose_w8a32.tflite | \
       yolo26n-obb_w8a32.tflite) ;;

@@ -48,6 +48,7 @@ TASKS: dict[str, TaskSpec] = {
     "detect": TaskSpec("", 640),
     "segment": TaskSpec("-seg", 640),
     "semantic": TaskSpec("-sem", 640),
+    "depth": TaskSpec("-depth", 640),
     "classify": TaskSpec("-cls", 224),
     "pose": TaskSpec("-pose", 640),
     "obb": TaskSpec("-obb", 640),

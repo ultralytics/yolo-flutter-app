@@ -585,14 +585,7 @@ class YOLOView @JvmOverloads constructor(
 
         Executors.newSingleThreadExecutor().execute {
             try {
-                val newPredictor = when (task) {
-                    YOLOTask.DETECT -> ObjectDetector(context = context, modelPath = modelPath, labels = emptyList(), useGpu = useGpu)
-                    YOLOTask.SEGMENT -> Segmenter(context, modelPath, labels = emptyList(), useGpu = useGpu)
-                    YOLOTask.SEMANTIC -> SemanticSegmenter(context, modelPath, labels = emptyList(), useGpu = useGpu)
-                    YOLOTask.CLASSIFY -> Classifier(context, modelPath, labels = emptyList(), useGpu = useGpu)
-                    YOLOTask.POSE -> PoseEstimator(context, modelPath, labels = emptyList(), useGpu = useGpu)
-                    YOLOTask.OBB -> ObbDetector(context, modelPath, labels = emptyList(), useGpu = useGpu)
-                }
+                val newPredictor = Predictor.create(context, modelPath, task, emptyList(), useGpu)
 
                 // Apply thresholds to all predictor types
                 newPredictor.apply {
@@ -1764,14 +1757,14 @@ class YOLOView @JvmOverloads constructor(
                     }
                 }
                 // ----------------------------------------
-                // SEMANTIC
+                // DENSE MAPS
                 // ----------------------------------------
-                YOLOTask.SEMANTIC -> {
-                    result.semanticMask?.maskImage?.let { maskBitmap ->
+                YOLOTask.SEMANTIC, YOLOTask.DEPTH -> {
+                    (result.semanticMask?.maskImage ?: result.depthMap?.image)?.let { maskBitmap ->
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
                         val maskPaint = Paint().apply {
-                            alpha = 128
-                            isFilterBitmap = false
+                            alpha = if (task == YOLOTask.DEPTH) 179 else 128
+                            isFilterBitmap = task == YOLOTask.DEPTH
                         }
 
                         if (isFrontCamera) {
@@ -2244,6 +2237,15 @@ class YOLOView @JvmOverloads constructor(
                     "classMap" to semanticMask.classMap,
                     "width" to semanticMask.width,
                     "height" to semanticMask.height
+                )
+            }
+            result.depthMap?.let { depthMap ->
+                map["depthMap"] = mapOf(
+                    "values" to requireNotNull(depthMap.values),
+                    "width" to depthMap.width,
+                    "height" to depthMap.height,
+                    "minDepth" to depthMap.minDepth.toDouble(),
+                    "maxDepth" to depthMap.maxDepth.toDouble(),
                 )
             }
         }

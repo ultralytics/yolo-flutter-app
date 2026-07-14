@@ -73,7 +73,7 @@ void main() {
     });
 
     test('official models are available per task', () {
-      const expected = {
+      final expected = {
         YOLOTask.detect: [
           'yolo26n',
           'yolo26s',
@@ -94,6 +94,13 @@ void main() {
           'yolo26m-sem',
           'yolo26l-sem',
           'yolo26x-sem',
+        ],
+        YOLOTask.depth: [
+          'yolo26n-depth',
+          'yolo26s-depth',
+          'yolo26m-depth',
+          'yolo26l-depth',
+          'yolo26x-depth',
         ],
         YOLOTask.classify: [
           'yolo26n-cls',
@@ -144,6 +151,11 @@ void main() {
         'yolo26m-sem',
         'yolo26l-sem',
         'yolo26x-sem',
+        'yolo26n-depth',
+        'yolo26s-depth',
+        'yolo26m-depth',
+        'yolo26l-depth',
+        'yolo26x-depth',
         'yolo26n-cls',
         'yolo26s-cls',
         'yolo26m-cls',
@@ -205,6 +217,7 @@ void main() {
         YOLOTask.detect,
         YOLOTask.segment,
         YOLOTask.semantic,
+        YOLOTask.depth,
         YOLOTask.classify,
         YOLOTask.pose,
         YOLOTask.obb,
@@ -1024,6 +1037,14 @@ void main() {
             await YOLOModelResolver.isOfficialModelAvailableLocally('missing'),
             isFalse,
           );
+        },
+      );
+
+      test(
+        'preserves explicit paths that resemble official model IDs',
+        () async {
+          const path = '/tmp/models/yolo26n-depth.mlpackage';
+          expect(await YOLOModelResolver.preparePath(path), path);
         },
       );
 

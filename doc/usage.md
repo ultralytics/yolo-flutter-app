@@ -154,6 +154,22 @@ final semanticMask = results['semanticMask'] as Map?;
 print('Mask: ${semanticMask?['width']}x${semanticMask?['height']}');
 ```
 
+### Depth Estimation
+
+Official depth model IDs are available on Android and iOS, and both platforms return the same typed metric-depth result.
+
+```dart
+final estimator = YOLO(
+  modelPath: 'yolo26n-depth',
+  task: YOLOTask.depth,
+);
+await estimator.loadModel();
+
+final results = await estimator.predict(imageBytes);
+final depth = results['depthMap'] as Map?;
+print('Depth: ${depth?['width']}x${depth?['height']} ${depth?['minDepth']}-${depth?['maxDepth']} m');
+```
+
 ### Classification
 
 ```dart

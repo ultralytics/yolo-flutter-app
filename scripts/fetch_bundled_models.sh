@@ -27,7 +27,7 @@ if [ "$PLATFORM" != "android" ] && [ "$PLATFORM" != "ios" ]; then
 fi
 
 # Skip bundling under CI. GitHub Actions builds (example-android / example-ios) don't need the models embedded, and
-# downloading six of them on every run is slow and a network-flakiness risk. CI exercises the runtime-download fallback
+# downloading seven of them on every run is slow and a network-flakiness risk. CI exercises the runtime-download fallback
 # instead. Set FORCE_BUNDLED_MODELS=1 to bundle anyway (e.g. a release build that intentionally ships them).
 if [ "${FORCE_BUNDLED_MODELS:-}" != "1" ] && { [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ]; }; then
   echo "fetch_bundled_models: CI detected (CI/GITHUB_ACTIONS set); skipping model bundling — app will download at runtime."
@@ -42,11 +42,12 @@ DEST="$REPO_ROOT/example/assets/models"
 ANDROID_BASE="https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6"
 IOS_BASE="https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0"
 
-# The nano task family bundled by default: detect, segment, semantic, classify, pose, obb.
+# The nano task family bundled by default.
 ANDROID_FILES=(
   "yolo26n_w8a32.tflite"
   "yolo26n-seg_w8a32.tflite"
   "yolo26n-sem_w8a32.tflite"
+  "yolo26n-depth_w8a32.tflite"
   "yolo26n-cls_w8a32.tflite"
   "yolo26n-pose_w8a32.tflite"
   "yolo26n-obb_w8a32.tflite"
@@ -55,6 +56,7 @@ IOS_FILES=(
   "yolo26n.mlpackage.zip"
   "yolo26n-seg.mlpackage.zip"
   "yolo26n-sem.mlpackage.zip"
+  "yolo26n-depth.mlpackage.zip"
   "yolo26n-cls.mlpackage.zip"
   "yolo26n-pose.mlpackage.zip"
   "yolo26n-obb.mlpackage.zip"

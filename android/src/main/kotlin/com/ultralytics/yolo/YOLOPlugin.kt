@@ -287,6 +287,17 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
                   )
                 }
               }
+              YOLOTask.DEPTH -> {
+                yoloResult.depthMap?.let { depthMap ->
+                  response["depthMap"] = mapOf(
+                    "values" to requireNotNull(depthMap.values),
+                    "width" to depthMap.width,
+                    "height" to depthMap.height,
+                    "minDepth" to depthMap.minDepth.toDouble(),
+                    "maxDepth" to depthMap.maxDepth.toDouble()
+                  )
+                }
+              }
               YOLOTask.CLASSIFY -> {
                 yoloResult.probs?.let { probs ->
                   val top5Count = minOf(
@@ -382,6 +393,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             response["preMs"] = yoloResult.preMs
             response["inferenceMs"] = yoloResult.inferenceMs
             response["postMs"] = yoloResult.postMs
+            yoloResult.accelerator?.let { response["accelerator"] = it }
   
             result.success(response)
           } finally {

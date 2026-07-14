@@ -1,3 +1,8 @@
+## 0.6.10
+
+- **Feature**: Add monocular depth estimation on Android and iOS, including official model-ID downloads, typed
+  metric-depth results, and live color overlays. iOS requires UltralyticsYOLO `>= 8.9.12`.
+
 ## 0.6.9
 
 - **Fix**: Android pose inference now derives the keypoint count from the model output feature width, allowing custom
