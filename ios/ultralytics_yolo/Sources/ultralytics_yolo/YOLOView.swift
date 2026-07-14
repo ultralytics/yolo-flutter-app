@@ -1970,13 +1970,7 @@ extension YOLOView {
     }
 
     if config.includeMasks, let depthMap = result.depthMap {
-      map["depthMap"] = [
-        "values": depthMap.values,
-        "width": depthMap.width,
-        "height": depthMap.height,
-        "minDepth": depthMap.minDepth,
-        "maxDepth": depthMap.maxDepth,
-      ]
+      map["depthMap"] = depthMap.flutterMap
     }
 
     // Add classification results (if available and enabled for CLASSIFY task)

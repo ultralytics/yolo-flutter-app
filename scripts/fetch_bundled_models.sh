@@ -42,7 +42,7 @@ DEST="$REPO_ROOT/example/assets/models"
 ANDROID_BASE="https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6"
 IOS_BASE="https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0"
 
-# The nano task family bundled by default. Depth is Android-only until the published iOS SDK exposes its bridge.
+# The nano task family bundled by default. Only Android currently publishes an official depth asset.
 ANDROID_FILES=(
   "yolo26n_w8a32.tflite"
   "yolo26n-seg_w8a32.tflite"

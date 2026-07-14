@@ -1047,6 +1047,14 @@ void main() {
         },
       );
 
+      test(
+        'preserves explicit paths that resemble official model IDs',
+        () async {
+          const path = '/tmp/models/yolo26n-depth.mlpackage';
+          expect(await YOLOModelResolver.preparePath(path), path);
+        },
+      );
+
       test('prepares official and Flutter bundled assets', () async {
         final bytes = YOLOTestHelpers.storedZip({
           'model.mlpackage/Manifest.json': utf8.encode('{}'),

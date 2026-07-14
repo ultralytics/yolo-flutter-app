@@ -147,12 +147,6 @@ class YOLOModelResolver {
       _resolvePath(modelPath);
 
   static Future<String> _resolvePath(String source) async {
-    final officialId = _normalizeOfficialModelId(source);
-
-    if (_officialModelForId(officialId) != null) {
-      return _resolveOfficialModel(officialId!);
-    }
-
     final uri = Uri.tryParse(source);
     if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
       return _downloadRemoteModel(uri);
@@ -162,6 +156,10 @@ class YOLOModelResolver {
       return _isIosLikePlatform
           ? _resolveIosFlutterAsset(source)
           : _copyFlutterAssetToDocuments(source);
+    }
+
+    if (_officialModelForId(source) != null) {
+      return _resolveOfficialModel(source);
     }
 
     return source;

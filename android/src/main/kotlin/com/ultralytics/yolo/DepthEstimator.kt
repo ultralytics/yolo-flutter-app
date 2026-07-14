@@ -112,13 +112,15 @@ class DepthEstimator(
             var target = y * width
             for (x in 0 until width) {
                 val value = output[source++]
-                require(value.isFinite() && value > 0f) { "Depth output contains invalid value $value" }
                 values?.set(target, value)
                 target++
-                if (value < minDepth) minDepth = value
-                if (value > maxDepth) maxDepth = value
+                if (value.isFinite() && value > 0f) {
+                    if (value < minDepth) minDepth = value
+                    if (value > maxDepth) maxDepth = value
+                }
             }
         }
+        require(minDepth.isFinite() && maxDepth.isFinite()) { "Depth output contains no valid values" }
 
         return DepthMap(
             values = values,
@@ -159,10 +161,15 @@ class DepthEstimator(
                 var source = (y + top) * depthWidth + left
                 var target = y * width
                 for (x in 0 until width) {
-                    val bin = ((output[source++] - minDepth) * binScale)
-                        .roundToInt()
-                        .coerceIn(logarithmicColors.indices)
-                    colorPixels[target++] = logarithmicColors[bin]
+                    val value = output[source++]
+                    colorPixels[target++] = if (value.isFinite() && value > 0f) {
+                        val bin = ((value - minDepth) * binScale)
+                            .roundToInt()
+                            .coerceIn(logarithmicColors.indices)
+                        logarithmicColors[bin]
+                    } else {
+                        Color.TRANSPARENT
+                    }
                 }
             }
         }

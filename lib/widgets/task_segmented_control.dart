@@ -22,7 +22,7 @@ class TaskSegmentedControl extends StatelessWidget {
   /// When `false`, the `Semantic` segment is hidden for hosts that do not want to expose semantic segmentation.
   final bool showSemanticTask;
 
-  /// Whether to show the Android-only `Depth` segment.
+  /// Whether to show the `Depth` segment.
   final bool showDepthTask;
 
   const TaskSegmentedControl({
