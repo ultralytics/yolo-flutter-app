@@ -14,6 +14,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 const bool _runDepthBench = bool.fromEnvironment('RUN_DEPTH_BENCH');
+const bool _useGpu = bool.fromEnvironment('USE_GPU', defaultValue: true);
 const List<String> _depthModels = [
   'yolo26n-depth',
   'yolo26s-depth',
@@ -41,7 +42,7 @@ Future<Uint8List> _downloadImage() async {
 }
 
 void _validateDepth(String model, Map<String, dynamic> result) {
-  if (Platform.isAndroid) {
+  if (Platform.isAndroid && _useGpu) {
     expect(
       result['accelerator'],
       'GPU',
@@ -81,7 +82,11 @@ void main() {
       await tester.runAsync(() async {
         final image = await _downloadImage();
         for (final model in _depthModels) {
-          final yolo = YOLO(modelPath: model, task: YOLOTask.depth);
+          final yolo = YOLO(
+            modelPath: model,
+            task: YOLOTask.depth,
+            useGpu: _useGpu,
+          );
           expect(await yolo.loadModel(), isTrue, reason: '$model should load');
 
           Map<String, dynamic>? result;
