@@ -145,7 +145,15 @@ class DepthEstimator(
         if (colorPixels.size != size) colorPixels = IntArray(size)
         val linearRange = maxDepth - minDepth
         if (linearRange <= 0f) {
-            java.util.Arrays.fill(colorPixels, colors[0])
+            var source = top * depthWidth + left
+            var target = 0
+            for (y in 0 until height) {
+                for (x in 0 until width) {
+                    val value = output[source++]
+                    colorPixels[target++] = if (value.isFinite() && value > 0f) colors[0] else Color.TRANSPARENT
+                }
+                source += depthWidth - width
+            }
         } else {
             val logMax = ln(maxDepth)
             val logRange = (logMax - ln(minDepth)).coerceAtLeast(1e-6f)
