@@ -5,7 +5,6 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
-import kotlin.math.ln
 import kotlin.math.roundToInt
 
 /** Monocular metric-depth predictor shared by LiteRT GPU/CPU and ONNX Runtime QNN backends. */
@@ -21,7 +20,6 @@ class DepthEstimator(
     private val outputShape: IntArray
     private val depthHeight: Int
     private val depthWidth: Int
-    private val logarithmicColors = IntArray(4096)
     private var colorPixels = IntArray(0)
 
     init {
@@ -105,84 +103,39 @@ class DepthEstimator(
         require(width > 0 && height > 0) { "Invalid depth crop ${width}x$height" }
 
         val values = if (includeRawMaskData) FloatArray(width * height) else null
-        var minDepth = Float.POSITIVE_INFINITY
-        var maxDepth = Float.NEGATIVE_INFINITY
-        for (y in 0 until height) {
-            var source = (y + top) * depthWidth + left
-            var target = y * width
-            for (x in 0 until width) {
-                val value = output[source++]
-                values?.set(target, value)
-                target++
-                if (value.isFinite() && value > 0f) {
-                    if (value < minDepth) minDepth = value
-                    if (value > maxDepth) maxDepth = value
-                }
+        if (values != null) {
+            for (y in 0 until height) {
+                val source = (y + top) * depthWidth
+                output.copyInto(values, y * width, source + left, source + right)
             }
         }
-        require(minDepth.isFinite() && maxDepth.isFinite()) { "Depth output contains no valid values" }
+        val size = width * height
+        if (colorPixels.size != size) colorPixels = IntArray(size)
+        val range = colorizeDepth(
+            output, depthWidth, left, top, width, height, colorPixels, colors
+        )
+            ?: error("Depth output contains no valid values")
 
         return DepthMap(
             values = values,
             width = width,
             height = height,
-            minDepth = minDepth,
-            maxDepth = maxDepth,
-            image = colorizeDepth(output, left, top, width, height, minDepth, maxDepth),
+            minDepth = range[0],
+            maxDepth = range[1],
+            image = Bitmap.createBitmap(colorPixels, width, height, Bitmap.Config.ARGB_8888),
         )
     }
 
-    private fun colorizeDepth(
+    private external fun colorizeDepth(
         output: FloatArray,
+        depthWidth: Int,
         left: Int,
         top: Int,
         width: Int,
         height: Int,
-        minDepth: Float,
-        maxDepth: Float,
-    ): Bitmap {
-        val size = width * height
-        if (colorPixels.size != size) colorPixels = IntArray(size)
-        val linearRange = maxDepth - minDepth
-        if (linearRange <= 0f) {
-            var source = top * depthWidth + left
-            var target = 0
-            for (y in 0 until height) {
-                for (x in 0 until width) {
-                    val value = output[source++]
-                    colorPixels[target++] = if (value.isFinite() && value > 0f) colors[0] else Color.TRANSPARENT
-                }
-                source += depthWidth - width
-            }
-        } else {
-            val logMax = ln(maxDepth)
-            val logRange = (logMax - ln(minDepth)).coerceAtLeast(1e-6f)
-            for (bin in logarithmicColors.indices) {
-                val depth = minDepth + linearRange * bin / logarithmicColors.lastIndex
-                val colorIndex = ((logMax - ln(depth)) / logRange * colors.lastIndex)
-                    .roundToInt()
-                    .coerceIn(colors.indices)
-                logarithmicColors[bin] = colors[colorIndex]
-            }
-            val binScale = logarithmicColors.lastIndex / linearRange
-            for (y in 0 until height) {
-                var source = (y + top) * depthWidth + left
-                var target = y * width
-                for (x in 0 until width) {
-                    val value = output[source++]
-                    colorPixels[target++] = if (value.isFinite() && value > 0f) {
-                        val bin = ((value - minDepth) * binScale)
-                            .roundToInt()
-                            .coerceIn(logarithmicColors.indices)
-                        logarithmicColors[bin]
-                    } else {
-                        Color.TRANSPARENT
-                    }
-                }
-            }
-        }
-        return Bitmap.createBitmap(colorPixels, width, height, Bitmap.Config.ARGB_8888)
-    }
+        colorPixels: IntArray,
+        colors: IntArray,
+    ): FloatArray?
 
     companion object {
         private val colors = IntArray(256).also { table ->
@@ -205,6 +158,10 @@ class DepthEstimator(
                     (first[2] + (second[2] - first[2]) * fraction).roundToInt(),
                 )
             }
+        }
+
+        init {
+            System.loadLibrary("ultralytics")
         }
     }
 }

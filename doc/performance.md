@@ -167,6 +167,24 @@ the table:
   on the default path (raw masks not requested) instead of scanning each detection box for a no-op; the semantic
   class map is sent to Flutter as a compact `Int32List` rather than a boxed `List<Int>` copy, dropping a per-frame
   copy of the dense map (decoded identically on the Dart side). Outputs unchanged.
+- **Native depth painting**: ported the iOS Accelerate depth-colorization pattern to the existing Android C++ decode
+  library, replacing bounds-checked Kotlin min/max and color sweeps while preserving the metric `Float32List`, invalid
+  pixel transparency, and near-to-far gradient. On the Xiaomi 17, postprocess fell from **50.2-54.1 ms** to
+  **8.2-9.7 ms** across all five official 640px depth models (**-82.8% mean**). The grouped physical-device test
+  verified exact native min/max equality against every positive finite output pixel and confirmed that all five models
+  compiled fully on the LiteRT GPU:
+
+  | Depth model | Preprocess | GPU inference | Post before | Post after | Optimized total |
+  | ----------- | ---------- | ------------- | ----------- | ---------- | --------------- |
+  | YOLO26n     | 2.0 ms     | 12.9 ms       | 54.1 ms     | **8.2 ms** | **23.0 ms**     |
+  | YOLO26s     | 2.2 ms     | 20.5 ms       | 50.2 ms     | **9.1 ms** | **31.8 ms**     |
+  | YOLO26m     | 2.8 ms     | 35.2 ms       | 51.0 ms     | **9.7 ms** | **47.7 ms**     |
+  | YOLO26l     | 1.9 ms     | 45.2 ms       | 51.5 ms     | **8.8 ms** | **56.0 ms**     |
+  | YOLO26x     | 2.1 ms     | 79.6 ms       | 51.9 ms     | **8.6 ms** | **90.3 ms**     |
+
+  Each row is the mean of 15 `predict()` calls after 3 warmups on `bus.jpg`; maps were 480x640 after letterbox crop.
+  Inference varied with GPU/thermal state between the before/after sweeps, so the attributable A/B result is the
+  instrumented postprocess column rather than the total-time difference.
 
 **Tested and intentionally NOT changed (don't re-litigate without new evidence):**
 

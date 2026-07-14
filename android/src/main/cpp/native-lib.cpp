@@ -181,3 +181,91 @@ Java_com_ultralytics_yolo_ObjectDetector_postprocess(
     }
     return objArray;
 }
+
+extern "C"
+JNIEXPORT jfloatArray JNICALL
+Java_com_ultralytics_yolo_DepthEstimator_colorizeDepth(
+        JNIEnv *env,
+        jobject thiz,
+        jfloatArray output,
+        jint depth_width,
+        jint left,
+        jint top,
+        jint width,
+        jint height,
+        jintArray color_pixels,
+        jintArray colors) {
+    jfloat *depth = env->GetFloatArrayElements(output, nullptr);
+    jint *pixels = env->GetIntArrayElements(color_pixels, nullptr);
+    jint *color_table = env->GetIntArrayElements(colors, nullptr);
+    if (depth == nullptr || pixels == nullptr || color_table == nullptr) {
+        if (depth != nullptr) env->ReleaseFloatArrayElements(output, depth, JNI_ABORT);
+        if (pixels != nullptr) env->ReleaseIntArrayElements(color_pixels, pixels, 0);
+        if (color_table != nullptr) env->ReleaseIntArrayElements(colors, color_table, JNI_ABORT);
+        return nullptr;
+    }
+
+    float min_depth = FLT_MAX;
+    float max_depth = -FLT_MAX;
+    for (int y = 0; y < height; ++y) {
+        const float *row = depth + (y + top) * depth_width + left;
+        for (int x = 0; x < width; ++x) {
+            const float value = row[x];
+            if (std::isfinite(value) && value > 0.0f) {
+                min_depth = std::min(min_depth, value);
+                max_depth = std::max(max_depth, value);
+            }
+        }
+    }
+
+    if (min_depth != FLT_MAX) {
+        constexpr int lut_size = 4096;
+        jint logarithmic_colors[lut_size];
+        const float linear_range = max_depth - min_depth;
+        if (linear_range > 0.0f) {
+            const float log_max = std::log(max_depth);
+            const float log_range = std::max(log_max - std::log(min_depth), 1e-6f);
+            for (int bin = 0; bin < lut_size; ++bin) {
+                const float value = min_depth + linear_range * bin / (lut_size - 1);
+                const int index = std::clamp(
+                        static_cast<int>(std::lround((log_max - std::log(value)) / log_range * 255.0f)),
+                        0,
+                        255);
+                logarithmic_colors[bin] = color_table[index];
+            }
+            const float bin_scale = (lut_size - 1) / linear_range;
+            for (int y = 0; y < height; ++y) {
+                const float *row = depth + (y + top) * depth_width + left;
+                jint *target = pixels + y * width;
+                for (int x = 0; x < width; ++x) {
+                    const float value = row[x];
+                    target[x] = std::isfinite(value) && value > 0.0f
+                            ? logarithmic_colors[std::clamp(
+                                    static_cast<int>(std::lround((value - min_depth) * bin_scale)),
+                                    0,
+                                    lut_size - 1)]
+                            : 0;
+                }
+            }
+        } else {
+            for (int y = 0; y < height; ++y) {
+                const float *row = depth + (y + top) * depth_width + left;
+                jint *target = pixels + y * width;
+                for (int x = 0; x < width; ++x) {
+                    const float value = row[x];
+                    target[x] = std::isfinite(value) && value > 0.0f ? color_table[0] : 0;
+                }
+            }
+        }
+    }
+
+    env->ReleaseFloatArrayElements(output, depth, JNI_ABORT);
+    env->ReleaseIntArrayElements(color_pixels, pixels, 0);
+    env->ReleaseIntArrayElements(colors, color_table, JNI_ABORT);
+
+    if (min_depth == FLT_MAX) return nullptr;
+    jfloat range[2] = {min_depth, max_depth};
+    jfloatArray result = env->NewFloatArray(2);
+    if (result != nullptr) env->SetFloatArrayRegion(result, 0, 2, range);
+    return result;
+}
