@@ -43,6 +43,9 @@ jobs:
       - name: Run tests with coverage
         run: flutter test --coverage
 
+      - name: Test native depth colorizer
+        run: g++ -std=c++17 android/src/test/cpp/depth-colorizer-test.cpp -o /tmp/depth-colorizer-test && /tmp/depth-colorizer-test
+
       - name: Filter unit coverage scope
         run: |
           awk '/^SF:/ { skip = ($0 ~ /^SF:lib\/(platform\/|yolo_view\.dart|widgets\/yolo_showcase\.dart)/) } !skip { print } /^end_of_record$/ { skip = 0 }' coverage/lcov.info > coverage/lcov.filtered.info

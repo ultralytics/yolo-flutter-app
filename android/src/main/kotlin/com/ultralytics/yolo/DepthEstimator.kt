@@ -24,29 +24,34 @@ class DepthEstimator(
 
     init {
         YOLOFileUtils.loadModelLabels(context, modelPath)?.let { labels = it }
-        rtModel = InferenceModel.create(context, modelPath, useGpu, "DepthEstimator")
+        val model = InferenceModel.create(context, modelPath, useGpu, "DepthEstimator")
+        try {
+            val inDims = model.inputDims
+            val inHeight = if (inDims.size >= 4) inDims[1] else 640
+            val inWidth = if (inDims.size >= 4) inDims[2] else 640
+            inputSize = Size(inWidth, inHeight)
+            modelInputSize = Pair(inWidth, inHeight)
 
-        val inDims = rtModel.inputDims
-        val inHeight = if (inDims.size >= 4) inDims[1] else 640
-        val inWidth = if (inDims.size >= 4) inDims[2] else 640
-        inputSize = Size(inWidth, inHeight)
-        modelInputSize = Pair(inWidth, inHeight)
+            outputShape = model.outputDims.getOrNull(0) ?: IntArray(0)
+            val channelFirst = outputShape.size >= 2 && outputShape.dropLast(2).all { it == 1 }
+            val channelLast = outputShape.size == 4 && outputShape[0] == 1 && outputShape[3] == 1
+            require(channelFirst || channelLast) {
+                "Depth output tensor shape not supported: ${outputShape.joinToString()}"
+            }
+            depthHeight = if (channelLast) outputShape[1] else outputShape[outputShape.size - 2]
+            depthWidth = if (channelLast) outputShape[2] else outputShape.last()
+            require(depthWidth > 0 && depthHeight > 0 && depthWidth * depthHeight == model.outputElementCounts[0]) {
+                "Invalid depth output tensor shape: ${outputShape.joinToString()}"
+            }
 
-        outputShape = rtModel.outputDims.getOrNull(0) ?: IntArray(0)
-        val channelFirst = outputShape.size >= 2 && outputShape.dropLast(2).all { it == 1 }
-        val channelLast = outputShape.size == 4 && outputShape[0] == 1 && outputShape[3] == 1
-        require(channelFirst || channelLast) {
-            "Depth output tensor shape not supported: ${outputShape.joinToString()}"
+            floatInput = FloatArray(inWidth * inHeight * 3)
+            inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
+            intValues = IntArray(inWidth * inHeight)
+        } catch (e: Exception) {
+            model.close()
+            throw e
         }
-        depthHeight = if (channelLast) outputShape[1] else outputShape[outputShape.size - 2]
-        depthWidth = if (channelLast) outputShape[2] else outputShape.last()
-        require(depthWidth > 0 && depthHeight > 0 && depthWidth * depthHeight == rtModel.outputElementCounts[0]) {
-            "Invalid depth output tensor shape: ${outputShape.joinToString()}"
-        }
-
-        floatInput = FloatArray(inWidth * inHeight * 3)
-        inputBitmap = Bitmap.createBitmap(inWidth, inHeight, Bitmap.Config.ARGB_8888)
-        intValues = IntArray(inWidth * inHeight)
+        rtModel = model
     }
 
     override fun predict(
@@ -85,6 +90,7 @@ class DepthEstimator(
             preMs = timing.preMs,
             inferenceMs = timing.inferenceMs,
             postMs = timing.postMs,
+            accelerator = rtModel.accelerator,
             names = labels,
         )
     }

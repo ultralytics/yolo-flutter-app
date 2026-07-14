@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cfloat>
 #include <cstdlib>
+#include "depth-colorizer.h"
 
 // Custom rectangle structure
 struct Rect {
@@ -195,6 +196,14 @@ Java_com_ultralytics_yolo_DepthEstimator_colorizeDepth(
         jint height,
         jintArray color_pixels,
         jintArray colors) {
+    if (depth_width <= 0 || left < 0 || top < 0 || width <= 0 || height <= 0 ||
+        left + width > depth_width ||
+        static_cast<jlong>(top + height) * depth_width > env->GetArrayLength(output) ||
+        static_cast<jlong>(width) * height > env->GetArrayLength(color_pixels) ||
+        env->GetArrayLength(colors) < 256) {
+        return nullptr;
+    }
+
     jfloat *depth = env->GetFloatArrayElements(output, nullptr);
     jint *pixels = env->GetIntArrayElements(color_pixels, nullptr);
     jint *color_table = env->GetIntArrayElements(colors, nullptr);
@@ -205,67 +214,17 @@ Java_com_ultralytics_yolo_DepthEstimator_colorizeDepth(
         return nullptr;
     }
 
-    float min_depth = FLT_MAX;
-    float max_depth = -FLT_MAX;
-    for (int y = 0; y < height; ++y) {
-        const float *row = depth + (y + top) * depth_width + left;
-        for (int x = 0; x < width; ++x) {
-            const float value = row[x];
-            if (std::isfinite(value) && value > 0.0f) {
-                min_depth = std::min(min_depth, value);
-                max_depth = std::max(max_depth, value);
-            }
-        }
-    }
-
-    if (min_depth != FLT_MAX) {
-        constexpr int lut_size = 4096;
-        jint logarithmic_colors[lut_size];
-        const float linear_range = max_depth - min_depth;
-        if (linear_range > 0.0f) {
-            const float log_max = std::log(max_depth);
-            const float log_range = std::max(log_max - std::log(min_depth), 1e-6f);
-            for (int bin = 0; bin < lut_size; ++bin) {
-                const float value = min_depth + linear_range * bin / (lut_size - 1);
-                const int index = std::clamp(
-                        static_cast<int>(std::lround((log_max - std::log(value)) / log_range * 255.0f)),
-                        0,
-                        255);
-                logarithmic_colors[bin] = color_table[index];
-            }
-            const float bin_scale = (lut_size - 1) / linear_range;
-            for (int y = 0; y < height; ++y) {
-                const float *row = depth + (y + top) * depth_width + left;
-                jint *target = pixels + y * width;
-                for (int x = 0; x < width; ++x) {
-                    const float value = row[x];
-                    target[x] = std::isfinite(value) && value > 0.0f
-                            ? logarithmic_colors[std::clamp(
-                                    static_cast<int>(std::lround((value - min_depth) * bin_scale)),
-                                    0,
-                                    lut_size - 1)]
-                            : 0;
-                }
-            }
-        } else {
-            for (int y = 0; y < height; ++y) {
-                const float *row = depth + (y + top) * depth_width + left;
-                jint *target = pixels + y * width;
-                for (int x = 0; x < width; ++x) {
-                    const float value = row[x];
-                    target[x] = std::isfinite(value) && value > 0.0f ? color_table[0] : 0;
-                }
-            }
-        }
-    }
+    DepthRange range;
+    const bool valid = colorize_depth(
+            depth, depth_width, left, top, width, height, pixels, color_table, range);
 
     env->ReleaseFloatArrayElements(output, depth, JNI_ABORT);
     env->ReleaseIntArrayElements(color_pixels, pixels, 0);
     env->ReleaseIntArrayElements(colors, color_table, JNI_ABORT);
 
-    if (min_depth == FLT_MAX) return nullptr;
-    jfloat range[2] = {min_depth, max_depth};
+    if (!valid) return nullptr;
+    jfloat result_range[2] = {range.min, range.max};
     jfloatArray result = env->NewFloatArray(2);
-    if (result != nullptr) env->SetFloatArrayRegion(result, 0, 2, range);
+    if (result != nullptr) env->SetFloatArrayRegion(result, 0, 2, result_range);
     return result;
 }

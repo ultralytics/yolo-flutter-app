@@ -41,6 +41,7 @@ Future<Uint8List> _downloadImage() async {
 }
 
 void _validateDepth(String model, Map<String, dynamic> result) {
+  expect(result['accelerator'], 'GPU', reason: '$model must run fully on GPU');
   final depth = result['depthMap'];
   expect(depth, isA<Map>(), reason: '$model must return a depth map');
   final map = depth! as Map<dynamic, dynamic>;

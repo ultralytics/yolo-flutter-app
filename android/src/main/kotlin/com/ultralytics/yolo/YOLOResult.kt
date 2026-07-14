@@ -21,6 +21,7 @@ data class YOLOResult(
     val preMs: Double = 0.0,
     val inferenceMs: Double = 0.0,
     val postMs: Double = 0.0,
+    val accelerator: String? = null,
     val originalImage: Bitmap? = null,
     val names: List<String>
 )

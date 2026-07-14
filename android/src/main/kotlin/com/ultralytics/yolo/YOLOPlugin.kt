@@ -393,6 +393,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             response["preMs"] = yoloResult.preMs
             response["inferenceMs"] = yoloResult.inferenceMs
             response["postMs"] = yoloResult.postMs
+            yoloResult.accelerator?.let { response["accelerator"] = it }
   
             result.success(response)
           } finally {
