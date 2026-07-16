@@ -130,7 +130,7 @@ jobs:
           echo "title=$TITLE" >> "$GITHUB_OUTPUT"
       - name: Notify Success
         if: needs.build.result == 'success' && github.event_name == 'push'
-        uses: slackapi/slack-github-action@v3.0.5
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           webhook-type: incoming-webhook
           webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUBWEB }}
@@ -138,7 +138,7 @@ jobs:
             text: "<!subteam^S07NKMNECKH> *${{ github.workflow }}* ✅ `${{ github.repository }}` ${{ steps.release.outputs.title || needs.check.outputs.current_tag }}  <https://github.com/${{ github.repository }}/releases/tag/${{ needs.check.outputs.current_tag }}|*Release*>  ·  <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|*Run*>"
       - name: Notify Failure
         if: needs.build.result != 'success'
-        uses: slackapi/slack-github-action@v3.0.5
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           webhook-type: incoming-webhook
           webhook: ${{ secrets.SLACK_WEBHOOK_URL_HUBWEB }}
