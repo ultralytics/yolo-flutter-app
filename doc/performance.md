@@ -73,17 +73,22 @@ with the preprocess / inference / postprocess split beneath it.
 
 The original six v81 assets were exported with `ultralytics` `8.4.65`, verified in an x86-64 HTP simulator, and then
 validated on the Xiaomi 17. The depth asset was exported from `ultralytics` `8.4.104` at commit `6729f6fe8`, quantized
-to W8A16 with `depth8.yaml`, finalized for HTP v81, and validated on the same physical device. Install CPU-only
-PyTorch before Ultralytics so a CPU export host does not download CUDA packages:
+to W8A16 with `depth8.yaml`, finalized for HTP v81 with QAIRT `2.46.0`, and validated on the same physical device.
+
+The supported prebuilt-wheel route is Windows x64. Run the following in PowerShell; the Linux-style paths used for
+the CPU quantization stage cannot finalize a QNN context on their own. Install CPU-only PyTorch before Ultralytics so
+the export host does not download CUDA packages:
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch torchvision
-uv pip install --python .venv/bin/python \
+uv pip install --python .venv\Scripts\python.exe --index-url https://download.pytorch.org/whl/cpu `
+  torch==2.13.0 torchvision==0.28.0
+uv pip install --python .venv\Scripts\python.exe `
   "ultralytics @ git+https://github.com/ultralytics/ultralytics.git@6729f6fe84ec218e68c7506016c76781f5af8447"
-uv pip install --python .venv/bin/python onnx onnxslim onnxruntime-qnn
-.venv/bin/yolo export model=yolo26n-depth.pt format=qnn name=81 imgsz=640 data=depth8.yaml batch=1
-mv yolo26n-depth_qnn.onnx yolo26n-depth_v81_qnn.onnx
+uv pip install --python .venv\Scripts\python.exe `
+  onnx==1.21.0 onnxslim==0.1.94 onnxruntime-qnn==2.2.0
+.venv\Scripts\yolo.exe export model=yolo26n-depth.pt format=qnn name=81 imgsz=640 data=depth8.yaml batch=1
+Rename-Item yolo26n-depth_qnn.onnx yolo26n-depth_v81_qnn.onnx
 ```
 
 QNN context finalization requires a supported QNN export host or device; macOS cannot create the context binary. Do
