@@ -132,7 +132,28 @@ The same seven shipped YOLO26n models on a Google Pixel 10 (Tensor G5, Android 1
 These are means of 15 runs after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.6.10` and the official `v0.6.6`
 assets. CPU/GPU order alternates between task rows to avoid systematically measuring one backend second; this remains
 a single sequential sweep rather than thermally isolated runs. Device logs confirmed that every model compiled fully
-on the requested LiteRT CPU and GPU backends. Reproduce the same seven-model sweep on Android or iOS with:
+on the requested LiteRT CPU and GPU backends.
+
+### iPhone 17 Pro Core ML
+
+The same sweep on an Apple iPhone 17 Pro (iOS 26.5.2) using the shipped Core ML models. The preferred path
+requests `.cpuAndNeuralEngine`; Core ML controls final operation placement.
+
+| Model         | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>Core ML<br>(ms)</sup>    | CPU + ANE preferred<br><sup>Core ML<br>(ms)</sup> |
+| ------------- | -------- | --------------------------- | ------------------------------------ | ------------------------------------------------- |
+| YOLO26n       | Detect   | 640                         | 9.1<br><sup>0.0 / 9.0 / 0.0</sup>    | **3.6**<br><sup>0.0 / 3.6 / 0.0</sup>             |
+| YOLO26n-seg   | Segment  | 640                         | 22.2<br><sup>0.0 / 12.3 / 9.9</sup>  | **13.4**<br><sup>0.0 / 4.2 / 9.2</sup>            |
+| YOLO26n-sem   | Semantic | 640                         | 24.0<br><sup>0.0 / 22.1 / 2.0</sup>  | **14.9**<br><sup>0.0 / 12.9 / 1.9</sup>           |
+| YOLO26n-depth | Depth    | 640                         | 49.3<br><sup>0.0 / 24.5 / 24.8</sup> | **28.9**<br><sup>0.0 / 4.8 / 24.1</sup>           |
+| YOLO26n-cls   | Classify | 224                         | 2.3<br><sup>0.0 / 2.3 / 0.1</sup>    | **2.0**<br><sup>0.0 / 2.0 / 0.0</sup>             |
+| YOLO26n-pose  | Pose     | 640                         | 12.2<br><sup>0.0 / 12.2 / 0.1</sup>  | **3.9**<br><sup>0.0 / 3.9 / 0.1</sup>             |
+| YOLO26n-obb   | OBB      | 640                         | 22.8<br><sup>0.0 / 22.8 / 0.0</sup>  | **7.4**<br><sup>0.0 / 7.4 / 0.0</sup>             |
+
+These are means of 15 runs after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.6.10`. CPU/accelerator order
+alternates between task rows, and the results are one sequential sweep rather than thermally isolated runs. The
+shipped Android and iOS depth artifacts both declare fixed 640 × 640 inputs.
+
+Reproduce either seven-model sweep on Android or iOS with:
 
 ```bash
 flutter test integration_test/model_benchmark_test.dart -d DEVICE_ID --dart-define=RUN_BENCH=true
