@@ -69,6 +69,34 @@ with the preprocess / inference / postprocess split beneath it.
   higher than the single-image rows even after the RGB packing cleanup. Watch the in-app pre/inference/post HUD line
   for your device's steady-state numbers, and benchmark your exact models on your target hardware.
 
+### Reproducing QNN release assets
+
+The original six v81 assets were exported with `ultralytics` `8.4.65`, verified in an x86-64 HTP simulator, and then
+validated on the Xiaomi 17. The depth asset was exported from `ultralytics` `8.4.104` at commit `6729f6fe8`, quantized
+to W8A16 with `depth8.yaml`, finalized for HTP v81, and validated on the same physical device. Install CPU-only
+PyTorch before Ultralytics so a CPU export host does not download CUDA packages:
+
+```bash
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch torchvision
+uv pip install --python .venv/bin/python \
+  "ultralytics @ git+https://github.com/ultralytics/ultralytics.git@6729f6fe84ec218e68c7506016c76781f5af8447"
+uv pip install --python .venv/bin/python onnx onnxruntime onnxslim onnxruntime-qnn
+.venv/bin/yolo export model=yolo26n-depth.pt format=qnn name=81 imgsz=640 data=depth8.yaml batch=1
+mv yolo26n-depth_qnn.onnx yolo26n-depth_v81_qnn.onnx
+```
+
+QNN context finalization requires a supported QNN export host or device; macOS cannot create the context binary. Do
+not upload until the standalone asset loads through ONNX Runtime QNN on its target HTP architecture and returns a
+valid depth map. Then publish and verify the exact bytes:
+
+```bash
+gh release upload v0.3.5 yolo26n-depth_v81_qnn.onnx --repo ultralytics/yolo-flutter-app
+gh release download v0.3.5 --repo ultralytics/yolo-flutter-app \
+  --pattern yolo26n-depth_v81_qnn.onnx --dir verify
+shasum -a 256 yolo26n-depth_v81_qnn.onnx verify/yolo26n-depth_v81_qnn.onnx
+```
+
 ### Format migration: legacy INT8 TFLite → w8a32 LiteRT
 
 The official Android assets moved from the legacy onnx2tf **INT8 TFLite** format (NHWC, `v0.3.5`) to **w8a32 LiteRT**
@@ -113,6 +141,26 @@ w8a32 matches or beats the legacy onnx2tf INT8 format on five of the six tasks t
 adds the official Depth path. **Semantic remains the format regression** because the w8a32 NCHW logits cost more
 inference time than the legacy NHWC logits, even after preprocessing cleanup. The legacy onnx2tf models run unchanged
 on LiteRT 2.x alongside the new NCHW exports, confirming the runtime's layout-adaptive path.
+
+### Xiaomi 17 current LiteRT and QNN
+
+Current-model CPU, GPU, and NPU results from one Xiaomi 17 sweep. LiteRT uses the shipped `v0.6.6` w8a32 assets;
+QNN uses the v81 W8A16 context binaries from `v0.3.5`, including the depth asset added on July 22, 2026. Semantic
+and OBB retain their historical 1024px QNN exports, so their QNN timings are not same-resolution LiteRT comparisons.
+
+| Model         | Task     | LiteRT / QNN<br><sup>(pixels)</sup> | CPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | GPU<br><sup>w8a32 LiteRT<br>(ms)</sup>   | NPU<br><sup>QNN W8A16<br>(ms)</sup>     |
+| ------------- | -------- | ----------------------------------- | -------------------------------------- | ---------------------------------------- | --------------------------------------- |
+| YOLO26n       | Detect   | 640 / 640                           | 52.5<br><sup>1.8 / 48.4 / 2.4</sup>    | 16.3<br><sup>2.2 / 9.0 / 5.0</sup>       | **10.8**<br><sup>1.8 / 6.7 / 2.3</sup>  |
+| YOLO26n-seg   | Segment  | 640 / 640                           | 84.7<br><sup>2.2 / 75.7 / 6.7</sup>    | 30.6<br><sup>2.0 / 21.8 / 6.8</sup>      | **17.4**<br><sup>1.9 / 9.9 / 5.6</sup>  |
+| YOLO26n-sem   | Semantic | 640 / 1024                          | 66.1<br><sup>2.0 / 55.2 / 9.0</sup>    | 38.2<br><sup>1.9 / 27.1 / 9.2</sup>      | **30.4**<br><sup>4.9 / 18.3 / 7.1</sup> |
+| YOLO26n-depth | Depth    | 640 / 640                           | 135.4<br><sup>2.0 / 125.4 / 8.0</sup>  | **28.7**<br><sup>2.5 / 14.1 / 12.0</sup> | 38.1<br><sup>2.0 / 26.6 / 9.4</sup>     |
+| YOLO26n-cls   | Classify | 224 / 224                           | 5.1<br><sup>0.4 / 4.6 / 0.0</sup>      | 3.0<br><sup>0.6 / 2.1 / 0.3</sup>        | **0.9**<br><sup>0.3 / 0.6 / 0.0</sup>   |
+| YOLO26n-pose  | Pose     | 640 / 640                           | 76.9<br><sup>2.7 / 71.8 / 2.3</sup>    | 13.5<br><sup>2.3 / 9.1 / 2.0</sup>       | **11.2**<br><sup>2.0 / 7.1 / 2.2</sup>  |
+| YOLO26n-obb   | OBB      | 640 / 1024                          | 55.4<br><sup>2.1 / 51.8 / 1.4</sup>    | **13.2**<br><sup>3.4 / 7.8 / 2.1</sup>   | 20.4<br><sup>4.9 / 14.0 / 1.6</sup>     |
+
+These are means of 15 runs after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.6.10`. Backend order rotates
+between tasks, and this remains one sequential sweep rather than thermally isolated runs. Native logs confirmed every
+LiteRT model on CPU and GPU and every QNN model on the Hexagon NPU, including depth input/output at 640 × 640.
 
 ### Pixel 10 w8a32 LiteRT
 

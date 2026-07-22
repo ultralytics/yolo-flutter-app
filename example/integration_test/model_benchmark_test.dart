@@ -2,7 +2,7 @@
 
 // On-device CPU/accelerator benchmark harness with optional QNN validation (device + network).
 //
-// Validation: loads the v73 QNN context-binary model for every task and checks real outputs on
+// Validation: loads the six legacy v73 QNN context-binary task models and checks real outputs on
 // bus.jpg. Benchmark (enable with --dart-define=RUN_BENCH=true): times predict() per task per backend
 // using the native speed (pre + inference + post, no plotting). CPU and GPU-preferred rows use the
 // default official w8a32 LiteRT assets (what the app ships); QNN rows use release context binaries.
@@ -191,7 +191,7 @@ void main() {
           final backends = <(String, String, bool)>[
             ('cpu', id, false),
             (accelerator, id, true),
-            if (Platform.isAndroid && _runQnn && entry.key != 'depth')
+            if (Platform.isAndroid && _runQnn)
               ('qnn', '$_releaseBase/${id}_v81_qnn.onnx', true),
           ];
           // Rotate backend order across tasks so no enabled backend is systematically measured last.
