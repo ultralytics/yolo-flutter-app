@@ -62,11 +62,15 @@ Official export properties:
 | Quantization   | w8a32 LiteRT (int8 weights, FP32 activations) | int8 Core ML                            |
 | `imgsz`        | `224` cls; `640` others                       | `224` cls; `1024` sem/OBB; `640` others |
 | `nms`          | `False`                                       | `False`                                 |
-| `end2end`      | `False`                                       | `True`                                  |
+| `end2end`      | `False`                                       | `False` cls/sem/depth; `True` others    |
 | Calibration    | None (w8a32 dynamic-range)                    | exporter default                        |
 | Postprocessing | Android native                                | Swift/Core ML                           |
 
-The TFLite export script passes both `nms=False` and `end2end=False`. `nms=False` excludes an exported NMS operator, while `end2end=False` disables the YOLO26 end-to-end head for the Android LiteRT conversion path. Core ML assets use `end2end=True`, which is the YOLO26 output contract consumed by the Swift decoders. The Android `w8a32` export is dynamic-range quantization (int8 weights, FP32 activations), so it needs no calibration data.
+The TFLite export script passes both `nms=False` and `end2end=False`. `nms=False` excludes an exported NMS operator,
+while `end2end=False` disables the YOLO26 end-to-end head for the Android LiteRT conversion path. The shipped Core ML
+assets use `end2end=True` for detect, segment, pose, and OBB and `end2end=False` for classification, semantic, and
+depth. The Android `w8a32` export is dynamic-range quantization (int8 weights, FP32 activations), so it needs no
+calibration data.
 
 If you want the simplest “start from the default Ultralytics model” entry point, prefer `YOLO.defaultOfficialModel()`.
 

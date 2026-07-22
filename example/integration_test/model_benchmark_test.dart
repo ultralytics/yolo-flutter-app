@@ -152,7 +152,7 @@ void main() {
   testWidgets(
     'soak: sustained inference does not exhaust memory',
     (WidgetTester tester) async {
-      if (!_runQnn || !_runSoak || !Platform.isAndroid) {
+      if (!_runSoak || !Platform.isAndroid) {
         return;
       }
       await tester.runAsync(() async {
