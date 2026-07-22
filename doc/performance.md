@@ -48,7 +48,7 @@ with the preprocess / inference / postprocess split beneath it.
 
 - **Speed** values are the full `predict()` time — preprocessing + inference + postprocessing, excluding annotation
   drawing — as the mean of 15 runs after 3 warmup runs on [bus.jpg](https://ultralytics.com/images/bus.jpg).
-  <br>Reproduce the QNN validation and rows with `ENABLE_QNN=1 flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true --dart-define=RUN_QNN=true` (the example app's QNN runtime is opt-in). The historical CPU/GPU rows use retired `v0.3.5` INT8 assets and are not reproduced by the current-model harness.
+  <br>Reproduce the QNN validation and rows with `cd example && ENABLE_QNN=1 flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true --dart-define=RUN_QNN=true` (the example app's QNN runtime is opt-in). The historical CPU/GPU rows use retired `v0.3.5` INT8 assets and are not reproduced by the current-model harness.
 - Benchmarks were run with the `ultralytics_yolo` Flutter plugin `0.6.8`; official Android LiteRT assets are hosted
   on the [yolo-flutter-app `v0.6.6` release](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6).
 - **CPU** and **GPU** run the legacy official INT8 TFLite assets (the prior `v0.3.5` default; the current default is
@@ -81,20 +81,21 @@ uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch torchvision
 uv pip install --python .venv/bin/python \
   "ultralytics @ git+https://github.com/ultralytics/ultralytics.git@6729f6fe84ec218e68c7506016c76781f5af8447"
-uv pip install --python .venv/bin/python onnx onnxruntime onnxslim onnxruntime-qnn
+uv pip install --python .venv/bin/python onnx onnxslim onnxruntime-qnn
 .venv/bin/yolo export model=yolo26n-depth.pt format=qnn name=81 imgsz=640 data=depth8.yaml batch=1
 mv yolo26n-depth_qnn.onnx yolo26n-depth_v81_qnn.onnx
 ```
 
 QNN context finalization requires a supported QNN export host or device; macOS cannot create the context binary. Do
 not upload until the standalone asset loads through ONNX Runtime QNN on its target HTP architecture and returns a
-valid depth map. Then publish and verify the exact bytes:
+valid depth map. The published asset can be downloaded and verified against the bytes validated on the device:
 
 ```bash
-gh release upload v0.3.5 yolo26n-depth_v81_qnn.onnx --repo ultralytics/yolo-flutter-app
 gh release download v0.3.5 --repo ultralytics/yolo-flutter-app \
   --pattern yolo26n-depth_v81_qnn.onnx --dir verify
-shasum -a 256 yolo26n-depth_v81_qnn.onnx verify/yolo26n-depth_v81_qnn.onnx
+printf '%s  %s\n' \
+  7de30462abae8ab66ccad180eeced3176028456af04dd64be0e7b3d26d3e36bc \
+  verify/yolo26n-depth_v81_qnn.onnx | shasum -a 256 -c -
 ```
 
 ### Format migration: legacy INT8 TFLite → w8a32 LiteRT
@@ -204,7 +205,7 @@ shipped Android and iOS depth artifacts both declare fixed 640 × 640 inputs.
 Reproduce either seven-model sweep on Android or iOS with:
 
 ```bash
-flutter test integration_test/model_benchmark_test.dart -d DEVICE_ID --dart-define=RUN_BENCH=true
+cd example && flutter test integration_test/model_benchmark_test.dart -d DEVICE_ID --dart-define=RUN_BENCH=true
 ```
 
 Generic output labels the requested automatic paths `gpu-preferred` on Android and `ane-preferred` on iOS because
