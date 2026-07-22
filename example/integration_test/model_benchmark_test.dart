@@ -175,7 +175,7 @@ void main() {
   );
 
   testWidgets(
-    'benchmark CPU vs platform accelerator and optional QNN',
+    'benchmark CPU vs preferred platform accelerator and optional QNN',
     (WidgetTester tester) async {
       if (!_runBench || !(Platform.isAndroid || Platform.isIOS)) {
         return;
@@ -184,7 +184,9 @@ void main() {
         final image = await _download('https://ultralytics.com/images/bus.jpg');
         for (final (index, entry) in _tasks.entries.indexed) {
           final (id, task) = entry.value;
-          final accelerator = Platform.isAndroid ? 'gpu' : 'ane';
+          final accelerator = Platform.isAndroid
+              ? 'gpu-preferred'
+              : 'ane-preferred';
           // Alternate backend order across tasks to avoid systematically measuring the accelerator second.
           if (index.isOdd) {
             await _bench('${entry.key}|$accelerator', id, task, image);
