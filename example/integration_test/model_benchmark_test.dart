@@ -187,24 +187,23 @@ void main() {
           final accelerator = Platform.isAndroid
               ? 'gpu-preferred'
               : 'ane-preferred';
-          // Alternate backend order across tasks to avoid systematically measuring the accelerator second.
-          if (index.isOdd) {
-            await _bench('${entry.key}|$accelerator', id, task, image);
-          }
-          // CPU on both platforms (Android: LiteRT CPU; iOS: Core ML .cpuOnly)
-          await _bench('${entry.key}|cpu', id, task, image, useGpu: false);
-          if (index.isEven) {
-            await _bench('${entry.key}|$accelerator', id, task, image);
-          }
-          if (Platform.isAndroid) {
-            if (_runQnn && entry.key != 'depth') {
-              await _bench(
-                '${entry.key}|qnn',
-                '$_releaseBase/${id}_v81_qnn.onnx',
-                task,
-                image,
-              );
-            }
+          final backends = <(String, String, bool)>[
+            ('cpu', id, false),
+            (accelerator, id, true),
+            if (Platform.isAndroid && _runQnn && entry.key != 'depth')
+              ('qnn', '$_releaseBase/${id}_v81_qnn.onnx', true),
+          ];
+          // Rotate backend order across tasks so no enabled backend is systematically measured last.
+          for (var i = 0; i < backends.length; i++) {
+            final (backend, modelPath, useGpu) =
+                backends[(i + index) % backends.length];
+            await _bench(
+              '${entry.key}|$backend',
+              modelPath,
+              task,
+              image,
+              useGpu: useGpu,
+            );
           }
         }
       });
