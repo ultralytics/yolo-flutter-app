@@ -48,7 +48,7 @@ with the preprocess / inference / postprocess split beneath it.
 
 - **Speed** values are the full `predict()` time — preprocessing + inference + postprocessing, excluding annotation
   drawing — as the mean of 15 runs after 3 warmup runs on [bus.jpg](https://ultralytics.com/images/bus.jpg).
-  <br>Reproduce with `ENABLE_QNN=1 flutter test integration_test/qnn_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true` (the example app's QNN runtime is opt-in)
+  <br>Reproduce with `ENABLE_QNN=1 flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true --dart-define=RUN_QNN=true` (the example app's QNN runtime is opt-in)
 - Benchmarks were run with the `ultralytics_yolo` Flutter plugin `0.6.8`; official Android LiteRT assets are hosted
   on the [yolo-flutter-app `v0.6.6` release](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6).
 - **CPU** and **GPU** run the legacy official INT8 TFLite assets (the prior `v0.3.5` default; the current default is
@@ -113,6 +113,31 @@ w8a32 matches or beats the legacy onnx2tf INT8 format on five of the six tasks t
 adds the official Depth path. **Semantic remains the format regression** because the w8a32 NCHW logits cost more
 inference time than the legacy NHWC logits, even after preprocessing cleanup. The legacy onnx2tf models run unchanged
 on LiteRT 2.x alongside the new NCHW exports, confirming the runtime's layout-adaptive path.
+
+### Pixel 10 w8a32 LiteRT
+
+The same seven shipped YOLO26n models on a Google Pixel 10 (Tensor G5, Android 16 / API 36). Each cell is the total
+`predict()` time with the preprocess / inference / postprocess split beneath it.
+
+| Model         | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | GPU<br><sup>w8a32 LiteRT<br>(ms)</sup>   |
+| ------------- | -------- | --------------------------- | -------------------------------------- | ---------------------------------------- |
+| YOLO26n       | Detect   | 640                         | 54.1<br><sup>1.8 / 50.7 / 1.6</sup>    | **44.1**<br><sup>4.0 / 36.7 / 3.5</sup>  |
+| YOLO26n-seg   | Segment  | 640                         | 106.0<br><sup>2.5 / 94.5 / 9.1</sup>   | **53.0**<br><sup>2.1 / 41.0 / 9.8</sup>  |
+| YOLO26n-sem   | Semantic | 640                         | 71.0<br><sup>1.6 / 60.8 / 8.6</sup>    | **68.5**<br><sup>1.6 / 56.6 / 10.3</sup> |
+| YOLO26n-depth | Depth    | 640                         | 132.6<br><sup>1.7 / 123.6 / 7.3</sup>  | **54.3**<br><sup>3.0 / 37.7 / 13.6</sup> |
+| YOLO26n-cls   | Classify | 224                         | **4.9**<br><sup>0.3 / 4.3 / 0.3</sup>  | 17.4<br><sup>0.9 / 16.4 / 0.1</sup>      |
+| YOLO26n-pose  | Pose     | 640                         | 82.0<br><sup>2.5 / 77.3 / 2.2</sup>    | **46.3**<br><sup>4.2 / 39.4 / 2.7</sup>  |
+| YOLO26n-obb   | OBB      | 640                         | 86.5<br><sup>3.4 / 81.1 / 1.9</sup>    | **44.7**<br><sup>4.4 / 37.5 / 2.7</sup>  |
+
+These are means of 15 runs after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.6.10` and the official `v0.6.6`
+assets. Device logs confirmed that every model compiled fully on the requested LiteRT CPU and GPU backends. Reproduce
+the same seven-model sweep on Android or iOS with:
+
+```bash
+flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true
+```
+
+On iOS, the two rows per model use Core ML `.cpuOnly` and `.cpuAndNeuralEngine` instead of LiteRT CPU and GPU.
 
 ## 🔭 Optimization Findings and Future Exploration
 

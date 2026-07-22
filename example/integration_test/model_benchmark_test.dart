@@ -1,14 +1,18 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-// On-device QNN validation + CPU/GPU/QNN benchmark harness (Snapdragon device + network).
+// On-device CPU/accelerator benchmark harness with optional QNN validation (device + network).
 //
 // Validation: loads the v73 QNN context-binary model for every task and checks real outputs on
-// bus.jpg. Benchmark (enable with --dart-define=RUN_BENCH=1): times predict() per task per backend
+// bus.jpg. Benchmark (enable with --dart-define=RUN_BENCH=true): times predict() per task per backend
 // using the native speed (pre + inference + post, no plotting). CPU and GPU rows use the default
-// official int8 TFLite assets (what the app ships); QNN rows use the release context binaries.
+// official w8a32 LiteRT assets (what the app ships); QNN rows use the release context binaries.
 //
-// Run with (the QNN runtime is opt-in, off by default):
-//   ENABLE_QNN=1 flutter test integration_test/qnn_benchmark_test.dart -d <device> [--dart-define=RUN_BENCH=1]
+// Run the shipped models on CPU and GPU (Android) or CPU and Neural Engine (iOS):
+//   flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true
+//
+// Include QNN validation and benchmark rows on a supported Snapdragon device:
+//   ENABLE_QNN=1 flutter test integration_test/model_benchmark_test.dart -d <device> \
+//     --dart-define=RUN_BENCH=true --dart-define=RUN_QNN=true
 
 import 'dart:io';
 import 'dart:typed_data';
@@ -20,12 +24,14 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 const String _releaseBase =
     'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5';
 const bool _runBench = bool.fromEnvironment('RUN_BENCH');
+const bool _runQnn = bool.fromEnvironment('RUN_QNN');
 const bool _runSoak = bool.fromEnvironment('RUN_SOAK');
 
 const Map<String, (String, YOLOTask)> _tasks = {
   'detect': ('yolo26n', YOLOTask.detect),
   'segment': ('yolo26n-seg', YOLOTask.segment),
   'semantic': ('yolo26n-sem', YOLOTask.semantic),
+  'depth': ('yolo26n-depth', YOLOTask.depth),
   'classify': ('yolo26n-cls', YOLOTask.classify),
   'pose': ('yolo26n-pose', YOLOTask.pose),
   'obb': ('yolo26n-obb', YOLOTask.obb),
@@ -96,10 +102,15 @@ void main() {
   testWidgets(
     'QNN models run on the NPU for all six tasks',
     (WidgetTester tester) async {
+      if (!_runQnn || !Platform.isAndroid) {
+        return;
+      }
       await tester.runAsync(() async {
         final image = await _download('https://ultralytics.com/images/bus.jpg');
 
-        for (final entry in _tasks.entries) {
+        for (final entry in _tasks.entries.where(
+          (entry) => entry.key != 'depth',
+        )) {
           final (id, task) = entry.value;
           final results = await _predictOnce(
             '$_releaseBase/${id}_v73_qnn.onnx',
@@ -137,7 +148,7 @@ void main() {
   testWidgets(
     'soak: sustained inference does not exhaust memory',
     (WidgetTester tester) async {
-      if (!_runSoak || !Platform.isAndroid) {
+      if (!_runQnn || !_runSoak || !Platform.isAndroid) {
         return;
       }
       await tester.runAsync(() async {
@@ -163,29 +174,35 @@ void main() {
     timeout: const Timeout(Duration(minutes: 30)),
   );
 
-  testWidgets('benchmark CPU vs GPU vs QNN', (WidgetTester tester) async {
-    if (!_runBench) {
-      return;
-    }
-    await tester.runAsync(() async {
-      final image = await _download('https://ultralytics.com/images/bus.jpg');
-      for (final entry in _tasks.entries) {
-        final (id, task) = entry.value;
-        // CPU on both platforms (Android: LiteRT CPU; iOS: Core ML .cpuOnly)
-        await _bench('${entry.key}|cpu', id, task, image, useGpu: false);
-        if (Platform.isAndroid) {
-          await _bench('${entry.key}|gpu', id, task, image);
-          await _bench(
-            '${entry.key}|qnn',
-            '$_releaseBase/${id}_v81_qnn.onnx',
-            task,
-            image,
-          );
-        } else {
-          // iOS useGpu:true = Core ML .cpuAndNeuralEngine (ANE)
-          await _bench('${entry.key}|ane', id, task, image);
-        }
+  testWidgets(
+    'benchmark CPU vs platform accelerator and optional QNN',
+    (WidgetTester tester) async {
+      if (!_runBench || !(Platform.isAndroid || Platform.isIOS)) {
+        return;
       }
-    });
-  }, timeout: const Timeout(Duration(minutes: 30)));
+      await tester.runAsync(() async {
+        final image = await _download('https://ultralytics.com/images/bus.jpg');
+        for (final entry in _tasks.entries) {
+          final (id, task) = entry.value;
+          // CPU on both platforms (Android: LiteRT CPU; iOS: Core ML .cpuOnly)
+          await _bench('${entry.key}|cpu', id, task, image, useGpu: false);
+          if (Platform.isAndroid) {
+            await _bench('${entry.key}|gpu', id, task, image);
+            if (_runQnn && entry.key != 'depth') {
+              await _bench(
+                '${entry.key}|qnn',
+                '$_releaseBase/${id}_v81_qnn.onnx',
+                task,
+                image,
+              );
+            }
+          } else {
+            // iOS useGpu:true = Core ML .cpuAndNeuralEngine (ANE)
+            await _bench('${entry.key}|ane', id, task, image);
+          }
+        }
+      });
+    },
+    timeout: const Timeout(Duration(minutes: 30)),
+  );
 }
