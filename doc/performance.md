@@ -188,6 +188,25 @@ assets. CPU/GPU order alternates between task rows to avoid systematically measu
 a single sequential sweep rather than thermally isolated runs. Device logs confirmed that every model compiled fully
 on the requested LiteRT CPU and GPU backends.
 
+### Galaxy S26 Exynos w8a32 LiteRT
+
+The same seven shipped YOLO26n models on a Samsung Galaxy S26 (SM-S942B, Exynos 2600 with Xclipse 960 GPU,
+Android 16 / API 36).
+
+| Model         | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | GPU<br><sup>w8a32 LiteRT<br>(ms)</sup>   |
+| ------------- | -------- | --------------------------- | -------------------------------------- | ---------------------------------------- |
+| YOLO26n       | Detect   | 640                         | 36.7<br><sup>1.2 / 33.9 / 1.7</sup>    | **17.3**<br><sup>2.5 / 12.3 / 2.5</sup>  |
+| YOLO26n-seg   | Segment  | 640                         | 55.4<br><sup>1.2 / 48.9 / 5.3</sup>    | **30.8**<br><sup>1.2 / 23.3 / 6.2</sup>  |
+| YOLO26n-sem   | Semantic | 640                         | 48.7<br><sup>1.2 / 39.4 / 8.0</sup>    | **36.2**<br><sup>1.2 / 27.2 / 7.8</sup>  |
+| YOLO26n-depth | Depth    | 640                         | 93.4<br><sup>1.2 / 85.2 / 7.0</sup>    | **33.7**<br><sup>1.3 / 22.4 / 10.0</sup> |
+| YOLO26n-cls   | Classify | 224                         | **2.8**<br><sup>0.2 / 2.4 / 0.3</sup>  | 3.2<br><sup>0.2 / 3.0 / 0.0</sup>        |
+| YOLO26n-pose  | Pose     | 640                         | 42.9<br><sup>1.3 / 40.5 / 1.1</sup>    | **19.3**<br><sup>1.4 / 14.7 / 3.2</sup>  |
+| YOLO26n-obb   | OBB      | 640                         | 37.3<br><sup>1.3 / 34.8 / 1.2</sup>    | **17.8**<br><sup>1.7 / 14.4 / 1.7</sup>  |
+
+These are means of 15 runs after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.6.10` and the official `v0.6.6`
+assets. CPU/GPU order alternates between task rows, and the results are one sequential sweep rather than thermally
+isolated runs. Device logs confirmed that every model compiled fully on the requested LiteRT CPU and GPU backends.
+
 ### iPhone 17 Pro Core ML
 
 The same sweep on an Apple iPhone 17 Pro (iOS 26.5.2) using the shipped Core ML models. The preferred path
@@ -215,7 +234,7 @@ cd example && flutter test integration_test/model_benchmark_test.dart -d DEVICE_
 
 Generic output labels the requested automatic paths `gpu-preferred` on Android and `ane-preferred` on iOS because
 LiteRT and Core ML may fall back. Verify native device logs before recording either path as an actual GPU or Neural
-Engine result; the Pixel table above records GPU only because every model logged full GPU compilation.
+Engine result; the Pixel and Galaxy tables above record GPU only because every model logged full GPU compilation.
 
 ## 🔭 Optimization Findings and Future Exploration
 
