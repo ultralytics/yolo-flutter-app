@@ -121,20 +121,21 @@ The same seven shipped YOLO26n models on a Google Pixel 10 (Tensor G5, Android 1
 
 | Model         | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | GPU<br><sup>w8a32 LiteRT<br>(ms)</sup>   |
 | ------------- | -------- | --------------------------- | -------------------------------------- | ---------------------------------------- |
-| YOLO26n       | Detect   | 640                         | 54.1<br><sup>1.8 / 50.7 / 1.6</sup>    | **44.1**<br><sup>4.0 / 36.7 / 3.5</sup>  |
-| YOLO26n-seg   | Segment  | 640                         | 106.0<br><sup>2.5 / 94.5 / 9.1</sup>   | **53.0**<br><sup>2.1 / 41.0 / 9.8</sup>  |
-| YOLO26n-sem   | Semantic | 640                         | 71.0<br><sup>1.6 / 60.8 / 8.6</sup>    | **68.5**<br><sup>1.6 / 56.6 / 10.3</sup> |
-| YOLO26n-depth | Depth    | 640                         | 132.6<br><sup>1.7 / 123.6 / 7.3</sup>  | **54.3**<br><sup>3.0 / 37.7 / 13.6</sup> |
-| YOLO26n-cls   | Classify | 224                         | **4.9**<br><sup>0.3 / 4.3 / 0.3</sup>  | 17.4<br><sup>0.9 / 16.4 / 0.1</sup>      |
-| YOLO26n-pose  | Pose     | 640                         | 82.0<br><sup>2.5 / 77.3 / 2.2</sup>    | **46.3**<br><sup>4.2 / 39.4 / 2.7</sup>  |
-| YOLO26n-obb   | OBB      | 640                         | 86.5<br><sup>3.4 / 81.1 / 1.9</sup>    | **44.7**<br><sup>4.4 / 37.5 / 2.7</sup>  |
+| YOLO26n       | Detect   | 640                         | 53.6<br><sup>1.5 / 50.5 / 1.6</sup>    | **43.9**<br><sup>3.9 / 36.2 / 3.8</sup>  |
+| YOLO26n-seg   | Segment  | 640                         | 90.0<br><sup>2.0 / 80.8 / 7.2</sup>    | **48.5**<br><sup>2.4 / 35.4 / 10.7</sup> |
+| YOLO26n-sem   | Semantic | 640                         | 71.0<br><sup>1.5 / 61.6 / 8.0</sup>    | **69.9**<br><sup>1.5 / 58.0 / 10.5</sup> |
+| YOLO26n-depth | Depth    | 640                         | 124.9<br><sup>1.5 / 117.2 / 6.3</sup>  | **50.0**<br><sup>1.8 / 36.5 / 11.7</sup> |
+| YOLO26n-cls   | Classify | 224                         | **4.0**<br><sup>0.3 / 3.4 / 0.3</sup>  | 17.6<br><sup>0.9 / 16.6 / 0.1</sup>      |
+| YOLO26n-pose  | Pose     | 640                         | 59.5<br><sup>1.5 / 56.8 / 1.2</sup>    | **45.9**<br><sup>3.9 / 38.4 / 3.7</sup>  |
+| YOLO26n-obb   | OBB      | 640                         | 52.1<br><sup>1.5 / 49.1 / 1.6</sup>    | **45.6**<br><sup>4.1 / 38.8 / 2.7</sup>  |
 
 These are means of 15 runs after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.6.10` and the official `v0.6.6`
-assets. Device logs confirmed that every model compiled fully on the requested LiteRT CPU and GPU backends. Reproduce
-the same seven-model sweep on Android or iOS with:
+assets. CPU/GPU order alternates between task rows to avoid systematically measuring one backend second; this remains
+a single sequential sweep rather than thermally isolated runs. Device logs confirmed that every model compiled fully
+on the requested LiteRT CPU and GPU backends. Reproduce the same seven-model sweep on Android or iOS with:
 
 ```bash
-flutter test integration_test/model_benchmark_test.dart -d < device > --dart-define=RUN_BENCH=true
+flutter test integration_test/model_benchmark_test.dart -d DEVICE_ID --dart-define=RUN_BENCH=true
 ```
 
 On iOS, the two rows per model use Core ML `.cpuOnly` and `.cpuAndNeuralEngine` instead of LiteRT CPU and GPU.

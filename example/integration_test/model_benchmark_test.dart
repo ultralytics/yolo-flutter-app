@@ -182,12 +182,19 @@ void main() {
       }
       await tester.runAsync(() async {
         final image = await _download('https://ultralytics.com/images/bus.jpg');
-        for (final entry in _tasks.entries) {
+        for (final (index, entry) in _tasks.entries.indexed) {
           final (id, task) = entry.value;
+          final accelerator = Platform.isAndroid ? 'gpu' : 'ane';
+          // Alternate backend order across tasks to avoid systematically measuring the accelerator second.
+          if (index.isOdd) {
+            await _bench('${entry.key}|$accelerator', id, task, image);
+          }
           // CPU on both platforms (Android: LiteRT CPU; iOS: Core ML .cpuOnly)
           await _bench('${entry.key}|cpu', id, task, image, useGpu: false);
+          if (index.isEven) {
+            await _bench('${entry.key}|$accelerator', id, task, image);
+          }
           if (Platform.isAndroid) {
-            await _bench('${entry.key}|gpu', id, task, image);
             if (_runQnn && entry.key != 'depth') {
               await _bench(
                 '${entry.key}|qnn',
@@ -196,9 +203,6 @@ void main() {
                 image,
               );
             }
-          } else {
-            // iOS useGpu:true = Core ML .cpuAndNeuralEngine (ANE)
-            await _bench('${entry.key}|ane', id, task, image);
           }
         }
       });
