@@ -134,7 +134,7 @@ assets. Device logs confirmed that every model compiled fully on the requested L
 the same seven-model sweep on Android or iOS with:
 
 ```bash
-flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true
+flutter test integration_test/model_benchmark_test.dart -d < device > --dart-define=RUN_BENCH=true
 ```
 
 On iOS, the two rows per model use Core ML `.cpuOnly` and `.cpuAndNeuralEngine` instead of LiteRT CPU and GPU.
