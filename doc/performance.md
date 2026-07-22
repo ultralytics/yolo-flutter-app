@@ -224,7 +224,7 @@ requests `.cpuAndNeuralEngine`; Core ML controls final operation placement.
 
 These are means of 15 runs after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.6.10`. CPU/accelerator order
 alternates between task rows, and the results are one sequential sweep rather than thermally isolated runs. The
-The shipped Core ML assets declare 224 × 224 inputs for classification, 1024 × 1024 for semantic and OBB, and
+shipped Core ML assets declare 224 × 224 inputs for classification, 1024 × 1024 for semantic and OBB, and
 640 × 640 for detect, segment, depth, and pose. The shipped LiteRT assets use 224 × 224 for classification and
 640 × 640 for every other task.
 
