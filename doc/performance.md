@@ -79,7 +79,7 @@ The supported prebuilt-wheel route is Windows x64. Run the following in PowerShe
 the CPU quantization stage cannot finalize a QNN context on their own. Install CPU-only PyTorch before Ultralytics so
 the export host does not download CUDA packages:
 
-```bash
+```powershell
 uv venv --python 3.12 .venv
 uv pip install --python .venv\Scripts\python.exe --index-url https://download.pytorch.org/whl/cpu `
   torch==2.13.0 torchvision==0.28.0
@@ -216,20 +216,29 @@ requests `.cpuAndNeuralEngine`; Core ML controls final operation placement.
 | ------------- | -------- | --------------------------- | ------------------------------------ | ------------------------------------------------- |
 | YOLO26n       | Detect   | 640                         | 9.1<br><sup>0.0 / 9.0 / 0.0</sup>    | **3.6**<br><sup>0.0 / 3.6 / 0.0</sup>             |
 | YOLO26n-seg   | Segment  | 640                         | 22.2<br><sup>0.0 / 12.3 / 9.9</sup>  | **13.4**<br><sup>0.0 / 4.2 / 9.2</sup>            |
-| YOLO26n-sem   | Semantic | 640                         | 24.0<br><sup>0.0 / 22.1 / 2.0</sup>  | **14.9**<br><sup>0.0 / 12.9 / 1.9</sup>           |
+| YOLO26n-sem   | Semantic | 1024                        | 24.0<br><sup>0.0 / 22.1 / 2.0</sup>  | **14.9**<br><sup>0.0 / 12.9 / 1.9</sup>           |
 | YOLO26n-depth | Depth    | 640                         | 49.3<br><sup>0.0 / 24.5 / 24.8</sup> | **28.9**<br><sup>0.0 / 4.8 / 24.1</sup>           |
 | YOLO26n-cls   | Classify | 224                         | 2.3<br><sup>0.0 / 2.3 / 0.1</sup>    | **2.0**<br><sup>0.0 / 2.0 / 0.0</sup>             |
 | YOLO26n-pose  | Pose     | 640                         | 12.2<br><sup>0.0 / 12.2 / 0.1</sup>  | **3.9**<br><sup>0.0 / 3.9 / 0.1</sup>             |
-| YOLO26n-obb   | OBB      | 640                         | 22.8<br><sup>0.0 / 22.8 / 0.0</sup>  | **7.4**<br><sup>0.0 / 7.4 / 0.0</sup>             |
+| YOLO26n-obb   | OBB      | 1024                        | 22.8<br><sup>0.0 / 22.8 / 0.0</sup>  | **7.4**<br><sup>0.0 / 7.4 / 0.0</sup>             |
 
 These are means of 15 runs after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.6.10`. CPU/accelerator order
 alternates between task rows, and the results are one sequential sweep rather than thermally isolated runs. The
-shipped Android and iOS depth artifacts both declare fixed 640 × 640 inputs.
+The shipped Core ML assets declare 224 × 224 inputs for classification, 1024 × 1024 for semantic and OBB, and
+640 × 640 for detect, segment, depth, and pose. The shipped LiteRT assets use 224 × 224 for classification and
+640 × 640 for every other task.
 
-Reproduce either seven-model sweep on Android or iOS with:
+Reproduce the Android sweep with:
 
 ```bash
 cd example && flutter test integration_test/model_benchmark_test.dart -d DEVICE_ID --dart-define=RUN_BENCH=true
+```
+
+Use a profile build on iOS so Swift postprocessing is optimized:
+
+```bash
+cd example && flutter drive --profile -d DEVICE_ID --driver=test_driver/integration_test.dart \
+  --target=integration_test/model_benchmark_test.dart --dart-define=RUN_BENCH=true
 ```
 
 Generic output labels the requested automatic paths `gpu-preferred` on Android and `ane-preferred` on iOS because

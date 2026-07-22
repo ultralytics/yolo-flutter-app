@@ -60,7 +60,7 @@ Official export properties:
 | Tasks          | detect, seg, sem, depth, cls, pose, obb       | detect, seg, sem, depth, cls, pose, obb |
 | Format         | `.tflite`                                     | `.mlpackage.zip`                        |
 | Quantization   | w8a32 LiteRT (int8 weights, FP32 activations) | int8 Core ML                            |
-| `imgsz`        | `224` cls; `640` others                       | `224` cls; `1024` OBB; `640` others     |
+| `imgsz`        | `224` cls; `640` others                       | `224` cls; `1024` sem/OBB; `640` others |
 | `nms`          | `False`                                       | `False`                                 |
 | `end2end`      | `False`                                       | `True`                                  |
 | Calibration    | None (w8a32 dynamic-range)                    | exporter default                        |

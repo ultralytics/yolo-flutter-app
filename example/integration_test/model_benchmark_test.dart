@@ -7,8 +7,11 @@
 // using the native speed (pre + inference + post, no plotting). CPU and GPU-preferred rows use the
 // default official w8a32 LiteRT assets (what the app ships); QNN rows use release context binaries.
 //
-// Run the shipped models on CPU and GPU-preferred (Android) or CPU and ANE-preferred (iOS):
+// Run the shipped models on CPU and GPU-preferred (Android):
 //   flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true
+// Run iOS in profile mode so Swift postprocessing timings are representative:
+//   flutter drive --profile -d <device> --driver=test_driver/integration_test.dart \
+//     --target=integration_test/model_benchmark_test.dart --dart-define=RUN_BENCH=true
 // Verify native logs before recording a preferred path as actual GPU or Neural Engine execution.
 //
 // Include QNN validation and benchmark rows on a supported Snapdragon device:

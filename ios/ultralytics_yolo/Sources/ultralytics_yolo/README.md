@@ -41,9 +41,12 @@ YOLO26 models are NMS-free; Core ML exports use `nms=False` and `end2end=True` (
 ```python
 from ultralytics import YOLO
 
+# This detect example uses 640. The official Core ML assets use 224 for classification,
+# 1024 for semantic and OBB, and 640 for detect, segment, depth, and pose.
 # Square [640, 640] works best when one model must run in both portrait and landscape.
 # Ultralytics imgsz order is [height, width]; use [640, 384] for portrait-only or [384, 640] for landscape-only.
 YOLO("yolo26n.pt").export(format="coreml", nms=False, end2end=True, imgsz=[640, 640])
 ```
 
-Other tasks are exported with the same `nms=False` and `end2end=True` settings (matching the official asset pipeline in yolo-ios-app `scripts/export-models.py`), with the same square-orientation guidance for `imgsz`.
+Other tasks use the same square-orientation guidance. Match `imgsz` to the model contract above; Core ML depth uses
+`end2end=False`, while the other official tasks use `end2end=True`.
