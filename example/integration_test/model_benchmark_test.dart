@@ -4,11 +4,12 @@
 //
 // Validation: loads the v73 QNN context-binary model for every task and checks real outputs on
 // bus.jpg. Benchmark (enable with --dart-define=RUN_BENCH=true): times predict() per task per backend
-// using the native speed (pre + inference + post, no plotting). CPU and GPU rows use the default
-// official w8a32 LiteRT assets (what the app ships); QNN rows use the release context binaries.
+// using the native speed (pre + inference + post, no plotting). CPU and GPU-preferred rows use the
+// default official w8a32 LiteRT assets (what the app ships); QNN rows use release context binaries.
 //
-// Run the shipped models on CPU and GPU (Android) or CPU and Neural Engine (iOS):
+// Run the shipped models on CPU and GPU-preferred (Android) or CPU and ANE-preferred (iOS):
 //   flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true
+// Verify native logs before recording a preferred path as actual GPU or Neural Engine execution.
 //
 // Include QNN validation and benchmark rows on a supported Snapdragon device:
 //   ENABLE_QNN=1 flutter test integration_test/model_benchmark_test.dart -d <device> \
