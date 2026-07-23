@@ -17,6 +17,7 @@
 // Include QNN validation and benchmark rows on a supported Snapdragon device:
 //   ENABLE_QNN=1 flutter test integration_test/model_benchmark_test.dart -d <device> \
 //     --dart-define=RUN_BENCH=true --dart-define=RUN_QNN=true
+// Add --dart-define=QNN_ARCH=81 for Snapdragon 8 Elite Gen 5; v73 is the default.
 
 import 'dart:io';
 import 'dart:typed_data';
@@ -30,6 +31,7 @@ const String _releaseBase =
 const bool _runBench = bool.fromEnvironment('RUN_BENCH');
 const bool _runQnn = bool.fromEnvironment('RUN_QNN');
 const bool _runSoak = bool.fromEnvironment('RUN_SOAK');
+const String _qnnArch = String.fromEnvironment('QNN_ARCH', defaultValue: '73');
 
 const Map<String, (String, YOLOTask)> _tasks = {
   'detect': ('yolo26n', YOLOTask.detect),
@@ -115,7 +117,7 @@ void main() {
         for (final entry in _tasks.entries) {
           final (id, task) = entry.value;
           final results = await _predictOnce(
-            '$_releaseBase/${id}_v73_qnn.onnx',
+            '$_releaseBase/${id}_v${_qnnArch}_qnn.onnx',
             task,
             image,
           );
@@ -159,7 +161,7 @@ void main() {
         final image = await _download('https://ultralytics.com/images/bus.jpg');
         // Worst case: semantic logits are the largest output tensors in the model zoo.
         final yolo = YOLO(
-          modelPath: '$_releaseBase/yolo26n-sem_v73_qnn.onnx',
+          modelPath: '$_releaseBase/yolo26n-sem_v${_qnnArch}_qnn.onnx',
           task: YOLOTask.semantic,
         );
         expect(await yolo.loadModel(), isTrue);
@@ -195,7 +197,7 @@ void main() {
             ('cpu', id, false),
             (accelerator, id, true),
             if (Platform.isAndroid && _runQnn)
-              ('qnn', '$_releaseBase/${id}_v81_qnn.onnx', true),
+              ('qnn', '$_releaseBase/${id}_v${_qnnArch}_qnn.onnx', true),
           ];
           // Rotate backend order across tasks so no enabled backend is systematically measured last.
           for (var i = 0; i < backends.length; i++) {

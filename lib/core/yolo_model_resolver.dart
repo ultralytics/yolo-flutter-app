@@ -48,6 +48,9 @@ class YOLOModelResolver {
       'https://github.com/ultralytics/yolo-ios-app/releases/download/models-v1.0.0';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
 
+  static String _releaseCacheName(String releaseBaseUrl, String assetName) =>
+      '${Uri.parse(releaseBaseUrl).pathSegments.last}-$assetName';
+
   static const List<String> _yolo26Sizes = ['n', 's', 'm', 'l', 'x'];
   // Canonical YOLO26 task x size matrix. Keep generated so the app, docs, and export script all represent the same
   // 7-task x 5-size official asset set. YOLO11 assets still exist on older releases but are no longer maintained for
@@ -194,17 +197,21 @@ class YOLOModelResolver {
     if (artifact == null) return false;
     final directory = await getApplicationDocumentsDirectory();
     if (_isIosLikePlatform) {
+      final cacheName = _releaseCacheName(_iosModelReleaseBaseUrl, artifact.id);
       if (await _hasValidMlPackage(
-        Directory('${directory.path}/${artifact.id}.mlpackage'),
+        Directory('${directory.path}/$cacheName.mlpackage'),
       )) {
         return true;
       }
       return await _loadAssetBytes(
-            'assets/models/${artifact.iosArchiveName}',
+            'assets/models/${_releaseCacheName(_iosModelReleaseBaseUrl, artifact.iosArchiveName)}',
           ) !=
           null;
     }
-    final filename = artifact.androidAssetName;
+    final filename = _releaseCacheName(
+      _androidModelReleaseBaseUrl,
+      artifact.androidAssetName,
+    );
     if (File('${directory.path}/$filename').existsSync()) return true;
     return await _loadAssetBytes('assets/models/$filename') != null;
   }
@@ -212,7 +219,8 @@ class YOLOModelResolver {
   static Future<String> _resolveAndroidOfficialModel(
     _OfficialModelArtifact artifact,
   ) async {
-    final filename = artifact.androidAssetName;
+    final assetName = artifact.androidAssetName;
+    final filename = _releaseCacheName(_androidModelReleaseBaseUrl, assetName);
     final directory = await getApplicationDocumentsDirectory();
     final modelFile = File('${directory.path}/$filename');
     if (modelFile.existsSync()) return modelFile.path;
@@ -222,7 +230,7 @@ class YOLOModelResolver {
     }
 
     await _downloadToFile(
-      '$_androidModelReleaseBaseUrl/$filename',
+      '$_androidModelReleaseBaseUrl/$assetName',
       modelFile,
       progressId: artifact.id,
     );
@@ -233,21 +241,26 @@ class YOLOModelResolver {
     _OfficialModelArtifact artifact,
   ) async {
     final archiveName = artifact.iosArchiveName;
+    final cacheArchiveName = _releaseCacheName(
+      _iosModelReleaseBaseUrl,
+      archiveName,
+    );
     final directory = await getApplicationDocumentsDirectory();
-    final modelDir = Directory('${directory.path}/${artifact.id}.mlpackage');
+    final modelName = _releaseCacheName(_iosModelReleaseBaseUrl, artifact.id);
+    final modelDir = Directory('${directory.path}/$modelName.mlpackage');
     if (await _hasValidMlPackage(modelDir)) return modelDir.path;
     if (modelDir.existsSync()) {
       modelDir.deleteSync(recursive: true);
     }
 
-    final assetPath = 'assets/models/$archiveName';
+    final assetPath = 'assets/models/$cacheArchiveName';
     final assetBytes = await _loadAssetBytes(assetPath);
     if (assetBytes != null) {
       final extractedPath = await _extractMlPackageZip(assetBytes, modelDir);
       if (extractedPath != null) return extractedPath;
     }
 
-    final archiveFile = File('${directory.path}/$archiveName');
+    final archiveFile = File('${directory.path}/$cacheArchiveName');
     await _downloadToFile(
       '$_iosModelReleaseBaseUrl/$archiveName',
       archiveFile,
@@ -259,17 +272,24 @@ class YOLOModelResolver {
   static Future<String> _downloadRemoteModel(Uri uri) async {
     final documents = await getApplicationDocumentsDirectory();
     final fileName = uri.pathSegments.isEmpty ? 'model' : uri.pathSegments.last;
+    final cacheFileName = uri.pathSegments.length > 1
+        ? '${uri.pathSegments[uri.pathSegments.length - 2]}-$fileName'
+        : fileName;
 
     if (_isIosLikePlatform && fileName.endsWith('.mlpackage.zip')) {
-      final modelName = fileName.replaceAll('.mlpackage.zip', '');
+      final modelName = cacheFileName.replaceAll('.mlpackage.zip', '');
       final targetDir = Directory('${documents.path}/$modelName.mlpackage');
       if (await _hasValidMlPackage(targetDir)) return targetDir.path;
-      final archiveFile = File('${documents.path}/$fileName');
+      final archiveFile = File('${documents.path}/$cacheFileName');
       await _downloadToFile(uri.toString(), archiveFile, progressId: modelName);
-      return _extractMlPackageArchiveFile(archiveFile, fileName, targetDir);
+      return _extractMlPackageArchiveFile(
+        archiveFile,
+        cacheFileName,
+        targetDir,
+      );
     }
 
-    final file = File('${documents.path}/$fileName');
+    final file = File('${documents.path}/$cacheFileName');
     if (file.existsSync()) return file.path;
     await _downloadToFile(
       uri.toString(),

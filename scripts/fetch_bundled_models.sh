@@ -66,18 +66,21 @@ if [ "$PLATFORM" = "android" ]; then
   BASE="$ANDROID_BASE"
   FILES=("${ANDROID_FILES[@]}")
   OTHER_FILES=("${IOS_FILES[@]}")
+  OTHER_BASE="$IOS_BASE"
 else
   BASE="$IOS_BASE"
   FILES=("${IOS_FILES[@]}")
   OTHER_FILES=("${ANDROID_FILES[@]}")
+  OTHER_BASE="$ANDROID_BASE"
 fi
 
 mkdir -p "$DEST"
+CACHE_PREFIX="${BASE##*/}-"
 
 fetch() {
-  # Download $1 from $BASE into $DEST, atomically, skipping if already present and non-empty.
+  # Download $1 from $BASE into a release-versioned cache name, atomically.
   local name="$1"
-  local out="$DEST/$name"
+  local out="$DEST/$CACHE_PREFIX$name"
   if [ -s "$out" ]; then
     echo "fetch_bundled_models: have $name"
     return 0
@@ -103,6 +106,7 @@ fetch() {
 }
 
 for f in "${FILES[@]}"; do
+  rm -f "$DEST/$f"
   fetch "$f"
 done
 
@@ -111,7 +115,7 @@ done
 # loaded. Only the known auto-fetched filenames are removed (re-fetched on demand), so any custom or benchmark model a
 # developer dropped into assets/models/ is left untouched.
 for f in "${OTHER_FILES[@]}"; do
-  rm -f "$DEST/$f"
+  rm -f "$DEST/$f" "$DEST/${OTHER_BASE##*/}-$f"
 done
 
 # Always succeed: bundling is an optimization, never a hard build dependency.

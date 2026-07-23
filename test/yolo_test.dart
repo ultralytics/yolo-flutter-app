@@ -1017,8 +1017,8 @@ void main() {
         'uses cached official models and rejects unsupported ones',
         () async {
           final cachedPath = _isAppleTestPlatform
-              ? '/tmp/yolo_test/yolo26n.mlpackage'
-              : '/tmp/yolo_test/yolo26n_w8a32.tflite';
+              ? '/tmp/yolo_test/models-v1.0.0-yolo26n.mlpackage'
+              : '/tmp/yolo_test/models-v1.0.0-yolo26n_w8a32.tflite';
           if (_isAppleTestPlatform) {
             Directory(cachedPath).createSync(recursive: true);
             File('$cachedPath/Manifest.json').writeAsStringSync('{}');
@@ -1055,14 +1055,14 @@ void main() {
           '__MACOSX/model.mlpackage/._Manifest.json': utf8.encode('junk'),
         });
         final officialAsset = _isAppleTestPlatform
-            ? 'assets/models/yolo26s.mlpackage.zip'
-            : 'assets/models/yolo26s_w8a32.tflite';
+            ? 'assets/models/models-v1.0.0-yolo26s.mlpackage.zip'
+            : 'assets/models/models-v1.0.0-yolo26s_w8a32.tflite';
         final customAsset = _isAppleTestPlatform
             ? 'assets/custom.mlpackage.zip'
             : 'assets/custom.tflite';
         if (_isAppleTestPlatform) {
           Directory(
-            '/tmp/yolo_test/yolo26s.mlpackage',
+            '/tmp/yolo_test/models-v1.0.0-yolo26s.mlpackage',
           ).createSync(recursive: true);
         }
         _mockFlutterAssets({officialAsset: bytes, customAsset: bytes});
@@ -1080,7 +1080,10 @@ void main() {
           expect(assetPath, '/tmp/yolo_test/custom.mlpackage');
           expect(File('$assetPath/Manifest.json').existsSync(), isTrue);
         } else {
-          expect(officialPath, '/tmp/yolo_test/yolo26s_w8a32.tflite');
+          expect(
+            officialPath,
+            '/tmp/yolo_test/models-v1.0.0-yolo26s_w8a32.tflite',
+          );
           expect(File(officialPath).readAsBytesSync(), bytes);
           expect(assetPath, '/tmp/yolo_test/custom.tflite');
           expect(File(assetPath).readAsBytesSync(), bytes);
