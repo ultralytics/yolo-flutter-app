@@ -31,7 +31,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = ROOT / "exports" / "yolo26-tflite"
 DEFAULT_REPO = "ultralytics/yolo-flutter-app"
-DEFAULT_TAG = "v0.6.6"
+DEFAULT_TAG = "models-v1.0.0"
 QUANTIZE = "w8a32"
 SIZES = ("n", "s", "m", "l", "x")
 
@@ -72,13 +72,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--upload",
         action="store_true",
-        help="Upload generated .tflite files to the GitHub release with gh release upload --clobber.",
+        help="Upload generated .tflite files to a new GitHub release.",
     )
     return parser.parse_args()
 
 
-def verify_tflite(path: Path) -> list[tuple[int, ...]]:
-    """Run one zero-input inference and return output tensor shapes."""
+def verify_tflite(path: Path, imgsz: int) -> list[tuple[int, ...]]:
+    """Verify the fixed input size, run one zero-input inference, and return output shapes."""
     # ai_edge_litert ships with ultralytics[export-litert]; TensorFlow is not installed in that environment
     from ai_edge_litert.interpreter import Interpreter
 
@@ -86,6 +86,8 @@ def verify_tflite(path: Path) -> list[tuple[int, ...]]:
     interpreter.allocate_tensors()
     input_detail = interpreter.get_input_details()[0]
     shape = input_detail["shape"]
+    if list(shape).count(imgsz) != 2:
+        raise ValueError(f"{path.name} input is {shape.tolist()}; expected two {imgsz}-pixel spatial dimensions")
     dtype = input_detail["dtype"]
     sample = np.zeros(shape, dtype=dtype)
     if not np.issubdtype(dtype, np.floating):
@@ -165,7 +167,7 @@ def upload_assets(repo: str, tag: str, assets: list[Path]) -> None:
     """Upload generated assets to a GitHub release."""
     if not assets:
         return
-    command = ["gh", "release", "upload", tag, "--repo", repo, "--clobber", *(str(path) for path in assets)]
+    command = ["gh", "release", "upload", tag, "--repo", repo, *(str(path) for path in assets)]
     subprocess.run(command, check=True)
 
 
@@ -250,7 +252,7 @@ def main() -> None:
             target = release_dir / f"{model_id}_{QUANTIZE}.tflite"
             if target.exists() and not args.force:
                 ensure_tflite_metadata(target, model_id, task_name, task)
-                outputs = verify_tflite(target) if args.verify else []
+                outputs = verify_tflite(target, task.imgsz) if args.verify else []
                 suffix = f" outputs={outputs}" if outputs else ""
                 print(f"\nSkipping {model_id}; asset exists at {display_path(target)}{suffix}")
                 assets.append(target)
@@ -263,7 +265,7 @@ def main() -> None:
                 exported = run_export_worker(model_id, task, output_dir)
             shutil.copy2(exported, target)
             ensure_tflite_metadata(target, model_id, task_name, task)
-            outputs = verify_tflite(target) if args.verify else []
+            outputs = verify_tflite(target, task.imgsz) if args.verify else []
             suffix = f" outputs={outputs}" if outputs else ""
             print(f"asset {display_path(target)} size={target.stat().st_size / 1_000_000:.2f} MB{suffix}")
             assets.append(target)
