@@ -103,7 +103,7 @@ valid depth map. The published asset can be downloaded and verified against the 
 gh release download v0.6.6 --repo ultralytics/yolo-flutter-app \
   --pattern yolo26n-depth_v81_qnn.onnx --dir verify
 printf '%s  %s\n' \
-  7de30462abae8ab66ccad180eeced3176028456af04dd64be0e7b3d26d3e36bc \
+  66dd920a5ea4e2ac82b1afb9cc33c67ef7fc1975e6e017a3444d02806cc2bbd5 \
   verify/yolo26n-depth_v81_qnn.onnx | shasum -a 256 -c -
 ```
 
