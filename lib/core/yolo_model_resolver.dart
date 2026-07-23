@@ -289,6 +289,14 @@ class YOLOModelResolver {
       final modelName = fileName.replaceAll('.mlpackage.zip', '');
       final targetDir = Directory('${directory.path}/$modelName.mlpackage');
       if (await _hasValidMlPackage(targetDir)) return targetDir.path;
+      if (isOfficialAsset) {
+        final legacyTargetDir = Directory(
+          '${documents.path}/$modelName.mlpackage',
+        );
+        if (legacyTargetDir.existsSync()) {
+          legacyTargetDir.deleteSync(recursive: true);
+        }
+      }
       final archiveFile = File('${directory.path}/$fileName');
       await _downloadToFile(url, archiveFile, progressId: modelName);
       return _extractMlPackageArchiveFile(archiveFile, fileName, targetDir);
@@ -296,6 +304,10 @@ class YOLOModelResolver {
 
     final file = File('${directory.path}/$fileName');
     if (file.existsSync()) return file.path;
+    if (isOfficialAsset) {
+      final legacyFile = File('${documents.path}/$fileName');
+      if (legacyFile.existsSync()) legacyFile.deleteSync();
+    }
     await _downloadToFile(
       url,
       file,
