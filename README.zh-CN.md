@@ -114,8 +114,8 @@ final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 
 官方资产以 GitHub release 资产的形式维护：
 
-| 平台                | 运行时资产                    | Release                                                                                                        |
-| ------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 平台                | 运行时资产                    | Release                                                                                          |
+| ------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
 | Android             | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | Android NPU（可选） | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | iOS                 | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |

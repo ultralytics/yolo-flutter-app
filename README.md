@@ -114,8 +114,8 @@ Call `YOLO.officialModels()` to see which official IDs are available on the curr
 
 Official assets are maintained as GitHub release assets:
 
-| Platform             | Runtime asset                 | Release                                                                                                        |
-| -------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Platform             | Runtime asset                 | Release                                                                                          |
+| -------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
 | Android              | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | Android NPU (opt-in) | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | iOS                  | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |

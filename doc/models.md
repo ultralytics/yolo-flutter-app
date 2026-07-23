@@ -39,11 +39,11 @@ print(models);
 
 Official assets are maintained as GitHub release assets:
 
-| Platform   | Runtime asset                 | Release                                                                                         |
-| ---------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| Android    | LiteRT w8a32 `.tflite`       | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
-| Android NPU | QNN `.onnx`                  | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
-| iOS        | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+| Platform    | Runtime asset                 | Release                                                                                          |
+| ----------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| Android     | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| Android NPU | QNN `.onnx`                   | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| iOS         | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 URL patterns:
 
@@ -189,11 +189,11 @@ For Flutter assets on iOS, use `.mlpackage.zip` so the package can unpack the mo
 
 Official release assets are generated from YOLO26 checkpoints with task/size loops so the app, package, and release assets use the same naming scheme.
 
-| Runtime      | Existing export path                                                     | Release                                                                                         |
-| ------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| LiteRT w8a32 | [`scripts/export-tflite-models.py`](../scripts/export-tflite-models.py)  | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
-| QNN          | Ultralytics `YOLO.export(format="qnn", ...)`                             | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
-| Core ML int8 | `../yolo-ios-app/scripts/export-models.py`                               | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+| Runtime      | Existing export path                                                    | Release                                                                                          |
+| ------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| LiteRT w8a32 | [`scripts/export-tflite-models.py`](../scripts/export-tflite-models.py) | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| QNN          | Ultralytics `YOLO.export(format="qnn", ...)`                            | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| Core ML int8 | `../yolo-ios-app/scripts/export-models.py`                              | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 `scripts/export-tflite-models.py` is the source of truth for Android export settings, verification, output names, and optional release upload. The Core ML counterpart in `../yolo-ios-app` owns the Apple asset export settings and packaging.
 
