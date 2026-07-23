@@ -186,6 +186,7 @@ Android inference runs on LiteRT 2.x via `CompiledModel`, which automatically tr
 
 ```python
 YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
+# Classification models use imgsz=224.
 ```
 
 Keep `useGpu: true` for the automatic LiteRT GPU -> CPU ladder. See the [Performance Guide](performance.md) for the current device results.

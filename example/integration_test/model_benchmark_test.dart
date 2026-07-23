@@ -2,7 +2,7 @@
 
 // On-device CPU/accelerator benchmark harness with optional QNN validation (device + network).
 //
-// Validation: loads the six legacy v73 QNN context-binary task models and checks real outputs on
+// Validation: loads all seven v73 QNN context-binary task models and checks real outputs on
 // bus.jpg. Benchmark (enable with --dart-define=RUN_BENCH=true): times predict() per task per backend
 // using the native speed (pre + inference + post, no plotting). CPU and GPU-preferred rows use the
 // default official w8a32 LiteRT assets (what the app ships); QNN rows use release context binaries.
@@ -26,7 +26,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 const String _releaseBase =
-    'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5';
+    'https://github.com/ultralytics/yolo-flutter-app/releases/download/models-v1.0.0';
 const bool _runBench = bool.fromEnvironment('RUN_BENCH');
 const bool _runQnn = bool.fromEnvironment('RUN_QNN');
 const bool _runSoak = bool.fromEnvironment('RUN_SOAK');

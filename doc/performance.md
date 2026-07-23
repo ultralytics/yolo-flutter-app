@@ -30,9 +30,13 @@ Use a simple rule:
 - default app flow: start with `yolo26n`
 - custom production flow: benchmark your exact export on target devices
 
-## 📊 Measured Backend Performance
+## 📊 Legacy Pre-Standard Backend Performance
 
-End-to-end `predict()` speeds for the official YOLO26n models on a [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) phone powered by the
+This table preserves a retired mixed-asset sweep. Semantic and OBB used 1024px QNN inputs, so these values are not
+benchmarks for the standardized `models-v1.0.0` assets. Current mobile models use 224px classification inputs and
+640px inputs for every other task.
+
+End-to-end `predict()` speeds for retired YOLO26n assets on a [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) phone powered by the
 Qualcomm [Snapdragon 8 Elite Gen 5](https://www.qualcomm.com/smartphones) (SM8850), which pairs
 a Qualcomm Oryon CPU with an Adreno GPU and the Hexagon NPU (HTP architecture v81). Each cell shows the **total time**
 with the preprocess / inference / postprocess split beneath it.
@@ -148,9 +152,9 @@ adds the official Depth path. **Semantic remains the format regression** because
 inference time than the legacy NHWC logits, even after preprocessing cleanup. The legacy onnx2tf models run unchanged
 on LiteRT 2.x alongside the new NCHW exports, confirming the runtime's layout-adaptive path.
 
-### Xiaomi 17 current LiteRT and QNN
+### Xiaomi 17 pre-standard LiteRT and QNN
 
-Current-model CPU, GPU, and NPU results from one Xiaomi 17 sweep. LiteRT uses the shipped `v0.6.6` w8a32 assets;
+Historical CPU, GPU, and NPU results from one Xiaomi 17 sweep. LiteRT uses the retired `v0.6.6` w8a32 assets;
 QNN uses the v81 W8A16 context binaries from `v0.3.5`, including the depth asset added on July 22, 2026. Semantic
 and OBB retain their historical 1024px QNN exports, so their QNN timings are not same-resolution LiteRT comparisons.
 
@@ -207,9 +211,9 @@ These are means of 15 runs after 3 warmups on `bus.jpg`, using `ultralytics_yolo
 assets. CPU/GPU order alternates between task rows, and the results are one sequential sweep rather than thermally
 isolated runs. Device logs confirmed that every model compiled fully on the requested LiteRT CPU and GPU backends.
 
-### iPhone 17 Pro Core ML
+### iPhone 17 Pro pre-standard Core ML
 
-The same sweep on an Apple iPhone 17 Pro (iOS 26.5.2) using the shipped Core ML models. The preferred path
+The same historical sweep on an Apple iPhone 17 Pro (iOS 26.5.2) using retired `v8.3.0` Core ML models. The preferred path
 requests `.cpuAndNeuralEngine`; Core ML controls final operation placement.
 
 | Model         | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>Core ML<br>(ms)</sup>    | CPU + ANE preferred<br><sup>Core ML<br>(ms)</sup> |
@@ -224,9 +228,9 @@ requests `.cpuAndNeuralEngine`; Core ML controls final operation placement.
 
 These are means of 15 runs after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.6.10`. CPU/accelerator order
 alternates between task rows, and the results are one sequential sweep rather than thermally isolated runs. The
-shipped Core ML assets declare 224 × 224 inputs for classification, 1024 × 1024 for semantic and OBB, and
-640 × 640 for detect, segment, depth, and pose. The shipped LiteRT assets use 224 × 224 for classification and
-640 × 640 for every other task.
+retired Core ML assets declare 224 × 224 inputs for classification, 1024 × 1024 for semantic and OBB, and
+640 × 640 for detect, segment, depth, and pose. Current Core ML, LiteRT, and QNN assets use 224 × 224 for
+classification and 640 × 640 for every other task.
 
 Reproduce the Android sweep with:
 
@@ -428,6 +432,7 @@ non-end-to-end LiteRT exports are still useful for GPU benchmarking (the GPU del
 from ultralytics import YOLO
 
 YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
+# Classification models use imgsz=224.
 ```
 
 Use CPU when:
@@ -591,7 +596,7 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 
 ### Current Shipped Configuration
 
-- Android official assets: YOLO26 w8a32 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/depth/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `v0.6.6`.
+- Android official assets: YOLO26 w8a32 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/depth/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `models-v1.0.0`.
 - Android export settings: `quantize=w8a32` (int8 weights, FP32 activations — dynamic-range, no calibration), `nms=False`, `end2end=False`; classify `imgsz=224`, all other tasks `imgsz=640`.
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
 - Example UI: controls expose all seven tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.

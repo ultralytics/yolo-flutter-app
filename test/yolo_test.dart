@@ -179,14 +179,14 @@ void main() {
             modelId,
             iosLike: false,
           ),
-          'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6/${modelId}_w8a32.tflite',
+          'https://github.com/ultralytics/yolo-flutter-app/releases/download/models-v1.0.0/${modelId}_w8a32.tflite',
         );
         expect(
           YOLOModelResolver.officialModelDownloadUrlForTesting(
             modelId,
             iosLike: true,
           ),
-          'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/$modelId.mlpackage.zip',
+          'https://github.com/ultralytics/yolo-ios-app/releases/download/models-v1.0.0/$modelId.mlpackage.zip',
         );
       }
     });

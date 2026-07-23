@@ -40,13 +40,12 @@ class YOLOResolvedModel {
 
 class YOLOModelResolver {
   // Pinned release assets provide reproducible first-use downloads. Update these constants, docs, and URL tests together
-  // when the official model asset set moves to a new release. The official Android assets are LiteRT `_w8a32.tflite`
-  // models on v0.6.6; the opt-in QNN `_qnn.onnx` assets are NOT regenerated and stay on v0.3.5 (referenced by explicit
-  // paths, not model-ID resolution).
+  // when the official model asset set moves to a new release. LiteRT and opt-in QNN assets share the Android model
+  // release; QNN models are referenced by explicit paths rather than model-ID resolution.
   static const String _androidModelReleaseBaseUrl =
-      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6';
+      'https://github.com/ultralytics/yolo-flutter-app/releases/download/models-v1.0.0';
   static const String _iosModelReleaseBaseUrl =
-      'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
+      'https://github.com/ultralytics/yolo-ios-app/releases/download/models-v1.0.0';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
 
   static const List<String> _yolo26Sizes = ['n', 's', 'm', 'l', 'x'];

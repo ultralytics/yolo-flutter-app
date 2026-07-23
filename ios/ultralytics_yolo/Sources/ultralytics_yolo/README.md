@@ -43,7 +43,7 @@ consumed by the Swift object detector:
 from ultralytics import YOLO
 
 # This detect example uses 640. The official Core ML assets use 224 for classification,
-# 1024 for semantic and OBB, and 640 for detect, segment, depth, and pose.
+# Use 224 for classification and 640 for every other mobile task.
 # Square [640, 640] works best when one model must run in both portrait and landscape.
 # Ultralytics imgsz order is [height, width]; use [640, 384] for portrait-only or [384, 640] for landscape-only.
 YOLO("yolo26n.pt").export(format="coreml", nms=False, end2end=True, imgsz=[640, 640])
