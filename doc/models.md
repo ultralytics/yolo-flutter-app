@@ -192,7 +192,7 @@ Official release assets are generated from YOLO26 checkpoints with task/size loo
 | Runtime      | Existing export path                                                    | Release                                                                                          |
 | ------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | LiteRT w8a32 | [`scripts/export-tflite-models.py`](../scripts/export-tflite-models.py) | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
-| QNN          | Ultralytics QNN export (`224` cls; `640` others)                       | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| QNN          | Ultralytics QNN export (`224` cls; `640` others)                        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | Core ML int8 | `../yolo-ios-app/scripts/export-models.py`                              | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 `scripts/export-tflite-models.py` is the source of truth for Android export settings, verification, output names, and optional release upload. The Core ML counterpart in `../yolo-ios-app` owns the Apple asset export settings and packaging.
