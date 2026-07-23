@@ -104,7 +104,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'QNN models run on the NPU for all six tasks',
+    'QNN models run on the NPU for all seven tasks',
     (WidgetTester tester) async {
       if (!_runQnn || !Platform.isAndroid) {
         return;
@@ -112,9 +112,7 @@ void main() {
       await tester.runAsync(() async {
         final image = await _download('https://ultralytics.com/images/bus.jpg');
 
-        for (final entry in _tasks.entries.where(
-          (entry) => entry.key != 'depth',
-        )) {
+        for (final entry in _tasks.entries) {
           final (id, task) = entry.value;
           final results = await _predictOnce(
             '$_releaseBase/${id}_v73_qnn.onnx',
@@ -139,6 +137,8 @@ void main() {
               expect(results.containsKey('detections'), isTrue);
             case 'semantic':
               expect(results.containsKey('semanticMask'), isTrue);
+            case 'depth':
+              expect(results.containsKey('depthMap'), isTrue);
             case 'obb':
               // DOTA aerial classes won't fire on bus.jpg; a clean run is the assertion
               expect(results, isA<Map<String, dynamic>>());

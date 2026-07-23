@@ -52,7 +52,7 @@ with the preprocess / inference / postprocess split beneath it.
 
 - **Speed** values are the full `predict()` time — preprocessing + inference + postprocessing, excluding annotation
   drawing — as the mean of 15 runs after 3 warmup runs on [bus.jpg](https://ultralytics.com/images/bus.jpg).
-  <br>Reproduce the QNN validation and rows with `cd example && ENABLE_QNN=1 flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true --dart-define=RUN_QNN=true` (the example app's QNN runtime is opt-in). The historical CPU/GPU rows use retired `v0.3.5` INT8 assets and are not reproduced by the current-model harness.
+  <br>Run the replacement `models-v1.0.0` QNN benchmark with `cd example && ENABLE_QNN=1 flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true --dart-define=RUN_QNN=true` (the example app's QNN runtime is opt-in). These historical mixed-size rows use retired assets and are not reproduced by the current-model harness.
 - Benchmarks were run with the `ultralytics_yolo` Flutter plugin `0.6.8`; official Android LiteRT assets are hosted
   on the [yolo-flutter-app `v0.6.6` release](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6).
 - **CPU** and **GPU** run the legacy official INT8 TFLite assets (the prior `v0.3.5` default; the current default is

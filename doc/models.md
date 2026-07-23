@@ -210,7 +210,8 @@ Use `--upload --repo ultralytics/yolo-flutter-app --tag models-v1.0.0` to publis
 script exports YOLO26 `n/s/m/l/x` models for every task in its `TASKS` registry, including depth. Output files are
 written under `exports/yolo26-tflite/release-assets/` and are ignored by Git. The `w8a32` format (int8 weights, FP32
 activations) is dynamic-range quantization, so no calibration data is required. Use `scripts/export-qnn-models.py`
-on Windows with the Qualcomm AI Engine Direct SDK to export the matching nano QNN assets for HTP v73 and v81.
+on Windows x64 or Linux x86-64 with a QNN-enabled ONNX Runtime build to export the matching nano QNN assets for HTP
+v73 and v81; `onnxruntime-qnn` bundles the required QAIRT libraries.
 
 Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. w8a32 assets are the official download artifacts (the smallest GPU-compatible litert format); the GPU delegate compiles the whole graph on supported devices and otherwise falls back to CPU. GPU coverage still depends on the device driver and graph, so confirm delegate placement on your target hardware (the GPU delegate runs the graph in FP16):
 
