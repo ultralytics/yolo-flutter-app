@@ -184,7 +184,7 @@ def export_one(model_id: str, imgsz: int, output_dir: Path) -> None:
     from ultralytics import YOLO
 
     os.chdir(output_dir)
-    YOLO(f"{model_id}.pt").export(
+    YOLO(str(output_dir / f"{model_id}.pt")).export(
         format="litert",
         quantize=QUANTIZE,
         nms=False,

@@ -98,7 +98,7 @@ def main() -> None:
                 assets.append(target)
                 continue
             exported = Path(
-                YOLO(f"{model_id}.pt").export(
+                YOLO(str(output_dir / f"{model_id}.pt")).export(
                     format="qnn",
                     name=architecture,
                     imgsz=task.imgsz,
