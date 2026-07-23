@@ -65,9 +65,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--repo", default=DEFAULT_REPO)
     parser.add_argument("--tag", default=DEFAULT_TAG)
-    parser.add_argument(
-        "--architectures", nargs="+", choices=ARCHITECTURES, default=list(ARCHITECTURES)
-    )
+    parser.add_argument("--architectures", nargs="+", choices=ARCHITECTURES, default=list(ARCHITECTURES))
     parser.add_argument("--tasks", nargs="+", choices=TASKS.keys(), default=list(TASKS))
     parser.add_argument("--force", action="store_true")
     parser.add_argument(
@@ -86,16 +84,10 @@ def verify_qnn(path: Path, task_name: str, imgsz: int) -> None:
         raise ValueError(f"{path.name} has {len(inputs)} inputs; expected 1")
     shape = [dimension.dim_value for dimension in inputs[0].type.tensor_type.shape.dim]
     if shape != [1, imgsz, imgsz, 3]:
-        raise ValueError(
-            f"{path.name} input is {shape}; expected [1, {imgsz}, {imgsz}, 3]"
-        )
+        raise ValueError(f"{path.name} input is {shape}; expected [1, {imgsz}, {imgsz}, 3]")
     metadata = {entry.key: entry.value for entry in model.metadata_props}
-    if metadata.get("task") != task_name or json.loads(
-        metadata.get("imgsz", "null")
-    ) != [imgsz, imgsz]:
-        raise ValueError(
-            f"{path.name} metadata does not declare task={task_name}, imgsz=[{imgsz}, {imgsz}]"
-        )
+    if metadata.get("task") != task_name or json.loads(metadata.get("imgsz", "null")) != [imgsz, imgsz]:
+        raise ValueError(f"{path.name} metadata does not declare task={task_name}, imgsz=[{imgsz}, {imgsz}]")
 
 
 def main() -> None:
@@ -114,9 +106,7 @@ def main() -> None:
             target = release_dir / f"{model_id}_v{architecture}_qnn.onnx"
             if target.exists() and not args.force:
                 verify_qnn(target, task_name, task.imgsz)
-                print(
-                    f"Skipping {target.name}; verified input={task.imgsz}x{task.imgsz}"
-                )
+                print(f"Skipping {target.name}; verified input={task.imgsz}x{task.imgsz}")
                 assets.append(target)
                 continue
             exported = Path(
