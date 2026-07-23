@@ -150,7 +150,7 @@ Pass an `http` or `https` URL and the plugin will download it into app storage b
 
 Android ships with LiteRT (TFLite) and that remains the default — nothing changes for existing apps, and the
 QNN support adds zero bytes to your build. Any model path ending in `_qnn.onnx` (a Qualcomm QNN context binary
-exported with `yolo export format=qnn`) is routed to the Hexagon NPU through the ONNX Runtime QNN Execution
+exported with `yolo export format=qnn imgsz=640`, or `imgsz=224` for classification) is routed to the Hexagon NPU through the ONNX Runtime QNN Execution
 Provider instead.
 
 Running QNN models requires a Snapdragon device with a Hexagon HTP (Snapdragon 8 Gen 2 or newer for the official

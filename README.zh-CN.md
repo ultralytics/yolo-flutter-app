@@ -145,7 +145,7 @@ final yolo = YOLO(
 
 ### 4. 高通 NPU 模型（Android，可选启用）
 
-Android 默认使用 LiteRT（TFLite），这一点保持不变——现有应用无需任何改动，QNN 支持也不会给你的构建增加任何体积。任何以 `_qnn.onnx` 结尾的模型路径（通过 `yolo export format=qnn` 导出的高通 QNN 上下文二进制）都会改由 ONNX Runtime QNN Execution Provider 路由到 Hexagon NPU 上运行。
+Android 默认使用 LiteRT（TFLite），这一点保持不变——现有应用无需任何改动，QNN 支持也不会给你的构建增加任何体积。任何以 `_qnn.onnx` 结尾的模型路径（通过 `yolo export format=qnn imgsz=640` 导出，分类任务使用 `imgsz=224`）都会改由 ONNX Runtime QNN Execution Provider 路由到 Hexagon NPU 上运行。
 
 运行 QNN 模型需要配备 Hexagon HTP 的 Snapdragon 设备（官方 `_v73` 资产要求 Snapdragon 8 Gen 2 或更新；`_v81` 面向 Snapdragon 8 Elite Gen 5），并在应用的 `android/app/build.gradle` 中添加三处配置：
 

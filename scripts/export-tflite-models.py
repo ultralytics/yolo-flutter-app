@@ -117,7 +117,8 @@ def task_names(task_name: str, suffix: str) -> dict[int, str]:
         from ultralytics import YOLO
 
         weights_name = f"yolo26m{suffix}.pt"
-        model = YOLO(str(ROOT / weights_name) if (ROOT / weights_name).exists() else weights_name)
+        weights = ROOT / weights_name
+        model = YOLO(weights if weights.exists() else weights_name)
         _TASK_NAMES_CACHE[task_name] = {int(k): str(v) for k, v in model.names.items()}
     return _TASK_NAMES_CACHE[task_name]
 
@@ -184,7 +185,7 @@ def export_one(model_id: str, imgsz: int, output_dir: Path) -> None:
     from ultralytics import YOLO
 
     os.chdir(output_dir)
-    YOLO(str(output_dir / f"{model_id}.pt")).export(
+    YOLO(output_dir / f"{model_id}.pt").export(
         format="litert",
         quantize=QUANTIZE,
         nms=False,
