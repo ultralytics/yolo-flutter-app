@@ -113,7 +113,9 @@ def main() -> None:
             assets.append(target)
 
     if args.upload:
-        subprocess.run(["gh", "release", "upload", args.tag, "--repo", args.repo, *(str(path) for path in assets)], check=True)
+        subprocess.run(
+            ["gh", "release", "upload", args.tag, "--repo", args.repo, *(str(path) for path in assets)], check=True
+        )
 
     print(f"\nPrepared {len(assets)} QNN release assets in {release_dir}")
 
