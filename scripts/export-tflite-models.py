@@ -216,7 +216,7 @@ def run_export_worker(model_id: str, task: TaskSpec, output_dir: Path) -> Path:
         "--worker-imgsz",
         str(task.imgsz),
     ]
-    returncode = subprocess.run(command).returncode
+    returncode = subprocess.run(command, check=False).returncode
     exported = exported_tflite_path(output_dir, model_id)
     if exported is None:
         if returncode != 0:
