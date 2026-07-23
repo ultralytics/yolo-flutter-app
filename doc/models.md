@@ -192,7 +192,7 @@ Official release assets are generated from YOLO26 checkpoints with task/size loo
 | Runtime      | Existing export path                                                    | Release                                                                                          |
 | ------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | LiteRT w8a32 | [`scripts/export-tflite-models.py`](../scripts/export-tflite-models.py) | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
-| QNN          | Ultralytics `YOLO.export(format="qnn", imgsz=640, ...)`                 | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| QNN          | Ultralytics QNN export (`224` cls; `640` others)                       | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | Core ML int8 | `../yolo-ios-app/scripts/export-models.py`                              | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 `scripts/export-tflite-models.py` is the source of truth for Android export settings, verification, output names, and optional release upload. The Core ML counterpart in `../yolo-ios-app` owns the Apple asset export settings and packaging.
@@ -211,8 +211,8 @@ uv run python scripts/export-tflite-models.py --verify
 Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` to replace the existing `.tflite` assets. The
 script exports YOLO26 `n/s/m/l/x` models for every task in its `TASKS` registry, including depth. Output files are
 written under `exports/yolo26-tflite/release-assets/` and are ignored by Git. The `w8a32` format (int8 weights, FP32
-activations) is dynamic-range quantization, so no calibration data is required. Use Ultralytics QNN export on
-Windows x64 or Linux x86-64 to export the matching nano QNN assets for HTP v73 and v81.
+activations) is dynamic-range quantization, so no calibration data is required. Use Ultralytics QNN export on a
+supported QNN export host to export the matching nano QNN assets for HTP v73 and v81.
 
 Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. w8a32 assets are the official download artifacts (the smallest GPU-compatible litert format); the GPU delegate compiles the whole graph on supported devices and otherwise falls back to CPU. GPU coverage still depends on the device driver and graph, so confirm delegate placement on your target hardware (the GPU delegate runs the graph in FP16):
 
