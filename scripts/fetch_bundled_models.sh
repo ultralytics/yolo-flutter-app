@@ -39,8 +39,8 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 DEST="$REPO_ROOT/example/assets/models"
 
 # Release sources (must match YOLOModelResolver constants).
-ANDROID_BASE="https://github.com/ultralytics/yolo-flutter-app/releases/download/models-v1.0.0"
-IOS_BASE="https://github.com/ultralytics/yolo-ios-app/releases/download/models-v1.0.0"
+ANDROID_BASE="https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6"
+IOS_BASE="https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0"
 
 # The nano task family bundled by default.
 ANDROID_FILES=(
@@ -66,21 +66,18 @@ if [ "$PLATFORM" = "android" ]; then
   BASE="$ANDROID_BASE"
   FILES=("${ANDROID_FILES[@]}")
   OTHER_FILES=("${IOS_FILES[@]}")
-  OTHER_BASE="$IOS_BASE"
 else
   BASE="$IOS_BASE"
   FILES=("${IOS_FILES[@]}")
   OTHER_FILES=("${ANDROID_FILES[@]}")
-  OTHER_BASE="$ANDROID_BASE"
 fi
 
 mkdir -p "$DEST"
-CACHE_PREFIX="${BASE##*/}-"
 
 fetch() {
-  # Download $1 from $BASE into a release-versioned cache name, atomically.
+  # Download $1 from $BASE into $DEST, atomically, skipping if already present and non-empty.
   local name="$1"
-  local out="$DEST/$CACHE_PREFIX$name"
+  local out="$DEST/$name"
   if [ -s "$out" ]; then
     echo "fetch_bundled_models: have $name"
     return 0
@@ -106,7 +103,6 @@ fetch() {
 }
 
 for f in "${FILES[@]}"; do
-  rm -f "$DEST/$f"
   fetch "$f"
 done
 
@@ -115,7 +111,7 @@ done
 # loaded. Only the known auto-fetched filenames are removed (re-fetched on demand), so any custom or benchmark model a
 # developer dropped into assets/models/ is left untouched.
 for f in "${OTHER_FILES[@]}"; do
-  rm -f "$DEST/$f" "$DEST/${OTHER_BASE##*/}-$f"
+  rm -f "$DEST/$f"
 done
 
 # Always succeed: bundling is an optimization, never a hard build dependency.

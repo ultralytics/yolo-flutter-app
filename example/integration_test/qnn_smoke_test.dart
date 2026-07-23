@@ -40,7 +40,7 @@ void main() {
       await tester.runAsync(() async {
         final yolo = YOLO(
           modelPath:
-              'https://github.com/ultralytics/yolo-flutter-app/releases/download/models-v1.0.0/yolo26n_v73_qnn.onnx',
+              'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6/yolo26n_v73_qnn.onnx',
           task: YOLOTask.detect,
         );
         final loaded = await yolo.loadModel();

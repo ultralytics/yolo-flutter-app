@@ -31,7 +31,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = ROOT / "exports" / "yolo26-tflite"
 DEFAULT_REPO = "ultralytics/yolo-flutter-app"
-DEFAULT_TAG = "models-v1.0.0"
+DEFAULT_TAG = "v0.6.6"
 QUANTIZE = "w8a32"
 SIZES = ("n", "s", "m", "l", "x")
 
@@ -72,7 +72,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--upload",
         action="store_true",
-        help="Upload generated .tflite files to a new GitHub release.",
+        help="Upload generated .tflite files to the GitHub release with gh release upload --clobber.",
     )
     return parser.parse_args()
 
@@ -167,7 +167,7 @@ def upload_assets(repo: str, tag: str, assets: list[Path]) -> None:
     """Upload generated assets to a GitHub release."""
     if not assets:
         return
-    command = ["gh", "release", "upload", tag, "--repo", repo, *(str(path) for path in assets)]
+    command = ["gh", "release", "upload", tag, "--repo", repo, "--clobber", *(str(path) for path in assets)]
     subprocess.run(command, check=True)
 
 

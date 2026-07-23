@@ -33,7 +33,7 @@ Use a simple rule:
 ## 📊 Legacy Pre-Standard Backend Performance
 
 This table preserves a retired mixed-asset sweep. Semantic and OBB used 1024px QNN inputs, so these values are not
-benchmarks for the standardized `models-v1.0.0` assets. Current mobile models use 224px classification inputs and
+benchmarks for the standardized existing release assets. Current mobile models use 224px classification inputs and
 640px inputs for every other task.
 
 End-to-end `predict()` speeds for retired YOLO26n assets on a [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) phone powered by the
@@ -52,7 +52,7 @@ with the preprocess / inference / postprocess split beneath it.
 
 - **Speed** values are the full `predict()` time — preprocessing + inference + postprocessing, excluding annotation
   drawing — as the mean of 15 runs after 3 warmup runs on [bus.jpg](https://ultralytics.com/images/bus.jpg).
-  <br>Run the replacement `models-v1.0.0` QNN benchmark with `cd example && ENABLE_QNN=1 flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true --dart-define=RUN_QNN=true` (the example app's QNN runtime is opt-in). These historical mixed-size rows use retired assets and are not reproduced by the current-model harness.
+  <br>Run the replacement QNN benchmark with `cd example && ENABLE_QNN=1 flutter test integration_test/qnn_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true --dart-define=RUN_QNN=true` (the example app's QNN runtime is opt-in). These historical mixed-size rows use retired assets and are not reproduced by the current-model harness.
 - Benchmarks were run with the `ultralytics_yolo` Flutter plugin `0.6.8`; official Android LiteRT assets are hosted
   on the [yolo-flutter-app `v0.6.6` release](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6).
 - **CPU** and **GPU** run the legacy official INT8 TFLite assets (the prior `v0.3.5` default; the current default is
@@ -63,7 +63,7 @@ with the preprocess / inference / postprocess split beneath it.
   the latest preprocessing and segment/semantic postprocess cleanup, use the migration and LiteRT tables below.
 - <sup>1</sup> Semantic QNN uses the in-graph ArgMax class-map exports (ultralytics#24790), which replaced erratic
   123-1065 ms logits decoding with a stable ~49 ms; the GPU remains slightly faster for semantic at 1024px. The
-  official `v0.3.5` QNN release assets ship in this channel-last class-map format, exported with ultralytics
+  official `v0.6.6` QNN release assets ship in this channel-last class-map format, exported with ultralytics
   8.4.65.
 - **These are single-image burst latencies**, not sustained camera frame times: one photo through `predict()` on a
   thermally rested device. Real-time camera operation runs higher — camera frames are letterboxed to the model
@@ -100,7 +100,7 @@ not upload until the standalone asset loads through ONNX Runtime QNN on its targ
 valid depth map. The published asset can be downloaded and verified against the bytes validated on the device:
 
 ```bash
-gh release download v0.3.5 --repo ultralytics/yolo-flutter-app \
+gh release download v0.6.6 --repo ultralytics/yolo-flutter-app \
   --pattern yolo26n-depth_v81_qnn.onnx --dir verify
 printf '%s  %s\n' \
   7de30462abae8ab66ccad180eeced3176028456af04dd64be0e7b3d26d3e36bc \
@@ -155,7 +155,7 @@ on LiteRT 2.x alongside the new NCHW exports, confirming the runtime's layout-ad
 ### Xiaomi 17 pre-standard LiteRT and QNN
 
 Historical CPU, GPU, and NPU results from one Xiaomi 17 sweep. LiteRT uses the retired `v0.6.6` w8a32 assets;
-QNN uses the v81 W8A16 context binaries from `v0.3.5`, including the depth asset added on July 22, 2026. Semantic
+QNN uses the v81 W8A16 context binaries from `v0.6.6`, including depth. Semantic
 and OBB retain their historical 1024px QNN exports, so their QNN timings are not same-resolution LiteRT comparisons.
 
 | Model         | Task     | LiteRT / QNN<br><sup>(pixels)</sup> | CPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | GPU<br><sup>w8a32 LiteRT<br>(ms)</sup>   | NPU<br><sup>QNN W8A16<br>(ms)</sup>     |
@@ -235,14 +235,14 @@ classification and 640 × 640 for every other task.
 Reproduce the Android sweep with:
 
 ```bash
-cd example && flutter test integration_test/model_benchmark_test.dart -d DEVICE_ID --dart-define=RUN_BENCH=true
+cd example && flutter test integration_test/qnn_benchmark_test.dart -d DEVICE_ID --dart-define=RUN_BENCH=true
 ```
 
 Use a profile build on iOS so Swift postprocessing is optimized:
 
 ```bash
 cd example && flutter drive --profile -d DEVICE_ID --driver=test_driver/integration_test.dart \
-  --target=integration_test/model_benchmark_test.dart --dart-define=RUN_BENCH=true
+  --target=integration_test/qnn_benchmark_test.dart --dart-define=RUN_BENCH=true
 ```
 
 Generic output labels the requested automatic paths `gpu-preferred` on Android and `ane-preferred` on iOS because
@@ -596,7 +596,7 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 
 ### Current Shipped Configuration
 
-- Android official assets: YOLO26 w8a32 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/depth/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `models-v1.0.0`.
+- Android official assets: YOLO26 w8a32 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/depth/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `v0.6.6`.
 - Android export settings: `quantize=w8a32` (int8 weights, FP32 activations — dynamic-range, no calibration), `nms=False`, `end2end=False`; classify `imgsz=224`, all other tasks `imgsz=640`.
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
 - Example UI: controls expose all seven tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.

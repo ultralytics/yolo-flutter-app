@@ -8,14 +8,14 @@
 // default official w8a32 LiteRT assets (what the app ships); QNN rows use release context binaries.
 //
 // Run the shipped models on CPU and GPU-preferred (Android):
-//   flutter test integration_test/model_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true
+//   flutter test integration_test/qnn_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true
 // Run iOS in profile mode so Swift postprocessing timings are representative:
 //   flutter drive --profile -d <device> --driver=test_driver/integration_test.dart \
-//     --target=integration_test/model_benchmark_test.dart --dart-define=RUN_BENCH=true
+//     --target=integration_test/qnn_benchmark_test.dart --dart-define=RUN_BENCH=true
 // Verify native logs before recording a preferred path as actual GPU or Neural Engine execution.
 //
 // Include QNN validation and benchmark rows on a supported Snapdragon device:
-//   ENABLE_QNN=1 flutter test integration_test/model_benchmark_test.dart -d <device> \
+//   ENABLE_QNN=1 flutter test integration_test/qnn_benchmark_test.dart -d <device> \
 //     --dart-define=RUN_BENCH=true --dart-define=RUN_QNN=true
 // Add --dart-define=QNN_ARCH=81 for Snapdragon 8 Elite Gen 5; v73 is the default.
 
@@ -27,7 +27,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 const String _releaseBase =
-    'https://github.com/ultralytics/yolo-flutter-app/releases/download/models-v1.0.0';
+    'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6';
 const bool _runBench = bool.fromEnvironment('RUN_BENCH');
 const bool _runQnn = bool.fromEnvironment('RUN_QNN');
 const bool _runSoak = bool.fromEnvironment('RUN_SOAK');

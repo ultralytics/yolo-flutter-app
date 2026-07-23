@@ -1,8 +1,3 @@
-## 0.6.11
-
-- **Change**: Standardize every official mobile model asset at 224 × 224 for classification and 640 × 640 for all
-  other tasks across Android LiteRT, Android QNN, and iOS Core ML.
-
 ## 0.6.10
 
 - **Feature**: Add monocular depth estimation on Android and iOS, including official model-ID downloads, typed
