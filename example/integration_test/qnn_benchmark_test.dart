@@ -2,10 +2,9 @@
 
 // On-device CPU/accelerator benchmark harness with optional QNN validation (device + network).
 //
-// Validation: loads all seven v73 QNN context-binary task models and checks real outputs on
-// bus.jpg. Benchmark (enable with --dart-define=RUN_BENCH=true): times predict() per task per backend
-// using the native speed (pre + inference + post, no plotting). CPU and GPU-preferred rows use the
-// default official w8a32 LiteRT assets (what the app ships); QNN rows use release context binaries.
+// Runs every task and enabled backend in one installed app. QNN rows also validate real outputs on
+// bus.jpg. CPU and GPU-preferred rows use the default official w8a32 LiteRT assets (what the app
+// ships); QNN rows use release context binaries.
 //
 // Run the shipped models on CPU and GPU-preferred (Android):
 //   flutter test integration_test/qnn_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true
@@ -58,20 +57,7 @@ Future<Uint8List> _download(String url) async {
   }
 }
 
-Future<Map<String, dynamic>> _predictOnce(
-  String modelPath,
-  YOLOTask task,
-  Uint8List image, {
-  bool useGpu = true,
-}) async {
-  final yolo = YOLO(modelPath: modelPath, task: task, useGpu: useGpu);
-  expect(await yolo.loadModel(), isTrue, reason: '$modelPath should load');
-  final results = await yolo.predict(image);
-  await yolo.dispose();
-  return results;
-}
-
-Future<void> _bench(
+Future<Map<String, dynamic>> _bench(
   String label,
   String modelPath,
   YOLOTask task,
@@ -86,12 +72,13 @@ Future<void> _bench(
     await yolo.predict(image);
   }
   var pre = 0.0, infer = 0.0, post = 0.0, total = 0.0;
+  late Map<String, dynamic> result;
   for (var i = 0; i < runs; i++) {
-    final r = await yolo.predict(image);
-    pre += (r['preMs'] as num?)?.toDouble() ?? 0.0;
-    infer += (r['inferenceMs'] as num?)?.toDouble() ?? 0.0;
-    post += (r['postMs'] as num?)?.toDouble() ?? 0.0;
-    total += (r['speed'] as num?)?.toDouble() ?? 0.0;
+    result = await yolo.predict(image);
+    pre += (result['preMs'] as num?)?.toDouble() ?? 0.0;
+    infer += (result['inferenceMs'] as num?)?.toDouble() ?? 0.0;
+    post += (result['postMs'] as num?)?.toDouble() ?? 0.0;
+    total += (result['speed'] as num?)?.toDouble() ?? 0.0;
   }
   // ignore: avoid_print
   print(
@@ -100,56 +87,11 @@ Future<void> _bench(
     '${(total / runs).toStringAsFixed(1)}',
   );
   await yolo.dispose();
+  return result;
 }
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-
-  testWidgets(
-    'QNN models run on the NPU for all seven tasks',
-    (WidgetTester tester) async {
-      if (!_runQnn || !Platform.isAndroid) {
-        return;
-      }
-      await tester.runAsync(() async {
-        final image = await _download('https://ultralytics.com/images/bus.jpg');
-
-        for (final entry in _tasks.entries) {
-          final (id, task) = entry.value;
-          final results = await _predictOnce(
-            '$_releaseBase/${id}_v${_qnnArch}_qnn.onnx',
-            task,
-            image,
-          );
-          final detections =
-              (results['detections'] as List?)?.cast<Map>() ?? [];
-          final classes = detections.map((d) => d['className']).toSet();
-          // ignore: avoid_print
-          print(
-            'QNN ${entry.key}: ${detections.length} detections classes=$classes '
-            'keys=${results.keys.toList()} '
-            'pre=${results['preMs']} infer=${results['inferenceMs']} post=${results['postMs']}',
-          );
-          switch (entry.key) {
-            case 'detect' || 'segment':
-              expect(classes, containsAll(['bus', 'person']));
-            case 'pose':
-              expect(detections, isNotEmpty);
-            case 'classify':
-              expect(results.containsKey('detections'), isTrue);
-            case 'semantic':
-              expect(results.containsKey('semanticMask'), isTrue);
-            case 'depth':
-              expect(results.containsKey('depthMap'), isTrue);
-            case 'obb':
-              // DOTA aerial classes won't fire on bus.jpg; a clean run is the assertion
-              expect(results, isA<Map<String, dynamic>>());
-          }
-        }
-      });
-    },
-    timeout: const Timeout(Duration(minutes: 15)),
-  );
 
   testWidgets(
     'soak: sustained inference does not exhaust memory',
@@ -203,13 +145,32 @@ void main() {
           for (var i = 0; i < backends.length; i++) {
             final (backend, modelPath, useGpu) =
                 backends[(i + index) % backends.length];
-            await _bench(
+            final result = await _bench(
               '${entry.key}|$backend',
               modelPath,
               task,
               image,
               useGpu: useGpu,
             );
+            if (backend != 'qnn') continue;
+            final detections =
+                (result['detections'] as List?)?.cast<Map>() ?? [];
+            final classes = detections.map((d) => d['className']).toSet();
+            switch (entry.key) {
+              case 'detect' || 'segment':
+                expect(classes, containsAll(['bus', 'person']));
+              case 'pose':
+                expect(detections, isNotEmpty);
+              case 'classify':
+                expect(result.containsKey('detections'), isTrue);
+              case 'semantic':
+                expect(result.containsKey('semanticMask'), isTrue);
+              case 'depth':
+                expect(result.containsKey('depthMap'), isTrue);
+              case 'obb':
+                // DOTA aerial classes won't fire on bus.jpg; a clean run is the assertion.
+                expect(result, isA<Map<String, dynamic>>());
+            }
           }
         }
       });
