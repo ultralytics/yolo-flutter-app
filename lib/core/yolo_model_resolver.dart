@@ -41,12 +41,12 @@ class YOLOResolvedModel {
 class YOLOModelResolver {
   // Pinned release assets provide reproducible first-use downloads. Update these constants, docs, and URL tests together
   // when the official model asset set moves to a new release. The official Android assets are LiteRT `_w8a32.tflite`
-  // models on v0.6.6; the opt-in QNN `_qnn.onnx` assets are NOT regenerated and stay on v0.3.5 (referenced by explicit
-  // paths, not model-ID resolution).
+  // and opt-in QNN `_qnn.onnx` models on v0.6.6. QNN models use explicit paths rather than model-ID resolution.
   static const String _androidModelReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6';
   static const String _iosModelReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
+  static const String _officialModelCacheDirectory = 'mobile-standard-v1';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
 
   static const List<String> _yolo26Sizes = ['n', 's', 'm', 'l', 'x'];
@@ -193,7 +193,10 @@ class YOLOModelResolver {
   static Future<bool> isOfficialModelAvailableLocally(String modelId) async {
     final artifact = _officialModelForId(modelId);
     if (artifact == null) return false;
-    final directory = await getApplicationDocumentsDirectory();
+    final documents = await getApplicationDocumentsDirectory();
+    final directory = Directory(
+      '${documents.path}/$_officialModelCacheDirectory',
+    );
     if (_isIosLikePlatform) {
       if (await _hasValidMlPackage(
         Directory('${directory.path}/${artifact.id}.mlpackage'),
@@ -214,9 +217,14 @@ class YOLOModelResolver {
     _OfficialModelArtifact artifact,
   ) async {
     final filename = artifact.androidAssetName;
-    final directory = await getApplicationDocumentsDirectory();
+    final documents = await getApplicationDocumentsDirectory();
+    final directory = Directory(
+      '${documents.path}/$_officialModelCacheDirectory',
+    );
     final modelFile = File('${directory.path}/$filename');
     if (modelFile.existsSync()) return modelFile.path;
+    final legacyFile = File('${documents.path}/$filename');
+    if (legacyFile.existsSync()) legacyFile.deleteSync();
 
     if (await _copyFlutterAssetIfExists('assets/models/$filename', modelFile)) {
       return modelFile.path;
@@ -234,9 +242,18 @@ class YOLOModelResolver {
     _OfficialModelArtifact artifact,
   ) async {
     final archiveName = artifact.iosArchiveName;
-    final directory = await getApplicationDocumentsDirectory();
+    final documents = await getApplicationDocumentsDirectory();
+    final directory = Directory(
+      '${documents.path}/$_officialModelCacheDirectory',
+    );
     final modelDir = Directory('${directory.path}/${artifact.id}.mlpackage');
     if (await _hasValidMlPackage(modelDir)) return modelDir.path;
+    final legacyModelDir = Directory(
+      '${documents.path}/${artifact.id}.mlpackage',
+    );
+    if (legacyModelDir.existsSync()) {
+      legacyModelDir.deleteSync(recursive: true);
+    }
     if (modelDir.existsSync()) {
       modelDir.deleteSync(recursive: true);
     }
@@ -260,20 +277,39 @@ class YOLOModelResolver {
   static Future<String> _downloadRemoteModel(Uri uri) async {
     final documents = await getApplicationDocumentsDirectory();
     final fileName = uri.pathSegments.isEmpty ? 'model' : uri.pathSegments.last;
+    final url = uri.toString();
+    final isOfficialAsset =
+        url.startsWith('$_androidModelReleaseBaseUrl/') ||
+        url.startsWith('$_iosModelReleaseBaseUrl/');
+    final directory = isOfficialAsset
+        ? Directory('${documents.path}/$_officialModelCacheDirectory')
+        : documents;
 
     if (_isIosLikePlatform && fileName.endsWith('.mlpackage.zip')) {
       final modelName = fileName.replaceAll('.mlpackage.zip', '');
-      final targetDir = Directory('${documents.path}/$modelName.mlpackage');
+      final targetDir = Directory('${directory.path}/$modelName.mlpackage');
       if (await _hasValidMlPackage(targetDir)) return targetDir.path;
-      final archiveFile = File('${documents.path}/$fileName');
-      await _downloadToFile(uri.toString(), archiveFile, progressId: modelName);
+      if (isOfficialAsset) {
+        final legacyTargetDir = Directory(
+          '${documents.path}/$modelName.mlpackage',
+        );
+        if (legacyTargetDir.existsSync()) {
+          legacyTargetDir.deleteSync(recursive: true);
+        }
+      }
+      final archiveFile = File('${directory.path}/$fileName');
+      await _downloadToFile(url, archiveFile, progressId: modelName);
       return _extractMlPackageArchiveFile(archiveFile, fileName, targetDir);
     }
 
-    final file = File('${documents.path}/$fileName');
+    final file = File('${directory.path}/$fileName');
     if (file.existsSync()) return file.path;
+    if (isOfficialAsset) {
+      final legacyFile = File('${documents.path}/$fileName');
+      if (legacyFile.existsSync()) legacyFile.deleteSync();
+    }
     await _downloadToFile(
-      uri.toString(),
+      url,
       file,
       progressId: _normalizeOfficialModelId(fileName),
     );

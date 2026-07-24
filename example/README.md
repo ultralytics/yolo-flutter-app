@@ -28,7 +28,10 @@ flutter run
 Example assets come from the same canonical release locations as the package resolver. They autodownload on first use and cache in app storage:
 
 - Android LiteRT w8a32: [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6)
+- Android QNN: [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6)
 - iOS Core ML int8: [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)
+
+All models use fixed 640 × 640 inputs except classification models, which use 224 × 224.
 
 ## 🧠 Why The Example Is Small
 

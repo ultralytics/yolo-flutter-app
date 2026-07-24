@@ -150,6 +150,7 @@ Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator l
 
 ```python
 YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
+# Classification models use imgsz=224.
 ```
 
 On a Samsung Galaxy S26, the official `yolo26n_int8.tflite` compiled with the LiteRT OpenCL GPU delegate and ran around 15 FPS / 32 ms in the live camera example. Leave `useGpu: true` (the default), inspect LiteRT logs for `LITERT_CL` or CPU fallback, and benchmark the exact model you plan to ship.

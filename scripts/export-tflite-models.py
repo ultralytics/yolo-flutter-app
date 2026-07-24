@@ -77,8 +77,8 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def verify_tflite(path: Path) -> list[tuple[int, ...]]:
-    """Run one zero-input inference and return output tensor shapes."""
+def verify_tflite(path: Path, imgsz: int) -> list[tuple[int, ...]]:
+    """Verify the fixed input size, run one zero-input inference, and return output shapes."""
     # ai_edge_litert ships with ultralytics[export-litert]; TensorFlow is not installed in that environment
     from ai_edge_litert.interpreter import Interpreter
 
@@ -86,6 +86,8 @@ def verify_tflite(path: Path) -> list[tuple[int, ...]]:
     interpreter.allocate_tensors()
     input_detail = interpreter.get_input_details()[0]
     shape = input_detail["shape"]
+    if list(shape).count(imgsz) != 2:
+        raise ValueError(f"{path.name} input is {shape.tolist()}; expected two {imgsz}-pixel spatial dimensions")
     dtype = input_detail["dtype"]
     sample = np.zeros(shape, dtype=dtype)
     if not np.issubdtype(dtype, np.floating):
@@ -115,7 +117,8 @@ def task_names(task_name: str, suffix: str) -> dict[int, str]:
         from ultralytics import YOLO
 
         weights_name = f"yolo26m{suffix}.pt"
-        model = YOLO(str(ROOT / weights_name) if (ROOT / weights_name).exists() else weights_name)
+        weights = ROOT / weights_name
+        model = YOLO(weights if weights.exists() else weights_name)
         _TASK_NAMES_CACHE[task_name] = {int(k): str(v) for k, v in model.names.items()}
     return _TASK_NAMES_CACHE[task_name]
 
@@ -182,7 +185,7 @@ def export_one(model_id: str, imgsz: int, output_dir: Path) -> None:
     from ultralytics import YOLO
 
     os.chdir(output_dir)
-    YOLO(f"{model_id}.pt").export(
+    YOLO(output_dir / f"{model_id}.pt").export(
         format="litert",
         quantize=QUANTIZE,
         nms=False,
@@ -250,7 +253,7 @@ def main() -> None:
             target = release_dir / f"{model_id}_{QUANTIZE}.tflite"
             if target.exists() and not args.force:
                 ensure_tflite_metadata(target, model_id, task_name, task)
-                outputs = verify_tflite(target) if args.verify else []
+                outputs = verify_tflite(target, task.imgsz) if args.verify else []
                 suffix = f" outputs={outputs}" if outputs else ""
                 print(f"\nSkipping {model_id}; asset exists at {display_path(target)}{suffix}")
                 assets.append(target)
@@ -263,7 +266,7 @@ def main() -> None:
                 exported = run_export_worker(model_id, task, output_dir)
             shutil.copy2(exported, target)
             ensure_tflite_metadata(target, model_id, task_name, task)
-            outputs = verify_tflite(target) if args.verify else []
+            outputs = verify_tflite(target, task.imgsz) if args.verify else []
             suffix = f" outputs={outputs}" if outputs else ""
             print(f"asset {display_path(target)} size={target.stat().st_size / 1_000_000:.2f} MB{suffix}")
             assets.append(target)

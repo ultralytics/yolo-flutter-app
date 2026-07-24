@@ -1017,8 +1017,8 @@ void main() {
         'uses cached official models and rejects unsupported ones',
         () async {
           final cachedPath = _isAppleTestPlatform
-              ? '/tmp/yolo_test/yolo26n.mlpackage'
-              : '/tmp/yolo_test/yolo26n_w8a32.tflite';
+              ? '/tmp/yolo_test/mobile-standard-v1/yolo26n.mlpackage'
+              : '/tmp/yolo_test/mobile-standard-v1/yolo26n_w8a32.tflite';
           if (_isAppleTestPlatform) {
             Directory(cachedPath).createSync(recursive: true);
             File('$cachedPath/Manifest.json').writeAsStringSync('{}');
@@ -1080,7 +1080,10 @@ void main() {
           expect(assetPath, '/tmp/yolo_test/custom.mlpackage');
           expect(File('$assetPath/Manifest.json').existsSync(), isTrue);
         } else {
-          expect(officialPath, '/tmp/yolo_test/yolo26s_w8a32.tflite');
+          expect(
+            officialPath,
+            '/tmp/yolo_test/mobile-standard-v1/yolo26s_w8a32.tflite',
+          );
           expect(File(officialPath).readAsBytesSync(), bytes);
           expect(assetPath, '/tmp/yolo_test/custom.tflite');
           expect(File(assetPath).readAsBytesSync(), bytes);

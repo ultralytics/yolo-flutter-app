@@ -39,18 +39,25 @@ print(models);
 
 Official assets are maintained as GitHub release assets:
 
-| Platform | Runtime asset                 | Release                                                                                          |
-| -------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| Android  | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
-| iOS      | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+| Platform    | Runtime asset                 | Release                                                                                          |
+| ----------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| Android     | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| Android NPU | QNN `.onnx`                   | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| iOS         | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 URL patterns:
 
 - Android LiteRT: `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6/<model>_w8a32.tflite`
-- Android QNN (opt-in NPU): `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.3.5/<model>_v73_qnn.onnx` (Snapdragon 8 Gen 2+; `_v81` for 8 Elite Gen 5)
+- Android QNN (opt-in NPU): `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6/<model>_v73_qnn.onnx` (Snapdragon 8 Gen 2+; `_v81` for 8 Elite Gen 5)
 - iOS Core ML: `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.mlpackage.zip`
 
-The Flutter resolver uses the TFLite release for Android and the Core ML release for Apple platforms. QNN models are not auto-resolved by model ID — pass their URL or file path explicitly; any path ending in `_qnn.onnx` runs on the Hexagon NPU via the ONNX Runtime QNN Execution Provider (see the README's NPU section for the required Gradle opt-in). QNN assets are nano-only, exported with `ultralytics` 8.4.65 (channel-last input, in-graph ArgMax class maps for semantic). The native iOS app uses the same Core ML release through `RemoteModels.swift`. These release tags are intentionally pinned in code for reproducible first-use downloads; when official assets move to a new release, update the resolver constants, docs, and URL tests in the same PR.
+The Flutter resolver uses the LiteRT release for Android and the Core ML release for Apple platforms. QNN models are
+not auto-resolved by model ID — pass their URL or file path explicitly; any path ending in `_qnn.onnx` runs on the
+Hexagon NPU via the ONNX Runtime QNN Execution Provider (see the README's NPU section for the required Gradle opt-in).
+QNN assets are nano-only and use channel-last inputs with in-graph ArgMax class maps for semantic segmentation. The
+native iOS app uses the same Core ML release through `RemoteModels.swift`. These release tags are intentionally pinned
+in code for reproducible first-use downloads; when official assets move to a new release, update the resolver
+constants, docs, and URL tests in the same PR.
 
 Official export properties:
 
@@ -60,13 +67,17 @@ Official export properties:
 | Tasks          | detect, seg, sem, depth, cls, pose, obb       | detect, seg, sem, depth, cls, pose, obb |
 | Format         | `.tflite`                                     | `.mlpackage.zip`                        |
 | Quantization   | w8a32 LiteRT (int8 weights, FP32 activations) | int8 Core ML                            |
-| `imgsz`        | `224` cls; `640` others                       | `224` cls; `1024` OBB; `640` others     |
+| `imgsz`        | `224` cls; `640` others                       | `224` cls; `640` others                 |
 | `nms`          | `False`                                       | `False`                                 |
-| `end2end`      | `False`                                       | `True`                                  |
+| `end2end`      | `False`                                       | `False` cls/sem/depth; `True` others    |
 | Calibration    | None (w8a32 dynamic-range)                    | exporter default                        |
 | Postprocessing | Android native                                | Swift/Core ML                           |
 
-The TFLite export script passes both `nms=False` and `end2end=False`. `nms=False` excludes an exported NMS operator, while `end2end=False` disables the YOLO26 end-to-end head for the Android LiteRT conversion path. Core ML assets use `end2end=True`, which is the YOLO26 output contract consumed by the Swift decoders. The Android `w8a32` export is dynamic-range quantization (int8 weights, FP32 activations), so it needs no calibration data.
+The TFLite export script passes both `nms=False` and `end2end=False`. `nms=False` excludes an exported NMS operator,
+while `end2end=False` disables the YOLO26 end-to-end head for the Android LiteRT conversion path. The shipped Core ML
+assets use `end2end=True` for detect, segment, pose, and OBB and `end2end=False` for classification, semantic, and
+depth. The Android `w8a32` export is dynamic-range quantization (int8 weights, FP32 activations), so it needs no
+calibration data.
 
 If you want the simplest “start from the default Ultralytics model” entry point, prefer `YOLO.defaultOfficialModel()`.
 
@@ -178,9 +189,10 @@ For Flutter assets on iOS, use `.mlpackage.zip` so the package can unpack the mo
 
 Official release assets are generated from YOLO26 checkpoints with task/size loops so the app, package, and release assets use the same naming scheme.
 
-| Runtime      | Source script                                                           | Release                                                                                          |
+| Runtime      | Existing export path                                                    | Release                                                                                          |
 | ------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | LiteRT w8a32 | [`scripts/export-tflite-models.py`](../scripts/export-tflite-models.py) | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| QNN          | Ultralytics QNN export (`224` cls; `640` others)                        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | Core ML int8 | `../yolo-ios-app/scripts/export-models.py`                              | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 `scripts/export-tflite-models.py` is the source of truth for Android export settings, verification, output names, and optional release upload. The Core ML counterpart in `../yolo-ios-app` owns the Apple asset export settings and packaging.
@@ -196,7 +208,11 @@ uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.83"
 uv run python scripts/export-tflite-models.py --verify
 ```
 
-Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` to publish the generated `.tflite` assets. The script exports YOLO26 `n/s/m/l/x` models for every task in its `TASKS` registry, including depth. Output files are written under `exports/yolo26-tflite/release-assets/` and are ignored by Git. The `w8a32` format (int8 weights, FP32 activations) is dynamic-range quantization, so no calibration data is required.
+Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` to replace the existing `.tflite` assets. The
+script exports YOLO26 `n/s/m/l/x` models for every task in its `TASKS` registry, including depth. Output files are
+written under `exports/yolo26-tflite/release-assets/` and are ignored by Git. The `w8a32` format (int8 weights, FP32
+activations) is dynamic-range quantization, so no calibration data is required. Use Ultralytics QNN export on a
+supported QNN export host to export the matching nano QNN assets for HTP v73 and v81.
 
 Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. w8a32 assets are the official download artifacts (the smallest GPU-compatible litert format); the GPU delegate compiles the whole graph on supported devices and otherwise falls back to CPU. GPU coverage still depends on the device driver and graph, so confirm delegate placement on your target hardware (the GPU delegate runs the graph in FP16):
 
@@ -204,6 +220,7 @@ Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator la
 from ultralytics import YOLO
 
 YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
+# Classification models use imgsz=224.
 ```
 
 ## 🔄 Switching Models
