@@ -3,11 +3,13 @@
 # Ultralytics Actions https://github.com/ultralytics/actions
 # This workflow automatically publishes a new repository tag and release
 
-name: Tag and Release
+name: Tag 
 
 permissions:
-  contents: write
+  contents: read
+            write
   actions: read
+           write
 
 on:
   workflow_dispatch:
