@@ -163,11 +163,10 @@ Engine result; the Pixel and Galaxy tables above record GPU only because every m
 
 ## 🔭 Optimization Findings and Future Exploration
 
-The migration table above reflects the current Android LiteRT optimization pass on the Snapdragon 8 Elite Gen 5,
-including the segment/semantic postprocess work from #549 and #550. What was tried, what worked, and what's left on
-the table:
+The current benchmark tables include results from the Android LiteRT optimization pass, including the
+segment/semantic postprocess work from #549 and #550. What was tried, what worked, and what's left to explore:
 
-**Shipped (in the table):**
+**Shipped:**
 
 - **Flat-output decode** for detect/pose/OBB: postprocess dropped from ~12 ms to 0.7-2.4 ms on every backend by
   reading the model output directly (no reshape copies, no JNI nested-array marshaling, confidence checked before
