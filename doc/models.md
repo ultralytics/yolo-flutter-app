@@ -54,7 +54,8 @@ URL patterns:
 The Flutter resolver uses the LiteRT release for Android and the Core ML release for Apple platforms. QNN models are
 not auto-resolved by model ID — pass their URL or file path explicitly; any path ending in `_qnn.onnx` runs on the
 Hexagon NPU via the ONNX Runtime QNN Execution Provider (see the README's NPU section for the required Gradle opt-in).
-QNN assets are nano-only and use channel-last inputs with in-graph ArgMax class maps for semantic segmentation. The
+QNN assets cover all five model sizes and use channel-last inputs with in-graph ArgMax class maps for semantic
+segmentation. The
 native iOS app uses the same Core ML release through `RemoteModels.swift`. These release tags are intentionally pinned
 in code for reproducible first-use downloads; when official assets move to a new release, update the resolver
 constants, docs, and URL tests in the same PR.
@@ -212,7 +213,7 @@ Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` to replace the e
 script exports YOLO26 `n/s/m/l/x` models for every task in its `TASKS` registry, including depth. Output files are
 written under `exports/yolo26-tflite/release-assets/` and are ignored by Git. The `w8a32` format (int8 weights, FP32
 activations) is dynamic-range quantization, so no calibration data is required. Use Ultralytics QNN export on a
-supported QNN export host to export the matching nano QNN assets for HTP v73 and v81.
+supported QNN export host to export the matching QNN assets for HTP v73 and v81.
 
 Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. w8a32 assets are the official download artifacts (the smallest GPU-compatible litert format); the GPU delegate compiles the whole graph on supported devices and otherwise falls back to CPU. GPU coverage still depends on the device driver and graph, so confirm delegate placement on your target hardware (the GPU delegate runs the graph in FP16):
 
