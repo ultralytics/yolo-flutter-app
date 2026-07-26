@@ -16,8 +16,10 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry // Added for RequestPermissionsResultListener
 import java.io.ByteArrayOutputStream
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -31,6 +33,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
   private val TAG = "YOLOPlugin"
   private lateinit var viewFactory: YOLOPlatformViewFactory
   private lateinit var binaryMessenger: io.flutter.plugin.common.BinaryMessenger
+  private val pluginScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     // Store application context and binary messenger for later use
@@ -82,8 +85,11 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
 
   override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
     methodChannel.setMethodCallHandler(null)
-    // Clean up view factory resources
+    instanceChannels.values.forEach { it.setMethodCallHandler(null) }
+    instanceChannels.clear()
     viewFactory.dispose()
+    pluginScope.cancel()
+    YOLOInstanceManager.shared.disposeAll()
   }
   
   /**
@@ -495,7 +501,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           return
         }
 
-        GlobalScope.launch(Dispatchers.IO) {
+        pluginScope.launch(Dispatchers.IO) {
           try {
             YOLOInstanceManager.shared.removeInstance(instanceId)
             withContext(Dispatchers.Main) {
@@ -516,8 +522,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
         val args = call.arguments as? Map<*, *>
         val instanceId = args?.get("instanceId") as? String ?: "default"
 
-        // Run expensive work on the IO dispatcher via GlobalScope.launch(Dispatchers.IO)
-        GlobalScope.launch(Dispatchers.IO){
+        pluginScope.launch(Dispatchers.IO) {
 
           try {
             YOLOInstanceManager.shared.predictorInstance(instanceId);
