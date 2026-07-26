@@ -33,9 +33,11 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
   private val TAG = "YOLOPlugin"
   private lateinit var viewFactory: YOLOPlatformViewFactory
   private lateinit var binaryMessenger: io.flutter.plugin.common.BinaryMessenger
-  private val pluginScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+  private lateinit var pluginScope: CoroutineScope
+  private val instanceManager = YOLOInstanceManager()
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    pluginScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     // Store application context and binary messenger for later use
     applicationContext = flutterPluginBinding.applicationContext
     binaryMessenger = flutterPluginBinding.binaryMessenger
@@ -89,7 +91,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
     instanceChannels.clear()
     viewFactory.dispose()
     pluginScope.cancel()
-    YOLOInstanceManager.shared.disposeAll()
+    instanceManager.disposeAll()
   }
   
   /**
@@ -165,7 +167,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           val classifierOptions = classifierOptionsMap
 
           // Initialize YOLO with instance manager
-          YOLOInstanceManager.shared.loadModel(
+          instanceManager.loadModel(
             instanceId = instanceId,
             context = applicationContext,
             modelPath = modelPath,
@@ -209,7 +211,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
 
           try {
             // Run inference using instance manager
-            val yoloResult = YOLOInstanceManager.shared.predict(
+            val yoloResult = instanceManager.predict(
               instanceId = instanceId,
               bitmap = bitmap,
               confidenceThreshold = confidenceThreshold?.toFloat(),
@@ -252,7 +254,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             )
             
             // Get instance to check task type
-            val yolo = YOLOInstanceManager.shared.getInstance(instanceId)
+            val yolo = instanceManager.getInstance(instanceId)
             
             // Add task-specific data to response
             when (yolo?.task) {
@@ -503,7 +505,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
 
         pluginScope.launch(Dispatchers.IO) {
           try {
-            YOLOInstanceManager.shared.removeInstance(instanceId)
+            instanceManager.removeInstance(instanceId)
             withContext(Dispatchers.Main) {
               instanceChannels[instanceId]?.setMethodCallHandler(null)
               instanceChannels.remove(instanceId)
@@ -525,7 +527,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
         pluginScope.launch(Dispatchers.IO) {
 
           try {
-            YOLOInstanceManager.shared.predictorInstance(instanceId);
+            instanceManager.predictorInstance(instanceId);
             // Once the work is done, switch back to the main thread before calling result
             withContext(Dispatchers.Main) {
               result.success(null)

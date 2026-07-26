@@ -10,11 +10,8 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Manages multiple YOLO instances with unique IDs
  */
-object YOLOInstanceManager {
-    private const val TAG = "YOLOInstanceManager"
-
-    // Singleton access
-    val shared: YOLOInstanceManager = this
+class YOLOInstanceManager {
+    private val tag = "YOLOInstanceManager"
 
     // Store YOLO instances by their ID
     private val instances = ConcurrentHashMap<String, YOLO>()
@@ -67,7 +64,7 @@ object YOLOInstanceManager {
             }
             callback(Result.success(Unit))
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load model for instance $instanceId: ${e.message}")
+            Log.e(tag, "Failed to load model for instance $instanceId: ${e.message}")
             callback(Result.failure(e))
         }
     }
@@ -82,7 +79,7 @@ object YOLOInstanceManager {
         iouThreshold: Float? = null
     ): YOLOResult? {
         val yolo = instances[instanceId] ?: run {
-            Log.e(TAG, "No model loaded for instance: $instanceId")
+            Log.e(tag, "No model loaded for instance: $instanceId")
             return null
         }
 
@@ -94,7 +91,7 @@ object YOLOInstanceManager {
             try {
                 yolo.predict(bitmap)
             } catch (e: Exception) {
-                Log.e(TAG, "Prediction failed for instance $instanceId: ${e.message}")
+                Log.e(tag, "Prediction failed for instance $instanceId: ${e.message}")
                 null
             } finally {
                 yolo.setConfidenceThreshold(originalConfThreshold)
