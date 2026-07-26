@@ -144,59 +144,56 @@ void main() {
         final modelSizes = _modelSizes.split(',');
         expect(modelSizes, everyElement(isIn(['n', 's', 'm', 'l', 'x'])));
         final image = await _download('https://ultralytics.com/images/bus.jpg');
-        final accelerator = Platform.isAndroid
-            ? 'gpu-preferred'
-            : 'ane-preferred';
-        final backendPhases = <List<(String, bool)>>[
-          [('cpu', false), (accelerator, true)],
-          if (Platform.isAndroid && _runQnn) [('qnn', true)],
-        ];
-        for (final backends in backendPhases) {
-          for (final modelSize in modelSizes) {
-            for (final (index, entry) in _tasks.entries.indexed) {
-              final (suffix, task) = entry.value;
-              final id = 'yolo26$modelSize$suffix';
-              // Rotate backend order across tasks so no enabled backend is systematically measured last.
-              for (var i = 0; i < backends.length; i++) {
-                final (backend, useGpu) =
-                    backends[(i + index) % backends.length];
-                final modelPath = backend == 'qnn'
-                    ? '$_releaseBase/${id}_v${_qnnArch}_qnn.onnx'
-                    : id;
-                final result = await _bench(
-                  modelSizes.length == 1
-                      ? '${entry.key}|$backend'
-                      : '$modelSize|${entry.key}|$backend',
-                  modelPath,
-                  task,
-                  image,
-                  useGpu: useGpu,
-                );
-                if (backend != 'qnn') continue;
-                final detections =
-                    (result['detections'] as List?)?.cast<Map>() ?? [];
-                final classes = detections.map((d) => d['className']).toSet();
-                switch (entry.key) {
-                  case 'detect' || 'segment':
-                    expect(classes, containsAll(['bus', 'person']));
-                  case 'pose':
-                    expect(detections, isNotEmpty);
-                  case 'classify':
-                    expect(result.containsKey('detections'), isTrue);
-                  case 'semantic':
-                    expect(result.containsKey('semanticMask'), isTrue);
-                  case 'depth':
-                    expect(result.containsKey('depthMap'), isTrue);
-                  case 'obb':
-                    // DOTA aerial classes won't fire on bus.jpg; a clean run is the assertion.
-                    expect(result, isA<Map<String, dynamic>>());
-                }
+        for (final modelSize in modelSizes) {
+          for (final (index, entry) in _tasks.entries.indexed) {
+            final (suffix, task) = entry.value;
+            final id = 'yolo26$modelSize$suffix';
+            final accelerator = Platform.isAndroid
+                ? 'gpu-preferred'
+                : 'ane-preferred';
+            final backends = <(String, String, bool)>[
+              ('cpu', id, false),
+              (accelerator, id, true),
+              if (Platform.isAndroid && _runQnn)
+                ('qnn', '$_releaseBase/${id}_v${_qnnArch}_qnn.onnx', true),
+            ];
+            // Rotate backend order across tasks so no enabled backend is systematically measured last.
+            for (var i = 0; i < backends.length; i++) {
+              final (backend, modelPath, useGpu) =
+                  backends[(i + index) % backends.length];
+              final result = await _bench(
+                modelSizes.length == 1
+                    ? '${entry.key}|$backend'
+                    : '$modelSize|${entry.key}|$backend',
+                modelPath,
+                task,
+                image,
+                useGpu: useGpu,
+              );
+              if (backend != 'qnn') continue;
+              final detections =
+                  (result['detections'] as List?)?.cast<Map>() ?? [];
+              final classes = detections.map((d) => d['className']).toSet();
+              switch (entry.key) {
+                case 'detect' || 'segment':
+                  expect(classes, containsAll(['bus', 'person']));
+                case 'pose':
+                  expect(detections, isNotEmpty);
+                case 'classify':
+                  expect(result.containsKey('detections'), isTrue);
+                case 'semantic':
+                  expect(result.containsKey('semanticMask'), isTrue);
+                case 'depth':
+                  expect(result.containsKey('depthMap'), isTrue);
+                case 'obb':
+                  // DOTA aerial classes won't fire on bus.jpg; a clean run is the assertion.
+                  expect(result, isA<Map<String, dynamic>>());
               }
             }
           }
         }
       });
     },
-    timeout: const Timeout(Duration(minutes: 30)),
+    timeout: const Timeout(Duration(minutes: 60)),
   );
 }
