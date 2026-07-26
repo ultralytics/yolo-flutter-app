@@ -62,9 +62,10 @@ class YOLOInstanceManager {
         callback: (Result<Unit>) -> Unit
     ) {
         try {
-            instances.computeIfAbsent(instanceId) {
+            instances.putIfAbsent(
+                instanceId,
                 YOLO(context, modelPath, task, emptyList(), useGpu, numItemsThreshold, classifierOptions)
-            }
+            )
             callback(Result.success(Unit))
         } catch (e: Exception) {
             Log.e(tag, "Failed to load model for instance $instanceId: ${e.message}")
