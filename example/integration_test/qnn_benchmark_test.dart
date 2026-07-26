@@ -12,6 +12,7 @@
 //   flutter drive --profile -d <device> --driver=test_driver/integration_test.dart \
 //     --target=integration_test/qnn_benchmark_test.dart --dart-define=RUN_BENCH=true
 // Benchmark another official model size with --dart-define=MODEL_SIZE=s (n/s/m/l/x; defaults to n).
+// Benchmark several sizes in one install with --dart-define=MODEL_SIZES=s,m,l,x.
 // Verify native logs before recording a preferred path as actual GPU or Neural Engine execution.
 //
 // Include QNN validation and benchmark rows on a supported Snapdragon device:
@@ -35,6 +36,10 @@ const String _qnnArch = String.fromEnvironment('QNN_ARCH', defaultValue: '73');
 const String _modelSize = String.fromEnvironment(
   'MODEL_SIZE',
   defaultValue: 'n',
+);
+const String _modelSizes = String.fromEnvironment(
+  'MODEL_SIZES',
+  defaultValue: _modelSize,
 );
 
 const Map<String, (String, YOLOTask)> _tasks = {
@@ -136,49 +141,54 @@ void main() {
         return;
       }
       await tester.runAsync(() async {
-        expect(['n', 's', 'm', 'l', 'x'], contains(_modelSize));
+        final modelSizes = _modelSizes.split(',');
+        expect(modelSizes, everyElement(isIn(['n', 's', 'm', 'l', 'x'])));
         final image = await _download('https://ultralytics.com/images/bus.jpg');
-        for (final (index, entry) in _tasks.entries.indexed) {
-          final (suffix, task) = entry.value;
-          final id = 'yolo26$_modelSize$suffix';
-          final accelerator = Platform.isAndroid
-              ? 'gpu-preferred'
-              : 'ane-preferred';
-          final backends = <(String, String, bool)>[
-            ('cpu', id, false),
-            (accelerator, id, true),
-            if (Platform.isAndroid && _runQnn)
-              ('qnn', '$_releaseBase/${id}_v${_qnnArch}_qnn.onnx', true),
-          ];
-          // Rotate backend order across tasks so no enabled backend is systematically measured last.
-          for (var i = 0; i < backends.length; i++) {
-            final (backend, modelPath, useGpu) =
-                backends[(i + index) % backends.length];
-            final result = await _bench(
-              '${entry.key}|$backend',
-              modelPath,
-              task,
-              image,
-              useGpu: useGpu,
-            );
-            if (backend != 'qnn') continue;
-            final detections =
-                (result['detections'] as List?)?.cast<Map>() ?? [];
-            final classes = detections.map((d) => d['className']).toSet();
-            switch (entry.key) {
-              case 'detect' || 'segment':
-                expect(classes, containsAll(['bus', 'person']));
-              case 'pose':
-                expect(detections, isNotEmpty);
-              case 'classify':
-                expect(result.containsKey('detections'), isTrue);
-              case 'semantic':
-                expect(result.containsKey('semanticMask'), isTrue);
-              case 'depth':
-                expect(result.containsKey('depthMap'), isTrue);
-              case 'obb':
-                // DOTA aerial classes won't fire on bus.jpg; a clean run is the assertion.
-                expect(result, isA<Map<String, dynamic>>());
+        for (final modelSize in modelSizes) {
+          for (final (index, entry) in _tasks.entries.indexed) {
+            final (suffix, task) = entry.value;
+            final id = 'yolo26$modelSize$suffix';
+            final accelerator = Platform.isAndroid
+                ? 'gpu-preferred'
+                : 'ane-preferred';
+            final backends = <(String, String, bool)>[
+              ('cpu', id, false),
+              (accelerator, id, true),
+              if (Platform.isAndroid && _runQnn)
+                ('qnn', '$_releaseBase/${id}_v${_qnnArch}_qnn.onnx', true),
+            ];
+            // Rotate backend order across tasks so no enabled backend is systematically measured last.
+            for (var i = 0; i < backends.length; i++) {
+              final (backend, modelPath, useGpu) =
+                  backends[(i + index) % backends.length];
+              final result = await _bench(
+                modelSizes.length == 1
+                    ? '${entry.key}|$backend'
+                    : '$modelSize|${entry.key}|$backend',
+                modelPath,
+                task,
+                image,
+                useGpu: useGpu,
+              );
+              if (backend != 'qnn') continue;
+              final detections =
+                  (result['detections'] as List?)?.cast<Map>() ?? [];
+              final classes = detections.map((d) => d['className']).toSet();
+              switch (entry.key) {
+                case 'detect' || 'segment':
+                  expect(classes, containsAll(['bus', 'person']));
+                case 'pose':
+                  expect(detections, isNotEmpty);
+                case 'classify':
+                  expect(result.containsKey('detections'), isTrue);
+                case 'semantic':
+                  expect(result.containsKey('semanticMask'), isTrue);
+                case 'depth':
+                  expect(result.containsKey('depthMap'), isTrue);
+                case 'obb':
+                  // DOTA aerial classes won't fire on bus.jpg; a clean run is the assertion.
+                  expect(result, isA<Map<String, dynamic>>());
+              }
             }
           }
         }
