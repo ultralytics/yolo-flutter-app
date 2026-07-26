@@ -69,7 +69,8 @@ class YOLO(
         
         return result.copy(
             originalImage = bitmap,
-            annotatedImage = annotatedImage
+            annotatedImage = annotatedImage,
+            accelerator = predictor.accelerator
         )
     }
 
@@ -96,7 +97,8 @@ class YOLO(
         )
         return result.copy(
             originalImage = bitmap,
-            annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = true, rotationDegrees)
+            annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = true, rotationDegrees),
+            accelerator = predictor.accelerator
         )
     }
 
@@ -111,7 +113,8 @@ class YOLO(
             val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false, isLandscape = false)
             return result.copy(
                 originalImage = bitmap,
-                annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false)
+                annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false),
+                accelerator = predictor.accelerator
             )
         } catch (e: IOException) {
             Log.e(TAG, "Failed to load image from Uri: ${e.message}")
@@ -130,7 +133,8 @@ class YOLO(
             val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false, isLandscape = false)
             return@withContext result.copy(
                 originalImage = bitmap,
-                annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false)
+                annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false),
+                accelerator = predictor.accelerator
             )
         } catch (e: IOException) {
             Log.e(TAG, "Failed to load image from URL: ${e.message}")
