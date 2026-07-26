@@ -165,14 +165,7 @@ object YOLOInstanceManager {
      * Disposes a specific instance
      */
     fun dispose(instanceId: String) {
-        instances[instanceId]?.let { yolo ->
-            try {
-                // YOLO class doesn't have a close() method, just remove from map
-            } catch (e: Exception) {
-                Log.e(TAG, "Error disposing instance $instanceId: ${e.message}")
-            }
-        }
-        instances.remove(instanceId)
+        instances.remove(instanceId)?.close()
         loadingStates.remove(instanceId)
         instanceOptions.remove(instanceId)
     }

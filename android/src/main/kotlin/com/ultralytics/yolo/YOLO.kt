@@ -30,9 +30,10 @@ class YOLO(
 
     // The underlying predictor that will be initialized based on the task. LiteRT 2.x CompiledModel handles thread/
     // accelerator configuration internally (see LiteRtModel), so there are no per-interpreter options to pass.
-    private val predictor: BasePredictor by lazy {
+    private val predictorDelegate = lazy {
         Predictor.create(context, modelPath, task, labels, useGpu, numItemsThreshold, classifierOptions) as BasePredictor
     }
+    private val predictor by predictorDelegate
 
     /**
      * This method is used to directly instantiate the predictor to avoid lazy invocation.
@@ -706,5 +707,9 @@ class YOLO(
      */
     fun setNumItemsThreshold(max: Int) {
         predictor.setNumItemsThreshold(max)
+    }
+
+    fun close() {
+        if (predictorDelegate.isInitialized()) predictor.close()
     }
 }
