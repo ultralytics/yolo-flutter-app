@@ -144,8 +144,10 @@ void main() {
         final modelSizes = _modelSizes.split(',');
         expect(modelSizes, everyElement(isIn(['n', 's', 'm', 'l', 'x'])));
         final image = await _download('https://ultralytics.com/images/bus.jpg');
-        for (final modelSize in modelSizes) {
-          for (final (index, entry) in _tasks.entries.indexed) {
+        for (final (index, entry) in _tasks.entries.indexed) {
+          // Rotate model-size order across tasks so no size is systematically measured last.
+          for (var offset = 0; offset < modelSizes.length; offset++) {
+            final modelSize = modelSizes[(index + offset) % modelSizes.length];
             final (suffix, task) = entry.value;
             final id = 'yolo26$modelSize$suffix';
             final accelerator = Platform.isAndroid
