@@ -11,8 +11,7 @@
 // Run iOS in profile mode so Swift postprocessing timings are representative:
 //   flutter drive --profile -d <device> --driver=test_driver/integration_test.dart \
 //     --target=integration_test/qnn_benchmark_test.dart --dart-define=RUN_BENCH=true
-// Benchmark another official model size with --dart-define=MODEL_SIZE=s (n/s/m/l/x; defaults to n).
-// Benchmark several sizes in one install with --dart-define=MODEL_SIZES=s,m,l,x.
+// Select one or more official model sizes with --dart-define=MODEL_SIZES=s,m,l,x (defaults to n).
 // Verify native logs before recording a preferred path as actual GPU or Neural Engine execution.
 //
 // Include QNN validation and benchmark rows on a supported Snapdragon device:
@@ -33,13 +32,9 @@ const bool _runBench = bool.fromEnvironment('RUN_BENCH');
 const bool _runQnn = bool.fromEnvironment('RUN_QNN');
 const bool _runSoak = bool.fromEnvironment('RUN_SOAK');
 const String _qnnArch = String.fromEnvironment('QNN_ARCH', defaultValue: '73');
-const String _modelSize = String.fromEnvironment(
-  'MODEL_SIZE',
-  defaultValue: 'n',
-);
 const String _modelSizes = String.fromEnvironment(
   'MODEL_SIZES',
-  defaultValue: _modelSize,
+  defaultValue: 'n',
 );
 
 const Map<String, (String, YOLOTask)> _tasks = {
@@ -167,9 +162,7 @@ void main() {
               final (backend, modelPath, useGpu) =
                   backends[(i + index) % backends.length];
               final result = await _bench(
-                modelSizes.length == 1
-                    ? '${entry.key}|$backend'
-                    : '$modelSize|${entry.key}|$backend',
+                '$modelSize|${entry.key}|$backend',
                 modelPath,
                 task,
                 image,
