@@ -155,6 +155,7 @@ object YOLOInstanceManager {
         }
     }
 
+    @Synchronized
     fun predictorInstance(instanceId: String){
         instances[instanceId]?.let { yolo ->
             yolo.predictorInstance();
@@ -164,6 +165,7 @@ object YOLOInstanceManager {
     /**
      * Disposes a specific instance
      */
+    @Synchronized
     fun dispose(instanceId: String) {
         instances.remove(instanceId)?.close()
         loadingStates.remove(instanceId)
