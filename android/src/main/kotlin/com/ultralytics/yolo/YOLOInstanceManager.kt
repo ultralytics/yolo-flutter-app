@@ -19,9 +19,6 @@ object YOLOInstanceManager {
     // Store YOLO instances by their ID
     private val instances = ConcurrentHashMap<String, YOLO>()
 
-    // Store classifier options per instance
-    private val instanceOptions = ConcurrentHashMap<String, Map<String, Any>>()
-
     /**
      * Gets a YOLO instance by ID
      */
@@ -66,12 +63,10 @@ object YOLOInstanceManager {
     ) {
         try {
             instances.computeIfAbsent(instanceId) {
-                classifierOptions?.let { options -> instanceOptions[instanceId] = options }
                 YOLO(context, modelPath, task, emptyList(), useGpu, numItemsThreshold, classifierOptions)
             }
             callback(Result.success(Unit))
         } catch (e: Exception) {
-            instanceOptions.remove(instanceId)
             Log.e(TAG, "Failed to load model for instance $instanceId: ${e.message}")
             callback(Result.failure(e))
         }
@@ -122,7 +117,6 @@ object YOLOInstanceManager {
             yolo.close()
             null
         }
-        instanceOptions.remove(instanceId)
     }
 
     /**
@@ -152,13 +146,6 @@ object YOLOInstanceManager {
      */
     fun getActiveInstanceIds(): List<String> {
         return instances.keys.toList()
-    }
-
-    /**
-     * Gets classifier options for a specific instance
-     */
-    fun getClassifierOptions(instanceId: String): Map<String, Any>? {
-        return instanceOptions[instanceId]
     }
 
     /**
