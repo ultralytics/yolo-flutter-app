@@ -105,10 +105,12 @@ void main() {
         return;
       }
       await tester.runAsync(() async {
+        expect(['n', 's', 'm', 'l', 'x'], contains(_modelSize));
         final image = await _download('https://ultralytics.com/images/bus.jpg');
         // Worst case: semantic logits are the largest output tensors in the model zoo.
         final yolo = YOLO(
-          modelPath: '$_releaseBase/yolo26n-sem_v${_qnnArch}_qnn.onnx',
+          modelPath:
+              '$_releaseBase/yolo26$_modelSize-sem_v${_qnnArch}_qnn.onnx',
           task: YOLOTask.semantic,
         );
         expect(await yolo.loadModel(), isTrue);
