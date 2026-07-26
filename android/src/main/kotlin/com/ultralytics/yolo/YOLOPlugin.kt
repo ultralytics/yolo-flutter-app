@@ -126,9 +126,6 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             return
           }
           
-          // Create instance placeholder
-          YOLOInstanceManager.shared.createInstance(instanceId)
-          
           // Register a new channel for this instance
           val channelName = "yolo_single_image_channel_$instanceId"
           val instanceChannel = MethodChannel(binaryMessenger, channelName)
