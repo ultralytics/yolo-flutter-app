@@ -11,6 +11,7 @@
 // Run iOS in profile mode so Swift postprocessing timings are representative:
 //   flutter drive --profile -d <device> --driver=test_driver/integration_test.dart \
 //     --target=integration_test/qnn_benchmark_test.dart --dart-define=RUN_BENCH=true
+// Benchmark another official model size with --dart-define=MODEL_SIZE=s (n/s/m/l/x; defaults to n).
 // Verify native logs before recording a preferred path as actual GPU or Neural Engine execution.
 //
 // Include QNN validation and benchmark rows on a supported Snapdragon device:
@@ -31,15 +32,19 @@ const bool _runBench = bool.fromEnvironment('RUN_BENCH');
 const bool _runQnn = bool.fromEnvironment('RUN_QNN');
 const bool _runSoak = bool.fromEnvironment('RUN_SOAK');
 const String _qnnArch = String.fromEnvironment('QNN_ARCH', defaultValue: '73');
+const String _modelSize = String.fromEnvironment(
+  'MODEL_SIZE',
+  defaultValue: 'n',
+);
 
 const Map<String, (String, YOLOTask)> _tasks = {
-  'detect': ('yolo26n', YOLOTask.detect),
-  'segment': ('yolo26n-seg', YOLOTask.segment),
-  'semantic': ('yolo26n-sem', YOLOTask.semantic),
-  'depth': ('yolo26n-depth', YOLOTask.depth),
-  'classify': ('yolo26n-cls', YOLOTask.classify),
-  'pose': ('yolo26n-pose', YOLOTask.pose),
-  'obb': ('yolo26n-obb', YOLOTask.obb),
+  'detect': ('', YOLOTask.detect),
+  'segment': ('-seg', YOLOTask.segment),
+  'semantic': ('-sem', YOLOTask.semantic),
+  'depth': ('-depth', YOLOTask.depth),
+  'classify': ('-cls', YOLOTask.classify),
+  'pose': ('-pose', YOLOTask.pose),
+  'obb': ('-obb', YOLOTask.obb),
 };
 
 Future<Uint8List> _download(String url) async {
@@ -129,9 +134,11 @@ void main() {
         return;
       }
       await tester.runAsync(() async {
+        expect(['n', 's', 'm', 'l', 'x'], contains(_modelSize));
         final image = await _download('https://ultralytics.com/images/bus.jpg');
         for (final (index, entry) in _tasks.entries.indexed) {
-          final (id, task) = entry.value;
+          final (suffix, task) = entry.value;
+          final id = 'yolo26$_modelSize$suffix';
           final accelerator = Platform.isAndroid
               ? 'gpu-preferred'
               : 'ane-preferred';
