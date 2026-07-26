@@ -82,8 +82,8 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
 
   override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
     methodChannel.setMethodCallHandler(null)
+    // Clean up view factory resources
     viewFactory.dispose()
-    YOLOInstanceManager.shared.disposeAll()
   }
   
   /**

@@ -30,10 +30,25 @@ class YOLO(
 
     // The underlying predictor that will be initialized based on the task. LiteRT 2.x CompiledModel handles thread/
     // accelerator configuration internally (see LiteRtModel), so there are no per-interpreter options to pass.
-    private val predictorDelegate = lazy {
-        Predictor.create(context, modelPath, task, labels, useGpu, numItemsThreshold, classifierOptions) as BasePredictor
-    }
-    private val predictor by predictorDelegate
+    private val predictorLock = Any()
+    private var predictorValue: BasePredictor? = null
+    private var closed = false
+    private val predictor: BasePredictor
+        get() {
+            synchronized(predictorLock) {
+                predictorValue?.let { return it }
+                check(!closed) { "YOLO instance is closed" }
+            }
+            val created =
+                Predictor.create(context, modelPath, task, labels, useGpu, numItemsThreshold, classifierOptions) as BasePredictor
+            return synchronized(predictorLock) {
+                if (closed) {
+                    created.close()
+                    error("YOLO instance is closed")
+                }
+                predictorValue?.also { created.close() } ?: created.also { predictorValue = it }
+            }
+        }
 
     /**
      * This method is used to directly instantiate the predictor to avoid lazy invocation.
@@ -710,6 +725,10 @@ class YOLO(
     }
 
     fun close() {
-        if (predictorDelegate.isInitialized()) predictor.close()
+        val predictorToClose = synchronized(predictorLock) {
+            closed = true
+            predictorValue.also { predictorValue = null }
+        }
+        predictorToClose?.close()
     }
 }
