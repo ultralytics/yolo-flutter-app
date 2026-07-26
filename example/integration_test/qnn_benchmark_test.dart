@@ -135,6 +135,11 @@ void main() {
       }
       await tester.runAsync(() async {
         expect(['n', 's', 'm', 'l', 'x'], contains(_modelSize));
+        expect(
+          !_runQnn || _modelSize == 'n',
+          isTrue,
+          reason: 'QNN release assets are available only for the n model size',
+        );
         final image = await _download('https://ultralytics.com/images/bus.jpg');
         for (final (index, entry) in _tasks.entries.indexed) {
           final (suffix, task) = entry.value;
