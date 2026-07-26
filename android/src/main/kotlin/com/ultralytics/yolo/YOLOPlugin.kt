@@ -490,26 +490,28 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
       }
       
       "disposeInstance" -> {
-        try {
-          val args = call.arguments as? Map<*, *>
-          val instanceId = args?.get("instanceId") as? String
-          
-          if (instanceId == null) {
-            result.error("bad_args", "Missing instanceId", null)
-            return
+        val args = call.arguments as? Map<*, *>
+        val instanceId = args?.get("instanceId") as? String
+
+        if (instanceId == null) {
+          result.error("bad_args", "Missing instanceId", null)
+          return
+        }
+
+        GlobalScope.launch(Dispatchers.IO) {
+          try {
+            YOLOInstanceManager.shared.removeInstance(instanceId)
+            withContext(Dispatchers.Main) {
+              instanceChannels[instanceId]?.setMethodCallHandler(null)
+              instanceChannels.remove(instanceId)
+              result.success(null)
+            }
+          } catch (e: Exception) {
+            Log.e(TAG, "Error disposing instance", e)
+            withContext(Dispatchers.Main) {
+              result.error("dispose_error", "Failed to dispose instance: ${e.message}", null)
+            }
           }
-          
-          // Remove instance from manager
-          YOLOInstanceManager.shared.removeInstance(instanceId)
-          
-          // Remove the channel for this instance
-          instanceChannels[instanceId]?.setMethodCallHandler(null)
-          instanceChannels.remove(instanceId)
-          
-          result.success(null)
-        } catch (e: Exception) {
-          Log.e(TAG, "Error disposing instance", e)
-          result.error("dispose_error", "Failed to dispose instance: ${e.message}", null)
         }
       }
 

@@ -5,6 +5,7 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Manages multiple YOLO instances with unique IDs
@@ -16,13 +17,13 @@ object YOLOInstanceManager {
     val shared: YOLOInstanceManager = this
 
     // Store YOLO instances by their ID
-    private val instances = mutableMapOf<String, YOLO>()
+    private val instances = ConcurrentHashMap<String, YOLO>()
 
     // Store loading states to prevent multiple concurrent loads
-    private val loadingStates = mutableMapOf<String, Boolean>()
+    private val loadingStates = ConcurrentHashMap<String, Boolean>()
 
     // Store classifier options per instance
-    private val instanceOptions = mutableMapOf<String, Map<String, Any>>()
+    private val instanceOptions = ConcurrentHashMap<String, Map<String, Any>>()
 
     init {
         // Initialize default instance for backward compatibility
