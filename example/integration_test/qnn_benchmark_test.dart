@@ -85,12 +85,8 @@ Future<Map<String, dynamic>> _bench(
     post += (result['postMs'] as num?)?.toDouble() ?? 0.0;
     total += (result['speed'] as num?)?.toDouble() ?? 0.0;
   }
-  final runtime = Platform.isAndroid
-      ? result['accelerator'] as String?
-      : label.endsWith('|cpu')
-      ? 'CPU'
-      : 'CPU_AND_NE';
-  expect(runtime, isIn(['CPU', 'GPU', 'NPU', 'CPU_AND_NE']));
+  final runtime = result['accelerator'] as String?;
+  expect(runtime, isIn(['CPU', 'GPU', 'NPU', 'CPU_AND_NE', 'ALL']));
   // ignore: avoid_print
   print(
     'BENCH|$label|${(pre / runs).toStringAsFixed(1)}|'
