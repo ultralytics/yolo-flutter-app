@@ -503,20 +503,10 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           return
         }
 
-        pluginScope.launch(Dispatchers.IO) {
-          try {
-            instanceManager.removeInstance(instanceId)
-            withContext(Dispatchers.Main) {
-              instanceChannels[instanceId]?.setMethodCallHandler(null)
-              instanceChannels.remove(instanceId)
-              result.success(null)
-            }
-          } catch (e: Exception) {
-            Log.e(TAG, "Error disposing instance", e)
-            withContext(Dispatchers.Main) {
-              result.error("dispose_error", "Failed to dispose instance: ${e.message}", null)
-            }
-          }
+        instanceChannels.remove(instanceId)?.setMethodCallHandler(null)
+        pluginScope.launch {
+          instanceManager.dispose(instanceId)
+          result.success(null)
         }
       }
 

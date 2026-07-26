@@ -6,6 +6,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Manages multiple YOLO instances with unique IDs
@@ -109,26 +112,18 @@ class YOLOInstanceManager {
     /**
      * Disposes a specific instance
      */
-    fun dispose(instanceId: String) {
-        instances.computeIfPresent(instanceId) { _, yolo ->
-            yolo.close()
-            null
-        }
-    }
-
-    /**
-     * Removes an instance (alias for dispose for compatibility)
-     */
-    fun removeInstance(instanceId: String) {
-        dispose(instanceId)
+    suspend fun dispose(instanceId: String) {
+        val yolo = instances.remove(instanceId) ?: return
+        withContext(Dispatchers.IO) { yolo.close() }
     }
 
     /**
      * Disposes all instances
      */
     fun disposeAll() {
-        val allIds = instances.keys.toList()
-        allIds.forEach { dispose(it) }
+        val all = instances.values.toList()
+        instances.clear()
+        if (all.isNotEmpty()) Dispatchers.IO.dispatch(EmptyCoroutineContext) { all.forEach(YOLO::close) }
     }
 
     /**
