@@ -83,7 +83,7 @@ dependencies {
         implementation("com.microsoft.onnxruntime:onnxruntime-android-qnn:1.26.0")
         // Override the AAR's transitive QAIRT 2.42 with 2.46: 2.42's device table predates the
         // Snapdragon 8 Elite Gen 5 (SM8850), failing QnnDevice_create with INVALID_CONFIG.
-        implementation("com.qualcomm.qti:qnn-runtime:2.46.0")
+        implementation("com.qualcomm.qti:qnn-runtime:2.48.0")
     }
 }
 

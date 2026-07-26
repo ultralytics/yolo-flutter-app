@@ -160,7 +160,7 @@ android {
 
 dependencies {
     implementation 'com.microsoft.onnxruntime:onnxruntime-android-qnn:1.26.0'
-    implementation 'com.qualcomm.qti:qnn-runtime:2.46.0' // 比 AAR 自带的 QAIRT 更新；最新的 Snapdragon 芯片需要
+    implementation 'com.qualcomm.qti:qnn-runtime:2.48.0' // 比 AAR 自带的 QAIRT 更新；最新的 Snapdragon 芯片需要
 }
 ```
 
