@@ -119,6 +119,8 @@ abstract class BasePredictor : Predictor {
     override lateinit var labels: List<String>
     protected lateinit var rtModel: InferenceModel
     override lateinit var inputSize: Size
+    val accelerator: String
+        get() = rtModel.accelerator
     protected lateinit var modelInputSize: Pair<Int, Int>
     protected fun isInterpreterInitialized() = this::rtModel.isInitialized
 

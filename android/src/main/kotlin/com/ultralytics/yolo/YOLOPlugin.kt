@@ -16,8 +16,10 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry // Added for RequestPermissionsResultListener
 import java.io.ByteArrayOutputStream
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -31,8 +33,11 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
   private val TAG = "YOLOPlugin"
   private lateinit var viewFactory: YOLOPlatformViewFactory
   private lateinit var binaryMessenger: io.flutter.plugin.common.BinaryMessenger
+  private lateinit var pluginScope: CoroutineScope
+  private val instanceManager = YOLOInstanceManager()
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    pluginScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     // Store application context and binary messenger for later use
     applicationContext = flutterPluginBinding.applicationContext
     binaryMessenger = flutterPluginBinding.binaryMessenger
@@ -82,9 +87,11 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
 
   override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
     methodChannel.setMethodCallHandler(null)
-    // Clean up view factory resources
+    instanceChannels.values.forEach { it.setMethodCallHandler(null) }
+    instanceChannels.clear()
     viewFactory.dispose()
-    // YOLO class doesn't need explicit release
+    pluginScope.cancel()
+    instanceManager.disposeAll()
   }
   
   /**
@@ -127,9 +134,6 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             return
           }
           
-          // Create instance placeholder
-          YOLOInstanceManager.shared.createInstance(instanceId)
-          
           // Register a new channel for this instance
           val channelName = "yolo_single_image_channel_$instanceId"
           val instanceChannel = MethodChannel(binaryMessenger, channelName)
@@ -163,7 +167,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
           val classifierOptions = classifierOptionsMap
 
           // Initialize YOLO with instance manager
-          YOLOInstanceManager.shared.loadModel(
+          instanceManager.loadModel(
             instanceId = instanceId,
             context = applicationContext,
             modelPath = modelPath,
@@ -207,7 +211,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
 
           try {
             // Run inference using instance manager
-            val yoloResult = YOLOInstanceManager.shared.predict(
+            val yoloResult = instanceManager.predict(
               instanceId = instanceId,
               bitmap = bitmap,
               confidenceThreshold = confidenceThreshold?.toFloat(),
@@ -250,7 +254,7 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
             )
             
             // Get instance to check task type
-            val yolo = YOLOInstanceManager.shared.getInstance(instanceId)
+            val yolo = instanceManager.getInstance(instanceId)
             
             // Add task-specific data to response
             when (yolo?.task) {
@@ -491,26 +495,18 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
       }
       
       "disposeInstance" -> {
-        try {
-          val args = call.arguments as? Map<*, *>
-          val instanceId = args?.get("instanceId") as? String
-          
-          if (instanceId == null) {
-            result.error("bad_args", "Missing instanceId", null)
-            return
-          }
-          
-          // Remove instance from manager
-          YOLOInstanceManager.shared.removeInstance(instanceId)
-          
-          // Remove the channel for this instance
-          instanceChannels[instanceId]?.setMethodCallHandler(null)
-          instanceChannels.remove(instanceId)
-          
+        val args = call.arguments as? Map<*, *>
+        val instanceId = args?.get("instanceId") as? String
+
+        if (instanceId == null) {
+          result.error("bad_args", "Missing instanceId", null)
+          return
+        }
+
+        instanceChannels.remove(instanceId)?.setMethodCallHandler(null)
+        pluginScope.launch {
+          instanceManager.dispose(instanceId)
           result.success(null)
-        } catch (e: Exception) {
-          Log.e(TAG, "Error disposing instance", e)
-          result.error("dispose_error", "Failed to dispose instance: ${e.message}", null)
         }
       }
 
@@ -518,11 +514,10 @@ class YOLOPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler
         val args = call.arguments as? Map<*, *>
         val instanceId = args?.get("instanceId") as? String ?: "default"
 
-        // Run expensive work on the IO dispatcher via GlobalScope.launch(Dispatchers.IO)
-        GlobalScope.launch(Dispatchers.IO){
+        pluginScope.launch(Dispatchers.IO) {
 
           try {
-            YOLOInstanceManager.shared.predictorInstance(instanceId);
+            instanceManager.predictorInstance(instanceId);
             // Once the work is done, switch back to the main thread before calling result
             withContext(Dispatchers.Main) {
               result.success(null)

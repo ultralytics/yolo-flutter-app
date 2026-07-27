@@ -30,13 +30,20 @@ class YOLO(
 
     // The underlying predictor that will be initialized based on the task. LiteRT 2.x CompiledModel handles thread/
     // accelerator configuration internally (see LiteRtModel), so there are no per-interpreter options to pass.
-    private val predictor: Predictor by lazy {
-        Predictor.create(context, modelPath, task, labels, useGpu, numItemsThreshold, classifierOptions)
+    private var closed = false
+    private val predictorDelegate = lazy(LazyThreadSafetyMode.NONE) {
+        Predictor.create(context, modelPath, task, labels, useGpu, numItemsThreshold, classifierOptions) as BasePredictor
     }
+    private val predictor: BasePredictor
+        get() {
+            check(!closed) { "YOLO instance is closed" }
+            return predictorDelegate.value
+        }
 
     /**
      * This method is used to directly instantiate the predictor to avoid lazy invocation.
      */
+    @Synchronized
     fun predictorInstance(): Predictor {
         return predictor
     }
@@ -56,8 +63,9 @@ class YOLO(
      * @param bitmap The bitmap to process
      * @param rotateForCamera Whether to rotate the image for camera processing, defaults to false for standard bitmap inference
      */
+    @Synchronized
     fun predict(bitmap: Bitmap, rotateForCamera: Boolean = false): YOLOResult {
-        (predictor as? BasePredictor)?.includeRawMaskData = true
+        predictor.includeRawMaskData = true
         val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera, isLandscape = false)
         
         // Don't create annotated image for classification tasks to save memory and processing time
@@ -69,7 +77,8 @@ class YOLO(
         
         return result.copy(
             originalImage = bitmap,
-            annotatedImage = annotatedImage
+            annotatedImage = annotatedImage,
+            accelerator = predictor.accelerator
         )
     }
 
@@ -77,16 +86,15 @@ class YOLO(
      * Predict using an ImageProxy (from CameraX)
      * Always applies rotation for camera feed
      */
+    @Synchronized
     fun predict(imageProxy: ImageProxy): YOLOResult? {
         val bitmap = ImageUtils.toBitmap(imageProxy) ?: return null
         val rotationDegrees = imageProxy.imageInfo.rotationDegrees
         val isRotated = rotationDegrees % 180 != 0
         val orientedWidth = if (isRotated) imageProxy.height else imageProxy.width
         val orientedHeight = if (isRotated) imageProxy.width else imageProxy.height
-        (predictor as? BasePredictor)?.let { basePredictor ->
-            basePredictor.cameraRotationDegrees = rotationDegrees
-            basePredictor.includeRawMaskData = false
-        }
+        predictor.cameraRotationDegrees = rotationDegrees
+        predictor.includeRawMaskData = false
         val result = predictor.predict(
             bitmap,
             orientedWidth,
@@ -96,7 +104,8 @@ class YOLO(
         )
         return result.copy(
             originalImage = bitmap,
-            annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = true, rotationDegrees)
+            annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = true, rotationDegrees),
+            accelerator = predictor.accelerator
         )
     }
 
@@ -104,14 +113,16 @@ class YOLO(
      * Predict using a local image Uri
      * No rotation is applied (single image processing)
      */
+    @Synchronized
     fun predict(imageUri: Uri): YOLOResult? {
         try {
             val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, imageUri)
-            (predictor as? BasePredictor)?.includeRawMaskData = true
+            predictor.includeRawMaskData = true
             val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false, isLandscape = false)
             return result.copy(
                 originalImage = bitmap,
-                annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false)
+                annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false),
+                accelerator = predictor.accelerator
             )
         } catch (e: IOException) {
             Log.e(TAG, "Failed to load image from Uri: ${e.message}")
@@ -126,12 +137,15 @@ class YOLO(
     suspend fun predict(imageUrl: String): YOLOResult? = withContext(Dispatchers.IO) {
         try {
             val bitmap = BitmapFactory.decodeStream(URL(imageUrl).openStream())
-            (predictor as? BasePredictor)?.includeRawMaskData = true
-            val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false, isLandscape = false)
-            return@withContext result.copy(
-                originalImage = bitmap,
-                annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false)
-            )
+            return@withContext synchronized(this@YOLO) {
+                predictor.includeRawMaskData = true
+                val result = predictor.predict(bitmap, bitmap.width, bitmap.height, rotateForCamera = false, isLandscape = false)
+                result.copy(
+                    originalImage = bitmap,
+                    annotatedImage = drawAnnotations(bitmap, result, rotateForCamera = false),
+                    accelerator = predictor.accelerator
+                )
+            }
         } catch (e: IOException) {
             Log.e(TAG, "Failed to load image from URL: ${e.message}")
             return@withContext null
@@ -660,6 +674,7 @@ class YOLO(
     /**
      * Set confidence threshold for detection
      */
+    @Synchronized
     fun setConfidenceThreshold(threshold: Double) {
         predictor.setConfidenceThreshold(threshold)
     }
@@ -667,6 +682,7 @@ class YOLO(
     /**
      * Set confidence threshold for detection (Float overload)
      */
+    @Synchronized
     fun setConfidenceThreshold(threshold: Float) {
         predictor.setConfidenceThreshold(threshold.toDouble())
     }
@@ -674,6 +690,7 @@ class YOLO(
     /**
      * Get current confidence threshold
      */
+    @Synchronized
     fun getConfidenceThreshold(): Float {
         return predictor.getConfidenceThreshold().toFloat()
     }
@@ -681,6 +698,7 @@ class YOLO(
     /**
      * Set IoU threshold for non-maximum suppression
      */
+    @Synchronized
     fun setIouThreshold(threshold: Double) {
         predictor.setIouThreshold(threshold)
     }
@@ -688,6 +706,7 @@ class YOLO(
     /**
      * Set IoU threshold for non-maximum suppression (Float overload)
      */
+    @Synchronized
     fun setIouThreshold(threshold: Float) {
         predictor.setIouThreshold(threshold.toDouble())
     }
@@ -695,6 +714,7 @@ class YOLO(
     /**
      * Get current IoU threshold
      */
+    @Synchronized
     fun getIouThreshold(): Float {
         return predictor.getIouThreshold().toFloat()
     }
@@ -702,7 +722,14 @@ class YOLO(
     /**
      * Set maximum number of detections
      */
+    @Synchronized
     fun setNumItemsThreshold(max: Int) {
         predictor.setNumItemsThreshold(max)
+    }
+
+    @Synchronized
+    fun close() {
+        closed = true
+        if (predictorDelegate.isInitialized()) predictorDelegate.value.close()
     }
 }

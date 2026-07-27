@@ -5,37 +5,19 @@ package com.ultralytics.yolo
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Manages multiple YOLO instances with unique IDs
  */
-object YOLOInstanceManager {
-    private const val TAG = "YOLOInstanceManager"
-
-    // Singleton access
-    val shared: YOLOInstanceManager = this
+class YOLOInstanceManager {
+    private val tag = "YOLOInstanceManager"
 
     // Store YOLO instances by their ID
-    private val instances = mutableMapOf<String, YOLO>()
-
-    // Store loading states to prevent multiple concurrent loads
-    private val loadingStates = mutableMapOf<String, Boolean>()
-
-    // Store classifier options per instance
-    private val instanceOptions = mutableMapOf<String, Map<String, Any>>()
-
-    init {
-        // Initialize default instance for backward compatibility
-        createInstance("default")
-    }
-
-    /**
-     * Creates a new instance placeholder
-     */
-    fun createInstance(instanceId: String) {
-        // Just register the ID, actual YOLO instance created on load
-        loadingStates[instanceId] = false
-    }
+    private val instances = ConcurrentHashMap<String, YOLO>()
 
     /**
      * Gets a YOLO instance by ID
@@ -79,37 +61,14 @@ object YOLOInstanceManager {
         classifierOptions: Map<String, Any>?,
         callback: (Result<Unit>) -> Unit
     ) {
-        // Check if already loaded
-        if (instances[instanceId] != null) {
-            callback(Result.success(Unit))
-            return
-        }
-
-        // Check if loading
-        if (loadingStates[instanceId] == true) {
-            Log.w(TAG, "Model is already loading for instance: $instanceId")
-            callback(Result.failure(Exception("Model is already loading")))
-            return
-        }
-
-        // Start loading
-        loadingStates[instanceId] = true
-
         try {
-            // Store classifier options if provided
-            classifierOptions?.let { options ->
-                instanceOptions[instanceId] = options
-            }
-
-            // Create YOLO instance with the specified parameters
-            val yolo = YOLO(context, modelPath, task, emptyList(), useGpu, numItemsThreshold, classifierOptions)
-            instances[instanceId] = yolo
-            loadingStates[instanceId] = false
+            instances.putIfAbsent(
+                instanceId,
+                YOLO(context, modelPath, task, emptyList(), useGpu, numItemsThreshold, classifierOptions)
+            )
             callback(Result.success(Unit))
         } catch (e: Exception) {
-            loadingStates[instanceId] = false
-            instanceOptions.remove(instanceId) // Clean up options on failure
-            Log.e(TAG, "Failed to load model for instance $instanceId: ${e.message}")
+            Log.e(tag, "Failed to load model for instance $instanceId: ${e.message}")
             callback(Result.failure(e))
         }
     }
@@ -124,34 +83,24 @@ object YOLOInstanceManager {
         iouThreshold: Float? = null
     ): YOLOResult? {
         val yolo = instances[instanceId] ?: run {
-            Log.e(TAG, "No model loaded for instance: $instanceId")
+            Log.e(tag, "No model loaded for instance: $instanceId")
             return null
         }
 
-        // Store original thresholds
-        val originalConfThreshold = yolo.getConfidenceThreshold()
-        val originalIouThreshold = yolo.getIouThreshold()
-
-        // Apply custom thresholds if provided
-        confidenceThreshold?.let { yolo.setConfidenceThreshold(it) }
-        iouThreshold?.let { yolo.setIouThreshold(it) }
-
-        return try {
-            val result = yolo.predict(bitmap)
-
-            // Restore original thresholds
-            yolo.setConfidenceThreshold(originalConfThreshold)
-            yolo.setIouThreshold(originalIouThreshold)
-
-            result
-        } catch (e: Exception) {
-            Log.e(TAG, "Prediction failed for instance $instanceId: ${e.message}")
-
-            // Restore thresholds even on error
-            yolo.setConfidenceThreshold(originalConfThreshold)
-            yolo.setIouThreshold(originalIouThreshold)
-
-            null
+        return synchronized(yolo) {
+            val originalConfThreshold = yolo.getConfidenceThreshold()
+            val originalIouThreshold = yolo.getIouThreshold()
+            confidenceThreshold?.let { yolo.setConfidenceThreshold(it) }
+            iouThreshold?.let { yolo.setIouThreshold(it) }
+            try {
+                yolo.predict(bitmap)
+            } catch (e: Exception) {
+                Log.e(tag, "Prediction failed for instance $instanceId: ${e.message}")
+                null
+            } finally {
+                yolo.setConfidenceThreshold(originalConfThreshold)
+                yolo.setIouThreshold(originalIouThreshold)
+            }
         }
     }
 
@@ -164,32 +113,18 @@ object YOLOInstanceManager {
     /**
      * Disposes a specific instance
      */
-    fun dispose(instanceId: String) {
-        instances[instanceId]?.let { yolo ->
-            try {
-                // YOLO class doesn't have a close() method, just remove from map
-            } catch (e: Exception) {
-                Log.e(TAG, "Error disposing instance $instanceId: ${e.message}")
-            }
-        }
-        instances.remove(instanceId)
-        loadingStates.remove(instanceId)
-        instanceOptions.remove(instanceId)
-    }
-
-    /**
-     * Removes an instance (alias for dispose for compatibility)
-     */
-    fun removeInstance(instanceId: String) {
-        dispose(instanceId)
+    suspend fun dispose(instanceId: String) {
+        val yolo = instances.remove(instanceId) ?: return
+        withContext(Dispatchers.IO) { yolo.close() }
     }
 
     /**
      * Disposes all instances
      */
     fun disposeAll() {
-        val allIds = instances.keys.toList()
-        allIds.forEach { dispose(it) }
+        val all = instances.values.toList()
+        instances.clear()
+        if (all.isNotEmpty()) Dispatchers.IO.dispatch(EmptyCoroutineContext) { all.forEach(YOLO::close) }
     }
 
     /**
@@ -204,13 +139,6 @@ object YOLOInstanceManager {
      */
     fun getActiveInstanceIds(): List<String> {
         return instances.keys.toList()
-    }
-
-    /**
-     * Gets classifier options for a specific instance
-     */
-    fun getClassifierOptions(instanceId: String): Map<String, Any>? {
-        return instanceOptions[instanceId]
     }
 
     /**

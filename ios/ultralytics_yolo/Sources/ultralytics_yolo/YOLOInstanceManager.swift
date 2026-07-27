@@ -11,6 +11,7 @@ class YOLOInstanceManager {
   static let shared = YOLOInstanceManager()
 
   private var instances: [String: YOLO] = [:]
+  private var accelerators: [String: String] = [:]
   private var loadingStates: [String: Bool] = [:]
   private var loadCompletionHandlers: [String: [(Result<YOLO, Error>) -> Void]] = [:]
   // Strong reference held only while a model loads, keyed per-load ("<id>#<generation>") so a newer load for the
@@ -108,6 +109,15 @@ class YOLOInstanceManager {
       switch result {
       case .success(let loadedYolo):
         self.instances[instanceId] = loadedYolo
+        if useGpu {
+          if #available(iOS 16.0, *) {
+            self.accelerators[instanceId] = "CPU_AND_NE"
+          } else {
+            self.accelerators[instanceId] = "ALL"
+          }
+        } else {
+          self.accelerators[instanceId] = "CPU"
+        }
         completion(.success(()))
 
         // Call all coalesced handlers
@@ -168,7 +178,9 @@ class YOLOInstanceManager {
     yolo.setConfidenceThreshold(originalConfThreshold)
     yolo.setIouThreshold(originalIouThreshold)
 
-    return convertToFlutterFormat(result: result)
+    var resultDict = convertToFlutterFormat(result: result)
+    resultDict["accelerator"] = accelerators[instanceId]
+    return resultDict
   }
 
   /// Removes an instance
@@ -191,6 +203,7 @@ class YOLOInstanceManager {
       }
     }
     instances.removeValue(forKey: instanceId)
+    accelerators.removeValue(forKey: instanceId)
     loadingStates.removeValue(forKey: instanceId)
     loadCompletionHandlers.removeValue(forKey: instanceId)
   }
