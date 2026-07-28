@@ -47,6 +47,7 @@ void main() {
       final result = await inference.predict(imageBytes);
 
       expect(result, isA<Map<String, dynamic>>());
+      expect(result['detections'], [containsPair('className', 'person')]);
       YOLOTestHelpers.assertMethodCalled(
         log,
         'predictSingleImage',
