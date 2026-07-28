@@ -252,7 +252,10 @@ void main() {
         expect(results[task]!['detections'], isEmpty);
         expect(results[task]![payloadKey], responses[task]![payloadKey]);
       }
-      final invalidInference = YOLOInference(
+    });
+
+    test('predict rejects invalid platform results', () {
+      final inference = YOLOInference(
         channel: YOLOTestHelpers.setupMockChannel(
           customResponses: {'predictSingleImage': (_) => 'invalid'},
         ),
@@ -261,7 +264,7 @@ void main() {
       );
 
       expect(
-        () => invalidInference.predict(Uint8List.fromList([1])),
+        () => inference.predict(Uint8List.fromList([1])),
         throwsA(isA<InferenceException>()),
       );
     });
