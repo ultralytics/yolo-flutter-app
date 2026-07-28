@@ -1,3 +1,7 @@
+## 0.6.11
+
+- **Fix**: Require UltralyticsYOLO `>= 8.9.13` on iOS for safe float16 object detection decoding.
+
 ## 0.6.10
 
 - **Feature**: Add monocular depth estimation on Android and iOS, including official model-ID downloads, typed
