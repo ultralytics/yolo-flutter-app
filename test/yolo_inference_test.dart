@@ -183,8 +183,22 @@ void main() {
             ],
           ],
         },
-        YOLOTask.semantic: {},
-        YOLOTask.depth: {},
+        YOLOTask.semantic: {
+          'semanticMask': {
+            'classMap': [0, 1],
+            'width': 2,
+            'height': 1,
+          },
+        },
+        YOLOTask.depth: {
+          'depthMap': {
+            'values': [1.0, 2.0],
+            'width': 2,
+            'height': 1,
+            'minDepth': 1.0,
+            'maxDepth': 2.0,
+          },
+        },
         YOLOTask.classify: {
           'classification': {'class': 2, 'name': 'bird', 'confidence': 0.8},
         },
@@ -233,8 +247,11 @@ void main() {
         results[YOLOTask.pose]!['detections'],
         contains(containsPair('keypoints', [1.0, 2.0, 0.7, 3.0, 4.0, 0.6])),
       );
-      expect(results[YOLOTask.semantic]!['detections'], isEmpty);
-      expect(results[YOLOTask.depth]!['detections'], isEmpty);
+      for (final task in [YOLOTask.semantic, YOLOTask.depth]) {
+        final payloadKey = responses[task]!.keys.single;
+        expect(results[task]!['detections'], isEmpty);
+        expect(results[task]![payloadKey], responses[task]![payloadKey]);
+      }
       final invalidInference = YOLOInference(
         channel: YOLOTestHelpers.setupMockChannel(
           customResponses: {'predictSingleImage': (_) => 'invalid'},
