@@ -163,30 +163,89 @@ void main() {
       );
     });
 
-    test('predict processes different task types', () async {
-      final tasks = [
-        YOLOTask.detect,
-        YOLOTask.segment,
-        YOLOTask.semantic,
-        YOLOTask.depth,
-        YOLOTask.classify,
-        YOLOTask.pose,
-        YOLOTask.obb,
-      ];
+    test('predict processes task-specific results', () async {
+      final box = {
+        'class': 'person',
+        'confidence': 0.9,
+        'x1': 10.0,
+        'y1': 20.0,
+        'x2': 30.0,
+        'y2': 40.0,
+      };
+      final responses = <YOLOTask, Map<String, dynamic>>{
+        YOLOTask.segment: {
+          'boxes': [box],
+          'masks': [
+            [
+              [0.1, 0.2],
+              [0.3, 0.4],
+            ],
+          ],
+        },
+        YOLOTask.semantic: {},
+        YOLOTask.depth: {},
+        YOLOTask.classify: {
+          'classification': {'class': 2, 'name': 'bird', 'confidence': 0.8},
+        },
+        YOLOTask.pose: {
+          'boxes': [box],
+          'keypoints': [
+            {
+              'coordinates': [
+                {'x': 1, 'y': 2, 'confidence': 0.7},
+                {'x': 3, 'y': 4, 'confidence': 0.6},
+              ],
+            },
+          ],
+        },
+      };
+      final results = <YOLOTask, Map<String, dynamic>>{};
 
-      for (final task in tasks) {
+      for (final entry in responses.entries) {
         final inference = YOLOInference(
-          channel: mockChannel,
+          channel: YOLOTestHelpers.setupMockChannel(
+            customResponses: {'predictSingleImage': (_) => entry.value},
+          ),
           instanceId: 'test_instance',
-          task: task,
+          task: entry.key,
         );
 
-        final imageBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
-        final result = await inference.predict(imageBytes);
-
-        expect(result, isA<Map<String, dynamic>>());
-        expect(result.containsKey('detections'), isTrue);
+        results[entry.key] = await inference.predict(
+          Uint8List.fromList([1, 2, 3]),
+        );
       }
+
+      expect(
+        results[YOLOTask.segment]!['detections'],
+        contains(
+          containsPair('mask', [
+            [0.1, 0.2],
+            [0.3, 0.4],
+          ]),
+        ),
+      );
+      expect(
+        results[YOLOTask.classify]!['detections'],
+        contains(containsPair('className', 'bird')),
+      );
+      expect(
+        results[YOLOTask.pose]!['detections'],
+        contains(containsPair('keypoints', [1.0, 2.0, 0.7, 3.0, 4.0, 0.6])),
+      );
+      expect(results[YOLOTask.semantic]!['detections'], isEmpty);
+      expect(results[YOLOTask.depth]!['detections'], isEmpty);
+      final invalidInference = YOLOInference(
+        channel: YOLOTestHelpers.setupMockChannel(
+          customResponses: {'predictSingleImage': (_) => 'invalid'},
+        ),
+        instanceId: 'test_instance',
+        task: YOLOTask.detect,
+      );
+
+      expect(
+        () => invalidInference.predict(Uint8List.fromList([1])),
+        throwsA(isA<InferenceException>()),
+      );
     });
 
     test('predict with default instance ID', () async {
