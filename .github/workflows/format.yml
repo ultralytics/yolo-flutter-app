@@ -7,7 +7,7 @@ name: Ultralytics Actions
 
 on:
   issues:
-    types: [opened]
+    types: [opened, edited]
   pull_request:
     branches: [main]
     types: [opened, closed, synchronize, review_requested]
@@ -19,13 +19,8 @@ permissions:
 
 jobs:
   actions:
-    # Run with Python 3.13 as problems with docformatter on macOS-26 with Python 3.14
-    runs-on: macos-26
+    runs-on: macos-26 # Swift formatting requires macOS
     steps:
-      - name: Setup Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
       - name: Run Ultralytics Actions
         uses: ultralytics/actions@main
         with:
