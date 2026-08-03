@@ -108,6 +108,10 @@ class LiteRtModel(
                 modelCacheKey = "${java.io.File(modelPath).name}_${java.io.File(modelPath).length()}",
                 serializeProgramCache = true,
             )
+        } else {
+            options.cpuOptions = CompiledModel.CpuOptions(
+                numThreads = Runtime.getRuntime().availableProcessors().coerceIn(1, 4),
+            )
         }
         val compiled = CompiledModel.create(modelPath, options)
         val inputs: List<TensorBuffer>
