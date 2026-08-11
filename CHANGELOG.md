@@ -1,4 +1,4 @@
-## 0.6.12
+## 0.6.13
 
 - **Performance**: Use up to four processors available to the Android runtime for faster LiteRT CPU inference while
   preserving the reported limit on lower-core devices.
