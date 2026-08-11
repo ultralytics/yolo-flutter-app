@@ -1,3 +1,8 @@
+## 0.6.12
+
+- **Performance**: Use up to four processors available to the Android runtime for faster LiteRT CPU inference while
+  preserving the reported limit on lower-core devices.
+
 ## 0.6.11
 
 - **Fix**: Require UltralyticsYOLO `>= 8.9.13` on iOS for safe float16 object detection decoding.
