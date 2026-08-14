@@ -316,7 +316,7 @@ Ultralytics 提供两种许可证，以适应不同需求：
 
 如果你希望在 iOS 应用中直接使用 YOLO 模型与 Swift 集成，而不是通过 Flutter，可以查看我们的专用 iOS 仓库：
 
-👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - 一个原生 iOS 应用，演示如何使用 Ultralytics YOLO 模型进行实时目标检测、实例分割、语义分割、图像分类、姿态估计和旋转框检测。
+👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - 一个原生 iOS 应用，演示如何使用 Ultralytics YOLO 模型进行实时目标检测、实例分割、语义分割、深度估计、图像分类、姿态估计和旋转框检测。
 
 该仓库提供：
 

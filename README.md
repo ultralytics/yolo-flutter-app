@@ -327,7 +327,7 @@ Ultralytics offers two licensing options to accommodate diverse needs:
 
 If you're interested in using YOLO models directly in iOS applications with Swift (without Flutter), check out our dedicated iOS repository:
 
-👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - A native iOS application for real-time detection, instance segmentation, semantic segmentation, classification, pose estimation, and OBB detection with Ultralytics YOLO models.
+👉 **[Ultralytics YOLO iOS App](https://github.com/ultralytics/yolo-ios-app)** - A native iOS application for real-time detection, instance segmentation, semantic segmentation, depth estimation, classification, pose estimation, and OBB detection with Ultralytics YOLO models.
 
 This repository provides:
 
