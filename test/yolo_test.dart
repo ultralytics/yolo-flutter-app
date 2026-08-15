@@ -1062,9 +1062,8 @@ void main() {
             ? 'assets/custom.mlpackage.zip'
             : 'assets/custom.tflite';
         if (_isAppleTestPlatform) {
-          Directory(
-            '/tmp/yolo_test/yolo26s.mlpackage',
-          ).createSync(recursive: true);
+          Directory('/tmp/yolo_test/yolo26s.mlpackage')
+              .createSync(recursive: true);
         }
         _mockFlutterAssets({officialAsset: bytes, customAsset: bytes});
 
