@@ -127,71 +127,69 @@ void main() {
     });
   }, timeout: const Timeout(Duration(minutes: 30)));
 
-  testWidgets(
-    'benchmark CPU vs preferred platform accelerator and optional QNN',
-    (WidgetTester tester) async {
-      if (!_runBench || !(Platform.isAndroid || Platform.isIOS)) {
-        return;
-      }
-      await tester.runAsync(() async {
-        final modelSizes = _modelSizes.split(',');
-        expect(modelSizes, everyElement(isIn(['n', 's', 'm', 'l', 'x'])));
-        expect(
-          !_runQnn || modelSizes.every((size) => size == 'n'),
-          isTrue,
-          reason: 'QNN execution supports only the n model size',
-        );
-        final image = await _download('https://ultralytics.com/images/bus.jpg');
-        for (final (index, entry) in _tasks.entries.indexed) {
-          // Rotate model-size order across tasks so no size is systematically measured last.
-          for (var offset = 0; offset < modelSizes.length; offset++) {
-            final modelSize = modelSizes[(index + offset) % modelSizes.length];
-            final (suffix, task) = entry.value;
-            final id = 'yolo26$modelSize$suffix';
-            final accelerator = Platform.isAndroid
-                ? 'gpu-preferred'
-                : 'ane-preferred';
-            final backends = <(String, String, bool)>[
-              ('cpu', id, false),
-              (accelerator, id, true),
-              if (Platform.isAndroid && _runQnn)
-                ('qnn', '$_releaseBase/${id}_v${_qnnArch}_qnn.onnx', true),
-            ];
-            // Rotate backend order across tasks so no enabled backend is systematically measured last.
-            for (var i = 0; i < backends.length; i++) {
-              final (backend, modelPath, useGpu) =
-                  backends[(i + index) % backends.length];
-              final result = await _bench(
-                '$modelSize|${entry.key}|$backend',
-                modelPath,
-                task,
-                image,
-                useGpu: useGpu,
-              );
-              if (backend != 'qnn') continue;
-              final detections =
-                  (result['detections'] as List?)?.cast<Map>() ?? [];
-              final classes = detections.map((d) => d['className']).toSet();
-              switch (entry.key) {
-                case 'detect' || 'segment':
-                  expect(classes, containsAll(['bus', 'person']));
-                case 'pose':
-                  expect(detections, isNotEmpty);
-                case 'classify':
-                  expect(result.containsKey('detections'), isTrue);
-                case 'semantic':
-                  expect(result.containsKey('semanticMask'), isTrue);
-                case 'depth':
-                  expect(result.containsKey('depthMap'), isTrue);
-                case 'obb':
-                  // DOTA aerial classes won't fire on bus.jpg; a clean run is the assertion.
-                  expect(result, isA<Map<String, dynamic>>());
-              }
+  testWidgets('benchmark CPU vs preferred platform accelerator and optional QNN', (
+    WidgetTester tester,
+  ) async {
+    if (!_runBench || !(Platform.isAndroid || Platform.isIOS)) {
+      return;
+    }
+    await tester.runAsync(() async {
+      final modelSizes = _modelSizes.split(',');
+      expect(modelSizes, everyElement(isIn(['n', 's', 'm', 'l', 'x'])));
+      expect(
+        !_runQnn || modelSizes.every((size) => size == 'n'),
+        isTrue,
+        reason: 'QNN execution supports only the n model size',
+      );
+      final image = await _download('https://ultralytics.com/images/bus.jpg');
+      for (final (index, entry) in _tasks.entries.indexed) {
+        // Rotate model-size order across tasks so no size is systematically measured last.
+        for (var offset = 0; offset < modelSizes.length; offset++) {
+          final modelSize = modelSizes[(index + offset) % modelSizes.length];
+          final (suffix, task) = entry.value;
+          final id = 'yolo26$modelSize$suffix';
+          final accelerator = Platform.isAndroid
+              ? 'gpu-preferred'
+              : 'ane-preferred';
+          final backends = <(String, String, bool)>[
+            ('cpu', id, false),
+            (accelerator, id, true),
+            if (Platform.isAndroid && _runQnn)
+              ('qnn', '$_releaseBase/${id}_v${_qnnArch}_qnn.onnx', true),
+          ];
+          // Rotate backend order across tasks so no enabled backend is systematically measured last.
+          for (var i = 0; i < backends.length; i++) {
+            final (backend, modelPath, useGpu) =
+                backends[(i + index) % backends.length];
+            final result = await _bench(
+              '$modelSize|${entry.key}|$backend',
+              modelPath,
+              task,
+              image,
+              useGpu: useGpu,
+            );
+            if (backend != 'qnn') continue;
+            final detections =
+                (result['detections'] as List?)?.cast<Map>() ?? [];
+            final classes = detections.map((d) => d['className']).toSet();
+            switch (entry.key) {
+              case 'detect' || 'segment':
+                expect(classes, containsAll(['bus', 'person']));
+              case 'pose':
+                expect(detections, isNotEmpty);
+              case 'classify':
+                expect(result.containsKey('detections'), isTrue);
+              case 'semantic':
+                expect(result.containsKey('semanticMask'), isTrue);
+              case 'depth':
+                expect(result.containsKey('depthMap'), isTrue);
+              case 'obb':
+                // DOTA aerial classes won't fire on bus.jpg; a clean run is the assertion.
+                expect(result, isA<Map<String, dynamic>>());
             }
           }
         }
-      });
-    },
-    timeout: const Timeout(Duration(minutes: 60)),
-  );
+      }
+    });
+  }, timeout: const Timeout(Duration(minutes: 60)));
 }
