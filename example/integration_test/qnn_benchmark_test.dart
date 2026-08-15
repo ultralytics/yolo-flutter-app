@@ -100,34 +100,32 @@ Future<Map<String, dynamic>> _bench(
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets(
-    'soak: sustained inference does not exhaust memory',
-    (WidgetTester tester) async {
-      if (!_runSoak || !Platform.isAndroid) {
-        return;
-      }
-      await tester.runAsync(() async {
-        final image = await _download('https://ultralytics.com/images/bus.jpg');
-        // Worst case: semantic logits are the largest output tensors in the model zoo.
-        final yolo = YOLO(
-          modelPath: '$_releaseBase/yolo26n-sem_v${_qnnArch}_qnn.onnx',
-          task: YOLOTask.semantic,
-        );
-        expect(await yolo.loadModel(), isTrue);
-        for (var i = 0; i < 150; i++) {
-          await yolo.predict(image);
-          if (i % 25 == 0) {
-            // ignore: avoid_print
-            print('SOAK|$i');
-          }
+  testWidgets('soak: sustained inference does not exhaust memory', (
+    WidgetTester tester,
+  ) async {
+    if (!_runSoak || !Platform.isAndroid) {
+      return;
+    }
+    await tester.runAsync(() async {
+      final image = await _download('https://ultralytics.com/images/bus.jpg');
+      // Worst case: semantic logits are the largest output tensors in the model zoo.
+      final yolo = YOLO(
+        modelPath: '$_releaseBase/yolo26n-sem_v${_qnnArch}_qnn.onnx',
+        task: YOLOTask.semantic,
+      );
+      expect(await yolo.loadModel(), isTrue);
+      for (var i = 0; i < 150; i++) {
+        await yolo.predict(image);
+        if (i % 25 == 0) {
+          // ignore: avoid_print
+          print('SOAK|$i');
         }
-        await yolo.dispose();
-        // ignore: avoid_print
-        print('SOAK|done');
-      });
-    },
-    timeout: const Timeout(Duration(minutes: 30)),
-  );
+      }
+      await yolo.dispose();
+      // ignore: avoid_print
+      print('SOAK|done');
+    });
+  }, timeout: const Timeout(Duration(minutes: 30)));
 
   testWidgets(
     'benchmark CPU vs preferred platform accelerator and optional QNN',

@@ -51,10 +51,9 @@ body:
       description: Share the platform and version information relevant to your report.
       placeholder: |
         Please include:
-        - OS (e.g., Ubuntu 20.04, macOS 13.5, Windows 11)
-        - Language or framework version (Python, Swift, Flutter, etc.)
-        - Package or app version
-        - Hardware (e.g., CPU, GPU model, device model)
+        - Device and OS (e.g., Pixel 8 / Android 15, iPhone 15 / iOS 18.2)
+        - Flutter and Dart versions (e.g., flutter --version)
+        - ultralytics_yolo plugin version (e.g., from pubspec.lock)
         - Any other environment details
     validations:
       required: true
@@ -65,8 +64,8 @@ body:
       description: >
         Provide the smallest possible snippet, command, or steps required to reproduce the issue. This helps us pinpoint problems faster.
       placeholder: |
-        ```python
-        # Code or commands to reproduce your issue here
+        ```dart
+        // Code or commands to reproduce your issue here
         ```
     validations:
       required: false
