@@ -4,6 +4,7 @@
 
 import 'dart:typed_data';
 import 'dart:ui';
+
 import '../utils/map_converter.dart';
 
 /// Represents a detection result from YOLO models.

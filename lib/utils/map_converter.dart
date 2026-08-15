@@ -2,6 +2,7 @@
 
 import 'dart:typed_data';
 import 'dart:ui';
+
 import '../models/yolo_result.dart';
 
 /// Helpers for adapting loosely-typed platform-channel data

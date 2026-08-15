@@ -1,6 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:async';
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons, CupertinoColors;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';

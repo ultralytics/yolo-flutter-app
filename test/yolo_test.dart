@@ -17,6 +17,7 @@ import 'package:ultralytics_yolo/utils/error_handler.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:flutter/services.dart';
+
 import 'utils/test_helpers.dart';
 
 class MockYOLOPlatform with MockPlatformInterfaceMixin implements YOLOPlatform {
@@ -1061,9 +1062,8 @@ void main() {
             ? 'assets/custom.mlpackage.zip'
             : 'assets/custom.tflite';
         if (_isAppleTestPlatform) {
-          Directory(
-            '/tmp/yolo_test/yolo26s.mlpackage',
-          ).createSync(recursive: true);
+          Directory('/tmp/yolo_test/yolo26s.mlpackage')
+              .createSync(recursive: true);
         }
         _mockFlutterAssets({officialAsset: bytes, customAsset: bytes});
 

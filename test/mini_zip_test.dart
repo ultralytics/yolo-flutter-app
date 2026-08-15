@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/utils/mini_zip.dart';
+
 import 'utils/test_helpers.dart';
 
 void main() {
