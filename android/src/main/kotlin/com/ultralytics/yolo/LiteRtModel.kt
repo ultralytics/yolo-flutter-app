@@ -20,7 +20,8 @@ import kotlin.math.sqrt
  * accelerator, so a model either runs fully on GPU or fully on CPU - no per-op fragmentation.
  *
  * Input tensor name is `images` for legacy onnx2tf exports and `args_0` for litert-torch (`format=litert`) exports;
- * outputs are `output_0`, `output_1`, ... for litert-torch and `Identity`, `Identity_1`, ... for legacy onnx2tf.
+ * outputs can be `output_0`, `output_1`, ... for litert-torch, `output0`, `output1`, ... for current Ultralytics
+ * TFLite exports, or `Identity`, `Identity_1`, ... for legacy onnx2tf.
  *
  * Input layout is detected from the input tensor shape: legacy onnx2tf exports are NHWC `[1,H,W,3]`, while
  * `format=litert` (litert-torch) exports are NCHW `[1,3,H,W]`. [inputDims] is always reported in the NHWC convention so
@@ -166,12 +167,12 @@ class LiteRtModel(
                 compiled.run(inputs, outputs)
             }
             val outputTensorTypes = List(outputs.size) { i ->
-                // litert-torch (format=litert) names signature outputs output_0, output_1, …; legacy onnx2tf exports
-                // name them Identity, Identity_1, …. Try both so the output shape resolves for either export: a missed
-                // shape leaves outputDims empty, which breaks the segment/semantic/pose predictors that read it (the
+                // litert-torch (format=litert) names signature outputs output_0, output_1, …; current TFLite exports
+                // use output0, output1, …; legacy onnx2tf uses Identity, Identity_1, …. Try every supported spelling;
+                // a miss leaves outputDims empty, which breaks the segment/semantic/pose predictors that read it (the
                 // detect/obb/classify heads fall back to the element count, so they survive a miss).
                 val legacyName = if (i == 0) "Identity" else "Identity_$i"
-                sequenceOf("output_$i", legacyName).firstNotNullOfOrNull { name ->
+                sequenceOf("output_$i", "output$i", legacyName).firstNotNullOfOrNull { name ->
                     try {
                         compiled.getOutputTensorType(outputName = name)
                     } catch (e: Throwable) {
