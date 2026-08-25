@@ -10,6 +10,7 @@ import 'package:ultralytics_yolo/models/yolo_result.dart';
 import 'package:ultralytics_yolo/yolo_performance_metrics.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 import 'package:flutter/foundation.dart';
+
 import 'utils/test_helpers.dart';
 
 void main() {
