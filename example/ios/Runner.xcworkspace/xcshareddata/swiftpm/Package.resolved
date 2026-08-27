@@ -5,8 +5,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ultralytics/yolo-ios-app.git",
       "state" : {
-        "revision" : "6931313992cf3bb97f2f1159cf26c834d4714c7b",
-        "version" : "8.9.13"
+        "revision" : "6df594843983c38083ef7db014a0fcd756039d2f",
+        "version" : "8.9.14"
       }
     }
   ],
