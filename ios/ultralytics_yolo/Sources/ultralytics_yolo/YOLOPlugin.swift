@@ -20,7 +20,7 @@ final class SendableBox<T>: @unchecked Sendable {
 // the FlutterPlugin protocol predates Swift concurrency and isn't `@MainActor`-isolated. Without this annotation
 // Xcode 26.5 prints "Conformance crosses into main actor-isolated code and can cause data races" for our
 // `@MainActor` class. `@unchecked Sendable` lets the inspectModel background dispatch capture `self`; the methods
-// it invokes (`checkModelExists`, `inspectModel`, `parseLabels`) are `nonisolated` and read no mutable state.
+// it invokes (`checkModelExists`, `inspectModel`) are `nonisolated` and read no mutable state.
 @MainActor
 public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @unchecked Sendable {
   // Static channel-registry and registrar storage live on the main actor with the class. `@MainActor` here is
@@ -159,8 +159,8 @@ public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @uncheck
   }
 
   // `nonisolated static` so we can dispatch the heavy MLModel.compileModel + load off the main thread without
-  // crossing `@MainActor` or capturing `self`. `checkModelExists` and `parseLabels` below are pure (no main-actor
-  // state), so calling them from a background queue is safe.
+  // crossing `@MainActor` or capturing `self`. `checkModelExists` is pure (no main-actor
+  // state), so calling it from a background queue is safe.
   nonisolated static func inspectModel(modelPath: String) throws -> [String: Any] {
     let checkResult = checkModelExists(modelPath: modelPath)
     let resolvedPath = (checkResult["absolutePath"] as? String) ?? modelPath
@@ -178,7 +178,7 @@ public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @uncheck
     let creatorDefined =
       model.modelDescription.metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String]
       ?? [:]
-    let labels = parseLabels(from: creatorDefined)
+    let labels = BasePredictor.parseLabels(from: creatorDefined)
 
     var result: [String: Any] = [
       "path": resolvedPath,
@@ -206,55 +206,6 @@ public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @uncheck
     }
 
     return result
-  }
-
-  nonisolated private static func parseLabels(from userDefined: [String: String]) -> [String] {
-    if let labelsData = userDefined["classes"] {
-      return
-        labelsData
-        .components(separatedBy: ",")
-        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-    }
-
-    if let labelsData = userDefined["names"] {
-      let cleanedInput =
-        labelsData
-        .replacingOccurrences(of: "{", with: "")
-        .replacingOccurrences(of: "}", with: "")
-
-      let parsedPairs = cleanedInput.components(separatedBy: ",").compactMap {
-        pair -> (Int?, String)? in
-        let components = pair.split(
-          separator: ":",
-          maxSplits: 1,
-          omittingEmptySubsequences: false
-        )
-        guard components.count >= 2 else { return nil }
-
-        let key = Int(String(components[0]).trimmingCharacters(in: .whitespacesAndNewlines))
-        let value = String(components[1])
-          .trimmingCharacters(in: .whitespacesAndNewlines)
-          .replacingOccurrences(of: "'", with: "")
-        return (key, value)
-      }
-
-      let keyedLabels = parsedPairs.compactMap { key, value -> (Int, String)? in
-        guard let key else { return nil }
-        return (key, value)
-      }
-      if !keyedLabels.isEmpty {
-        let maxKey = keyedLabels.map(\.0).max() ?? -1
-        var labels = Array(repeating: "", count: maxKey + 1)
-        for (key, value) in keyedLabels {
-          labels[key] = value
-        }
-        return labels
-      }
-
-      return parsedPairs.map { $0.1 }
-    }
-
-    return []
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {

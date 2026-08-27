@@ -1,3 +1,8 @@
+## 0.6.14
+
+- **Fix**: Reuse the UltralyticsYOLO label parser on iOS so `names` metadata in list form, with double-quoted keys, or
+  with a negative key no longer yields wrong labels or traps. Requires UltralyticsYOLO `>= 8.9.14`.
+
 ## 0.6.13
 
 - **Performance**: Use up to four processors available to the Android runtime for faster LiteRT CPU inference while
