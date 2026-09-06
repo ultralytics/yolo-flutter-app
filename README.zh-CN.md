@@ -145,7 +145,7 @@ final yolo = YOLO(
 
 ### 4. 高通 NPU 模型（Android，可选启用）
 
-Android 默认使用 LiteRT（TFLite），这一点保持不变——现有应用无需任何改动，QNN 支持也不会给你的构建增加任何体积。任何以 `_qnn.onnx` 结尾的模型路径（通过 `yolo export format=qnn imgsz=640` 导出，分类任务使用 `imgsz=224`）都会改由 ONNX Runtime QNN Execution Provider 路由到 Hexagon NPU 上运行。
+Android 默认使用 LiteRT（TFLite），这一点保持不变——现有应用无需任何改动，QNN 支持也不会给你的构建增加任何体积。任何以 `_qnn.onnx` 结尾的模型路径（通过 `yolo export model=yolo26n.pt format=qnn nms=None imgsz=640` 导出，分类任务使用 `imgsz=224`）都会改由 ONNX Runtime QNN Execution Provider 路由到 Hexagon NPU 上运行。使用 `ultralytics>=8.4.142` 时，`nms=None` 选择原始一对多输出，由 Android 端执行 NMS。
 
 运行 QNN 模型需要配备 Hexagon HTP 的 Snapdragon 设备（官方 `_v73` 资产要求 Snapdragon 8 Gen 2 或更新；`_v81` 面向 Snapdragon 8 Elite Gen 5），并在应用的 `android/app/build.gradle` 中添加三处配置：
 
@@ -213,6 +213,7 @@ uv run python scripts/export-tflite-models.py --verify
 Android 推理运行在 [LiteRT](https://developers.google.com/edge/litert) 2.x 之上，带有自动的 GPU -> CPU 加速器降级链。w8a32 资产作为官方下载产物（最小的可在 GPU 上编译的 litert 格式）；在受支持的设备上，GPU delegate 会编译整个计算图，否则回退到 CPU。GPU 覆盖仍取决于设备驱动和计算图，因此请在目标硬件上确认 delegate 的放置（GPU delegate 以 FP16 运行计算图）：
 
 ```python
+# Requires ultralytics>=8.4.142
 from ultralytics import YOLO
 
 YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)

@@ -341,6 +341,7 @@ The official YOLO26 Android assets (w8a32 LiteRT) compile on the LiteRT GPU path
 non-end-to-end LiteRT exports are still useful for GPU benchmarking (the GPU delegate runs them in FP16):
 
 ```python
+# Requires ultralytics>=8.4.142
 from ultralytics import YOLO
 
 YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)

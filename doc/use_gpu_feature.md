@@ -53,6 +53,7 @@ NNAPI is no longer used (it is deprecated and slower).
 Official int8 YOLO26 LiteRT assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph. A non-end-to-end LiteRT export is still useful for GPU benchmarking (the GPU delegate runs the FP32 graph in FP16):
 
 ```python
+# Requires ultralytics>=8.4.142
 from ultralytics import YOLO
 
 YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)
