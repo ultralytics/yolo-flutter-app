@@ -76,7 +76,7 @@ Official export properties:
 Export scripts require `ultralytics>=8.4.142`. LiteRT uses `nms=None` for raw one-to-many outputs with Android-side
 NMS. Core ML uses `nms=False` for NMS-free detect, segment, pose, and OBB outputs; classification, semantic, and depth
 retain their native outputs. `nms=True` embeds NMS where supported. The `end2end` metadata field describes the
-exported graph, not an export argument. Android `w8a32` uses int8 weights and FP32 activations without calibration.
+exported graph; use `nms` to configure exports. Android `w8a32` uses int8 weights and FP32 activations without calibration.
 
 If you want the simplest “start from the default Ultralytics model” entry point, prefer `YOLO.defaultOfficialModel()`.
 
@@ -202,7 +202,7 @@ Use Linux x86 or macOS with Python ≥3.10 for LiteRT export.
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.142"
+uv pip install --torch-backend cpu "ultralytics-opencv-headless[export-litert]>=8.4.142"
 uv run python scripts/export-tflite-models.py --verify
 ```
 

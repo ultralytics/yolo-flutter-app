@@ -8,7 +8,7 @@ w8a32 needs no calibration data, compiles on the LiteRT GPU delegate, and is the
 Usage from the repository root:
 
     uv venv --python 3.12 .venv
-    uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.142"
+    uv pip install --torch-backend cpu "ultralytics-opencv-headless[export-litert]>=8.4.142"
     uv run python scripts/export-tflite-models.py --verify
 """
 

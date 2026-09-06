@@ -41,7 +41,7 @@ dart pub publish --dry-run                  # pub.dev package validation, run by
 
 - CI (`ci.yml`) runs three jobs on push/PR to main: `tests` (ubuntu-latest: tests + coverage + publish dry-run), `example-android` (ubuntu-latest: debug APK, API 34 emulator smoke test, release AAB verified with `scripts/build_play_store_assets.sh --verify-aab`), and `example-ios` (macos-26: SwiftPM build + simulator smoke test, then a CocoaPods regression build of the same sources).
 - Version floors are Dart SDK `^3.8.1` and Flutter `>=3.32.1` (pubspec.yaml); CI uses the stable Flutter channel.
-- Model export requires `ultralytics>=8.4.142`: LiteRT uses `nms=None` for raw one-to-many outputs, while Core ML assets use `nms=False` for the NMS-free head. `end2end` remains graph metadata, not an export argument.
+- Model export requires `ultralytics>=8.4.142`: LiteRT uses `nms=None` for raw one-to-many outputs, while Core ML assets use `nms=False` for the NMS-free head. `end2end` describes graph metadata; use `nms` to configure exports.
 - For the Python model-export tooling use `uv pip install`, never bare `pip install` (see the header of `scripts/export-tflite-models.py`).
 
 ## Architecture

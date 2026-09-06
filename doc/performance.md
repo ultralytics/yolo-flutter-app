@@ -411,7 +411,7 @@ This is the canonical record of the on-device profiling behind the Ultralytics Y
 
 - **Device (ground truth):** Samsung Galaxy S26 (`SM S9420`), Android 16 / API 36.
 - **Build:** Flutter example debug APK, package `com.ultralytics.yolo`.
-- **Model:** `yolo26n_int8.tflite`, official YOLO26 detect asset, 640x640 input, `quantize=8`, `nms=None` (Ultralytics >=8.4.142; originally `nms=False, end2end=False`).
+- **Model:** `yolo26n_int8.tflite`, official YOLO26 detect asset, 640x640 input, `quantize=8`, `nms=False, end2end=False` (equivalent to `nms=None` with Ultralytics >=8.4.142).
 - **Runtime:** Android LiteRT 2.x `CompiledModel` with `useGpu: true`.
 - **UI:** `YOLOShowcase` real-time camera view with the default task/size controls and threshold sliders.
 - **Numbers:** EMA-smoothed app metrics after the camera and model are warm.
@@ -510,7 +510,7 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 ### Current Shipped Configuration
 
 - Android official assets: YOLO26 w8a32 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/depth/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `v0.6.6`.
-- Android export settings: `quantize=w8a32` (int8 weights, FP32 activations — dynamic-range, no calibration), `nms=None` (Ultralytics >=8.4.142; originally `nms=False, end2end=False`); classify `imgsz=224`, all other tasks `imgsz=640`.
+- Android export settings: `quantize=w8a32` (int8 weights, FP32 activations — dynamic-range, no calibration), `nms=False, end2end=False` (equivalent to `nms=None` with Ultralytics >=8.4.142); classify `imgsz=224`, all other tasks `imgsz=640`.
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
 - Example UI: controls expose all seven tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.
 - Bundled models: local/release builds fetch the seven `yolo26n` nano models into `example/assets/models/` at build time (gitignored, not committed; skipped under CI), so nano tasks work offline with no first-run download; larger sizes download on demand.
