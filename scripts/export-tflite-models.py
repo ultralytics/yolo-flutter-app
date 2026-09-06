@@ -139,7 +139,6 @@ def append_tflite_metadata(path: Path, model_id: str, task_name: str, task: Task
         "stride": 32,
         "format": "litert",
         "int8": False,
-        "nms": None,
         "end2end": False,
     }
     with zipfile.ZipFile(path, "a", zipfile.ZIP_DEFLATED) as zf:
