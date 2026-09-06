@@ -61,17 +61,17 @@ constants, docs, and URL tests in the same PR.
 
 Official export properties:
 
-| Property       | TFLite                                        | Core ML                                 |
-| -------------- | --------------------------------------------- | --------------------------------------- |
-| Model IDs      | `yolo26{n,s,m,l,x}`                           | `yolo26{n,s,m,l,x}`                     |
-| Tasks          | detect, seg, sem, depth, cls, pose, obb       | detect, seg, sem, depth, cls, pose, obb |
-| Format         | `.tflite`                                     | `.mlpackage.zip`                        |
-| Quantization   | w8a32 LiteRT (int8 weights, FP32 activations) | int8 Core ML                            |
-| `imgsz`        | `224` cls; `640` others                       | `224` cls; `640` others                 |
-| `nms`          | `None`                                       | `False`                                 |
-| `end2end` metadata      | `False`                                       | `False` cls/sem/depth; `True` others    |
-| Calibration    | None (w8a32 dynamic-range)                    | exporter default                        |
-| Postprocessing | Android native                                | Swift/Core ML                           |
+| Property           | TFLite                                        | Core ML                                 |
+| ------------------ | --------------------------------------------- | --------------------------------------- |
+| Model IDs          | `yolo26{n,s,m,l,x}`                           | `yolo26{n,s,m,l,x}`                     |
+| Tasks              | detect, seg, sem, depth, cls, pose, obb       | detect, seg, sem, depth, cls, pose, obb |
+| Format             | `.tflite`                                     | `.mlpackage.zip`                        |
+| Quantization       | w8a32 LiteRT (int8 weights, FP32 activations) | int8 Core ML                            |
+| `imgsz`            | `224` cls; `640` others                       | `224` cls; `640` others                 |
+| `nms`              | `None`                                        | `False`                                 |
+| `end2end` metadata | `False`                                       | `False` cls/sem/depth; `True` others    |
+| Calibration        | None (w8a32 dynamic-range)                    | exporter default                        |
+| Postprocessing     | Android native                                | Swift/Core ML                           |
 
 Export scripts require `ultralytics>=8.4.142`. LiteRT uses `nms=None` for raw one-to-many outputs with Android-side
 NMS. Core ML uses `nms=False` for NMS-free detect, segment, pose, and OBB outputs; classification, semantic, and depth
