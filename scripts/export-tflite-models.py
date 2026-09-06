@@ -2,14 +2,13 @@
 """Export official YOLO26 LiteRT (.tflite) assets for the Flutter Android release.
 
 Uses the Ultralytics `format=litert` export (litert-torch + ai-edge-quantizer) with `quantize="w8a32"` (dynamic INT8:
-int8 weights + FP32 activations), which requires `ultralytics>=8.4.83` and runs on Linux x86 or macOS with Python>=3.10.
+int8 weights + FP32 activations), which requires `ultralytics>=8.4.142` and runs on Linux x86 or macOS with Python>=3.10.
 w8a32 needs no calibration data, compiles on the LiteRT GPU delegate, and is the smallest of the GPU-capable formats.
 
 Usage from the repository root:
 
     uv venv --python 3.12 .venv
-    uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-    uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.83"
+    uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.142"
     uv run python scripts/export-tflite-models.py --verify
 """
 
@@ -140,7 +139,7 @@ def append_tflite_metadata(path: Path, model_id: str, task_name: str, task: Task
         "stride": 32,
         "format": "litert",
         "int8": False,
-        "nms": False,
+        "nms": None,
         "end2end": False,
     }
     with zipfile.ZipFile(path, "a", zipfile.ZIP_DEFLATED) as zf:
@@ -188,8 +187,7 @@ def export_one(model_id: str, imgsz: int, output_dir: Path) -> None:
     YOLO(output_dir / f"{model_id}.pt").export(
         format="litert",
         quantize=QUANTIZE,
-        nms=False,
-        end2end=False,
+        nms=None,
         imgsz=imgsz,
         batch=1,
     )
@@ -233,6 +231,10 @@ def run_export_worker(model_id: str, task: TaskSpec, output_dir: Path) -> Path:
 def main() -> None:
     """Export requested YOLO LiteRT release assets."""
     args = parse_args()
+    from ultralytics import __version__
+    from ultralytics.utils.checks import check_version
+
+    check_version(__version__, ">=8.4.142", name="ultralytics", hard=True)
     output_dir = args.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     if args.worker_model_id:

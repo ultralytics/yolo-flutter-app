@@ -124,7 +124,7 @@ final yolo = YOLO(
 On Android, inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. For GPU benchmarking, non-end-to-end exports are also useful (the GPU delegate runs them in FP16):
 
 ```python
-YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)
 # Classification models use imgsz=224.
 ```
 

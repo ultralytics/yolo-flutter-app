@@ -213,8 +213,7 @@ Run it on Linux x86 or macOS with Python ≥3.10:
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.83"
+uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.142"
 uv run python scripts/export-tflite-models.py --verify
 ```
 
@@ -227,7 +226,7 @@ Android inference runs on [LiteRT](https://developers.google.com/edge/litert) 2.
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)
 # Classification models use imgsz=224.
 ```
 

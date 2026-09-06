@@ -36,8 +36,8 @@ The Flutter side can hand the iOS layer:
 
 ## Export Reminder
 
-YOLO26 models are NMS-free. This detect export uses `nms=False` and `end2end=True`, matching the output contract
-consumed by the Swift object detector:
+With `ultralytics[export-coreml]>=8.4.142`, this detect export uses `nms=False` to select the NMS-free head, matching
+the shipped Core ML assets and the Swift object detector:
 
 ```python
 from ultralytics import YOLO
@@ -45,9 +45,9 @@ from ultralytics import YOLO
 # Use 224 for classification and 640 for every other mobile task.
 # Square [640, 640] works best when one model must run in both portrait and landscape.
 # Ultralytics imgsz order is [height, width]; use [640, 384] for portrait-only or [384, 640] for landscape-only.
-YOLO("yolo26n.pt").export(format="coreml", nms=False, end2end=True, imgsz=[640, 640])
+YOLO("yolo26n.pt").export(format="coreml", nms=False, imgsz=[640, 640])
 ```
 
-Other tasks use the same square-orientation guidance. Match `imgsz` to the model contract above. The shipped Core ML
-assets use `end2end=False` for classification, semantic, and depth and `end2end=True` for detect, segment, pose, and
-OBB.
+Other tasks use the same square-orientation guidance and `nms=False`. Classification, semantic, and depth retain
+their native outputs. Use `nms=None` for raw one-to-many outputs with Swift-side NMS, or `nms=True` for embedded NMS
+on supported tasks. The `end2end` metadata field continues to describe the actual exported graph.

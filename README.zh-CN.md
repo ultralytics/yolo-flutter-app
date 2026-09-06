@@ -204,8 +204,7 @@ Android TFLite release 资产由 [`scripts/export-tflite-models.py`](scripts/exp
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.83"
+uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.142"
 uv run python scripts/export-tflite-models.py --verify
 ```
 
@@ -216,7 +215,7 @@ Android 推理运行在 [LiteRT](https://developers.google.com/edge/litert) 2.x 
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)
 # 分类模型使用 imgsz=224。
 ```
 

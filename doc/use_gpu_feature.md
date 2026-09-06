@@ -55,11 +55,11 @@ Official int8 YOLO26 LiteRT assets can compile on the LiteRT GPU path on support
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)
 # Classification models use imgsz=224.
 ```
 
-Here the FP32 model runs in FP16 on the LiteRT GPU delegate, `nms=False` leaves NMS to the plugin, and `end2end=False` keeps the YOLO26 raw head for the Android LiteRT conversion path. Keep `useGpu: true` and verify the actual delegate from LiteRT logs.
+Here the FP32 model runs in FP16 on the LiteRT GPU delegate, `nms=None` selects the raw one-to-many head and leaves NMS to the plugin (requires `ultralytics>=8.4.142`). Keep `useGpu: true` and verify the actual delegate from LiteRT logs.
 
 On a Galaxy S26, the official `yolo26n_int8.tflite` compiled fully with the LiteRT OpenCL GPU delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran around **15 FPS / 32 ms** in the live camera example.
 

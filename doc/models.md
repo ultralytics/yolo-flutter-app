@@ -68,16 +68,15 @@ Official export properties:
 | Format         | `.tflite`                                     | `.mlpackage.zip`                        |
 | Quantization   | w8a32 LiteRT (int8 weights, FP32 activations) | int8 Core ML                            |
 | `imgsz`        | `224` cls; `640` others                       | `224` cls; `640` others                 |
-| `nms`          | `False`                                       | `False`                                 |
-| `end2end`      | `False`                                       | `False` cls/sem/depth; `True` others    |
+| `nms`          | `None`                                       | `False`                                 |
+| `end2end` metadata      | `False`                                       | `False` cls/sem/depth; `True` others    |
 | Calibration    | None (w8a32 dynamic-range)                    | exporter default                        |
 | Postprocessing | Android native                                | Swift/Core ML                           |
 
-The TFLite export script passes both `nms=False` and `end2end=False`. `nms=False` excludes an exported NMS operator,
-while `end2end=False` disables the YOLO26 end-to-end head for the Android LiteRT conversion path. The shipped Core ML
-assets use `end2end=True` for detect, segment, pose, and OBB and `end2end=False` for classification, semantic, and
-depth. The Android `w8a32` export is dynamic-range quantization (int8 weights, FP32 activations), so it needs no
-calibration data.
+Export scripts require `ultralytics>=8.4.142`. LiteRT uses `nms=None` for raw one-to-many outputs with Android-side
+NMS. Core ML uses `nms=False` for NMS-free detect, segment, pose, and OBB outputs; classification, semantic, and depth
+retain their native outputs. `nms=True` embeds NMS where supported. The `end2end` metadata field describes the
+exported graph, not an export argument. Android `w8a32` uses int8 weights and FP32 activations without calibration.
 
 If you want the simplest “start from the default Ultralytics model” entry point, prefer `YOLO.defaultOfficialModel()`.
 
@@ -203,8 +202,7 @@ Use Linux x86 or macOS with Python ≥3.10 for LiteRT export.
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.83"
+uv pip install "ultralytics-opencv-headless[export-litert]>=8.4.142"
 uv run python scripts/export-tflite-models.py --verify
 ```
 
@@ -219,7 +217,7 @@ Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator la
 ```python
 from ultralytics import YOLO
 
-YOLO("yolo26n.pt").export(format="litert", nms=False, end2end=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)
 # Classification models use imgsz=224.
 ```
 
