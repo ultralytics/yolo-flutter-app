@@ -185,6 +185,9 @@ iOS inference runs on Core ML, which automatically uses the Neural Engine and GP
 Android inference runs on LiteRT 2.x via `CompiledModel`, which automatically tries a GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. Confirm actual delegate placement from device logs. non-end-to-end exports are still useful for GPU benchmarking (the GPU delegate runs them in FP16):
 
 ```python
+# Requires ultralytics>=8.4.142
+from ultralytics import YOLO
+
 YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)
 # Classification models use imgsz=224.
 ```
