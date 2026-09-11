@@ -31,24 +31,24 @@ After opening a PR:
 ## Commands
 
 ```bash
-flutter pub get                             # install dependencies (repeat in example/ for the example app)
-flutter test                                # run all Dart tests (mocked method channels; no device, no network)
-flutter test test/yolo_test.dart            # run one test file
-flutter test --plain-name 'exact test name' # run one test by name
-flutter test --coverage                     # coverage; ci.yml then strips lib/platform/, lib/yolo_view.dart, and lib/widgets/yolo_showcase.dart from coverage/lcov.info with an awk filter before Codecov upload
-g++ -std=c++17 android/src/test/cpp/depth-colorizer-test.cpp -o /tmp/depth-colorizer-test && /tmp/depth-colorizer-test  # native depth-colorizer assertions, exactly as ci.yml runs them (header-only, no NDK needed)
-dart analyze --fatal-infos                  # lint gate, exactly as analyzer.yml runs it
-dart format .                               # Dart formatting (format.yml enforces via Ultralytics Actions)
-dart pub publish --dry-run                  # pub.dev package validation, run by ci.yml, publish.yml, and publish-on-tag.yml
+flutter pub get                                                                                                        # install dependencies (repeat in example/ for the example app)
+flutter test                                                                                                           # run all Dart tests (mocked method channels; no device, no network)
+flutter test test/yolo_test.dart                                                                                       # run one test file
+flutter test --plain-name 'exact test name'                                                                            # run one test by name
+flutter test --coverage                                                                                                # coverage; ci.yml then strips lib/platform/, lib/yolo_view.dart, and lib/widgets/yolo_showcase.dart from coverage/lcov.info with an awk filter before Codecov upload
+g++ -std=c++17 android/src/test/cpp/depth-colorizer-test.cpp -o /tmp/depth-colorizer-test && /tmp/depth-colorizer-test # native depth-colorizer assertions, exactly as ci.yml runs them (header-only, no NDK needed)
+dart analyze --fatal-infos                                                                                             # lint gate, exactly as analyzer.yml runs it
+dart format .                                                                                                          # Dart formatting (format.yml enforces via Ultralytics Actions)
+dart pub publish --dry-run                                                                                             # pub.dev package validation, run by ci.yml, publish.yml, and publish-on-tag.yml
 
 # Example app (run from example/). The Android preBuild runs scripts/fetch_bundled_models.sh android, which is a no-op under CI.
-flutter run                                 # device or simulator; add --release for representative timings
-flutter build apk --debug                   # example-android CI build; CI then installs it on an API 34 x86_64 emulator and checks the process is alive
-flutter build appbundle --release           # example-android CI also builds this and verifies it with ../scripts/build_play_store_assets.sh --verify-aab <aab>
-flutter config --enable-swift-package-manager && flutter build ios --simulator --no-codesign   # example-ios CI primary path (SwiftPM)
-flutter config --no-enable-swift-package-manager && flutter clean && flutter build ios --simulator --no-codesign  # example-ios CocoaPods regression build
-ENABLE_QNN=1 flutter run --release          # opt the example into the ONNX Runtime QNN runtime for Snapdragon NPU testing (also: -Pqnn Gradle property)
-flutter test integration_test/qnn_benchmark_test.dart -d <device> --dart-define=RUN_BENCH=true  # on-device benchmark; CI never runs example/integration_test/
+flutter run                                                                                                      # device or simulator; add --release for representative timings
+flutter build apk --debug                                                                                        # example-android CI build; CI then installs it on an API 34 x86_64 emulator and checks the process is alive
+flutter build appbundle --release                                                                                # example-android CI also builds this and verifies it with ../scripts/build_play_store_assets.sh --verify-aab <aab>
+flutter config --enable-swift-package-manager && flutter build ios --simulator --no-codesign                     # example-ios CI primary path (SwiftPM)
+flutter config --no-enable-swift-package-manager && flutter clean && flutter build ios --simulator --no-codesign # example-ios CocoaPods regression build
+ENABLE_QNN=1 flutter run --release                                                                               # opt the example into the ONNX Runtime QNN runtime for Snapdragon NPU testing (also: -Pqnn Gradle property)
+flutter test integration_test/qnn_benchmark_test.dart -d < device > --dart-define=RUN_BENCH=true                 # on-device benchmark; CI never runs example/integration_test/
 ```
 
 - CI (`ci.yml`) runs three jobs on push/PR to main: `tests` (ubuntu-latest: `flutter test --coverage`, the g++ depth-colorizer test, the lcov filter, `dart pub publish --dry-run`, Codecov upload), `example-android` (ubuntu-latest: debug APK, API 34 emulator smoke test via `adb shell pidof com.ultralytics.yolo`, release AAB verified with `scripts/build_play_store_assets.sh --verify-aab`), and `example-ios` (macos-26: SwiftPM build + simulator launch of `com.ultralytics.yoloExample`, then a CocoaPods regression build of the same sources). `analyzer.yml` runs `dart analyze --fatal-infos` as a separate check. Nothing in CI runs Kotlin/Swift unit tests or `example/integration_test/`.
@@ -86,7 +86,7 @@ All in `.github/workflows/`:
 
 Paths are relative to the repo root. `lib/` is the Dart package, `android/src/main/kotlin/com/ultralytics/yolo/` the Android plugin, `ios/ultralytics_yolo/Sources/ultralytics_yolo/` the iOS plugin.
 
-**Request flow.** Both Dart entry points go through `YOLOModelResolver.resolve()` (`lib/core/yolo_model_resolver.dart`) before touching native code: `preparePath()` turns the user's `modelPath` — official ID (`yolo26n`), Flutter asset (`assets/...`), `http(s)` URL, `internal://` reference, or absolute path — into something the native side can open (downloading and extracting into `<documents>/mobile-standard-v1/` as needed), then `inspect()` calls the native `inspectModel` to read exported metadata and settles the task (an explicit `task` that contradicts metadata throws `ModelLoadingException`; no task anywhere also throws). *Single image:* `YOLO.loadModel()` (`lib/yolo.dart`) → `YOLOModelManager.loadModel()` → `loadModel` on the `yolo_single_image_channel` MethodChannel → the native instance manager builds a per-instance predictor; `YOLO.predict(bytes)` → `YOLOInference.predict()` → `predictSingleImage` → the native side decodes the image, runs the predictor, and returns a raw map (`boxes` plus task keys) that `_processInferenceResult` reshapes into `detections` (`YOLOResult.fromMap`-compatible). *Camera:* `YOLOView` (`lib/yolo_view.dart`) resolves the model, then embeds the `com.ultralytics.yolo/YOLOPlatformView` platform view with `creationParams`; the native factory creates a Kotlin/Swift `YOLOView`, a control MethodChannel and a detection EventChannel both suffixed with the Dart-side `viewId` (a `UniqueKey().toString()`); per-frame results stream native → Dart on the event channel, commands go Dart → native through `YOLOViewController` (`lib/widgets/yolo_controller.dart`).
+**Request flow.** Both Dart entry points go through `YOLOModelResolver.resolve()` (`lib/core/yolo_model_resolver.dart`) before touching native code: `preparePath()` turns the user's `modelPath` — official ID (`yolo26n`), Flutter asset (`assets/...`), `http(s)` URL, `internal://` reference, or absolute path — into something the native side can open (downloading and extracting into `<documents>/mobile-standard-v1/` as needed), then `inspect()` calls the native `inspectModel` to read exported metadata and settles the task (an explicit `task` that contradicts metadata throws `ModelLoadingException`; no task anywhere also throws). _Single image:_ `YOLO.loadModel()` (`lib/yolo.dart`) → `YOLOModelManager.loadModel()` → `loadModel` on the `yolo_single_image_channel` MethodChannel → the native instance manager builds a per-instance predictor; `YOLO.predict(bytes)` → `YOLOInference.predict()` → `predictSingleImage` → the native side decodes the image, runs the predictor, and returns a raw map (`boxes` plus task keys) that `_processInferenceResult` reshapes into `detections` (`YOLOResult.fromMap`-compatible). _Camera:_ `YOLOView` (`lib/yolo_view.dart`) resolves the model, then embeds the `com.ultralytics.yolo/YOLOPlatformView` platform view with `creationParams`; the native factory creates a Kotlin/Swift `YOLOView`, a control MethodChannel and a detection EventChannel both suffixed with the Dart-side `viewId` (a `UniqueKey().toString()`); per-frame results stream native → Dart on the event channel, commands go Dart → native through `YOLOViewController` (`lib/widgets/yolo_controller.dart`).
 
 **Platform channel contract** (names are string literals on all three sides — change them together):
 
