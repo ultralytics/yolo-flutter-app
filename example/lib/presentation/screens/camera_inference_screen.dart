@@ -59,7 +59,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Show all 6 tasks (Detect / Segment / Semantic / Classify / Pose / OBB) to match the iOS app's task control.
+    // Show all 7 tasks (Detect / Segment / Semantic / Depth / Classify / Pose / OBB) to match the iOS app's task control.
     return Scaffold(
       body: YOLOShowcase(versionLabel: _versionLabel, onCapture: _onCapture),
     );

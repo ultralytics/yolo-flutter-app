@@ -18,7 +18,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.6.11
+  ultralytics_yolo: ^0.6.14
 ```
 
 Run the installation command:
@@ -182,7 +182,7 @@ iOS inference runs on Core ML, which automatically uses the Neural Engine and GP
 
 ### Android Optimization
 
-Android inference runs on LiteRT 2.x via `CompiledModel`, which automatically tries a GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. Confirm actual delegate placement from device logs. non-end-to-end exports are still useful for GPU benchmarking (the GPU delegate runs them in FP16):
+Android inference runs on LiteRT 2.x via `CompiledModel`, which automatically tries a GPU → CPU accelerator ladder. Official w8a32 YOLO26 LiteRT assets (int8 weights, FP32 activations) compile on the LiteRT GPU path on supported devices, but GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. Confirm actual delegate placement from device logs. non-end-to-end exports are still useful for GPU benchmarking (the GPU delegate runs them in FP16):
 
 ```python
 # Requires ultralytics>=8.4.142

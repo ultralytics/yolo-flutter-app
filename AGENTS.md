@@ -199,7 +199,7 @@ Publishing is push-triggered: `publish.yml` runs on every push to main (gated to
 - Android release builds must keep the plugin's `android/consumer-rules.pro` (LiteRT is invoked via JNI/reflection); the example duplicates them in `example/android/app/proguard-rules.pro`.
 - QNN: the runtime is `compileOnly` in the plugin, so consumers (and the example) must add `onnxruntime-android-qnn` and `useLegacyPackaging = true` themselves; the example only does so when `qnnEnabled` (`ENABLE_QNN` or `-Pqnn`). QNN models have no CPU fallback and are not resolved by model ID — pass the release URL or file path.
 - `scripts/fetch_bundled_models.sh` is skipped whenever `CI` or `GITHUB_ACTIONS` is set (unless `FORCE_BUNDLED_MODELS=1`), so CI builds run without bundled models; locally it deletes the other platform's known nano files from `example/assets/models/` (custom files are left alone).
-- Version fields live in three places (`pubspec.yaml`, `ios/ultralytics_yolo.podspec`, `example/pubspec.yaml`) and are bumped by hand, so they drift; `build_play_store_assets.sh` refuses to build until the pubspec and example versions match.
+- Version fields live in three places (`pubspec.yaml`, `ios/ultralytics_yolo.podspec`, `example/pubspec.yaml`) and are bumped by hand, so they can drift; `build_play_store_assets.sh` refuses to build until the pubspec and example versions match.
 - `format.yml` also runs Lychee link checks and codespell on PRs; broken links or spelling in Markdown are PR findings even for code-only changes.
 
 ## Tests
