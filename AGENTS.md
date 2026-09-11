@@ -32,32 +32,32 @@ After opening a PR:
 
 ```bash
 # Package (repo root)
-flutter pub get                              # install dependencies (repeat in example/ for the example app)
-flutter test                                 # all Dart tests: mocked method channels, no device, no network
-flutter test test/yolo_test.dart             # one test file
-flutter test --plain-name 'exact test name'  # one test by name
-flutter test --coverage                      # coverage; ci.yml then filters coverage/lcov.info (see Tests) before Codecov upload
-dart analyze --fatal-infos                   # lint gate, exactly as analyzer.yml runs it
-dart format .                                # Dart formatting (format.yml enforces via Ultralytics Actions)
-dart pub publish --dry-run                   # pub.dev payload validation, run by ci.yml, publish.yml, and publish-on-tag.yml
+flutter pub get                             # install dependencies (repeat in example/ for the example app)
+flutter test                                # all Dart tests: mocked method channels, no device, no network
+flutter test test/yolo_test.dart            # one test file
+flutter test --plain-name 'exact test name' # one test by name
+flutter test --coverage                     # coverage; ci.yml then filters coverage/lcov.info (see Tests) before Codecov upload
+dart analyze --fatal-infos                  # lint gate, exactly as analyzer.yml runs it
+dart format .                               # Dart formatting (format.yml enforces via Ultralytics Actions)
+dart pub publish --dry-run                  # pub.dev payload validation, run by ci.yml, publish.yml, and publish-on-tag.yml
 # Native depth-colorizer assertions, exactly as ci.yml runs them (header-only C++; no NDK needed)
 g++ -std=c++17 android/src/test/cpp/depth-colorizer-test.cpp -o /tmp/depth-colorizer-test && /tmp/depth-colorizer-test
 
 # Example app (run from example/). Android preBuild runs scripts/fetch_bundled_models.sh android, a no-op under CI.
-flutter run                                  # device or simulator; add --release for representative timings
-flutter build apk --debug                    # example-android CI build; CI then launches it on an API 34 x86_64 emulator
-flutter build appbundle --release            # example-android CI also builds this, then ../scripts/build_play_store_assets.sh --verify-aab
-flutter config --enable-swift-package-manager && flutter build ios --simulator --no-codesign      # example-ios CI primary path (SwiftPM)
-flutter config --no-enable-swift-package-manager && flutter clean && flutter build ios --simulator --no-codesign  # CocoaPods regression
-ENABLE_QNN=1 flutter run --release           # include the ONNX Runtime QNN runtime for Snapdragon NPU testing (or -Pqnn)
+flutter run                                                                                                      # device or simulator; add --release for representative timings
+flutter build apk --debug                                                                                        # example-android CI build; CI then launches it on an API 34 x86_64 emulator
+flutter build appbundle --release                                                                                # example-android CI also builds this, then ../scripts/build_play_store_assets.sh --verify-aab
+flutter config --enable-swift-package-manager && flutter build ios --simulator --no-codesign                     # example-ios CI primary path (SwiftPM)
+flutter config --no-enable-swift-package-manager && flutter clean && flutter build ios --simulator --no-codesign # CocoaPods regression
+ENABLE_QNN=1 flutter run --release                                                                               # include the ONNX Runtime QNN runtime for Snapdragon NPU testing (or -Pqnn)
 # On-device benchmark (CI never runs example/integration_test/); RUN_QNN needs the ENABLE_QNN build; MODEL_SIZES=s,m,l,x selects sizes
 flutter test integration_test/qnn_benchmark_test.dart -d "$DEVICE" --dart-define=RUN_BENCH=true
 ENABLE_QNN=1 flutter test integration_test/qnn_benchmark_test.dart -d "$DEVICE" --dart-define=RUN_BENCH=true --dart-define=RUN_QNN=true
 
 # Official Android asset export (repo root; Linux x86 or macOS, Python >= 3.10). uv only, never bare pip.
 uv venv --python 3.12 .venv && uv pip install --torch-backend cpu "ultralytics-opencv-headless[export-litert]>=8.4.142"
-uv run python scripts/export-tflite-models.py --sizes n --tasks detect --verify   # one focused export; existing outputs are reused unless --force
-uv run python scripts/export-tflite-models.py --verify --upload --repo ultralytics/yolo-flutter-app --tag v0.6.6  # full matrix + gh release upload --clobber
+uv run python scripts/export-tflite-models.py --sizes n --tasks detect --verify                                  # one focused export; existing outputs are reused unless --force
+uv run python scripts/export-tflite-models.py --verify --upload --repo ultralytics/yolo-flutter-app --tag v0.6.6 # full matrix + gh release upload --clobber
 ```
 
 - CI (`ci.yml`) runs three jobs on push/PR to main: `tests` (ubuntu-latest: `flutter test --coverage`, the g++ depth-colorizer test, the lcov filter, `dart pub publish --dry-run`, Codecov upload), `example-android` (ubuntu-latest: debug APK, API 34 emulator launch checked with `adb shell pidof com.ultralytics.yolo`, release AAB checked with `scripts/build_play_store_assets.sh --verify-aab`), and `example-ios` (macos-26: SwiftPM build + simulator launch of `com.ultralytics.yoloExample`, then a CocoaPods regression build of the same sources). The launch checks prove only that the process is alive; they do not assert model download, load, or inference. `analyzer.yml` runs `dart analyze --fatal-infos` as a separate check. Nothing in CI runs Kotlin/Swift unit tests or `example/integration_test/`.
@@ -71,7 +71,7 @@ All in `.github/workflows/`:
 
 - `ci.yml` — the three jobs above, on push/PR to `main`, concurrency-cancelled per ref.
 - `analyzer.yml` — `flutter pub get` + `dart analyze --fatal-infos` on push/PR to `main`.
-- `format.yml` — Ultralytics Actions on PRs (runs on macos-26 because Swift formatting needs macOS): formats Dart, Swift, Python (Ruff), and Prettier targets (YAML/JSON/Markdown), runs codespell and Lychee link checks, AI-labels and summarizes PRs, and **pushes auto-format commits to the PR branch** — `git pull --rebase` before every push. The shell formatter rewrites `<placeholder>` tokens inside ```` ```bash ```` blocks as redirections; write placeholders as `"$VAR"`.
+- `format.yml` — Ultralytics Actions on PRs (runs on macos-26 because Swift formatting needs macOS): formats Dart, Swift, Python (Ruff), and Prettier targets (YAML/JSON/Markdown), runs codespell and Lychee link checks, AI-labels and summarizes PRs, and **pushes auto-format commits to the PR branch** — `git pull --rebase` before every push. The shell formatter rewrites `<placeholder>` tokens inside ` ```bash ` blocks as redirections; write placeholders as `"$VAR"`.
 - `publish.yml` — on every push to `main` (gated to repo `ultralytics/yolo-flutter-app` and actor `glenn-jocher`): `check` compares the pubspec version against pub.dev via `ultralytics-actions` `check_pubdev_version()` and, when ahead, tags `vX.Y.Z` and creates the GitHub release; `build` re-runs `dart pub publish --dry-run` and fails if `Package.swift` is missing from the archive; the in-file `publish` job is intentionally disabled (`&& false`) because pub.dev trusted publishing requires a tag event; `notify` posts to Slack. A `workflow_dispatch` trigger exists but the job `if:` still requires `refs/heads/main`.
 - `publish-on-tag.yml` — on `v*` tag push: `dart pub publish --dry-run` (with the same `Package.swift` assertion) then `dart pub publish --force` via OIDC trusted publishing. This is the workflow that actually publishes; if a tag exists but pub.dev is behind, inspect and re-run its failed run rather than re-pushing the tag.
 - `tag.yml` — manual (`workflow_dispatch`) tag + release fallback, same repo/actor gate.
