@@ -121,7 +121,7 @@ final yolo = YOLO(
 );
 ```
 
-On Android, inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. For GPU benchmarking, non-end-to-end exports are also useful (the GPU delegate runs them in FP16):
+On Android, inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder. Official w8a32 YOLO26 LiteRT assets (int8 weights, FP32 activations) compile on the LiteRT GPU path on supported devices, but GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. For GPU benchmarking, non-end-to-end exports are also useful (the GPU delegate runs them in FP16):
 
 ```python
 # Requires ultralytics>=8.4.142

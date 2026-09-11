@@ -4,10 +4,10 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'ultralytics_yolo'
-  s.version          = '0.6.13'
+  s.version          = '0.6.14'
   s.summary          = 'Flutter plugin for YOLO (You Only Look Once) models'
   s.description      = <<-DESC
-Flutter plugin for YOLO (You Only Look Once) models, supporting object detection, segmentation, classification, pose estimation and oriented bounding boxes (OBB) on both Android and iOS.
+Flutter plugin for YOLO (You Only Look Once) models, supporting object detection, instance and semantic segmentation, depth estimation, classification, pose estimation and oriented bounding boxes (OBB) on both Android and iOS.
                        DESC
   s.homepage         = 'https://github.com/ultralytics/yolo-flutter-app'
   s.license          = { :file => '../LICENSE' }

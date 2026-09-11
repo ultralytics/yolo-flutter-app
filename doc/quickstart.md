@@ -35,7 +35,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.5.1
+  ultralytics_yolo: ^0.6.14
   image_picker: ^1.2.1 # For image selection
 ```
 
@@ -61,7 +61,7 @@ Custom local models are still supported:
 
 Task and labels are auto-detected from the model's embedded metadata. If your custom model has no `task` in its metadata, pass it explicitly.
 
-Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core ML. Official int8 YOLO26 TFLite assets can compile on the LiteRT GPU path on supported devices, but int8 GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. non-end-to-end exports are useful for GPU benchmarking (the GPU delegate runs them in FP16):
+Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core ML. Official w8a32 YOLO26 LiteRT assets (int8 weights, FP32 activations) compile on the LiteRT GPU path on supported devices, but GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. non-end-to-end exports are useful for GPU benchmarking (the GPU delegate runs them in FP16):
 
 ```python
 # Requires ultralytics>=8.4.142
