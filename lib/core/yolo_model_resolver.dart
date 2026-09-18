@@ -231,13 +231,15 @@ class YOLOModelResolver {
       '${documents.path}/$_officialModelCacheDirectory',
     );
     if (_isIosLikePlatform) {
-      final preferred = await _preferredAppleFormat();
-      if (preferred.isValid(
-        Directory('${directory.path}/${artifact.id}${preferred.suffix}'),
+      final formats = {await _preferredAppleFormat(), _AppleModelFormat.coreML};
+      if (formats.any(
+        (format) => format.isValid(
+          Directory('${directory.path}/${artifact.id}${format.suffix}'),
+        ),
       )) {
         return true;
       }
-      for (final format in {preferred, _AppleModelFormat.coreML}) {
+      for (final format in formats) {
         final assetPath = 'assets/models/${artifact.id}${format.archiveSuffix}';
         if (await _loadAssetBytes(assetPath) != null) return true;
       }
@@ -281,10 +283,6 @@ class YOLOModelResolver {
     final directory = Directory(
       '${documents.path}/$_officialModelCacheDirectory',
     );
-    final preferredDir = Directory(
-      '${directory.path}/${artifact.id}${preferred.suffix}',
-    );
-    if (preferred.isValid(preferredDir)) return preferredDir.path;
     final legacyModelDir = Directory(
       '${documents.path}/${artifact.id}.mlpackage',
     );
@@ -292,16 +290,19 @@ class YOLOModelResolver {
       legacyModelDir.deleteSync(recursive: true);
     }
 
-    // Bundled assets win over downloads, so an app that bundles only Core ML stays offline on iOS 27.
+    // Bundled assets win over downloads, so an app that bundles only Core ML stays offline on iOS 27. A cached Core ML
+    // model counts only when its asset is bundled; otherwise it predates Core AI on this device and is replaced below.
     for (final format in {preferred, _AppleModelFormat.coreML}) {
+      final modelDir = Directory(
+        '${directory.path}/${artifact.id}${format.suffix}',
+      );
+      final cached = format.isValid(modelDir);
+      if (cached && format == preferred) return modelDir.path;
       final assetBytes = await _loadAssetBytes(
         'assets/models/${artifact.id}${format.archiveSuffix}',
       );
       if (assetBytes == null) continue;
-      final modelDir = Directory(
-        '${directory.path}/${artifact.id}${format.suffix}',
-      );
-      if (format.isValid(modelDir)) return modelDir.path;
+      if (cached) return modelDir.path;
       final extractedPath = await _extractAppleModelZip(
         assetBytes,
         modelDir,
@@ -310,26 +311,32 @@ class YOLOModelResolver {
       if (extractedPath != null) return extractedPath;
     }
 
-    final archiveName = '${artifact.id}${preferred.archiveSuffix}';
-    final archiveFile = File('${directory.path}/$archiveName');
-    await _downloadToFile(
-      '$_iosModelReleaseBaseUrl/$archiveName',
-      archiveFile,
-      progressId: artifact.id,
-    );
-    final modelPath = await _extractAppleModelArchiveFile(
-      archiveFile,
-      archiveName,
-      preferredDir,
-      preferred,
-    );
-    // A Core ML model cached before the device had Core AI is dropped only once the Core AI model is extracted and
-    // valid, so a failed download never costs the user a working model.
-    final staleCoreMLDir = Directory(
+    // A Core ML model cached before the device had Core AI keeps loading when the Core AI download or extraction fails
+    // (offline, missing asset) and is deleted only once the Core AI model is extracted and valid.
+    final coreMLDir = Directory(
       '${directory.path}/${artifact.id}${_AppleModelFormat.coreML.suffix}',
     );
-    if (preferred == _AppleModelFormat.coreAI && staleCoreMLDir.existsSync()) {
-      staleCoreMLDir.deleteSync(recursive: true);
+    final archiveName = '${artifact.id}${preferred.archiveSuffix}';
+    final archiveFile = File('${directory.path}/$archiveName');
+    final String modelPath;
+    try {
+      await _downloadToFile(
+        '$_iosModelReleaseBaseUrl/$archiveName',
+        archiveFile,
+        progressId: artifact.id,
+      );
+      modelPath = await _extractAppleModelArchiveFile(
+        archiveFile,
+        archiveName,
+        Directory('${directory.path}/${artifact.id}${preferred.suffix}'),
+        preferred,
+      );
+    } catch (_) {
+      if (_AppleModelFormat.coreML.isValid(coreMLDir)) return coreMLDir.path;
+      rethrow;
+    }
+    if (preferred == _AppleModelFormat.coreAI && coreMLDir.existsSync()) {
+      coreMLDir.deleteSync(recursive: true);
     }
     return modelPath;
   }
@@ -354,7 +361,7 @@ class YOLOModelResolver {
       if (format.isValid(targetDir)) return targetDir.path;
       if (isOfficialAsset) {
         final legacyTargetDir = Directory(
-          '${documents.path}/$modelName${format.suffix}',
+          '${documents.path}/$modelName.mlpackage',
         );
         if (legacyTargetDir.existsSync()) {
           legacyTargetDir.deleteSync(recursive: true);

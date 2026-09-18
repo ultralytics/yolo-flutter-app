@@ -58,7 +58,8 @@ is the default on iOS 27 and later; Core ML (`.mlpackage`) remains the fallback 
 Simulator, which does not ship Core AI. The native side reports whether Core AI is usable, and official model IDs then
 resolve to `<model>.aimodel.zip` instead of `<model>.mlpackage.zip`. Bundled assets win over downloads: an app that
 bundles only `<model>.mlpackage.zip` keeps using it offline on iOS 27. A Core ML download cached before a device
-upgraded to iOS 27 is deleted when the Core AI asset replaces it. Explicit `.mlpackage` paths, assets, and URLs keep
+upgraded to iOS 27 keeps loading when the Core AI download or extraction fails (offline, missing asset) and is deleted
+only after the Core AI asset is extracted and valid. Explicit `.mlpackage` paths, assets, and URLs keep
 working on every iOS version, and an `.aimodel` on a device without Core AI fails with a load error. QNN models are
 not auto-resolved by model ID — pass their URL or file path explicitly; any path ending in `_qnn.onnx` runs on the
 Hexagon NPU via the ONNX Runtime QNN Execution Provider (see the README's NPU section for the required Gradle opt-in).

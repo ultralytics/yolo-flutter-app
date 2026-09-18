@@ -510,7 +510,7 @@ Observed app-level result:
 
 **A:** Yes. `scripts/fetch_bundled_models.sh` downloads the six nano YOLO26 models into `example/assets/models/` at build time, wired into the Android Gradle `preBuild` and an iOS run-script build phase. The files stay gitignored and are never committed. `YOLOModelResolver` already checks `assets/models/` before a network download, so a bundled model means no first-run fetch. The download is best-effort (always exits `0`) so offline builds still succeed, and it is **skipped under CI** (`CI` / `GITHUB_ACTIONS`) so GitHub builds stay fast and off the network - CI exercises the runtime-download fallback instead.
 
-**Shipped:** Local and release builds bundle `yolo26n` for all seven tasks; larger sizes still download on demand. iOS builds bundle the Core ML archives, which run on every supported iOS version; `IOS_MODEL_FORMAT=aimodel` bundles the Core AI archives instead, and bundled assets win over downloads. This supersedes the earlier temporary "bundle for local validation" workaround.
+**Shipped:** Local and release builds bundle `yolo26n` for all seven tasks; larger sizes still download on demand. This supersedes the earlier temporary "bundle for local validation" workaround.
 
 **Conclusion:** Build-time bundling removes first-run download latency for the default models and makes on-device profiling reproducible without network access, while CI keeps using the runtime path.
 

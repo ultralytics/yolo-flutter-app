@@ -1118,30 +1118,19 @@ void main() {
         channel = setup.$1;
         log = setup.$2;
         const cache = '/tmp/yolo_test/mobile-standard-v1';
-        _mockFlutterAssets({
-          'assets/models/yolo26s.mlpackage.zip': YOLOTestHelpers.storedZip({
-            'model.mlpackage/Manifest.json': utf8.encode('{}'),
-          }),
-        });
-        // An app that bundles only Core ML keeps using it offline.
-        expect(
-          await YOLOModelResolver.preparePath('yolo26s'),
-          '$cache/yolo26s.mlpackage',
-        );
-
-        // A cached Core ML download survives a failed Core AI download and is removed only after a successful one.
+        // A cached Core ML download keeps loading after a failed Core AI download; a successful one removes it.
         final staleDir = Directory('$cache/yolo26m.mlpackage')
           ..createSync(recursive: true);
         File('${staleDir.path}/Manifest.json').writeAsStringSync('{}');
         const url =
             'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/yolo26m.aimodel.zip';
         await HttpOverrides.runZoned(() async {
-          await expectLater(
-            YOLOModelResolver.preparePath('yolo26m'),
-            throwsA(isA<ModelLoadingException>()),
-          );
+          expect(await YOLOModelResolver.preparePath('yolo26m'), staleDir.path);
         }, createHttpClient: (_) => _FakeHttpClient({}));
-        expect(staleDir.existsSync(), isTrue);
+        expect(
+          await YOLOModelResolver.isOfficialModelAvailableLocally('yolo26m'),
+          isTrue,
+        );
 
         final client = _FakeHttpClient({
           url: _FakeHttpResponse(

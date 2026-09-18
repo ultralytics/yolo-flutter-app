@@ -135,15 +135,6 @@ public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @uncheck
       }
     }
 
-    if isCoreAIAvailable,
-      let assetURL = Bundle.main.url(forResource: fileName, withExtension: "aimodel")
-    {
-      resultMap["exists"] = true
-      resultMap["location"] = "bundle_aimodel"
-      resultMap["absolutePath"] = assetURL.path
-      return resultMap
-    }
-
     if let compiledURL = Bundle.main.url(forResource: fileName, withExtension: "mlmodelc") {
       resultMap["exists"] = true
       resultMap["location"] = "bundle_compiled"

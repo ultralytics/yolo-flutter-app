@@ -333,12 +333,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         modelURL = possibleURL
       }
     } else {
-      if YOLOPlugin.isCoreAIAvailable,
-        let assetURL = Bundle.main.url(forResource: modelPathOrName, withExtension: "aimodel")
-      {
-        modelURL = assetURL
-      } else if let compiledURL = Bundle.main.url(
-        forResource: modelPathOrName, withExtension: "mlmodelc")
+      if let compiledURL = Bundle.main.url(forResource: modelPathOrName, withExtension: "mlmodelc")
       {
         modelURL = compiledURL
       } else if let packageURL = Bundle.main.url(

@@ -14,10 +14,7 @@
 #
 # Usage: fetch_bundled_models.sh <android|ios>
 #   android -> *_w8a32.tflite from the yolo-flutter-app release
-#   ios     -> *.mlpackage.zip from the yolo-ios-app release (the resolver extracts these on first use). Core ML runs
-#              on every supported iOS version, so it is the bundled default. Set IOS_MODEL_FORMAT=aimodel to bundle the
-#              Core AI assets (iOS 27+) instead; run once per format to ship both, since bundled assets win over
-#              downloads and iOS versions without Core AI still need the Core ML archives.
+#   ios     -> *.mlpackage.zip from the yolo-ios-app release (the resolver extracts these on first use)
 #
 # Keep the release tags and the nano file list in sync with lib/core/yolo_model_resolver.dart.
 
@@ -55,13 +52,20 @@ ANDROID_FILES=(
   "yolo26n-pose_w8a32.tflite"
   "yolo26n-obb_w8a32.tflite"
 )
-IOS_MODELS=(yolo26n yolo26n-seg yolo26n-sem yolo26n-depth yolo26n-cls yolo26n-pose yolo26n-obb)
-IOS_FILES=("${IOS_MODELS[@]/%/.${IOS_MODEL_FORMAT:-mlpackage}.zip}")
+IOS_FILES=(
+  "yolo26n.mlpackage.zip"
+  "yolo26n-seg.mlpackage.zip"
+  "yolo26n-sem.mlpackage.zip"
+  "yolo26n-depth.mlpackage.zip"
+  "yolo26n-cls.mlpackage.zip"
+  "yolo26n-pose.mlpackage.zip"
+  "yolo26n-obb.mlpackage.zip"
+)
 
 if [ "$PLATFORM" = "android" ]; then
   BASE="$ANDROID_BASE"
   FILES=("${ANDROID_FILES[@]}")
-  OTHER_FILES=("${IOS_MODELS[@]/%/.mlpackage.zip}" "${IOS_MODELS[@]/%/.aimodel.zip}")
+  OTHER_FILES=("${IOS_FILES[@]}")
 else
   BASE="$IOS_BASE"
   FILES=("${IOS_FILES[@]}")
