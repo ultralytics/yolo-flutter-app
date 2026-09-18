@@ -50,7 +50,7 @@ URL patterns:
 
 - Android LiteRT: `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6/<model>_w8a32.tflite`
 - Android QNN (opt-in NPU): `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6/<model>_v73_qnn.onnx` (Snapdragon 8 Gen 2+; `_v81` for 8 Elite Gen 5)
-- iOS Core AI (iOS 27+): `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.aimodel.zip` (published with the release that enables Core AI)
+- iOS Core AI (iOS 27+): `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.aimodel.zip`
 - iOS Core ML: `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.mlpackage.zip`
 
 The Flutter resolver uses the LiteRT release for Android and the iOS release for Apple platforms. Core AI (`.aimodel`)

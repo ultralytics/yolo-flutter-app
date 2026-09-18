@@ -123,7 +123,7 @@ Official assets are maintained as GitHub release assets:
 
 The Flutter resolver uses the LiteRT release for Android and the iOS release for Apple platforms. Core AI (`.aimodel`)
 is the default on iOS 27 and later; Core ML (`.mlpackage`) remains the fallback for earlier iOS versions and for the iOS
-Simulator, which does not ship Core AI. The Core AI assets are published with the release that enables Core AI. Every mobile
+Simulator, which does not ship Core AI. Every mobile
 asset uses a fixed 224 × 224 classification input or 640 × 640 input for every other task. These release tags are
 intentionally pinned for reproducible first-use downloads. See the [model guide](doc/models.md) for the official
 export matrix, URL patterns, and model properties.
