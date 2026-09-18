@@ -111,13 +111,11 @@ class YOLOModelResolver {
   static String? officialModelDownloadUrlForTesting(
     String modelId, {
     required bool iosLike,
-    bool coreAI = false,
   }) {
     final artifact = _officialModelForId(modelId);
     if (artifact == null) return null;
-    final format = coreAI ? _AppleModelFormat.coreAI : _AppleModelFormat.coreML;
     return iosLike
-        ? '$_iosModelReleaseBaseUrl/${artifact.id}${format.archiveSuffix}'
+        ? '$_iosModelReleaseBaseUrl/${artifact.id}${_AppleModelFormat.coreML.archiveSuffix}'
         : '$_androidModelReleaseBaseUrl/${artifact.androidAssetName}';
   }
 
@@ -312,15 +310,6 @@ class YOLOModelResolver {
       if (extractedPath != null) return extractedPath;
     }
 
-    // A cached Core ML model with no bundled asset behind it was downloaded before the device had Core AI; drop it
-    // so an iOS 27 upgrade does not keep both formats on disk.
-    final staleCoreMLDir = Directory(
-      '${directory.path}/${artifact.id}${_AppleModelFormat.coreML.suffix}',
-    );
-    if (preferred == _AppleModelFormat.coreAI && staleCoreMLDir.existsSync()) {
-      staleCoreMLDir.deleteSync(recursive: true);
-    }
-
     final archiveName = '${artifact.id}${preferred.archiveSuffix}';
     final archiveFile = File('${directory.path}/$archiveName');
     await _downloadToFile(
@@ -328,12 +317,21 @@ class YOLOModelResolver {
       archiveFile,
       progressId: artifact.id,
     );
-    return _extractAppleModelArchiveFile(
+    final modelPath = await _extractAppleModelArchiveFile(
       archiveFile,
       archiveName,
       preferredDir,
       preferred,
     );
+    // A Core ML model cached before the device had Core AI is dropped only once the Core AI model is extracted and
+    // valid, so a failed download never costs the user a working model.
+    final staleCoreMLDir = Directory(
+      '${directory.path}/${artifact.id}${_AppleModelFormat.coreML.suffix}',
+    );
+    if (preferred == _AppleModelFormat.coreAI && staleCoreMLDir.existsSync()) {
+      staleCoreMLDir.deleteSync(recursive: true);
+    }
+    return modelPath;
   }
 
   static Future<String> _downloadRemoteModel(Uri uri) async {
