@@ -76,16 +76,17 @@ Official export properties:
 | Format             | `.tflite`                                     | `.mlpackage.zip`                        | `.aimodel.zip`                          |
 | Quantization       | w8a32 LiteRT (int8 weights, FP32 activations) | int8 Core ML                            | FP16 (no INT8 Core AI export)           |
 | `imgsz`            | `224` cls; `640` others                       | `224` cls; `640` others                 | `224` cls; `640` others                 |
-| `nms`              | `None`                                        | `False`                                 | `False`                                 |
-| `end2end` metadata | `False`                                       | `False` cls/sem/depth; `True` others    | `False` cls/sem/depth; `True` others    |
+| `nms`              | `None`                                        | `False`                                 | `None`                                  |
+| `end2end` metadata | `False`                                       | `False` cls/sem/depth; `True` others    | `False`                                 |
 | Calibration        | None (w8a32 dynamic-range)                    | exporter default                        | None                                    |
-| Postprocessing     | Android native                                | Swift/Core ML                           | Swift/Core AI                           |
+| Postprocessing     | Android native                                | Swift/Core ML                           | Swift NMS/Core AI                       |
 
 Export scripts require `ultralytics>=8.4.142`. LiteRT uses `nms=None` for raw one-to-many outputs with Android-side
 NMS. Core ML uses `nms=False` for NMS-free detect, segment, pose, and OBB outputs; classification, semantic, and depth
-retain their native outputs. Core AI uses the same `nms=False` recipe at FP16 and carries the same metadata keys as
-Core ML; it has no NMS operator, so there is no embedded-NMS variant, and it requires `ultralytics>=8.4.156` on macOS 26
-or later with Apple silicon. `nms=True` embeds NMS where supported. The `end2end` metadata field describes the
+retain their native outputs. Core AI exports the raw one-to-many head at FP16 for detect, segment, pose, and OBB
+(`model.export(format="coreai", quantize=16, imgsz=640)`, `imgsz=224` for classification), decoded by the UltralyticsYOLO
+SDK's Swift NMS, and carries the same metadata keys as Core ML. It has no NMS operator, so there is no embedded-NMS
+variant, and it requires `ultralytics>=8.4.155` on macOS 26 or later with Apple silicon. `nms=True` embeds NMS where supported. The `end2end` metadata field describes the
 exported graph; use `nms` to configure exports. Android `w8a32` uses int8 weights and FP32 activations without calibration.
 
 If you want the simplest “start from the default Ultralytics model” entry point, prefer `YOLO.defaultOfficialModel()`.

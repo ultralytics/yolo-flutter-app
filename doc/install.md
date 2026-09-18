@@ -178,7 +178,7 @@ class TestYOLO extends StatelessWidget {
 
 ### iOS Optimization
 
-iOS inference runs on Core AI or Core ML, which use the Neural Engine when available, so no extra configuration is required. Core AI (`.aimodel`) is the default on iOS 27 and later; Core ML (`.mlpackage`) remains the fallback for earlier iOS versions and for the iOS Simulator, which does not ship Core AI. Ship a Core AI model (`.aimodel.zip` in Flutter assets) for iOS 27+, a Core ML model (`.mlpackage`/`.mlmodel`, or `.mlpackage.zip` in Flutter assets) for every iOS version, or both, and run on a real device for accurate performance. The minimum iOS deployment target stays `13.0`.
+iOS inference runs on Core AI or Core ML with hardware acceleration by default, so no extra configuration is required. Core ML runs on the Neural Engine and CPU; Core AI places the model across the Neural Engine, GPU and CPU. Core AI (`.aimodel`) is the default on iOS 27 and later; Core ML (`.mlpackage`) remains the fallback for earlier iOS versions and for the iOS Simulator, which does not ship Core AI. Ship a Core AI model (`.aimodel.zip` in Flutter assets) for iOS 27+, a Core ML model (`.mlpackage`/`.mlmodel`, or `.mlpackage.zip` in Flutter assets) for every iOS version, or both, and run on a real device for accurate performance. The minimum iOS deployment target stays `13.0`.
 
 ### Android Optimization
 

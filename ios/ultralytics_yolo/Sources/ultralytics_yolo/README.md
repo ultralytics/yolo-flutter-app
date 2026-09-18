@@ -53,14 +53,15 @@ Other tasks use the same square-orientation guidance and `nms=False`. Classifica
 their native outputs. Use `nms=None` for raw one-to-many outputs with Swift-side NMS, or `nms=True` for embedded NMS
 on supported tasks. The `end2end` metadata field continues to describe the actual exported graph.
 
-The Core AI export uses the same recipe at FP16. It requires `ultralytics>=8.4.156`, macOS 26 or later on Apple silicon,
-`torch>=2.8`, and `coreai-torch>=0.4.2`. Core AI has no NMS operator, so `nms=True` is not available:
+The Core AI export uses FP16 and the raw one-to-many head for detect, segment, pose, and OBB, which the `UltralyticsYOLO`
+SDK decodes with Swift NMS; do not pass `nms=False`. It requires `ultralytics>=8.4.155`, macOS 26 or later on Apple
+silicon, `torch>=2.8`, and `coreai-torch>=0.4.2`. Core AI has no NMS operator, so `nms=True` is not available:
 
 ```python
 from ultralytics import YOLO
 
 # Use 224 for classification and 640 for every other mobile task.
-YOLO("yolo26n.pt").export(format="coreai", quantize=16, nms=False, imgsz=640)
+YOLO("yolo26n.pt").export(format="coreai", quantize=16, imgsz=640)
 ```
 
 Zip the resulting `yolo26n.aimodel` directory (keeping it as the top-level entry) to ship it as a Flutter asset.

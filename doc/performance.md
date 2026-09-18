@@ -163,25 +163,33 @@ Engine result; the Pixel and Galaxy tables above record GPU only because every m
 
 ### iPhone 17 Pro Core AI
 
-Plugin measurements are pending on-device results: no Core AI row has been recorded through this plugin yet. Core AI
-runs only on iOS 27 devices, so it cannot be measured on the iOS Simulator or on a Mac running macOS 26.
+Core AI runs only on iOS 27 devices, so it cannot be measured on the iOS Simulator or on a Mac running macOS 26. The
+results below were measured in the native iOS app, not through this Flutter plugin; the plugin runs the same
+`UltralyticsYOLO` predictors. The full per-task table lives in the
+[yolo-ios-app performance record](https://github.com/ultralytics/yolo-ios-app/blob/main/docs/performance.md).
 
-The only published Core AI latency comes from
-[ultralytics/ultralytics#25926](https://github.com/ultralytics/ultralytics/pull/25926), measured on an iPhone 17 Pro with
-iOS 27.0 beta 6 using YOLO26n at 640 × 640 in FP16 with the same graph on both backends:
+On an iPhone 17 Pro with iOS 27.0, using YOLO26n on `bus.jpg`:
+
+- The Core AI FP16 raw head with Swift NMS runs inference about 2x faster than the shipped Core ML INT8 assets for
+  detect, segment, pose, and OBB: 2.08 vs 4.09 ms, 2.65 vs 4.91 ms, 2.14 vs 5.09 ms, and 2.02 vs 5.15 ms.
+- Core AI adds about 1 ms of CPU preprocessing per frame, because the SDK letterboxes the input itself instead of Vision.
+- Swift NMS adds 0.3 to 1.1 ms of postprocessing on this image, and its cost grows with object count: a dense aerial OBB
+  scene measured 4.7 ms of postprocessing, which erases the inference win.
+- The FP16 end-to-end (`nms=False`) pose asset returns no detections when Core AI places it on the Neural Engine
+  ([apple/coreai-torch#115](https://github.com/apple/coreai-torch/issues/115)). The raw head avoids it, so the official
+  Core AI assets use the raw head for detect, segment, pose, and OBB.
+- The shipped Core ML assets are INT8 and the Core AI assets are FP16, so Core AI downloads are larger.
+
+Prior evidence from [ultralytics/ultralytics#25926](https://github.com/ultralytics/ultralytics/pull/25926), measured on an
+iPhone 17 Pro with iOS 27.0 beta 6 using YOLO26n at 640 × 640 in FP16 with the same graph on both backends:
 
 | Head                              | Core AI<br><sup>(ms)</sup> | Core ML<br><sup>(ms)</sup> |
 | --------------------------------- | -------------------------- | -------------------------- |
 | NMS-free end-to-end (`nms=False`) | 3.06                       | 1.53                       |
 | Raw one-to-many (`nms=None`)      | 1.32                       | 1.32                       |
 
-With the `nms=False` recipe that the official mobile assets use, Core AI is slower than Core ML on the Neural Engine. That
-PR attributes the gap to one `topk` operation charged at the Neural Engine partition boundary
-([apple/coreai-torch#66](https://github.com/apple/coreai-torch/issues/66)); parity needs the raw head with Swift-side NMS.
-It also reports that some FP16 `.aimodel` assets abort the process while loading their Neural Engine program, which the
-app cannot catch, while the same asset loads with `useGpu: false`. The shipped Core ML assets are INT8 and the Core AI
-assets are FP16, so downloads are larger. Official IDs resolve to Core AI only after the on-device checklist shows parity
-or better and no load aborts across all 35 assets.
+That PR attributes the end-to-end gap to one `topk` operation charged at the Neural Engine partition boundary
+([apple/coreai-torch#66](https://github.com/apple/coreai-torch/issues/66)).
 
 ## 🔭 Optimization Findings and Future Exploration
 
@@ -536,7 +544,7 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
 - Example UI: controls expose all seven tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.
 - Bundled models: local/release builds fetch the seven `yolo26n` nano models into `example/assets/models/` at build time (gitignored, not committed; skipped under CI), so nano tasks work offline with no first-run download; larger sizes download on demand.
-- iOS runtime: with `useGpu: true` (the default) on iOS 16+, Core ML is pinned to `.cpuAndNeuralEngine` (Neural Engine + CPU), not `.all` - avoids GPU contention with the live preview/overlay compositing. iOS 15 and earlier use `.all`; `useGpu: false` pins to `.cpuOnly`. Core AI models (iOS 27+) prefer the Neural Engine with `useGpu: true` and run CPU only with `useGpu: false`.
+- iOS runtime: with `useGpu: true` (the default) on iOS 16+, Core ML is pinned to `.cpuAndNeuralEngine` (Neural Engine + CPU), not `.all` - avoids GPU contention with the live preview/overlay compositing. iOS 15 and earlier use `.all`; `useGpu: false` pins to `.cpuOnly`. For Core AI models (iOS 27+), hardware acceleration lets Core AI place the model across the Neural Engine, GPU and CPU; `useGpu: false` pins to CPU.
 
 ### Open Levers
 

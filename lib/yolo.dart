@@ -65,8 +65,8 @@ class YOLO {
   ///
   /// On Android, this requests the LiteRT GPU accelerator, with automatic
   /// fallback to CPU when the model can't compile on the GPU.
-  /// On iOS, this enables hardware-accelerated Core AI or Core ML inference
-  /// (Neural Engine + CPU on iOS 16+); when false, inference is pinned to CPU only.
+  /// On iOS, this enables hardware-accelerated inference: Core ML on the Neural Engine + CPU (iOS 16+), or Core AI
+  /// across the Neural Engine, GPU and CPU (iOS 27+); when false, inference is pinned to CPU only.
   ///
   /// Default is true for better performance, but can be set to false
   /// for stability on devices where accelerated inference causes crashes.
