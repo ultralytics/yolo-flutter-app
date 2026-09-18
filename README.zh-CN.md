@@ -121,7 +121,7 @@ final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 | iOS 27+             | Core AI FP16 `.aimodel.zip`   | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 | iOS                 | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
-Flutter 解析器在 Android 上使用 TFLite release，在 Apple 平台上使用 iOS release。在 iOS 27 及更高版本上默认使用 Core AI（`.aimodel`）；更早的 iOS 版本以及不包含 Core AI 的 iOS 模拟器继续使用 Core ML（`.mlpackage`）。Core AI 资产将随启用 Core AI 的版本一同发布。这些 release 标签被刻意固定，以保证首次下载可复现。官方导出矩阵、URL 模式与模型属性详见[模型指南](doc/models.md)。
+Flutter 解析器在 Android 上使用 TFLite release，在 Apple 平台上使用 iOS release。在 iOS 27 及更高版本上默认使用 Core AI（`.aimodel`）；更早的 iOS 版本以及不包含 Core AI 的 iOS 模拟器继续使用 Core ML（`.mlpackage`）。这些 release 标签被刻意固定，以保证首次下载可复现。官方导出矩阵、URL 模式与模型属性详见[模型指南](doc/models.md)。
 
 ### 2. 你自己的导出模型
 
