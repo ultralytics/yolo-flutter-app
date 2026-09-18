@@ -325,7 +325,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     // Determine model URL
     if lowercasedPath.hasSuffix(".mlmodel") || lowercasedPath.hasSuffix(".mlpackage")
-      || lowercasedPath.hasSuffix(".mlmodelc")
+      || lowercasedPath.hasSuffix(".mlmodelc") || lowercasedPath.hasSuffix(".aimodel")
     {
       let possibleURL = URL(fileURLWithPath: modelPathOrName)
       var isDirectory: ObjCBool = false

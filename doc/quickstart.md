@@ -35,7 +35,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.6.14
+  ultralytics_yolo: ^0.6.15
   image_picker: ^1.2.1 # For image selection
 ```
 
@@ -55,13 +55,13 @@ final yolo = YOLO(modelPath: 'yolo26n');
 
 Custom local models are still supported:
 
-- iOS: drag `.mlpackage` or `.mlmodel` into **ios/Runner.xcworkspace**, or bundle `.mlpackage.zip` in Flutter assets
+- iOS: drag `.mlpackage` or `.mlmodel` into **ios/Runner.xcworkspace**, or bundle `.aimodel.zip` (Core AI, iOS 27+) or `.mlpackage.zip` (Core ML) in Flutter assets
 - Android native assets: place `.tflite` files in **android/app/src/main/assets/**
-- Flutter assets: place `.tflite` on Android or `.mlpackage.zip` on iOS in `assets/models/` and use that asset path directly
+- Flutter assets: place `.tflite` on Android or `.aimodel.zip`/`.mlpackage.zip` on iOS in `assets/models/` and use that asset path directly
 
 Task and labels are auto-detected from the model's embedded metadata. If your custom model has no `task` in its metadata, pass it explicitly.
 
-Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core ML. Official w8a32 YOLO26 LiteRT assets (int8 weights, FP32 activations) compile on the LiteRT GPU path on supported devices, but GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. non-end-to-end exports are useful for GPU benchmarking (the GPU delegate runs them in FP16):
+Android inference runs on LiteRT 2.x with an automatic GPU → CPU accelerator ladder; iOS uses Core AI on iOS 27 and later and Core ML otherwise. Official w8a32 YOLO26 LiteRT assets (int8 weights, FP32 activations) compile on the LiteRT GPU path on supported devices, but GPU coverage depends on the device driver and graph; graphs the GPU cannot compile fall back to CPU. non-end-to-end exports are useful for GPU benchmarking (the GPU delegate runs them in FP16):
 
 ```python
 # Requires ultralytics>=8.4.142

@@ -43,39 +43,51 @@ Official assets are maintained as GitHub release assets:
 | ----------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
 | Android     | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | Android NPU | QNN `.onnx`                   | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| iOS 27+     | Core AI FP16 `.aimodel.zip`   | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 | iOS         | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 URL patterns:
 
 - Android LiteRT: `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6/<model>_w8a32.tflite`
 - Android QNN (opt-in NPU): `https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6/<model>_v73_qnn.onnx` (Snapdragon 8 Gen 2+; `_v81` for 8 Elite Gen 5)
+- iOS Core AI (iOS 27+): `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.aimodel.zip`
 - iOS Core ML: `https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/<model>.mlpackage.zip`
 
-The Flutter resolver uses the LiteRT release for Android and the Core ML release for Apple platforms. QNN models are
+The Flutter resolver uses the LiteRT release for Android and the iOS release for Apple platforms. Core AI (`.aimodel`)
+is the default on iOS 27 and later; Core ML (`.mlpackage`) remains the fallback for earlier iOS versions and for the iOS
+Simulator, which does not ship Core AI. The native side reports whether Core AI is usable, and official model IDs then
+resolve to `<model>.aimodel.zip` instead of `<model>.mlpackage.zip`. Bundled assets win over downloads: an app that
+bundles only `<model>.mlpackage.zip` keeps using it offline on iOS 27. A Core ML download cached before a device
+upgraded to iOS 27 keeps loading when the Core AI download or extraction fails (offline, missing asset) and is deleted
+only after the Core AI asset is extracted and valid. Explicit `.mlpackage` paths, assets, and URLs keep
+working on every iOS version, and an `.aimodel` on a device without Core AI fails with a load error. QNN models are
 not auto-resolved by model ID — pass their URL or file path explicitly; any path ending in `_qnn.onnx` runs on the
 Hexagon NPU via the ONNX Runtime QNN Execution Provider (see the README's NPU section for the required Gradle opt-in).
 QNN assets are nano-only and use channel-last inputs with in-graph ArgMax class maps for semantic segmentation. The
-native iOS app uses the same Core ML release through `RemoteModels.swift`. These release tags are intentionally pinned
+native iOS app uses the same iOS release through `RemoteModels.swift`. These release tags are intentionally pinned
 in code for reproducible first-use downloads; when official assets move to a new release, update the resolver
 constants, docs, and URL tests in the same PR.
 
 Official export properties:
 
-| Property           | TFLite                                        | Core ML                                 |
-| ------------------ | --------------------------------------------- | --------------------------------------- |
-| Model IDs          | `yolo26{n,s,m,l,x}`                           | `yolo26{n,s,m,l,x}`                     |
-| Tasks              | detect, seg, sem, depth, cls, pose, obb       | detect, seg, sem, depth, cls, pose, obb |
-| Format             | `.tflite`                                     | `.mlpackage.zip`                        |
-| Quantization       | w8a32 LiteRT (int8 weights, FP32 activations) | int8 Core ML                            |
-| `imgsz`            | `224` cls; `640` others                       | `224` cls; `640` others                 |
-| `nms`              | `None`                                        | `False`                                 |
-| `end2end` metadata | `False`                                       | `False` cls/sem/depth; `True` others    |
-| Calibration        | None (w8a32 dynamic-range)                    | exporter default                        |
-| Postprocessing     | Android native                                | Swift/Core ML                           |
+| Property           | TFLite                                        | Core ML                                 | Core AI                                 |
+| ------------------ | --------------------------------------------- | --------------------------------------- | --------------------------------------- |
+| Model IDs          | `yolo26{n,s,m,l,x}`                           | `yolo26{n,s,m,l,x}`                     | `yolo26{n,s,m,l,x}`                     |
+| Tasks              | detect, seg, sem, depth, cls, pose, obb       | detect, seg, sem, depth, cls, pose, obb | detect, seg, sem, depth, cls, pose, obb |
+| Format             | `.tflite`                                     | `.mlpackage.zip`                        | `.aimodel.zip`                          |
+| Quantization       | w8a32 LiteRT (int8 weights, FP32 activations) | int8 Core ML                            | FP16 (no INT8 Core AI export)           |
+| `imgsz`            | `224` cls; `640` others                       | `224` cls; `640` others                 | `224` cls; `640` others                 |
+| `nms`              | `None`                                        | `False`                                 | `None`                                  |
+| `end2end` metadata | `False`                                       | `False` cls/sem/depth; `True` others    | `False`                                 |
+| Calibration        | None (w8a32 dynamic-range)                    | exporter default                        | None                                    |
+| Postprocessing     | Android native                                | Swift/Core ML                           | Swift NMS/Core AI                       |
 
 Export scripts require `ultralytics>=8.4.142`. LiteRT uses `nms=None` for raw one-to-many outputs with Android-side
 NMS. Core ML uses `nms=False` for NMS-free detect, segment, pose, and OBB outputs; classification, semantic, and depth
-retain their native outputs. `nms=True` embeds NMS where supported. The `end2end` metadata field describes the
+retain their native outputs. Core AI exports the raw one-to-many head at FP16 for detect, segment, pose, and OBB
+(`model.export(format="coreai", quantize=16, imgsz=640)`, `imgsz=224` for classification), decoded by the UltralyticsYOLO
+SDK's Swift NMS, and carries the same metadata keys as Core ML. It has no NMS operator, so there is no embedded-NMS
+variant, and it requires `ultralytics>=8.4.155` on macOS 26 or later with Apple silicon. `nms=True` embeds NMS where supported. The `end2end` metadata field describes the
 exported graph; use `nms` to configure exports. Android `w8a32` uses int8 weights and FP32 activations without calibration.
 
 If you want the simplest “start from the default Ultralytics model” entry point, prefer `YOLO.defaultOfficialModel()`.
@@ -116,6 +128,8 @@ final yolo = YOLO(modelPath: 'assets/models/custom.tflite');
 
 ```dart
 final yolo = YOLO(modelPath: 'assets/models/custom.mlpackage.zip');
+// Core AI, iOS 27+ devices only
+final coreAI = YOLO(modelPath: 'assets/models/custom.aimodel.zip');
 ```
 
 ### 3. Model added directly to the iOS app bundle
@@ -181,8 +195,9 @@ You can use either:
 
 - `.mlpackage` or `.mlmodel` files added to `ios/Runner.xcworkspace`
 - zipped Core ML packages in Flutter assets, for example `assets/models/custom.mlpackage.zip`
+- zipped Core AI assets in Flutter assets, for example `assets/models/custom.aimodel.zip` (iOS 27+ devices only)
 
-For Flutter assets on iOS, use `.mlpackage.zip` so the package can unpack the model into app storage before loading it.
+For Flutter assets on iOS, use `.mlpackage.zip` or `.aimodel.zip` so the package can unpack the model into app storage before loading it.
 
 ## 🐍 Official Asset Maintenance
 
@@ -193,8 +208,9 @@ Official release assets are generated from YOLO26 checkpoints with task/size loo
 | LiteRT w8a32 | [`scripts/export-tflite-models.py`](../scripts/export-tflite-models.py) | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | QNN          | Ultralytics QNN export (`224` cls; `640` others)                        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | Core ML int8 | `../yolo-ios-app/scripts/export-models.py`                              | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
+| Core AI FP16 | `../yolo-ios-app/scripts/export-models.py`                              | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
-`scripts/export-tflite-models.py` is the source of truth for Android export settings, verification, output names, and optional release upload. The Core ML counterpart in `../yolo-ios-app` owns the Apple asset export settings and packaging.
+`scripts/export-tflite-models.py` is the source of truth for Android export settings, verification, output names, and optional release upload. The counterpart in `../yolo-ios-app` owns the Core ML and Core AI asset export settings and packaging.
 
 ### Export Android LiteRT Assets
 

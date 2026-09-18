@@ -161,6 +161,53 @@ Generic output labels the requested automatic paths `gpu-preferred` on Android a
 LiteRT and Core ML may fall back. Verify native device logs before recording either path as an actual GPU or Neural
 Engine result; the Pixel and Galaxy tables above record GPU only because every model logged full GPU compilation.
 
+### iPhone 17 Pro Core AI
+
+Core AI runs only on iOS 27 devices, so it cannot be measured on the iOS Simulator or on a Mac running macOS 26. The
+results below were measured in the native iOS app, not through this Flutter plugin; the plugin runs the same
+`UltralyticsYOLO` predictors. The full per-task tables live in the
+[yolo-ios-app performance record](https://github.com/ultralytics/yolo-ios-app/blob/main/docs/performance.md).
+
+Compare totals (preprocessing + inference + postprocessing), not inference alone: Vision performs Core ML's
+preprocessing inside its inference time, while Core AI's preprocessing and the Swift NMS are reported separately. On an
+iPhone 17 Pro with iOS 27.0, using YOLO26n on `bus.jpg`, hardware-accelerated totals for the official Core AI FP16 assets
+(raw head for detect, segment, pose, and OBB) against the shipped Core ML INT8 assets:
+
+| Task     | Core AI FP16 total<br><sup>(ms)</sup> | Core ML INT8 total<br><sup>(ms)</sup> |
+| -------- | ------------------------------------- | ------------------------------------- |
+| Detect   | 3.73                                  | 4.59                                  |
+| Segment  | 5.33                                  | 5.79                                  |
+| Semantic | 8.55                                  | 4.95                                  |
+| Depth    | 7.87                                  | 6.42                                  |
+| Classify | 1.19                                  | 1.98                                  |
+| Pose     | 4.02                                  | 4.09                                  |
+| OBB      | 3.65                                  | 3.79                                  |
+
+- End to end the two are close: Core AI is ahead for detect, OBB, and classify, tied for segment and pose, and behind for
+  semantic and depth.
+- Core AI's model (inference-only) time is about half of Core ML's with the raw head, but about 1.2 ms of CPU
+  preprocessing per frame and the Swift NMS give most of that back. Swift NMS cost also grows with object count: a dense
+  aerial OBB scene measured 4.7 ms of postprocessing.
+- Core ML FP16 and INT8 are within noise of each other, so precision is not the difference; the FP16 Core AI assets are
+  only a larger download.
+- CPU only (`useGpu: false`), Core AI is 1.5-2x slower than Core ML for every task except classify.
+- Model loads are much faster after the first specialization: an `.aimodel` then loads from the system cache, while a
+  Core ML `.mlpackage` compiles on every launch.
+- The FP16 end-to-end (`nms=False`) pose asset returns no detections under hardware acceleration
+  ([apple/coreai-torch#115](https://github.com/apple/coreai-torch/issues/115)). The raw head avoids it, so the official
+  Core AI assets use the raw head for detect, segment, pose, and OBB.
+
+Prior evidence from [ultralytics/ultralytics#25926](https://github.com/ultralytics/ultralytics/pull/25926), measured on an
+iPhone 17 Pro with iOS 27.0 beta 6 using YOLO26n at 640 × 640 in FP16 with the same graph on both backends:
+
+| Head                              | Core AI<br><sup>(ms)</sup> | Core ML<br><sup>(ms)</sup> |
+| --------------------------------- | -------------------------- | -------------------------- |
+| NMS-free end-to-end (`nms=False`) | 3.06                       | 1.53                       |
+| Raw one-to-many (`nms=None`)      | 1.32                       | 1.32                       |
+
+That PR attributes the end-to-end gap to one `topk` operation charged at the Neural Engine partition boundary
+([apple/coreai-torch#66](https://github.com/apple/coreai-torch/issues/66)).
+
 ## 🔭 Optimization Findings and Future Exploration
 
 The current benchmark tables include results from the Android LiteRT optimization pass, including the
@@ -334,7 +381,7 @@ final yolo = YOLO(
 );
 ```
 
-On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the whole model for the GPU when it can; models the GPU cannot compile fall back to XNNPACK CPU. (iOS uses Core ML.)
+On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the whole model for the GPU when it can; models the GPU cannot compile fall back to XNNPACK CPU. (iOS uses Core AI on iOS 27 and later and Core ML otherwise.)
 
 The official YOLO26 Android assets (w8a32 LiteRT) compile on the LiteRT GPU path on supported devices, though GPU coverage still depends on the device driver and graph. For example, a Galaxy S26 compiled the legacy `yolo26n_int8.tflite` fully with the OpenCL delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran at about **15 FPS / 32 ms** in the live camera example app. Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
 
@@ -514,7 +561,7 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
 - Example UI: controls expose all seven tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.
 - Bundled models: local/release builds fetch the seven `yolo26n` nano models into `example/assets/models/` at build time (gitignored, not committed; skipped under CI), so nano tasks work offline with no first-run download; larger sizes download on demand.
-- iOS runtime: with `useGpu: true` (the default) on iOS 16+, Core ML is pinned to `.cpuAndNeuralEngine` (Neural Engine + CPU), not `.all` - avoids GPU contention with the live preview/overlay compositing. iOS 15 and earlier use `.all`; `useGpu: false` pins to `.cpuOnly`.
+- iOS runtime: with `useGpu: true` (the default) on iOS 16+, Core ML is pinned to `.cpuAndNeuralEngine` (Neural Engine + CPU), not `.all` - avoids GPU contention with the live preview/overlay compositing. iOS 15 and earlier use `.all`; `useGpu: false` pins to `.cpuOnly`. For Core AI models (iOS 27+), hardware acceleration lets Core AI place the model across the Neural Engine, GPU and CPU; `useGpu: false` pins to CPU.
 
 ### Open Levers
 

@@ -56,6 +56,15 @@ public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @uncheck
     }
   }
 
+  /// Whether `.aimodel` models can run here. Core AI needs the iOS 27 SDK at build time and iOS 27 at run time; the
+  /// iOS Simulator SDK ships no Core AI, so `canImport` is false there and Core ML stays in use.
+  nonisolated static var isCoreAIAvailable: Bool {
+    #if canImport(CoreAI)
+      if #available(iOS 27.0, *) { return true }
+    #endif
+    return false
+  }
+
   // `nonisolated static` so [`inspectModel`] can use it from a background queue without crossing main-actor
   // isolation or capturing the `@MainActor` `self`.
   nonisolated private static func checkModelExists(modelPath: String) -> [String: Any] {
@@ -167,17 +176,26 @@ public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @uncheck
     let url = URL(fileURLWithPath: resolvedPath)
     let ext = url.pathExtension.lowercased()
 
-    let model: MLModel
-    if ext == "mlmodelc" {
-      model = try MLModel(contentsOf: url)
+    let creatorDefined: [String: String]
+    if ext == "aimodel" {
+      // Core AI assets keep the same Ultralytics metadata as plain JSON, so reading it needs no Core AI import.
+      let data = try Data(contentsOf: url.appendingPathComponent("metadata.json"))
+      let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+      creatorDefined =
+        (json?["creatorDefinedMetadata"] as? [String: Any])?.compactMapValues { $0 as? String }
+        ?? [:]
     } else {
-      let compiledURL = try MLModel.compileModel(at: url)
-      model = try MLModel(contentsOf: compiledURL)
+      let model: MLModel
+      if ext == "mlmodelc" {
+        model = try MLModel(contentsOf: url)
+      } else {
+        let compiledURL = try MLModel.compileModel(at: url)
+        model = try MLModel(contentsOf: compiledURL)
+      }
+      creatorDefined =
+        model.modelDescription.metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String]
+        ?? [:]
     }
-
-    let creatorDefined =
-      model.modelDescription.metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String]
-      ?? [:]
     let labels = BasePredictor.parseLabels(from: creatorDefined)
 
     var result: [String: Any] = [
@@ -347,6 +365,9 @@ public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @uncheck
       case "getStoragePaths":
         let paths = getStoragePaths()
         result(paths)
+
+      case "isCoreAIAvailable":
+        result(YOLOPlugin.isCoreAIAvailable)
 
       case "inspectModel":
         guard let args = call.arguments as? [String: Any],

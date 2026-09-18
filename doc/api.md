@@ -29,14 +29,14 @@ class YOLO {
 
 #### Constructor Parameters
 
-| Parameter           | Type                    | Required | Default | Description                                                                                                 |
-| ------------------- | ----------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------- |
-| `modelPath`         | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL                                                           |
-| `task`              | `YOLOTask?`             | ❌       | `null`  | Type of YOLO task to perform when metadata is missing                                                       |
-| `useGpu`            | `bool`                  | ❌       | `true`  | Allow GPU acceleration on Android (LiteRT 2.x GPU → CPU ladder); iOS uses Core ML. Set `false` to force CPU |
-| `useMultiInstance`  | `bool`                  | ❌       | `false` | Enable multi-instance support                                                                               |
-| `classifierOptions` | `Map<String, dynamic>?` | ❌       | `null`  | Optional classifier preprocessing and label overrides                                                       |
-| `numItemsThreshold` | `int?`                  | ❌       | `30`    | Maximum number of returned detections                                                                       |
+| Parameter           | Type                    | Required | Default | Description                                                                                                                                 |
+| ------------------- | ----------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modelPath`         | `String`                | ✅       | -       | Official model ID, local path, asset path, or URL                                                                                           |
+| `task`              | `YOLOTask?`             | ❌       | `null`  | Type of YOLO task to perform when metadata is missing                                                                                       |
+| `useGpu`            | `bool`                  | ❌       | `true`  | Allow GPU acceleration on Android (LiteRT 2.x GPU → CPU ladder); iOS uses hardware-accelerated Core AI or Core ML. Set `false` to force CPU |
+| `useMultiInstance`  | `bool`                  | ❌       | `false` | Enable multi-instance support                                                                                                               |
+| `classifierOptions` | `Map<String, dynamic>?` | ❌       | `null`  | Optional classifier preprocessing and label overrides                                                                                       |
+| `numItemsThreshold` | `int?`                  | ❌       | `30`    | Maximum number of returned detections                                                                                                       |
 
 #### Properties
 

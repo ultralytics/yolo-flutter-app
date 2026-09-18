@@ -17,13 +17,34 @@ class _OfficialModelArtifact {
     required this.id,
     required this.task,
     required this.androidAssetName,
-    required this.iosArchiveName,
   });
 
   final String id;
   final YOLOTask task;
   final String androidAssetName;
-  final String iosArchiveName;
+}
+
+/// Apple model formats. Both are directories that ship zipped and are validated by a marker file after extraction.
+enum _AppleModelFormat {
+  coreML('.mlpackage', 'Manifest.json'),
+  coreAI('.aimodel', 'metadata.json');
+
+  const _AppleModelFormat(this.suffix, this.markerFile);
+
+  final String suffix;
+  final String markerFile;
+
+  String get archiveSuffix => '$suffix.zip';
+
+  bool isValid(Directory modelDir) =>
+      File('${modelDir.path}/$markerFile').existsSync();
+
+  static _AppleModelFormat? ofArchive(String fileName) {
+    for (final format in values) {
+      if (fileName.endsWith(format.archiveSuffix)) return format;
+    }
+    return null;
+  }
 }
 
 class YOLOResolvedModel {
@@ -41,7 +62,8 @@ class YOLOResolvedModel {
 class YOLOModelResolver {
   // Pinned release assets provide reproducible first-use downloads. Update these constants, docs, and URL tests together
   // when the official model asset set moves to a new release. The official Android assets are LiteRT `_w8a32.tflite`
-  // and opt-in QNN `_qnn.onnx` models on v0.6.6. QNN models use explicit paths rather than model-ID resolution.
+  // and opt-in QNN `_qnn.onnx` models on v0.6.6. QNN models use explicit paths rather than model-ID resolution. The
+  // iOS release hosts every model as both Core AI `.aimodel.zip` (iOS 27+) and Core ML `.mlpackage.zip`.
   static const String _androidModelReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6';
   static const String _iosModelReleaseBaseUrl =
@@ -67,7 +89,6 @@ class YOLOModelResolver {
       id: id,
       task: task,
       androidAssetName: '${id}_w8a32.tflite',
-      iosArchiveName: '$id.mlpackage.zip',
     );
   }
 
@@ -94,8 +115,18 @@ class YOLOModelResolver {
     final artifact = _officialModelForId(modelId);
     if (artifact == null) return null;
     return iosLike
-        ? '$_iosModelReleaseBaseUrl/${artifact.iosArchiveName}'
+        ? '$_iosModelReleaseBaseUrl/${artifact.id}${_AppleModelFormat.coreML.archiveSuffix}'
         : '$_androidModelReleaseBaseUrl/${artifact.androidAssetName}';
+  }
+
+  /// Core AI (`.aimodel`) is the default on iOS 27 and later; Core ML (`.mlpackage`) remains the fallback for earlier
+  /// iOS versions and for the iOS Simulator, which does not ship Core AI. Only the native side can tell them apart.
+  static Future<_AppleModelFormat> _preferredAppleFormat() async {
+    final available = await ChannelConfig.createSingleImageChannel()
+        .invokeMethod<bool>('isCoreAIAvailable');
+    return available == true
+        ? _AppleModelFormat.coreAI
+        : _AppleModelFormat.coreML;
   }
 
   static Future<YOLOResolvedModel> resolve({
@@ -162,6 +193,8 @@ class YOLOModelResolver {
   static String? _normalizeOfficialModelId(String source) {
     final fileName = source.split('/').last;
     final normalized = fileName
+        .replaceAll('.aimodel.zip', '')
+        .replaceAll('.aimodel', '')
         .replaceAll('.mlpackage.zip', '')
         .replaceAll('.mlpackage', '')
         .replaceAll('.mlmodelc', '')
@@ -198,15 +231,19 @@ class YOLOModelResolver {
       '${documents.path}/$_officialModelCacheDirectory',
     );
     if (_isIosLikePlatform) {
-      if (await _hasValidMlPackage(
-        Directory('${directory.path}/${artifact.id}.mlpackage'),
+      final formats = {await _preferredAppleFormat(), _AppleModelFormat.coreML};
+      if (formats.any(
+        (format) => format.isValid(
+          Directory('${directory.path}/${artifact.id}${format.suffix}'),
+        ),
       )) {
         return true;
       }
-      return await _loadAssetBytes(
-            'assets/models/${artifact.iosArchiveName}',
-          ) !=
-          null;
+      for (final format in formats) {
+        final assetPath = 'assets/models/${artifact.id}${format.archiveSuffix}';
+        if (await _loadAssetBytes(assetPath) != null) return true;
+      }
+      return false;
     }
     final filename = artifact.androidAssetName;
     if (File('${directory.path}/$filename').existsSync()) return true;
@@ -241,37 +278,67 @@ class YOLOModelResolver {
   static Future<String> _resolveIosOfficialModel(
     _OfficialModelArtifact artifact,
   ) async {
-    final archiveName = artifact.iosArchiveName;
+    final preferred = await _preferredAppleFormat();
     final documents = await getApplicationDocumentsDirectory();
     final directory = Directory(
       '${documents.path}/$_officialModelCacheDirectory',
     );
-    final modelDir = Directory('${directory.path}/${artifact.id}.mlpackage');
-    if (await _hasValidMlPackage(modelDir)) return modelDir.path;
     final legacyModelDir = Directory(
       '${documents.path}/${artifact.id}.mlpackage',
     );
     if (legacyModelDir.existsSync()) {
       legacyModelDir.deleteSync(recursive: true);
     }
-    if (modelDir.existsSync()) {
-      modelDir.deleteSync(recursive: true);
-    }
 
-    final assetPath = 'assets/models/$archiveName';
-    final assetBytes = await _loadAssetBytes(assetPath);
-    if (assetBytes != null) {
-      final extractedPath = await _extractMlPackageZip(assetBytes, modelDir);
+    // Bundled assets win over downloads, so an app that bundles only Core ML stays offline on iOS 27. A cached Core ML
+    // model counts only when its asset is bundled; otherwise it predates Core AI on this device and is replaced below.
+    for (final format in {preferred, _AppleModelFormat.coreML}) {
+      final modelDir = Directory(
+        '${directory.path}/${artifact.id}${format.suffix}',
+      );
+      final cached = format.isValid(modelDir);
+      if (cached && format == preferred) return modelDir.path;
+      final assetBytes = await _loadAssetBytes(
+        'assets/models/${artifact.id}${format.archiveSuffix}',
+      );
+      if (assetBytes == null) continue;
+      if (cached) return modelDir.path;
+      final extractedPath = await _extractAppleModelZip(
+        assetBytes,
+        modelDir,
+        format,
+      );
       if (extractedPath != null) return extractedPath;
     }
 
-    final archiveFile = File('${directory.path}/$archiveName');
-    await _downloadToFile(
-      '$_iosModelReleaseBaseUrl/$archiveName',
-      archiveFile,
-      progressId: artifact.id,
+    // A Core ML model cached before the device had Core AI keeps loading when the Core AI download or extraction fails
+    // (offline, missing asset) and is deleted only once the Core AI model is extracted and valid.
+    final coreMLDir = Directory(
+      '${directory.path}/${artifact.id}${_AppleModelFormat.coreML.suffix}',
     );
-    return _extractMlPackageArchiveFile(archiveFile, archiveName, modelDir);
+    final archiveName = '${artifact.id}${preferred.archiveSuffix}';
+    final archiveFile = File('${directory.path}/$archiveName');
+    final String modelPath;
+    try {
+      await _downloadToFile(
+        '$_iosModelReleaseBaseUrl/$archiveName',
+        archiveFile,
+        progressId: artifact.id,
+      );
+      modelPath = await _extractAppleModelArchiveFile(
+        archiveFile,
+        archiveName,
+        Directory('${directory.path}/${artifact.id}${preferred.suffix}'),
+        preferred,
+      );
+    } catch (_) {
+      if (_AppleModelFormat.coreML.isValid(coreMLDir)) return coreMLDir.path;
+      rethrow;
+    }
+    if (preferred == _AppleModelFormat.coreAI && coreMLDir.existsSync()) {
+      coreMLDir.deleteSync(recursive: true);
+    }
+    return modelPath;
   }
 
   static Future<String> _downloadRemoteModel(Uri uri) async {
@@ -285,10 +352,13 @@ class YOLOModelResolver {
         ? Directory('${documents.path}/$_officialModelCacheDirectory')
         : documents;
 
-    if (_isIosLikePlatform && fileName.endsWith('.mlpackage.zip')) {
-      final modelName = fileName.replaceAll('.mlpackage.zip', '');
-      final targetDir = Directory('${directory.path}/$modelName.mlpackage');
-      if (await _hasValidMlPackage(targetDir)) return targetDir.path;
+    final format = _AppleModelFormat.ofArchive(fileName);
+    if (_isIosLikePlatform && format != null) {
+      final modelName = fileName.replaceAll(format.archiveSuffix, '');
+      final targetDir = Directory(
+        '${directory.path}/$modelName${format.suffix}',
+      );
+      if (format.isValid(targetDir)) return targetDir.path;
       if (isOfficialAsset) {
         final legacyTargetDir = Directory(
           '${documents.path}/$modelName.mlpackage',
@@ -299,7 +369,12 @@ class YOLOModelResolver {
       }
       final archiveFile = File('${directory.path}/$fileName');
       await _downloadToFile(url, archiveFile, progressId: modelName);
-      return _extractMlPackageArchiveFile(archiveFile, fileName, targetDir);
+      return _extractAppleModelArchiveFile(
+        archiveFile,
+        fileName,
+        targetDir,
+        format,
+      );
     }
 
     final file = File('${directory.path}/$fileName');
@@ -332,19 +407,26 @@ class YOLOModelResolver {
   }
 
   static Future<String> _resolveIosFlutterAsset(String assetPath) async {
-    if (assetPath.endsWith('.mlpackage.zip')) {
-      final fileName = assetPath.split('/').last;
-      final modelName = fileName.replaceAll('.mlpackage.zip', '');
+    final fileName = assetPath.split('/').last;
+    final format = _AppleModelFormat.ofArchive(fileName);
+    if (format != null) {
+      final modelName = fileName.replaceAll(format.archiveSuffix, '');
       final directory = await getApplicationDocumentsDirectory();
-      final modelDir = Directory('${directory.path}/$modelName.mlpackage');
-      if (await _hasValidMlPackage(modelDir)) return modelDir.path;
+      final modelDir = Directory(
+        '${directory.path}/$modelName${format.suffix}',
+      );
+      if (format.isValid(modelDir)) return modelDir.path;
 
       final assetBytes = await _loadAssetBytes(assetPath);
       if (assetBytes == null) {
         throw ModelLoadingException('Flutter asset not found: $assetPath');
       }
 
-      final extractedPath = await _extractMlPackageZip(assetBytes, modelDir);
+      final extractedPath = await _extractAppleModelZip(
+        assetBytes,
+        modelDir,
+        format,
+      );
       if (extractedPath == null) {
         throw ModelLoadingException('Failed to extract $assetPath.');
       }
@@ -481,20 +563,17 @@ class YOLOModelResolver {
     }
   }
 
-  static Future<bool> _hasValidMlPackage(Directory modelDir) async {
-    return modelDir.existsSync() &&
-        File('${modelDir.path}/Manifest.json').existsSync();
-  }
-
-  static Future<String> _extractMlPackageArchiveFile(
+  static Future<String> _extractAppleModelArchiveFile(
     File archiveFile,
     String displayName,
     Directory targetDir,
+    _AppleModelFormat format,
   ) async {
     try {
-      final extractedPath = await _extractMlPackageZip(
+      final extractedPath = await _extractAppleModelZip(
         archiveFile.readAsBytesSync(),
         targetDir,
+        format,
       );
       if (extractedPath == null) {
         throw ModelLoadingException('Failed to extract $displayName.');
@@ -507,9 +586,10 @@ class YOLOModelResolver {
     }
   }
 
-  static Future<String?> _extractMlPackageZip(
+  static Future<String?> _extractAppleModelZip(
     List<int> bytes,
     Directory targetDir,
+    _AppleModelFormat format,
   ) async {
     try {
       if (targetDir.existsSync()) {
@@ -520,11 +600,11 @@ class YOLOModelResolver {
       MiniZip.extractBytes(
         bytes,
         destination: targetDir,
-        stripTopLevelDirectoryEndingWith: '.mlpackage',
+        stripTopLevelDirectoryEndingWith: format.suffix,
         skip: (path) => path.startsWith('__MACOSX/') || path.contains('/._'),
       );
 
-      return await _hasValidMlPackage(targetDir) ? targetDir.path : null;
+      return format.isValid(targetDir) ? targetDir.path : null;
     } catch (_) {
       if (targetDir.existsSync()) {
         targetDir.deleteSync(recursive: true);
