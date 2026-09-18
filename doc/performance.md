@@ -165,20 +165,37 @@ Engine result; the Pixel and Galaxy tables above record GPU only because every m
 
 Core AI runs only on iOS 27 devices, so it cannot be measured on the iOS Simulator or on a Mac running macOS 26. The
 results below were measured in the native iOS app, not through this Flutter plugin; the plugin runs the same
-`UltralyticsYOLO` predictors. The full per-task table lives in the
+`UltralyticsYOLO` predictors. The full per-task tables live in the
 [yolo-ios-app performance record](https://github.com/ultralytics/yolo-ios-app/blob/main/docs/performance.md).
 
-On an iPhone 17 Pro with iOS 27.0, using YOLO26n on `bus.jpg`:
+Compare totals (preprocessing + inference + postprocessing), not inference alone: Vision performs Core ML's
+preprocessing inside its inference time, while Core AI's preprocessing and the Swift NMS are reported separately. On an
+iPhone 17 Pro with iOS 27.0, using YOLO26n on `bus.jpg`, hardware-accelerated totals for the official Core AI FP16 assets
+(raw head for detect, segment, pose, and OBB) against the shipped Core ML INT8 assets:
 
-- The Core AI FP16 raw head with Swift NMS runs inference about 2x faster than the shipped Core ML INT8 assets for
-  detect, segment, pose, and OBB: 2.08 vs 4.09 ms, 2.65 vs 4.91 ms, 2.14 vs 5.09 ms, and 2.02 vs 5.15 ms.
-- Core AI adds about 1 ms of CPU preprocessing per frame, because the SDK letterboxes the input itself instead of Vision.
-- Swift NMS adds 0.3 to 1.1 ms of postprocessing on this image, and its cost grows with object count: a dense aerial OBB
-  scene measured 4.7 ms of postprocessing, which erases the inference win.
-- The FP16 end-to-end (`nms=False`) pose asset returns no detections when Core AI places it on the Neural Engine
+| Task     | Core AI FP16 total<br><sup>(ms)</sup> | Core ML INT8 total<br><sup>(ms)</sup> |
+| -------- | ------------------------------------- | ------------------------------------- |
+| Detect   | 3.73                                  | 4.59                                  |
+| Segment  | 5.33                                  | 5.79                                  |
+| Semantic | 8.55                                  | 4.95                                  |
+| Depth    | 7.87                                  | 6.42                                  |
+| Classify | 1.19                                  | 1.98                                  |
+| Pose     | 4.02                                  | 4.09                                  |
+| OBB      | 3.65                                  | 3.79                                  |
+
+- End to end the two are close: Core AI is ahead for detect, OBB, and classify, tied for segment and pose, and behind for
+  semantic and depth.
+- Core AI's model (inference-only) time is about half of Core ML's with the raw head, but about 1.2 ms of CPU
+  preprocessing per frame and the Swift NMS give most of that back. Swift NMS cost also grows with object count: a dense
+  aerial OBB scene measured 4.7 ms of postprocessing.
+- Core ML FP16 and INT8 are within noise of each other, so precision is not the difference; the FP16 Core AI assets are
+  only a larger download.
+- CPU only (`useGpu: false`), Core AI is 1.5-2x slower than Core ML for every task except classify.
+- Model loads are much faster after the first specialization: an `.aimodel` then loads from the system cache, while a
+  Core ML `.mlpackage` compiles on every launch.
+- The FP16 end-to-end (`nms=False`) pose asset returns no detections under hardware acceleration
   ([apple/coreai-torch#115](https://github.com/apple/coreai-torch/issues/115)). The raw head avoids it, so the official
   Core AI assets use the raw head for detect, segment, pose, and OBB.
-- The shipped Core ML assets are INT8 and the Core AI assets are FP16, so Core AI downloads are larger.
 
 Prior evidence from [ultralytics/ultralytics#25926](https://github.com/ultralytics/ultralytics/pull/25926), measured on an
 iPhone 17 Pro with iOS 27.0 beta 6 using YOLO26n at 640 × 640 in FP16 with the same graph on both backends:
