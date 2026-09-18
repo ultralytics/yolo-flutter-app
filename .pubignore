@@ -34,6 +34,8 @@ hello_yolo/
 **/*.mlpackage
 **/*.mlmodel
 **/*.mlpackage.zip
+**/*.aimodel
+**/*.aimodel.zip
 **/*.zip
 
 # Development documents and notes

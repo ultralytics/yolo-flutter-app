@@ -161,6 +161,28 @@ Generic output labels the requested automatic paths `gpu-preferred` on Android a
 LiteRT and Core ML may fall back. Verify native device logs before recording either path as an actual GPU or Neural
 Engine result; the Pixel and Galaxy tables above record GPU only because every model logged full GPU compilation.
 
+### iPhone 17 Pro Core AI
+
+Plugin measurements are pending on-device results: no Core AI row has been recorded through this plugin yet. Core AI
+runs only on iOS 27 devices, so it cannot be measured on the iOS Simulator or on a Mac running macOS 26.
+
+The only published Core AI latency comes from
+[ultralytics/ultralytics#25926](https://github.com/ultralytics/ultralytics/pull/25926), measured on an iPhone 17 Pro with
+iOS 27.0 beta 6 using YOLO26n at 640 × 640 in FP16 with the same graph on both backends:
+
+| Head                              | Core AI<br><sup>(ms)</sup> | Core ML<br><sup>(ms)</sup> |
+| --------------------------------- | -------------------------- | -------------------------- |
+| NMS-free end-to-end (`nms=False`) | 3.06                       | 1.53                       |
+| Raw one-to-many (`nms=None`)      | 1.32                       | 1.32                       |
+
+With the `nms=False` recipe that the official mobile assets use, Core AI is slower than Core ML on the Neural Engine. That
+PR attributes the gap to one `topk` operation charged at the Neural Engine partition boundary
+([apple/coreai-torch#66](https://github.com/apple/coreai-torch/issues/66)); parity needs the raw head with Swift-side NMS.
+It also reports that some FP16 `.aimodel` assets abort the process while loading their Neural Engine program, which the
+app cannot catch, while the same asset loads with `useGpu: false`. The shipped Core ML assets are INT8 and the Core AI
+assets are FP16, so downloads are larger. Official IDs resolve to Core AI only after the on-device checklist shows parity
+or better and no load aborts across all 35 assets.
+
 ## 🔭 Optimization Findings and Future Exploration
 
 The current benchmark tables include results from the Android LiteRT optimization pass, including the
@@ -334,7 +356,7 @@ final yolo = YOLO(
 );
 ```
 
-On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the whole model for the GPU when it can; models the GPU cannot compile fall back to XNNPACK CPU. (iOS uses Core ML.)
+On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the whole model for the GPU when it can; models the GPU cannot compile fall back to XNNPACK CPU. (iOS uses Core AI on iOS 27 and later and Core ML otherwise.)
 
 The official YOLO26 Android assets (w8a32 LiteRT) compile on the LiteRT GPU path on supported devices, though GPU coverage still depends on the device driver and graph. For example, a Galaxy S26 compiled the legacy `yolo26n_int8.tflite` fully with the OpenCL delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran at about **15 FPS / 32 ms** in the live camera example app. Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
 
@@ -480,7 +502,7 @@ Observed app-level result:
 
 **A:** Yes. `scripts/fetch_bundled_models.sh` downloads the six nano YOLO26 models into `example/assets/models/` at build time, wired into the Android Gradle `preBuild` and an iOS run-script build phase. The files stay gitignored and are never committed. `YOLOModelResolver` already checks `assets/models/` before a network download, so a bundled model means no first-run fetch. The download is best-effort (always exits `0`) so offline builds still succeed, and it is **skipped under CI** (`CI` / `GITHUB_ACTIONS`) so GitHub builds stay fast and off the network - CI exercises the runtime-download fallback instead.
 
-**Shipped:** Local and release builds bundle `yolo26n` for all seven tasks; larger sizes still download on demand. This supersedes the earlier temporary "bundle for local validation" workaround.
+**Shipped:** Local and release builds bundle `yolo26n` for all seven tasks; larger sizes still download on demand. iOS builds bundle the Core ML archives, which run on every supported iOS version; `IOS_MODEL_FORMAT=aimodel` bundles the Core AI archives instead, and bundled assets win over downloads. This supersedes the earlier temporary "bundle for local validation" workaround.
 
 **Conclusion:** Build-time bundling removes first-run download latency for the default models and makes on-device profiling reproducible without network access, while CI keeps using the runtime path.
 
@@ -514,7 +536,7 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
 - Example UI: controls expose all seven tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.
 - Bundled models: local/release builds fetch the seven `yolo26n` nano models into `example/assets/models/` at build time (gitignored, not committed; skipped under CI), so nano tasks work offline with no first-run download; larger sizes download on demand.
-- iOS runtime: with `useGpu: true` (the default) on iOS 16+, Core ML is pinned to `.cpuAndNeuralEngine` (Neural Engine + CPU), not `.all` - avoids GPU contention with the live preview/overlay compositing. iOS 15 and earlier use `.all`; `useGpu: false` pins to `.cpuOnly`.
+- iOS runtime: with `useGpu: true` (the default) on iOS 16+, Core ML is pinned to `.cpuAndNeuralEngine` (Neural Engine + CPU), not `.all` - avoids GPU contention with the live preview/overlay compositing. iOS 15 and earlier use `.all`; `useGpu: false` pins to `.cpuOnly`. Core AI models (iOS 27+) prefer the Neural Engine with `useGpu: true` and run CPU only with `useGpu: false`.
 
 ### Open Levers
 

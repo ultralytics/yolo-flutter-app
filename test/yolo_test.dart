@@ -189,6 +189,14 @@ void main() {
           ),
           'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/$modelId.mlpackage.zip',
         );
+        expect(
+          YOLOModelResolver.officialModelDownloadUrlForTesting(
+            modelId,
+            iosLike: true,
+            coreAI: true,
+          ),
+          'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/$modelId.aimodel.zip',
+        );
       }
     });
 
@@ -990,6 +998,10 @@ void main() {
           isTrue,
         );
         expect(
+          YOLOModelResolver.isOfficialModel('yolo26n.aimodel.zip'),
+          isTrue,
+        );
+        expect(
           YOLOModelResolver.isOfficialModel('not-a-model.tflite'),
           isFalse,
         );
@@ -1105,6 +1117,69 @@ void main() {
           );
         }
       });
+
+      test(
+        'resolves official models to Core AI when the device supports it',
+        () async {
+          if (!_isAppleTestPlatform) return;
+          final setup = YOLOTestHelpers.createYOLOTestSetup(
+            customResponses: {'isCoreAIAvailable': (_) => true},
+          );
+          channel = setup.$1;
+          log = setup.$2;
+          const cache = '/tmp/yolo_test/mobile-standard-v1';
+          final coreAIZip = YOLOTestHelpers.storedZip({
+            'model.aimodel/metadata.json': utf8.encode('{}'),
+          });
+          final coreMLZip = YOLOTestHelpers.storedZip({
+            'model.mlpackage/Manifest.json': utf8.encode('{}'),
+          });
+          _mockFlutterAssets({
+            'assets/models/yolo26n.aimodel.zip': coreAIZip,
+            'assets/models/yolo26s.mlpackage.zip': coreMLZip,
+          });
+
+          // A bundled Core AI asset is extracted; a bundled Core ML asset is still used when it is all the app ships.
+          expect(
+            await YOLOModelResolver.preparePath('yolo26n'),
+            '$cache/yolo26n.aimodel',
+          );
+          expect(
+            File('$cache/yolo26n.aimodel/metadata.json').existsSync(),
+            isTrue,
+          );
+          expect(
+            await YOLOModelResolver.preparePath('yolo26s'),
+            '$cache/yolo26s.mlpackage',
+          );
+
+          // A Core ML download cached before the iOS 27 upgrade is replaced by the Core AI download.
+          Directory('$cache/yolo26m.mlpackage').createSync(recursive: true);
+          File(
+            '$cache/yolo26m.mlpackage/Manifest.json',
+          ).writeAsStringSync('{}');
+          expect(
+            await YOLOModelResolver.isOfficialModelAvailableLocally('yolo26m'),
+            isFalse,
+          );
+          const url =
+              'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/yolo26m.aimodel.zip';
+          final client = _FakeHttpClient({
+            url: _FakeHttpResponse(
+              statusCode: HttpStatus.ok,
+              chunks: [coreAIZip],
+            ),
+          });
+          await HttpOverrides.runZoned(() async {
+            expect(
+              await YOLOModelResolver.preparePath('yolo26m'),
+              '$cache/yolo26m.aimodel',
+            );
+          }, createHttpClient: (_) => client);
+          expect(client.requestedUrls, [url]);
+          expect(Directory('$cache/yolo26m.mlpackage').existsSync(), isFalse);
+        },
+      );
 
       test('downloads remote models once and surfaces bad responses', () async {
         final archiveBytes = YOLOTestHelpers.storedZip({

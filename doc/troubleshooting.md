@@ -53,7 +53,7 @@ print(paths);
 If you use a custom model:
 
 - Android Flutter assets should point at `.tflite`
-- iOS Flutter assets should point at `.mlpackage.zip`
+- iOS Flutter assets should point at `.aimodel.zip` (Core AI, iOS 27+ devices only) or `.mlpackage.zip` (Core ML)
 - iOS bundled models should be added to `ios/Runner.xcworkspace`
 
 ### Model loads only on one platform

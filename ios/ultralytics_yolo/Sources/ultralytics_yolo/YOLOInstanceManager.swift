@@ -109,14 +109,16 @@ class YOLOInstanceManager {
       switch result {
       case .success(let loadedYolo):
         self.instances[instanceId] = loadedYolo
-        if useGpu {
+        if !useGpu {
+          self.accelerators[instanceId] = "CPU"
+        } else if resolvedModelPath.lowercased().hasSuffix(".aimodel") {
+          self.accelerators[instanceId] = "NPU"  // Core AI prefers the Neural Engine
+        } else {
           if #available(iOS 16.0, *) {
             self.accelerators[instanceId] = "CPU_AND_NE"
           } else {
             self.accelerators[instanceId] = "ALL"
           }
-        } else {
-          self.accelerators[instanceId] = "CPU"
         }
         completion(.success(()))
 

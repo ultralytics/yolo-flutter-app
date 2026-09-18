@@ -41,20 +41,20 @@ Ultralytics YOLO Flutter 是官方 Flutter 插件，用于在 iOS 和 Android �
 - 提供阈值、加速器选择与结果流式传输等控制项
 - 支持 YOLO26 和 YOLO11 系列模型
 
-| 功能              | Android | iOS | 说明                                                          |
-| ----------------- | ------- | --- | ------------------------------------------------------------- |
-| 目标检测          | ✅      | ✅  | 边界框、类别和置信度                                          |
-| 实例分割          | ✅      | ✅  | 实例掩膜、边界框和类别                                        |
-| 语义分割          | ✅      | ✅  | 每个像素的密集类别掩膜                                        |
-| 单目深度估计      | ✅      | ✅  | 提供官方 LiteRT 和 Core ML 模型                               |
-| 图像分类          | ✅      | ✅  | Top-1/Top-5 类别预测和分数                                    |
-| 姿态估计          | ✅      | ✅  | 关键点、边界框和置信度                                        |
-| 旋转框（OBB）检测 | ✅      | ✅  | 旋转框和多边形角点                                            |
-| 实时相机推理      | ✅      | ✅  | 使用 `YOLOView` 构建实时相机场景                              |
-| 单图推理          | ✅      | ✅  | 使用 `YOLO` 处理图片字节                                      |
-| 官方模型          | ✅      | ✅  | 内置模型 ID 发现、下载和缓存                                  |
-| 自定义模型        | ✅      | ✅  | Android 用 LiteRT（TFLite），iOS 用 Core ML，并优先读取元数据 |
-| 高通 NPU（QNN）   | ✅      | —   | 在 Snapdragon 上为 `*_qnn.onnx` 模型可选启用 Hexagon NPU 推理 |
+| 功能              | Android | iOS | 说明                                                                     |
+| ----------------- | ------- | --- | ------------------------------------------------------------------------ |
+| 目标检测          | ✅      | ✅  | 边界框、类别和置信度                                                     |
+| 实例分割          | ✅      | ✅  | 实例掩膜、边界框和类别                                                   |
+| 语义分割          | ✅      | ✅  | 每个像素的密集类别掩膜                                                   |
+| 单目深度估计      | ✅      | ✅  | 提供官方 LiteRT、Core AI 和 Core ML 模型                                 |
+| 图像分类          | ✅      | ✅  | Top-1/Top-5 类别预测和分数                                               |
+| 姿态估计          | ✅      | ✅  | 关键点、边界框和置信度                                                   |
+| 旋转框（OBB）检测 | ✅      | ✅  | 旋转框和多边形角点                                                       |
+| 实时相机推理      | ✅      | ✅  | 使用 `YOLOView` 构建实时相机场景                                         |
+| 单图推理          | ✅      | ✅  | 使用 `YOLO` 处理图片字节                                                 |
+| 官方模型          | ✅      | ✅  | 内置模型 ID 发现、下载和缓存                                             |
+| 自定义模型        | ✅      | ✅  | Android 用 LiteRT（TFLite），iOS 用 Core AI 或 Core ML，并优先读取元数据 |
+| 高通 NPU（QNN）   | ✅      | —   | 在 Snapdragon 上为 `*_qnn.onnx` 模型可选启用 Hexagon NPU 推理            |
 
 ## ⚡ 快速开始
 
@@ -64,7 +64,7 @@ Ultralytics YOLO Flutter 是官方 Flutter 插件，用于在 iOS 和 Android �
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.6.14
+  ultralytics_yolo: ^0.6.15
 ```
 
 ```bash
@@ -118,9 +118,10 @@ final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 | ------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
 | Android             | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | Android NPU（可选） | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| iOS 27+             | Core AI FP16 `.aimodel.zip`   | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 | iOS                 | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
-Flutter 解析器在 Android 上使用 TFLite release，在 Apple 平台上使用 Core ML release。这些 release 标签被刻意固定，以保证首次下载可复现。官方导出矩阵、URL 模式与模型属性详见[模型指南](doc/models.md)。
+Flutter 解析器在 Android 上使用 TFLite release，在 Apple 平台上使用 iOS release。在 iOS 27 及更高版本上默认使用 Core AI（`.aimodel`）；更早的 iOS 版本以及不包含 Core AI 的 iOS 模拟器继续使用 Core ML（`.mlpackage`）。Core AI 资产将随启用 Core AI 的版本一同发布。这些 release 标签被刻意固定，以保证首次下载可复现。官方导出矩阵、URL 模式与模型属性详见[模型指南](doc/models.md)。
 
 ### 2. 你自己的导出模型
 
@@ -192,7 +193,7 @@ final yolo = YOLO(
 - Android 原生资源：把 `.tflite` 放到 `android/app/src/main/assets`
 - Android Flutter 资源：把 `.tflite` 放到 `assets/models/`
 - iOS 工程资源：把 `.mlpackage` 或 `.mlmodel` 拖进 `ios/Runner.xcworkspace`
-- iOS Flutter 资源：把 `.mlpackage.zip` 放到 `assets/models/`
+- iOS Flutter 资源：把 `.aimodel.zip`（Core AI，iOS 27+）或 `.mlpackage.zip`（Core ML）放到 `assets/models/`
 
 然后把对应路径传给 `modelPath` 即可。
 
@@ -208,7 +209,7 @@ uv pip install --torch-backend cpu "ultralytics-opencv-headless[export-litert]>=
 uv run python scripts/export-tflite-models.py --verify
 ```
 
-使用 `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` 替换现有 `.tflite` 资产。QNN 使用 Ultralytics 按相同的任务 `imgsz` 导出；Core ML 资产由 `../yolo-ios-app/scripts/export-models.py` 生成，并替换 iOS `v8.3.0` release 上的现有资产。所有移动端资产的固定输入尺寸统一为：分类任务 224 × 224，其余任务 640 × 640。
+使用 `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` 替换现有 `.tflite` 资产。QNN 使用 Ultralytics 按相同的任务 `imgsz` 导出；Core AI 和 Core ML 资产由 `../yolo-ios-app/scripts/export-models.py` 生成，并替换 iOS `v8.3.0` release 上的现有资产。所有移动端资产的固定输入尺寸统一为：分类任务 224 × 224，其余任务 640 × 640。
 
 Android 推理运行在 [LiteRT](https://developers.google.com/edge/litert) 2.x 之上，带有自动的 GPU -> CPU 加速器降级链。w8a32 资产作为官方下载产物（最小的可在 GPU 上编译的 litert 格式）；在受支持的设备上，GPU delegate 会编译整个计算图，否则回退到 CPU。GPU 覆盖仍取决于设备驱动和计算图，因此请在目标硬件上确认 delegate 的放置（GPU delegate 以 FP16 运行计算图）：
 
@@ -269,13 +270,13 @@ YOLOShowcase(
 
 ## 🧩 推荐接入模式
 
-| 应用类型                                | 推荐模型加载方式                                 |
-| --------------------------------------- | ------------------------------------------------ |
-| 实时相机场景                            | `YOLOView(modelPath: 'yolo26n')`                 |
-| 图库或单图推理流程                      | `YOLO(modelPath: 'yolo26n')`                     |
-| 应用内置自定义模型                      | `YOLO(modelPath: 'assets/models/custom.tflite')` |
-| 同时支持 Core ML 与 TFLite 的跨平台应用 | 使用各平台对应导出文件，并让元数据决定 `task`    |
-| 运行时动态切换模型                      | `YOLOViewController.switchModel(...)`            |
+| 应用类型                                        | 推荐模型加载方式                                 |
+| ----------------------------------------------- | ------------------------------------------------ |
+| 实时相机场景                                    | `YOLOView(modelPath: 'yolo26n')`                 |
+| 图库或单图推理流程                              | `YOLO(modelPath: 'yolo26n')`                     |
+| 应用内置自定义模型                              | `YOLO(modelPath: 'assets/models/custom.tflite')` |
+| 同时支持 Core AI/Core ML 与 TFLite 的跨平台应用 | 使用各平台对应导出文件，并让元数据决定 `task`    |
+| 运行时动态切换模型                              | `YOLOViewController.switchModel(...)`            |
 
 ## 📚 文档
 
@@ -321,7 +322,7 @@ Ultralytics 提供两种许可证，以适应不同需求：
 该仓库提供：
 
 - 面向 iOS 的纯 Swift 实现
-- 直接的 Core ML 集成
+- 直接的 Core AI 与 Core ML 集成
 - 原生 iOS UI 组件
 - 多种 YOLO 任务的示例代码
 - 针对 iOS 性能的优化

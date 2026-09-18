@@ -31,7 +31,7 @@ The plugin is built around one model-loading flow:
 | Pose Estimation         | ✅      | ✅  |
 | Oriented Bounding Boxes | ✅      | ✅  |
 
-Android inference runs on LiteRT 2.x (the rebrand of TensorFlow Lite) via `CompiledModel`, with an automatic GPU → CPU accelerator ladder. iOS uses Core ML. Official w8a32 YOLO26 LiteRT assets (int8 weights, FP32 activations) are the canonical Android downloads; non-end-to-end exports remain useful for GPU benchmarking (run in FP16 on the GPU delegate) (see the [Performance Guide](performance.md)).
+Android inference runs on LiteRT 2.x (the rebrand of TensorFlow Lite) via `CompiledModel`, with an automatic GPU → CPU accelerator ladder. iOS uses Core AI on iOS 27 and later and Core ML otherwise. Official w8a32 YOLO26 LiteRT assets (int8 weights, FP32 activations) are the canonical Android downloads; non-end-to-end exports remain useful for GPU benchmarking (run in FP16 on the GPU delegate) (see the [Performance Guide](performance.md)).
 
 ## 🎯 Default Flow
 

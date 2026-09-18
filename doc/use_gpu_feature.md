@@ -68,6 +68,7 @@ On a Galaxy S26, the legacy `yolo26n_int8.tflite` asset compiled fully with the 
 
 - `useGpu: true` enables hardware-accelerated Core ML inference: `.cpuAndNeuralEngine` on iOS 16+ (the GPU is deliberately excluded to avoid contention with preview/overlay compositing), `.all` on older iOS
 - `useGpu: false` pins inference to `.cpuOnly` (no Neural Engine or GPU)
+- Core AI (`.aimodel`, iOS 27+) keeps the same meaning: `useGpu: true` prefers the Neural Engine and `useGpu: false` runs CPU only. Single-image results report the `accelerator` as `NPU` or `CPU` for Core AI models
 
 ## Recommendation
 

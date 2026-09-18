@@ -41,20 +41,20 @@ The main goal is simple integration: use an official model ID, or drop in your o
 - Controls for thresholds, accelerator selection, and result streaming
 - YOLO26 and YOLO11 model families supported
 
-| Feature                               | Android | iOS | Details                                                            |
-| ------------------------------------- | ------- | --- | ------------------------------------------------------------------ |
-| Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores                      |
-| Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                              |
-| Semantic Segmentation                 | ✅      | ✅  | Dense class masks for every pixel                                  |
-| Monocular Depth Estimation            | ✅      | ✅  | Official LiteRT and Core ML models                                 |
-| Image Classification                  | ✅      | ✅  | Top class predictions and scores                                   |
-| Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores                         |
-| Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                                  |
-| Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                               |
-| Single-Image Inference                | ✅      | ✅  | `YOLO` for image bytes                                             |
-| Official Models                       | ✅      | ✅  | Discovery, download, and caching for packaged model IDs            |
-| Custom Models                         | ✅      | ✅  | LiteRT (TFLite) on Android, Core ML on iOS, metadata-first tasks   |
-| Qualcomm NPU (QNN)                    | ✅      | —   | Opt-in Hexagon NPU inference for `*_qnn.onnx` models on Snapdragon |
+| Feature                               | Android | iOS | Details                                                                     |
+| ------------------------------------- | ------- | --- | --------------------------------------------------------------------------- |
+| Object Detection                      | ✅      | ✅  | Bounding boxes, labels, and confidence scores                               |
+| Instance Segmentation                 | ✅      | ✅  | Instance masks with boxes and classes                                       |
+| Semantic Segmentation                 | ✅      | ✅  | Dense class masks for every pixel                                           |
+| Monocular Depth Estimation            | ✅      | ✅  | Official LiteRT, Core AI, and Core ML models                                |
+| Image Classification                  | ✅      | ✅  | Top class predictions and scores                                            |
+| Pose Estimation                       | ✅      | ✅  | Keypoints with boxes and confidence scores                                  |
+| Oriented Bounding Box (OBB) Detection | ✅      | ✅  | Rotated boxes and polygon corners                                           |
+| Real-Time Camera Inference            | ✅      | ✅  | `YOLOView` for live camera workflows                                        |
+| Single-Image Inference                | ✅      | ✅  | `YOLO` for image bytes                                                      |
+| Official Models                       | ✅      | ✅  | Discovery, download, and caching for packaged model IDs                     |
+| Custom Models                         | ✅      | ✅  | LiteRT (TFLite) on Android, Core AI or Core ML on iOS, metadata-first tasks |
+| Qualcomm NPU (QNN)                    | ✅      | —   | Opt-in Hexagon NPU inference for `*_qnn.onnx` models on Snapdragon          |
 
 ## ⚡ Quick Start
 
@@ -64,7 +64,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.6.14
+  ultralytics_yolo: ^0.6.15
 ```
 
 ```bash
@@ -118,9 +118,12 @@ Official assets are maintained as GitHub release assets:
 | -------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
 | Android              | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
 | Android NPU (opt-in) | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| iOS 27+              | Core AI FP16 `.aimodel.zip`   | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 | iOS                  | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
-The Flutter resolver uses the LiteRT release for Android and the Core ML release for Apple platforms. Every mobile
+The Flutter resolver uses the LiteRT release for Android and the iOS release for Apple platforms. Core AI (`.aimodel`)
+is the default on iOS 27 and later; Core ML (`.mlpackage`) remains the fallback for earlier iOS versions and for the iOS
+Simulator, which does not ship Core AI. The Core AI assets are published with the release that enables Core AI. Every mobile
 asset uses a fixed 224 × 224 classification input or 640 × 640 input for every other task. These release tags are
 intentionally pinned for reproducible first-use downloads. See the [model guide](doc/models.md) for the official
 export matrix, URL patterns, and model properties.
@@ -201,7 +204,7 @@ For custom models, keep the app-side setup minimal.
 - Android native assets: place `.tflite` files in `android/app/src/main/assets`
 - Flutter assets on Android: place `.tflite` files in `assets/models/`
 - iOS bundle: drag `.mlpackage` or `.mlmodel` into `ios/Runner.xcworkspace`
-- Flutter assets on iOS: place `.mlpackage.zip` files in `assets/models/`
+- Flutter assets on iOS: place `.aimodel.zip` (Core AI, iOS 27+) or `.mlpackage.zip` (Core ML) files in `assets/models/`
 
 Then point `modelPath` at that file or asset path.
 
@@ -218,7 +221,7 @@ uv run python scripts/export-tflite-models.py --verify
 ```
 
 Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` to replace the existing `.tflite` assets. Export QNN
-with Ultralytics using the same task-specific `imgsz`. Core ML assets are generated by
+with Ultralytics using the same task-specific `imgsz`. Core AI and Core ML assets are generated by
 `../yolo-ios-app/scripts/export-models.py` and hosted on the existing iOS `v8.3.0` release.
 
 Android inference runs on [LiteRT](https://developers.google.com/edge/litert) 2.x through an automatic GPU -> CPU accelerator ladder. w8a32 assets are the official download artifacts (the smallest GPU-compatible litert format); the GPU delegate compiles the whole graph on supported devices and otherwise falls back to CPU. GPU coverage still depends on the device driver and graph, so confirm delegate placement on your target hardware (the GPU delegate runs the graph in FP16):
@@ -280,13 +283,13 @@ Version 0.4.0 removes the old Dart-side overlay/control layer. Camera detections
 
 ## 🧩 Recommended Patterns
 
-| App type                            | Model loading pattern                                                  |
-| ----------------------------------- | ---------------------------------------------------------------------- |
-| Live camera app                     | `YOLOView(modelPath: 'yolo26n')`                                       |
-| Photo picker or gallery workflow    | `YOLO(modelPath: 'yolo26n')`                                           |
-| App with your own bundled model     | `YOLO(modelPath: 'assets/models/custom.tflite')`                       |
-| Cross-platform Core ML + TFLite app | Use platform-appropriate exported assets and let metadata drive `task` |
-| App that changes models at runtime  | `YOLOViewController.switchModel(...)`                                  |
+| App type                                    | Model loading pattern                                                  |
+| ------------------------------------------- | ---------------------------------------------------------------------- |
+| Live camera app                             | `YOLOView(modelPath: 'yolo26n')`                                       |
+| Photo picker or gallery workflow            | `YOLO(modelPath: 'yolo26n')`                                           |
+| App with your own bundled model             | `YOLO(modelPath: 'assets/models/custom.tflite')`                       |
+| Cross-platform Core AI/Core ML + TFLite app | Use platform-appropriate exported assets and let metadata drive `task` |
+| App that changes models at runtime          | `YOLOViewController.switchModel(...)`                                  |
 
 ## 📚 Documentation
 
@@ -332,7 +335,7 @@ If you're interested in using YOLO models directly in iOS applications with Swif
 This repository provides:
 
 - Pure Swift implementation for iOS
-- Direct Core ML integration
+- Direct Core AI and Core ML integration
 - Native iOS UI components
 - Example code for various YOLO tasks
 - Optimized for iOS performance

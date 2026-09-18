@@ -325,7 +325,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     // Determine model URL
     if lowercasedPath.hasSuffix(".mlmodel") || lowercasedPath.hasSuffix(".mlpackage")
-      || lowercasedPath.hasSuffix(".mlmodelc")
+      || lowercasedPath.hasSuffix(".mlmodelc") || lowercasedPath.hasSuffix(".aimodel")
     {
       let possibleURL = URL(fileURLWithPath: modelPathOrName)
       var isDirectory: ObjCBool = false
@@ -333,7 +333,12 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         modelURL = possibleURL
       }
     } else {
-      if let compiledURL = Bundle.main.url(forResource: modelPathOrName, withExtension: "mlmodelc")
+      if YOLOPlugin.isCoreAIAvailable,
+        let assetURL = Bundle.main.url(forResource: modelPathOrName, withExtension: "aimodel")
+      {
+        modelURL = assetURL
+      } else if let compiledURL = Bundle.main.url(
+        forResource: modelPathOrName, withExtension: "mlmodelc")
       {
         modelURL = compiledURL
       } else if let packageURL = Bundle.main.url(
