@@ -990,10 +990,6 @@ void main() {
           isTrue,
         );
         expect(
-          YOLOModelResolver.isOfficialModel('yolo26n.aimodel.zip'),
-          isTrue,
-        );
-        expect(
           YOLOModelResolver.isOfficialModel('not-a-model.tflite'),
           isFalse,
         );
@@ -1070,7 +1066,14 @@ void main() {
             '/tmp/yolo_test/yolo26s.mlpackage',
           ).createSync(recursive: true);
         }
-        _mockFlutterAssets({officialAsset: bytes, customAsset: bytes});
+        final coreAIBytes = YOLOTestHelpers.storedZip({
+          'model.aimodel/metadata.json': utf8.encode('{}'),
+        });
+        _mockFlutterAssets({
+          officialAsset: bytes,
+          customAsset: bytes,
+          'assets/custom.aimodel.zip': coreAIBytes,
+        });
 
         expect(
           await YOLOModelResolver.isOfficialModelAvailableLocally('yolo26s'),
@@ -1084,6 +1087,14 @@ void main() {
           expect(Directory('$officialPath/__MACOSX').existsSync(), isFalse);
           expect(assetPath, '/tmp/yolo_test/custom.mlpackage');
           expect(File('$assetPath/Manifest.json').existsSync(), isTrue);
+          expect(
+            await YOLOModelResolver.preparePath('assets/custom.aimodel.zip'),
+            '/tmp/yolo_test/custom.aimodel',
+          );
+          expect(
+            File('/tmp/yolo_test/custom.aimodel/metadata.json').existsSync(),
+            isTrue,
+          );
         } else {
           expect(
             officialPath,
@@ -1110,48 +1121,6 @@ void main() {
         }
       });
 
-      test('official models prefer Core AI when the device supports it', () async {
-        if (!_isAppleTestPlatform) return;
-        final setup = YOLOTestHelpers.createYOLOTestSetup(
-          customResponses: {'isCoreAIAvailable': (_) => true},
-        );
-        channel = setup.$1;
-        log = setup.$2;
-        const cache = '/tmp/yolo_test/mobile-standard-v1';
-        // A cached Core ML download keeps loading after a failed Core AI download; a successful one removes it.
-        final staleDir = Directory('$cache/yolo26m.mlpackage')
-          ..createSync(recursive: true);
-        File('${staleDir.path}/Manifest.json').writeAsStringSync('{}');
-        const url =
-            'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/yolo26m.aimodel.zip';
-        await HttpOverrides.runZoned(() async {
-          expect(await YOLOModelResolver.preparePath('yolo26m'), staleDir.path);
-        }, createHttpClient: (_) => _FakeHttpClient({}));
-        expect(
-          await YOLOModelResolver.isOfficialModelAvailableLocally('yolo26m'),
-          isTrue,
-        );
-
-        final client = _FakeHttpClient({
-          url: _FakeHttpResponse(
-            statusCode: HttpStatus.ok,
-            chunks: [
-              YOLOTestHelpers.storedZip({
-                'model.aimodel/metadata.json': utf8.encode('{}'),
-              }),
-            ],
-          ),
-        });
-        await HttpOverrides.runZoned(() async {
-          expect(
-            await YOLOModelResolver.preparePath('yolo26m'),
-            '$cache/yolo26m.aimodel',
-          );
-        }, createHttpClient: (_) => client);
-        expect(client.requestedUrls, [url]);
-        expect(staleDir.existsSync(), isFalse);
-      });
-
       test('downloads remote models once and surfaces bad responses', () async {
         final archiveBytes = YOLOTestHelpers.storedZip({
           'model.mlpackage/Manifest.json': utf8.encode('{}'),
@@ -1167,6 +1136,14 @@ void main() {
           'https://example.test/remote.mlpackage.zip': _FakeHttpResponse(
             statusCode: HttpStatus.ok,
             chunks: [archiveBytes],
+          ),
+          'https://example.test/remote.aimodel.zip': _FakeHttpResponse(
+            statusCode: HttpStatus.ok,
+            chunks: [
+              YOLOTestHelpers.storedZip({
+                'model.aimodel/metadata.json': utf8.encode('{}'),
+              }),
+            ],
           ),
           'https://example.test/missing.tflite': _FakeHttpResponse(
             statusCode: HttpStatus.notFound,
@@ -1201,6 +1178,12 @@ void main() {
             expect(
               File('/tmp/yolo_test/remote.mlpackage.zip').existsSync(),
               isFalse,
+            );
+            expect(
+              await YOLOModelResolver.preparePath(
+                'https://example.test/remote.aimodel.zip',
+              ),
+              '/tmp/yolo_test/remote.aimodel',
             );
           }
 

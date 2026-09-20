@@ -126,7 +126,7 @@ Use `YOLO.officialModels()` to see which IDs are available on the current platfo
 For custom models:
 
 - Android Flutter assets: `.tflite`
-- iOS Flutter assets: `.aimodel.zip` (Core AI, iOS 27+) or `.mlpackage.zip` (Core ML)
+- iOS Flutter assets: `.mlpackage.zip`, or opt-in Core AI `.aimodel.zip` on iOS 27+ devices (see the [model guide](models.md))
 - iOS bundled models: `.mlpackage` or `.mlmodel`
 
 See [Quick Start](quickstart.md#-step-3-add-a-model) for the full flow.
@@ -178,7 +178,7 @@ class TestYOLO extends StatelessWidget {
 
 ### iOS Optimization
 
-iOS inference runs on Core AI or Core ML with hardware acceleration by default, so no extra configuration is required. Core ML runs on the Neural Engine and CPU; Core AI places the model across the Neural Engine, GPU and CPU. Core AI (`.aimodel`) is the default on iOS 27 and later; Core ML (`.mlpackage`) remains the fallback for earlier iOS versions and for the iOS Simulator, which does not ship Core AI. Ship a Core AI model (`.aimodel.zip` in Flutter assets) for iOS 27+, a Core ML model (`.mlpackage`/`.mlmodel`, or `.mlpackage.zip` in Flutter assets) for every iOS version, or both, and run on a real device for accurate performance. The minimum iOS deployment target stays `13.0`.
+iOS inference runs on Core ML, which automatically uses the Neural Engine and GPU when available, so no extra configuration is required. Ship a Core ML model (`.mlpackage`/`.mlmodel`, or `.mlpackage.zip` in Flutter assets) and run on a real device for accurate performance.
 
 ### Android Optimization
 

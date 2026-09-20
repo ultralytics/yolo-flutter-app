@@ -163,14 +163,17 @@ Engine result; the Pixel and Galaxy tables above record GPU only because every m
 
 ### iPhone 17 Pro Core AI
 
-Core AI runs only on iOS 27 devices, so it cannot be measured on the iOS Simulator or on a Mac running macOS 26. The
-results below were measured in the native iOS app, not through this Flutter plugin; the plugin runs the same
+Core ML remains the default, and Core AI (`.aimodel`) is an opt-in for iOS 27 and later devices (see the
+[model guide](models.md)). The measurements below are why: end to end Core AI is level with Core ML rather than faster,
+it is slower for semantic, depth, and CPU-only inference, its FP16 assets are twice the download, and the iOS 27.0
+runtime still returns wrong results for some graphs. Core AI runs only on iOS 27 devices, so it cannot be measured on the
+iOS Simulator or on a Mac running macOS 26. The results below were measured in the native iOS app, not through this Flutter plugin; the plugin runs the same
 `UltralyticsYOLO` predictors. The full per-task tables live in the
 [yolo-ios-app performance record](https://github.com/ultralytics/yolo-ios-app/blob/main/docs/performance.md).
 
 Compare totals (preprocessing + inference + postprocessing), not inference alone: Vision performs Core ML's
 preprocessing inside its inference time, while Core AI's preprocessing and the Swift NMS are reported separately. On an
-iPhone 17 Pro with iOS 27.0, using YOLO26n on `bus.jpg`, hardware-accelerated totals for the official Core AI FP16 assets
+iPhone 17 Pro with iOS 27.0, using YOLO26n on `bus.jpg`, hardware-accelerated totals for the official opt-in Core AI FP16 assets
 (raw head for detect, segment, pose, and OBB) against the shipped Core ML INT8 assets:
 
 | Task     | Core AI FP16 total<br><sup>(ms)</sup> | Core ML INT8 total<br><sup>(ms)</sup> |
@@ -381,7 +384,7 @@ final yolo = YOLO(
 );
 ```
 
-On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the whole model for the GPU when it can; models the GPU cannot compile fall back to XNNPACK CPU. (iOS uses Core AI on iOS 27 and later and Core ML otherwise.)
+On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the whole model for the GPU when it can; models the GPU cannot compile fall back to XNNPACK CPU. (iOS uses Core ML.)
 
 The official YOLO26 Android assets (w8a32 LiteRT) compile on the LiteRT GPU path on supported devices, though GPU coverage still depends on the device driver and graph. For example, a Galaxy S26 compiled the legacy `yolo26n_int8.tflite` fully with the OpenCL delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran at about **15 FPS / 32 ms** in the live camera example app. Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
 
@@ -561,7 +564,7 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
 - Example UI: controls expose all seven tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.
 - Bundled models: local/release builds fetch the seven `yolo26n` nano models into `example/assets/models/` at build time (gitignored, not committed; skipped under CI), so nano tasks work offline with no first-run download; larger sizes download on demand.
-- iOS runtime: with `useGpu: true` (the default) on iOS 16+, Core ML is pinned to `.cpuAndNeuralEngine` (Neural Engine + CPU), not `.all` - avoids GPU contention with the live preview/overlay compositing. iOS 15 and earlier use `.all`; `useGpu: false` pins to `.cpuOnly`. For Core AI models (iOS 27+), hardware acceleration lets Core AI place the model across the Neural Engine, GPU and CPU; `useGpu: false` pins to CPU.
+- iOS runtime: with `useGpu: true` (the default) on iOS 16+, Core ML is pinned to `.cpuAndNeuralEngine` (Neural Engine + CPU), not `.all` - avoids GPU contention with the live preview/overlay compositing. iOS 15 and earlier use `.all`; `useGpu: false` pins to `.cpuOnly`.
 
 ### Open Levers
 

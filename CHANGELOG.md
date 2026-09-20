@@ -1,9 +1,8 @@
 ## 0.6.15
 
-- **Feature**: Add Apple Core AI (`.aimodel`) support on iOS 27 and later. Official model IDs resolve to Core AI assets
-  when the device supports Core AI and to Core ML otherwise, including on the iOS Simulator; bundled assets of either
-  format win over downloads. `.aimodel.zip` Flutter assets and URLs load like `.mlpackage.zip`. Requires UltralyticsYOLO
-  `>= 8.9.15`.
+- **Feature**: Add opt-in Apple Core AI support on iOS 27 and later devices: pass an `.aimodel` path, an `.aimodel.zip`
+  Flutter asset, or an `.aimodel.zip` URL. Core ML remains the default, and official model IDs still resolve to Core ML.
+  Requires UltralyticsYOLO `>= 8.9.15`.
 
 ## 0.6.14
 
