@@ -172,9 +172,7 @@ public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @uncheck
       // Core AI assets keep the same Ultralytics metadata as plain JSON, so reading it needs no Core AI import.
       let data = try Data(contentsOf: url.appendingPathComponent("metadata.json"))
       let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-      creatorDefined =
-        (json?["creatorDefinedMetadata"] as? [String: Any])?.compactMapValues { $0 as? String }
-        ?? [:]
+      creatorDefined = json?["creatorDefinedMetadata"] as? [String: String] ?? [:]
     } else {
       let model: MLModel
       if ext == "mlmodelc" {

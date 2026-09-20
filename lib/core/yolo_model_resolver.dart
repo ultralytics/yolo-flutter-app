@@ -290,7 +290,7 @@ class YOLOModelResolver {
       final modelName = fileName.replaceAll('$suffix.zip', '');
       final targetDir = Directory('${directory.path}/$modelName$suffix');
       if (await _hasValidMlPackage(targetDir)) return targetDir.path;
-      if (isOfficialAsset) {
+      if (isOfficialAsset && suffix == '.mlpackage') {
         final legacyTargetDir = Directory(
           '${documents.path}/$modelName.mlpackage',
         );

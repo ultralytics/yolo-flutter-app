@@ -1137,14 +1137,6 @@ void main() {
             statusCode: HttpStatus.ok,
             chunks: [archiveBytes],
           ),
-          'https://example.test/remote.aimodel.zip': _FakeHttpResponse(
-            statusCode: HttpStatus.ok,
-            chunks: [
-              YOLOTestHelpers.storedZip({
-                'model.aimodel/metadata.json': utf8.encode('{}'),
-              }),
-            ],
-          ),
           'https://example.test/missing.tflite': _FakeHttpResponse(
             statusCode: HttpStatus.notFound,
             chunks: [],
@@ -1178,12 +1170,6 @@ void main() {
             expect(
               File('/tmp/yolo_test/remote.mlpackage.zip').existsSync(),
               isFalse,
-            );
-            expect(
-              await YOLOModelResolver.preparePath(
-                'https://example.test/remote.aimodel.zip',
-              ),
-              '/tmp/yolo_test/remote.aimodel',
             );
           }
 

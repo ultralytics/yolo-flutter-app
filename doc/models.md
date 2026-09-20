@@ -189,7 +189,8 @@ For Flutter assets on iOS, use `.mlpackage.zip` so the package can unpack the mo
 Core ML (`.mlpackage`) remains the default, and official model IDs always resolve to Core ML on iOS. Core AI (`.aimodel`)
 is an opt-in for iOS 27 and later devices: pass an `.aimodel` path, an `.aimodel.zip` Flutter asset, or an `.aimodel.zip`
 URL. It is not available on earlier iOS versions or in the iOS Simulator, where loading an `.aimodel` fails with a load
-error. The file extension is the only switch.
+error. The file extension is the only switch. The Ultralytics iOS app exposes the same opt-in as a Settings toggle (off
+by default).
 
 ```dart
 // Official opt-in asset, downloaded and cached on first use
