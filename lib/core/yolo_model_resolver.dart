@@ -285,11 +285,12 @@ class YOLOModelResolver {
         ? Directory('${documents.path}/$_officialModelCacheDirectory')
         : documents;
 
-    if (_isIosLikePlatform && fileName.endsWith('.mlpackage.zip')) {
-      final modelName = fileName.replaceAll('.mlpackage.zip', '');
-      final targetDir = Directory('${directory.path}/$modelName.mlpackage');
+    final suffix = _appleModelSuffix(fileName);
+    if (_isIosLikePlatform && suffix != null) {
+      final modelName = fileName.replaceAll('$suffix.zip', '');
+      final targetDir = Directory('${directory.path}/$modelName$suffix');
       if (await _hasValidMlPackage(targetDir)) return targetDir.path;
-      if (isOfficialAsset) {
+      if (isOfficialAsset && suffix == '.mlpackage') {
         final legacyTargetDir = Directory(
           '${documents.path}/$modelName.mlpackage',
         );
@@ -332,11 +333,12 @@ class YOLOModelResolver {
   }
 
   static Future<String> _resolveIosFlutterAsset(String assetPath) async {
-    if (assetPath.endsWith('.mlpackage.zip')) {
-      final fileName = assetPath.split('/').last;
-      final modelName = fileName.replaceAll('.mlpackage.zip', '');
+    final fileName = assetPath.split('/').last;
+    final suffix = _appleModelSuffix(fileName);
+    if (suffix != null) {
+      final modelName = fileName.replaceAll('$suffix.zip', '');
       final directory = await getApplicationDocumentsDirectory();
-      final modelDir = Directory('${directory.path}/$modelName.mlpackage');
+      final modelDir = Directory('${directory.path}/$modelName$suffix');
       if (await _hasValidMlPackage(modelDir)) return modelDir.path;
 
       final assetBytes = await _loadAssetBytes(assetPath);
@@ -481,9 +483,20 @@ class YOLOModelResolver {
     }
   }
 
+  /// The model directory suffix of a zipped Core ML (`.mlpackage.zip`) or opt-in Core AI (`.aimodel.zip`) archive.
+  static String? _appleModelSuffix(String archiveName) {
+    for (final suffix in const ['.mlpackage', '.aimodel']) {
+      if (archiveName.endsWith('$suffix.zip')) return suffix;
+    }
+    return null;
+  }
+
   static Future<bool> _hasValidMlPackage(Directory modelDir) async {
+    final marker = modelDir.path.endsWith('.aimodel')
+        ? 'metadata.json'
+        : 'Manifest.json';
     return modelDir.existsSync() &&
-        File('${modelDir.path}/Manifest.json').existsSync();
+        File('${modelDir.path}/$marker').existsSync();
   }
 
   static Future<String> _extractMlPackageArchiveFile(
@@ -520,7 +533,9 @@ class YOLOModelResolver {
       MiniZip.extractBytes(
         bytes,
         destination: targetDir,
-        stripTopLevelDirectoryEndingWith: '.mlpackage',
+        stripTopLevelDirectoryEndingWith: targetDir.path.endsWith('.aimodel')
+            ? '.aimodel'
+            : '.mlpackage',
         skip: (path) => path.startsWith('__MACOSX/') || path.contains('/._'),
       );
 

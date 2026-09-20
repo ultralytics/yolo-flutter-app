@@ -161,6 +161,16 @@ Generic output labels the requested automatic paths `gpu-preferred` on Android a
 LiteRT and Core ML may fall back. Verify native device logs before recording either path as an actual GPU or Neural
 Engine result; the Pixel and Galaxy tables above record GPU only because every model logged full GPU compilation.
 
+### iPhone 17 Pro Core AI
+
+Core ML remains the default, and Core AI (`.aimodel`) is an opt-in for iOS 27 and later devices (see the
+[model guide](models.md)). Measured in the native iOS app on an iPhone 17 Pro with iOS 27.0, not through this Flutter
+plugin, which runs the same `UltralyticsYOLO` predictors: end to end (preprocessing + inference + postprocessing) Core AI
+is level with Core ML rather than faster, it is slower for semantic, depth, and CPU-only inference, its FP16 assets are
+twice the download, and the iOS 27.0 runtime still returns wrong results for some graphs. The
+[yolo-ios-app performance record](https://github.com/ultralytics/yolo-ios-app/blob/main/docs/performance.md) owns the
+full tables, findings, and known runtime issues.
+
 ## 🔭 Optimization Findings and Future Exploration
 
 The current benchmark tables include results from the Android LiteRT optimization pass, including the

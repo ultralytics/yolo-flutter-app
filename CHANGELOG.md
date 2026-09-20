@@ -1,3 +1,9 @@
+## 0.6.15
+
+- **Feature**: Add opt-in Apple Core AI support on iOS 27 and later devices: pass an `.aimodel` path, an `.aimodel.zip`
+  Flutter asset, or an `.aimodel.zip` URL. Core ML remains the default, and official model IDs still resolve to Core ML.
+  Requires UltralyticsYOLO `>= 8.9.15`.
+
 ## 0.6.14
 
 - **Fix**: Reuse the UltralyticsYOLO label parser on iOS so `names` metadata in list form, with double-quoted keys, or

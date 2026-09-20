@@ -33,6 +33,13 @@ The Flutter side can hand the iOS layer:
 - an official model ID resolved into a cached Core ML package
 - a bundled `.mlpackage` or `.mlmodel`
 - an extracted `.mlpackage` originating from a Flutter asset `.mlpackage.zip`
+- an opt-in Core AI `.aimodel` path, or one extracted from an `.aimodel.zip` Flutter asset or URL
+
+Core ML (`.mlpackage`) remains the default. Core AI (`.aimodel`) is an opt-in for iOS 27 and later devices, selected only by
+the file extension; it is not available on earlier iOS versions or in the iOS Simulator. It requires
+`UltralyticsYOLO >= 8.9.15`, which owns Core AI loading; this layer only accepts the `.aimodel` suffix and reads the
+Ultralytics metadata from `metadata.json` inside the asset. See the [model guide](../../../../doc/models.md) for the
+export recipe and the [yolo-ios-app performance record](https://github.com/ultralytics/yolo-ios-app/blob/main/docs/performance.md) for the trade-offs.
 
 ## Export Reminder
 

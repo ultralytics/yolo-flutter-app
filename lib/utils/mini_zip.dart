@@ -8,7 +8,7 @@ import 'dart:typed_data';
 /// A small ZIP extractor for standard PKZIP archives.
 ///
 /// It supports the STORED and raw-DEFLATE methods used by Core ML
-/// `.mlpackage.zip` model archives. Unsupported features are rejected rather
+/// `.mlpackage.zip` and Core AI `.aimodel.zip` model archives. Unsupported features are rejected rather
 /// than silently mis-extracted.
 class MiniZip {
   const MiniZip._();

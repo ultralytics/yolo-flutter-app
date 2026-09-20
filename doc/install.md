@@ -18,7 +18,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.6.14
+  ultralytics_yolo: ^0.6.15
 ```
 
 Run the installation command:
@@ -126,7 +126,7 @@ Use `YOLO.officialModels()` to see which IDs are available on the current platfo
 For custom models:
 
 - Android Flutter assets: `.tflite`
-- iOS Flutter assets: `.mlpackage.zip`
+- iOS Flutter assets: `.mlpackage.zip`, or opt-in Core AI `.aimodel.zip` on iOS 27+ devices (see the [model guide](models.md))
 - iOS bundled models: `.mlpackage` or `.mlmodel`
 
 See [Quick Start](quickstart.md#-step-3-add-a-model) for the full flow.

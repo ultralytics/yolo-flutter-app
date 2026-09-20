@@ -44,6 +44,8 @@ build/
 **/*.mlmodelc
 **/*.mlpackage
 **/*.mlpackage.zip
+**/*.aimodel
+**/*.aimodel.zip
 **/*.pt
 **/*.onnx
 **/*.pb

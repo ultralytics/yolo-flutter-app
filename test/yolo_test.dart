@@ -1066,7 +1066,14 @@ void main() {
             '/tmp/yolo_test/yolo26s.mlpackage',
           ).createSync(recursive: true);
         }
-        _mockFlutterAssets({officialAsset: bytes, customAsset: bytes});
+        final coreAIBytes = YOLOTestHelpers.storedZip({
+          'model.aimodel/metadata.json': utf8.encode('{}'),
+        });
+        _mockFlutterAssets({
+          officialAsset: bytes,
+          customAsset: bytes,
+          'assets/custom.aimodel.zip': coreAIBytes,
+        });
 
         expect(
           await YOLOModelResolver.isOfficialModelAvailableLocally('yolo26s'),
@@ -1080,6 +1087,14 @@ void main() {
           expect(Directory('$officialPath/__MACOSX').existsSync(), isFalse);
           expect(assetPath, '/tmp/yolo_test/custom.mlpackage');
           expect(File('$assetPath/Manifest.json').existsSync(), isTrue);
+          expect(
+            await YOLOModelResolver.preparePath('assets/custom.aimodel.zip'),
+            '/tmp/yolo_test/custom.aimodel',
+          );
+          expect(
+            File('/tmp/yolo_test/custom.aimodel/metadata.json').existsSync(),
+            isTrue,
+          );
         } else {
           expect(
             officialPath,

@@ -109,14 +109,13 @@ class YOLOInstanceManager {
       switch result {
       case .success(let loadedYolo):
         self.instances[instanceId] = loadedYolo
-        if useGpu {
-          if #available(iOS 16.0, *) {
-            self.accelerators[instanceId] = "CPU_AND_NE"
-          } else {
-            self.accelerators[instanceId] = "ALL"
-          }
-        } else {
+        if !useGpu {
           self.accelerators[instanceId] = "CPU"
+        } else if #available(iOS 16.0, *), !resolvedModelPath.lowercased().hasSuffix(".aimodel") {
+          self.accelerators[instanceId] = "CPU_AND_NE"
+        } else {
+          // Core ML `.all` on iOS 13-15, and Core AI, place the model across the Neural Engine, GPU and CPU.
+          self.accelerators[instanceId] = "ALL"
         }
         completion(.success(()))
 

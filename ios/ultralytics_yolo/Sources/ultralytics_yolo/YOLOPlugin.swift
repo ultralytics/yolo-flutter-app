@@ -167,17 +167,24 @@ public final class YOLOPlugin: NSObject, @preconcurrency FlutterPlugin, @uncheck
     let url = URL(fileURLWithPath: resolvedPath)
     let ext = url.pathExtension.lowercased()
 
-    let model: MLModel
-    if ext == "mlmodelc" {
-      model = try MLModel(contentsOf: url)
+    let creatorDefined: [String: String]
+    if ext == "aimodel" {
+      // Core AI assets keep the same Ultralytics metadata as plain JSON, so reading it needs no Core AI import.
+      let data = try Data(contentsOf: url.appendingPathComponent("metadata.json"))
+      let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+      creatorDefined = json?["creatorDefinedMetadata"] as? [String: String] ?? [:]
     } else {
-      let compiledURL = try MLModel.compileModel(at: url)
-      model = try MLModel(contentsOf: compiledURL)
+      let model: MLModel
+      if ext == "mlmodelc" {
+        model = try MLModel(contentsOf: url)
+      } else {
+        let compiledURL = try MLModel.compileModel(at: url)
+        model = try MLModel(contentsOf: compiledURL)
+      }
+      creatorDefined =
+        model.modelDescription.metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String]
+        ?? [:]
     }
-
-    let creatorDefined =
-      model.modelDescription.metadata[MLModelMetadataKey.creatorDefinedKey] as? [String: String]
-      ?? [:]
     let labels = BasePredictor.parseLabels(from: creatorDefined)
 
     var result: [String: Any] = [

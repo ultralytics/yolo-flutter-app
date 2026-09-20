@@ -64,7 +64,7 @@ Ultralytics YOLO Flutter 是官方 Flutter 插件，用于在 iOS 和 Android �
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.6.14
+  ultralytics_yolo: ^0.6.15
 ```
 
 ```bash
@@ -121,6 +121,12 @@ final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 | iOS                 | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 Flutter 解析器在 Android 上使用 TFLite release，在 Apple 平台上使用 Core ML release。这些 release 标签被刻意固定，以保证首次下载可复现。官方导出矩阵、URL 模式与模型属性详见[模型指南](doc/models.md)。
+
+Core ML（`.mlpackage`）仍是默认格式。Core AI（`.aimodel`）是面向 iOS 27 及更高版本设备的可选项：传入 `.aimodel` 路径、`.aimodel.zip` Flutter 资源或 `.aimodel.zip` URL 即可启用。更早的 iOS 版本和 iOS 模拟器不支持 Core AI。Ultralytics iOS 应用在“设置”中提供同样的可选开关（默认关闭）。官方可选资产是 [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0) release 上的 `.aimodel.zip` 文件；取舍详见 [yolo-ios-app 性能记录](https://github.com/ultralytics/yolo-ios-app/blob/main/docs/performance.md)。
+
+```dart
+final yolo = YOLO(modelPath: 'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/yolo26n.aimodel.zip');
+```
 
 ### 2. 你自己的导出模型
 

@@ -64,7 +64,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.6.14
+  ultralytics_yolo: ^0.6.15
 ```
 
 ```bash
@@ -124,6 +124,17 @@ The Flutter resolver uses the LiteRT release for Android and the Core ML release
 asset uses a fixed 224 × 224 classification input or 640 × 640 input for every other task. These release tags are
 intentionally pinned for reproducible first-use downloads. See the [model guide](doc/models.md) for the official
 export matrix, URL patterns, and model properties.
+
+Core ML (`.mlpackage`) remains the default. Core AI (`.aimodel`) is an opt-in for iOS 27 and later devices: pass an
+`.aimodel` path, an `.aimodel.zip` Flutter asset, or an `.aimodel.zip` URL. It is not available on earlier iOS versions or
+in the iOS Simulator. The Ultralytics iOS app exposes the same opt-in as a Settings toggle (off by default). The official
+opt-in assets are the `.aimodel.zip` files on the
+[yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0) release; see the
+[yolo-ios-app performance record](https://github.com/ultralytics/yolo-ios-app/blob/main/docs/performance.md) for the trade-offs.
+
+```dart
+final yolo = YOLO(modelPath: 'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/yolo26n.aimodel.zip');
+```
 
 ### 2. Your own exported model
 

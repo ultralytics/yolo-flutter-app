@@ -184,6 +184,36 @@ You can use either:
 
 For Flutter assets on iOS, use `.mlpackage.zip` so the package can unpack the model into app storage before loading it.
 
+## 🍏 Core AI (Opt-In)
+
+Core ML (`.mlpackage`) remains the default, and official model IDs always resolve to Core ML on iOS. Core AI (`.aimodel`)
+is an opt-in for iOS 27 and later devices: pass an `.aimodel` path, an `.aimodel.zip` Flutter asset, or an `.aimodel.zip`
+URL. It is not available on earlier iOS versions or in the iOS Simulator, where loading an `.aimodel` fails with a load
+error. The file extension is the only switch. The Ultralytics iOS app exposes the same opt-in as a Settings toggle (off
+by default).
+
+```dart
+// Official opt-in asset, downloaded and cached on first use
+final yolo = YOLO(modelPath: 'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0/yolo26n.aimodel.zip');
+// Your own export, bundled as a Flutter asset
+final custom = YOLO(modelPath: 'assets/models/custom.aimodel.zip');
+```
+
+The official opt-in assets are the `<model>.aimodel.zip` files on the [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0) release, for the same
+35 model IDs as Core ML. They are FP16 and use the raw one-to-many head for detect, segment, pose, and OBB, decoded by
+the `UltralyticsYOLO` SDK's Swift NMS. To export your own, use `ultralytics>=8.4.155` on macOS 26 or later with Apple
+silicon, then zip the `.aimodel` directory, keeping it as the top-level entry:
+
+```python
+from ultralytics import YOLO
+
+# Use 224 for classification and 640 for every other mobile task. Do not pass nms=False for Core AI.
+YOLO("yolo26n.pt").export(format="coreai", quantize=16, imgsz=640)
+```
+
+Core AI is level with Core ML end to end, slower for semantic, depth, and CPU-only inference, and twice the download, so
+read the [yolo-ios-app performance record](https://github.com/ultralytics/yolo-ios-app/blob/main/docs/performance.md) for the trade-offs before opting in.
+
 ## 🐍 Official Asset Maintenance
 
 Official release assets are generated from YOLO26 checkpoints with task/size loops so the app, package, and release assets use the same naming scheme.
