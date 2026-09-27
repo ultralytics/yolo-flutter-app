@@ -36,13 +36,13 @@ dart pub publish --dry-run
 g++ -std=c++17 android/src/test/cpp/depth-colorizer-test.cpp -o /tmp/depth-colorizer-test && /tmp/depth-colorizer-test
 ```
 
-Run example commands from `example/` after `flutter pub get` there. CI checks both SwiftPM and CocoaPods iOS builds, Android builds, and process launch; it does not establish camera, model download, or inference correctness. Dart tests mock channels and select different resolver paths on macOS and Linux. Use a device for native inference and QNN changes. Read `.github/workflows/ci.yml` and `doc/performance.md` for native validation.
+Run example commands from `example/` after `flutter pub get` there. CI checks both SwiftPM and CocoaPods iOS builds, Android builds, and process launch; it does not establish camera, model download, or inference correctness. Dart tests mock channels (`test/utils/test_helpers.dart`), and `YOLOModelResolver` takes its iOS path on macOS hosts and its Android path on Linux CI. Use a device for native inference and QNN changes; `example/integration_test/` holds manual on-device QNN tests that CI does not run. Read `.github/workflows/ci.yml` and `doc/performance.md` for native validation.
 
 ## Where to look
 
 - Dart API and model resolution → `lib/`.
 - Android inference and platform channels → `android/src/main/`.
-- iOS bridge → `ios/`.
+- iOS bridge and camera view → `ios/ultralytics_yolo/Sources/ultralytics_yolo/`; iOS inference lives in the `UltralyticsYOLO` package (yolo-ios-app), whose version range must match in `ios/ultralytics_yolo/Package.swift` and `ios/ultralytics_yolo.podspec`.
 - Example and device benchmarks → `example/`.
 - Asset export and packaging → `scripts/`.
 - Native performance decisions → `doc/performance.md`.
@@ -50,12 +50,9 @@ Run example commands from `example/` after `flutter pub get` there. CI checks bo
 ## Conventions
 
 - Every source file opens with the `Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license` header in the language's comment style; Ultralytics Actions adds them automatically — don't add or revert them manually.
-- `format.yml` (Ultralytics Actions) auto-formats Dart, Swift, Python, and Prettier targets (YAML/JSON/Markdown) directly on PR branches, so `git pull --rebase` before pushing follow-up commits.
-- Linting is `dart analyze --fatal-infos` against `analysis_options.yaml` (flutter_lints plus extra rules — e.g. `prefer_single_quotes`, `always_declare_return_types`, `avoid_print`). The analyzer excludes `android/`, `ios/`, and generated files; `very_good_analysis` is a dev dependency but is not included by `analysis_options.yaml`.
-- Dart tests in `test/` run against mocked method channels (`test/utils/test_helpers.dart`) — no live network; `example/integration_test/` holds manual on-device QNN tests that CI does not run.
-- Releases: bump the version in `pubspec.yaml`, `ios/ultralytics_yolo.podspec`, and `example/pubspec.yaml` (Play Store build number) together and add a `CHANGELOG.md` entry; merging to main then auto-tags and publishes via `publish.yml`.
-- `.pubignore` controls the pub.dev payload (model binaries, `play-store-assets/`, and agent docs are excluded); `dart pub publish --dry-run` in CI catches payload regressions, and `publish.yml` additionally asserts `Package.swift` ships in the archive.
-- `CHANGELOG.md` entries are `## X.Y.Z` headings with `- **Fix**: ...` / `- **Feature**: ...` bullets; `scripts/build_play_store_assets.sh` extracts the current version's bullets (stripping `**` and backticks) as the Play "what's new" text and warns above 500 bytes.
+- Linting is `dart analyze --fatal-infos` against `analysis_options.yaml`, which excludes `android/` and `ios/` and does not include the `very_good_analysis` dev dependency.
+- Releases: bump the version in `pubspec.yaml`, `ios/ultralytics_yolo.podspec`, and `example/pubspec.yaml` (Play Store build number) together and add a `CHANGELOG.md` entry. On merge, `publish.yml` tags `vX.Y.Z` and creates the GitHub release; that tag runs `publish-on-tag.yml`, which uploads to pub.dev after asserting `Package.swift` is in the archive. `.pubignore` controls the payload (model binaries, `play-store-assets/`, and agent docs are excluded).
+- `CHANGELOG.md` entries are `## X.Y.Z` headings with `- **Fix**: ...`, `- **Feature**: ...`, or `- **Performance**: ...` bullets; `scripts/build_play_store_assets.sh` extracts the current version's bullets (stripping `**` and backticks) as the Play "what's new" text and warns above 500 bytes.
 - Never commit model weights: the root `.gitignore` blocks `*.tflite`, `*.mlpackage`, `*.mlpackage.zip`, `*.aimodel`, `*.aimodel.zip`, `*.onnx`, `*.pt`, and friends. Official assets are GitHub release attachments, fetched at runtime by the resolver or at build time by `scripts/fetch_bundled_models.sh`.
 - `YOLOTask` (`lib/models/yolo_task.dart`) defines the canonical task order `detect, segment, semantic, depth, classify, pose, obb`; `YOLOModelResolver` generates the 35 official IDs from it. Kotlin parses the wire name with `YOLOTask.valueOf(task.uppercase())`, Swift with `YOLOTask.fromString` (from the `UltralyticsYOLO` package).
 
@@ -63,7 +60,7 @@ Run example commands from `example/` after `flutter pub get` there. CI checks bo
 
 - Two non-multi-instance `YOLO` objects share the native `'default'` instance. Android `putIfAbsent` and iOS "already loaded → success" mean the second `loadModel` silently keeps the first model. Use `useMultiInstance: true` (or `dispose()` first) when running two different models.
 - Core AI is opt-in by file extension only: an `.aimodel` path or an `.aimodel.zip` asset/URL. Official model IDs always resolve to Core ML, and there is no flag or channel method for choosing a backend. The plugin uses no Core AI API itself: `.aimodel` loading needs `UltralyticsYOLO >= 8.9.15` on an iOS 27+ device, and neither CI nor the simulator can exercise it.
-- iOS Flutter-asset models are expected as `.mlpackage.zip` or `.aimodel.zip` archives (any `assets/...` path); the Dart resolver extracts them to documents. Other iOS asset paths pass through unchanged; `inspectModel` first looks for them via `checkModelExists` (bundled `flutter_assets`, bundle resources) and otherwise fails in `MLModel.compileModel` (or reading `metadata.json` for an `.aimodel`), which reaches Dart as a `PlatformException(MODEL_INSPECTION_FAILED)`. The "camera without inference while reporting success" branch in `YOLOView.setModel` is reached only if inspection succeeds and the camera loader still cannot locate the path. On Android, `assets/...` models are copied into the documents root (not `mobile-standard-v1/`) and never refreshed once the copy exists.
+- iOS Flutter-asset models are expected as `.mlpackage.zip` or `.aimodel.zip` archives (any `assets/...` path); the Dart resolver extracts them to documents. Other iOS asset paths pass through unextracted and load from the app bundle (`YOLOInstanceManager.resolveModelPath`, shared by single-image and camera loads); a missing model fails inspection with `PlatformException(MODEL_INSPECTION_FAILED)`. On Android, `assets/...` models are copied into the documents root (not `mobile-standard-v1/`) and never refreshed once the copy exists.
 - The Android GPU program cache key is file basename + byte length, so a same-name, same-size model replacement collides on that key.
 - Android release builds must keep the plugin's `android/consumer-rules.pro` (LiteRT is invoked via JNI/reflection); the example duplicates them in `example/android/app/proguard-rules.pro`.
 - QNN: the runtime is `compileOnly` in the plugin, so consumers (and the example) must add `onnxruntime-android-qnn` and `useLegacyPackaging = true` themselves; the example only does so when `qnnEnabled` (`ENABLE_QNN` or `-Pqnn`). QNN models have no CPU fallback and are not resolved by model ID — pass the release URL or file path.

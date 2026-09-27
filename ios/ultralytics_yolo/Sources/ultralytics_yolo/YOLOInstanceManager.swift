@@ -73,7 +73,7 @@ class YOLOInstanceManager {
     loadGeneration[instanceId] = generation
     let pendingKey = "\(instanceId)#\(generation)"
 
-    let resolvedModelPath = resolveModelPath(modelName)
+    let resolvedModelPath = Self.resolveModelPath(modelName)
 
     // Hold a strong reference while the model loads: the shared package's `YOLO` captures `self` weakly in its async
     // load-completion closure, so it would otherwise deallocate as soon as this initializer returns and the
@@ -219,7 +219,8 @@ class YOLOInstanceManager {
 
   // MARK: - Private Helpers
 
-  private func resolveModelPath(_ modelPath: String) -> String {
+  /// Resolves a Flutter asset or bundle model name to a file path, returning `modelPath` unchanged when not found.
+  static func resolveModelPath(_ modelPath: String) -> String {
     // Already an absolute path
     if modelPath.hasPrefix("/") {
       return modelPath

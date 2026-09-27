@@ -320,14 +320,15 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
 
     var modelURL: URL?
-    let lowercasedPath = modelPathOrName.lowercased()
+    let modelPath = YOLOInstanceManager.resolveModelPath(modelPathOrName)
+    let lowercasedPath = modelPath.lowercased()
     let fileManager = FileManager.default
 
     // Determine model URL
     if lowercasedPath.hasSuffix(".mlmodel") || lowercasedPath.hasSuffix(".mlpackage")
       || lowercasedPath.hasSuffix(".mlmodelc") || lowercasedPath.hasSuffix(".aimodel")
     {
-      let possibleURL = URL(fileURLWithPath: modelPathOrName)
+      let possibleURL = URL(fileURLWithPath: modelPath)
       var isDirectory: ObjCBool = false
       if fileManager.fileExists(atPath: possibleURL.path, isDirectory: &isDirectory) {
         modelURL = possibleURL
@@ -344,14 +345,15 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     }
 
     guard let unwrappedModelURL = modelURL else {
-      // Model not found - allow camera preview without inference
-      NSLog(
-        "YOLOView: Model file not found: %@. Camera will run without inference.", modelPathOrName)
-      self.videoCapture.predictor = nil
+      // Model not found: keep any previously loaded predictor running and report the failure.
+      NSLog("YOLOView: Model file not found: %@", modelPathOrName)
       self.activityIndicator.stopAnimating()
-      self.labelName.text = "No Model"
-      // Call completion with success to allow camera to start
-      completion?(.success(()))
+      if self.videoCapture.predictor == nil { self.labelName.text = "No Model" }
+      completion?(
+        .failure(
+          NSError(
+            domain: "YOLOView", code: 404,
+            userInfo: [NSLocalizedDescriptionKey: "Model file not found: \(modelPathOrName)"])))
       return
     }
 
