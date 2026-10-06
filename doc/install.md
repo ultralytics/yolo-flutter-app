@@ -35,14 +35,16 @@ The plugin ships for **both Swift Package Manager and CocoaPods**, so it works w
 
 #### 1. Update iOS Deployment Target
 
-Set the minimum iOS version to 13.0. For CocoaPods apps, edit `ios/Podfile`:
+[Xcode 27 requires iOS 15.0 or later](https://developer.apple.com/xcode/system-requirements). Set your app's deployment target to 15.0; the plugin still supports iOS 13.0 with older toolchains. For CocoaPods apps, edit `ios/Podfile`:
 
 ```ruby
 # ios/Podfile
-platform :ios, '13.0'  # Minimum iOS 13.0 required
+platform :ios, '15.0'
 ```
 
-For Swift Package Manager apps, set the **iOS Deployment Target** to 13.0 on the Runner target in Xcode.
+In your existing `post_install` block, raise any pod target's `IPHONEOS_DEPLOYMENT_TARGET` below `15.0` to `15.0`, as shown in the [example Podfile](https://github.com/ultralytics/yolo-flutter-app/blob/main/example/ios/Podfile).
+
+For Swift Package Manager apps, set the **iOS Deployment Target** to 15.0 on the Runner target in Xcode.
 
 #### 2. Camera Permission (Optional)
 
@@ -226,7 +228,7 @@ android {
 
 | Platform    | Minimum Version | Recommended   |
 | ----------- | --------------- | ------------- |
-| **iOS**     | 13.0+           | 14.0+         |
+| **iOS**     | 13.0+           | 15.0+         |
 | **Android** | API 23+         | API 28+       |
 | **Flutter** | 3.32.1+         | Latest stable |
 | **Dart**    | 3.8.1+          | Latest stable |
