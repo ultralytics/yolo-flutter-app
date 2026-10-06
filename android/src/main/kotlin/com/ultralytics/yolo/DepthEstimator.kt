@@ -69,6 +69,7 @@ class DepthEstimator(
             isLandscape = isLandscape,
             isFrontCamera = isFrontCamera,
             rotationDegrees = cameraRotationDegrees,
+            stretch = true, // match Ultralytics depth validation and calibration
         )
         ImageUtils.copyRgbBitmapToFloatArray(
             inputBitmap,
@@ -80,7 +81,7 @@ class DepthEstimator(
         val preEnd = System.nanoTime()
         val output = rtModel.run(floatInput)[0]
         val inferEnd = System.nanoTime()
-        val depthMap = postProcessDepth(output, origWidth, origHeight)
+        val depthMap = postProcessDepth(output)
         val timing = finishTiming(preEnd, inferEnd)
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
@@ -95,30 +96,17 @@ class DepthEstimator(
         )
     }
 
-    internal fun postProcessDepth(output: FloatArray, origWidth: Int, origHeight: Int): DepthMap {
+    internal fun postProcessDepth(output: FloatArray): DepthMap {
         require(output.size == depthWidth * depthHeight) {
             "Depth output size ${output.size} does not match ${depthWidth * depthHeight}"
         }
-        val crop = modelMaskCropRect(depthWidth, depthHeight, origWidth, origHeight)
-        val left = crop?.left ?: 0
-        val top = crop?.top ?: 0
-        val right = crop?.right ?: depthWidth
-        val bottom = crop?.bottom ?: depthHeight
-        val width = right - left
-        val height = bottom - top
-        require(width > 0 && height > 0) { "Invalid depth crop ${width}x$height" }
-
-        val values = if (includeRawMaskData) FloatArray(width * height) else null
-        if (values != null) {
-            for (y in 0 until height) {
-                val source = (y + top) * depthWidth
-                output.copyInto(values, y * width, source + left, source + right)
-            }
-        }
+        val width = depthWidth
+        val height = depthHeight
+        val values = if (includeRawMaskData) output.copyOf() else null
         val size = width * height
         if (colorPixels.size != size) colorPixels = IntArray(size)
         val range = colorizeDepth(
-            output, depthWidth, left, top, width, height, colorPixels, colors
+            output, depthWidth, 0, 0, width, height, colorPixels, colors
         )
             ?: error("Depth output contains no valid values")
 

@@ -181,7 +181,8 @@ object ImageUtils {
         isLandscape: Boolean,
         isFrontCamera: Boolean,
         rotationDegrees: Int? = null,
-        centerCrop: Boolean = false
+        centerCrop: Boolean = false,
+        stretch: Boolean = false
     ): Bitmap {
         val degrees = cameraRotationDegrees(rotateForCamera, isLandscape, isFrontCamera, rotationDegrees)
         val isRotated = degrees % 180 != 0
@@ -193,11 +194,21 @@ object ImageUtils {
             ?: return targetBitmap
 
         Canvas(targetBitmap).apply {
-            clearLetterboxPadding(transform, targetWidth, targetHeight)
             save()
-            translate(transform.padX + transform.resizedWidth / 2f, transform.padY + transform.resizedHeight / 2f)
-            rotate(degrees.toFloat())
-            scale(transform.gain, transform.gain)
+            if (stretch) {
+                // Fill the target on each axis; the bitmap is scaled before rotation, so swap targets when rotated.
+                translate(targetWidth / 2f, targetHeight / 2f)
+                rotate(degrees.toFloat())
+                scale(
+                    (if (isRotated) targetHeight else targetWidth).toFloat() / bitmap.width,
+                    (if (isRotated) targetWidth else targetHeight).toFloat() / bitmap.height
+                )
+            } else {
+                clearLetterboxPadding(transform, targetWidth, targetHeight)
+                translate(transform.padX + transform.resizedWidth / 2f, transform.padY + transform.resizedHeight / 2f)
+                rotate(degrees.toFloat())
+                scale(transform.gain, transform.gain)
+            }
             drawBitmap(bitmap, -bitmap.width / 2f, -bitmap.height / 2f, filterPaint)
             restore()
         }
