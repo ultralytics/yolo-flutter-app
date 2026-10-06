@@ -24,7 +24,7 @@ flutter run
 
 Make sure:
 
-- the iOS deployment target is `13.0` or higher
+- the app and CocoaPods deployment targets are `15.0` or higher with Xcode 27 (older toolchains support `13.0`)
 - CocoaPods is installed (CocoaPods apps), or Swift Package Manager is enabled via `flutter config --enable-swift-package-manager` (the plugin supports both)
 - the app was fully restarted after adding the plugin
 
