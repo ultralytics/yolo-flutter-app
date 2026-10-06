@@ -44,7 +44,7 @@ post_install do |installer|
       # new verifier rejects. Turn the verifier off for Pods so those plugins build the way they did under Xcode 25.
       # Drop this once the upstream plugins re-publish with verifier-clean module maps.
       config.build_settings['ENABLE_MODULE_VERIFIER'] = 'NO'
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0' if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 15.0
     end
   end
 end

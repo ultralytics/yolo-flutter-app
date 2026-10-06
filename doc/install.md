@@ -42,7 +42,7 @@ The plugin ships for **both Swift Package Manager and CocoaPods**, so it works w
 platform :ios, '15.0'
 ```
 
-In your existing `post_install` block, set each pod target's `IPHONEOS_DEPLOYMENT_TARGET` to `15.0`, as shown in the [example Podfile](https://github.com/ultralytics/yolo-flutter-app/blob/main/example/ios/Podfile).
+In your existing `post_install` block, raise any pod target's `IPHONEOS_DEPLOYMENT_TARGET` below `15.0` to `15.0`, as shown in the [example Podfile](https://github.com/ultralytics/yolo-flutter-app/blob/main/example/ios/Podfile).
 
 For Swift Package Manager apps, set the **iOS Deployment Target** to 15.0 on the Runner target in Xcode.
 
