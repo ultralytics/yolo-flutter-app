@@ -33,7 +33,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets._GITHUB_TOKEN }}
-      - uses: ultralytics/actions/setup-uv@main
+      - uses: ultralytics/actions/setup-uv@setup-uv-defaults
       - run: uv pip install --no-cache ultralytics-actions
       - id: check_pubdev
         shell: python
