@@ -8,6 +8,18 @@ path: /integrations/flutter/performance/
 
 Good performance comes from choosing the right model, limiting unnecessary work, and testing on real devices.
 
+## Depth input geometry (0.6.16)
+
+Depth stretches the full image to the model input on Android and iOS, matching Ultralytics validation and calibration.
+The full model-resolution map covers the original image; official models return 640×640 maps without cropped padding.
+The iOS implementation requires UltralyticsYOLO 8.9.16 through both CocoaPods and Swift Package Manager.
+
+Validated on Xiaomi 17 with the official YOLO26n depth model: CPU and GPU inference for 1280×720, 720×1280 and
+1242×375 images, plus live front and rear cameras in all four portrait/landscape orientations. Each result returned a
+640×640 map and a positive, finite depth range. iPhone 17 Pro / iOS 27 validation covered Core ML and Core AI depth,
+classification and detection camera buffers; see the [iOS profiling record](https://github.com/ultralytics/yolo-ios-app/blob/main/docs/performance.md).
+The historical depth timings below were measured with letterboxed inputs and are not benchmarks of this release.
+
 ## 📦 Choose the Right Model
 
 Start with the smallest model that meets your accuracy needs.

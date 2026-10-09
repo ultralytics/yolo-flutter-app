@@ -189,11 +189,6 @@ Java_com_ultralytics_yolo_DepthEstimator_colorizeDepth(
         JNIEnv *env,
         jobject thiz,
         jfloatArray output,
-        jint depth_width,
-        jint left,
-        jint top,
-        jint width,
-        jint height,
         jintArray color_pixels,
         jintArray colors) {
     jfloat *depth = env->GetFloatArrayElements(output, nullptr);
@@ -208,7 +203,7 @@ Java_com_ultralytics_yolo_DepthEstimator_colorizeDepth(
 
     DepthRange range;
     const bool valid = colorize_depth(
-            depth, depth_width, left, top, width, height, pixels, color_table, range);
+            depth, env->GetArrayLength(output), pixels, color_table, range);
 
     env->ReleaseFloatArrayElements(output, depth, JNI_ABORT);
     env->ReleaseIntArrayElements(color_pixels, pixels, 0);
