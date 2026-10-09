@@ -69,7 +69,7 @@ jobs:
         run: ultralytics-actions-summarize-release
         shell: bash
       - name: Notify Success
-        if: success() && github.event.inputs.publish_tag == 'true'
+        if: success() && github.event.inputs.publish_tag == 'true' && github.run_attempt == '1'
         uses: slackapi/slack-github-action@v4.0.0
         with:
           webhook-type: incoming-webhook
