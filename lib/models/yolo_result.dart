@@ -326,6 +326,9 @@ class YOLODetectionResults {
 }
 
 /// Dense row-major metric depth output.
+///
+/// The full model-resolution map covers the original image without letterbox padding.
+/// Scale its pixel coordinates to the original image dimensions when reading depth.
 class YOLODepthMap {
   /// Distance in meters for every map pixel.
   final Float32List values;

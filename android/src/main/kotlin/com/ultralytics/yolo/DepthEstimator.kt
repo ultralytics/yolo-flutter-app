@@ -106,7 +106,7 @@ class DepthEstimator(
         val size = width * height
         if (colorPixels.size != size) colorPixels = IntArray(size)
         val range = colorizeDepth(
-            output, depthWidth, 0, 0, width, height, colorPixels, colors
+            output, colorPixels, colors
         )
             ?: error("Depth output contains no valid values")
 
@@ -122,11 +122,6 @@ class DepthEstimator(
 
     private external fun colorizeDepth(
         output: FloatArray,
-        depthWidth: Int,
-        left: Int,
-        top: Int,
-        width: Int,
-        height: Int,
         colorPixels: IntArray,
         colors: IntArray,
     ): FloatArray?

@@ -1,3 +1,8 @@
+## 0.6.16
+
+- **Fix**: Stretch depth inputs to match validation and calibration on Android and iOS, retaining the full model-resolution
+  depth map. Requires UltralyticsYOLO `>= 8.9.16` on iOS through CocoaPods and Swift Package Manager.
+
 ## 0.6.15
 
 - **Feature**: Add opt-in Apple Core AI support on iOS 27 and later devices: pass an `.aimodel` path, an `.aimodel.zip`
