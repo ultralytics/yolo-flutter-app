@@ -39,7 +39,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     super.initState();
     _loadVersion();
     _links = AppLinks().uriLinkStream.listen(
-      (uri) => unawaited(_importModel(uri)),
+      (uri) => unawaited(_importModel(uri.toString())),
     );
     _progress = YOLOModelManager.downloadProgress.listen((progress) {
       if (mounted && progress.modelId == _importId) {
@@ -80,12 +80,12 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       ),
     );
     input.dispose();
-    if (value != null) await _importModel(Uri.parse(value));
+    if (value != null) await _importModel(value);
   }
 
-  Future<void> _importModel(Uri uri) async {
+  Future<void> _importModel(String link) async {
     if (_activeImport != null) return;
-    _activeImport = _resolveAndImportModel(uri);
+    _activeImport = _resolveAndImportModel(link);
     try {
       await _activeImport;
     } finally {
@@ -93,8 +93,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     }
   }
 
-  Future<void> _resolveAndImportModel(Uri uri) async {
+  Future<void> _resolveAndImportModel(String link) async {
     try {
+      final uri = Uri.parse(link);
       final parts = uri.pathSegments;
       if (uri.scheme != 'https' ||
           uri.host != 'platform.ultralytics.com' ||
