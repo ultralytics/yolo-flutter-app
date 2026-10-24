@@ -39,7 +39,7 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 DEST="$REPO_ROOT/example/assets/models"
 
 # Release sources (must match YOLOModelResolver constants).
-ANDROID_BASE="https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6"
+ANDROID_BASE="https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.7.0"
 IOS_BASE="https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0"
 
 # The nano task family bundled by default.

@@ -531,7 +531,7 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 
 ### Current Shipped Configuration
 
-- Android official assets: YOLO26 w8a32 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/depth/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `v0.6.6`.
+- Android official assets: YOLO26 w8a32 `.tflite`, `n/s/m/l/x`, detect/segment/semantic/depth/classify/pose/OBB, hosted on `ultralytics/yolo-flutter-app` release `v0.7.0`.
 - Android export settings: `quantize=w8a32` (int8 weights, FP32 activations — dynamic-range, no calibration), `nms=False, end2end=False` (equivalent to `nms=None` with Ultralytics >=8.4.142); classify `imgsz=224`, all other tasks `imgsz=640`.
 - Android runtime: LiteRT 2.x with GPU -> CPU accelerator fallback.
 - Example UI: controls expose all seven tasks and all five model sizes; model changes use one modal loading overlay for downloads and native model reloads.
