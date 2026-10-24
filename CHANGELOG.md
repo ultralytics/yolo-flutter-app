@@ -1,7 +1,11 @@
 ## 0.7.1
 
-- **Feature**: Import custom models from Ultralytics Platform links, select official and custom models in Models, and retain them for offline use.
-- **Fix**: Keep custom installation and accelerator caches distinct by export identity.
+- **Feature**: Import Ultralytics Platform models by QR code and choose official or custom models in one list. Requires
+  UltralyticsYOLO `>= 8.9.17` on iOS.
+- **Feature**: Official Android models now download from the `v0.7.0` release, re-exported with Ultralytics 8.4.188
+  (LiteRT 2.3 w8a32; QNN QAIRT 2.51, which needs `qnn-runtime` >= 2.51.0). Android caches refresh once.
+- **Performance**: QNN depth inference on Snapdragon 8 Elite Gen 5 drops from 26.1 ms to 7.4 ms.
+- **Fix**: Keep custom model caches distinct per export.
 
 ## 0.7.0
 
