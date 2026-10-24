@@ -112,13 +112,14 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       final client = HttpClient();
       Map<String, dynamic> descriptor;
       try {
-        final request = await client.getUrl(
+        final request = await client.postUrl(
           Uri.https(
             'platform.ultralytics.com',
             '/api/mobile/models/${parts[2]}',
-            Uri.splitQueryString(uri.fragment),
           ),
         );
+        request.headers.contentType = ContentType.json;
+        request.write(jsonEncode(Uri.splitQueryString(uri.fragment)));
         final response = await request.close();
         if (response.statusCode != HttpStatus.ok) {
           throw const FormatException(
