@@ -351,6 +351,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   },
                   trailing: IconButton(
                     tooltip: 'Remove model',
+                    color: Theme.of(context).colorScheme.error,
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () async {
                       Navigator.pop(context);
@@ -1203,6 +1204,7 @@ class _ShowcaseOverlay extends StatelessWidget {
             modelMs: m.infer,
             postMs: m.post,
             status: scanningQRCode ? 'Scanning for QR code…' : null,
+            onCancel: scanningQRCode ? onImportModel : null,
           ),
         ),
         const SizedBox(height: _topGap),

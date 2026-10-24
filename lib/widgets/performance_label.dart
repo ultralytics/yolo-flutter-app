@@ -1,5 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 /// Top HUD: model name (`YOLO26n`) over an FPS / inference-time line.
@@ -14,6 +15,9 @@ class PerformanceLabel extends StatelessWidget {
 
   /// Replaces inference metrics while the camera is in another mode, such as QR scanning.
   final String? status;
+
+  /// Cancels QR scanning when shown beside [status].
+  final VoidCallback? onCancel;
 
   /// Smoothed frames-per-second from [YOLOPerformanceMetrics].
   final double fps;
@@ -34,6 +38,7 @@ class PerformanceLabel extends StatelessWidget {
     super.key,
     required this.modelName,
     this.status,
+    this.onCancel,
     required this.fps,
     required this.inferenceMs,
     this.preMs = 0,
@@ -61,17 +66,38 @@ class PerformanceLabel extends StatelessWidget {
         const SizedBox(height: 2),
         // Both timing lines keep their height before the first result arrives (blank text, not absent
         // widgets), so the rows below don't shift down when inference starts.
-        Text(
-          status ??
-              (fps > 0
-                  ? '${fps.toStringAsFixed(1)} FPS - ${inferenceMs.toStringAsFixed(1)} ms'
-                  : ' '),
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w400,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                status ??
+                    (fps > 0
+                        ? '${fps.toStringAsFixed(1)} FPS - ${inferenceMs.toStringAsFixed(1)} ms'
+                        : ' '),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+            if (onCancel != null)
+              IconButton(
+                tooltip: 'Cancel QR scan',
+                constraints: const BoxConstraints.tightFor(
+                  width: 44,
+                  height: 44,
+                ),
+                onPressed: onCancel,
+                icon: const Icon(
+                  CupertinoIcons.xmark,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+          ],
         ),
         Text(
           status == null && preMs + modelMs + postMs > 0

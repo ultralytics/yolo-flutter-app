@@ -33,8 +33,10 @@ class CameraToolbar extends StatelessWidget {
   /// Fires on the info button.
   final VoidCallback onInfo;
 
-  /// Starts or cancels QR scanning through the current camera stream.
+  /// Starts QR scanning through the current camera stream.
   final VoidCallback? onScanQR;
+
+  /// Disables the QR entry point while scanning.
   final bool isScanningQR;
 
   const CameraToolbar({
@@ -76,11 +78,9 @@ class CameraToolbar extends StatelessWidget {
             ),
             if (onScanQR != null)
               _ToolbarButton(
-                icon: isScanningQR
-                    ? CupertinoIcons.xmark
-                    : CupertinoIcons.qrcode_viewfinder,
-                onPressed: onScanQR!,
-                semanticLabel: isScanningQR ? 'Cancel QR scan' : 'Scan QR',
+                icon: CupertinoIcons.qrcode_viewfinder,
+                onPressed: isScanningQR ? null : onScanQR,
+                semanticLabel: 'Scan QR',
               ),
             _ToolbarButton(
               icon: CupertinoIcons.info,
@@ -96,7 +96,7 @@ class CameraToolbar extends StatelessWidget {
 
 class _ToolbarButton extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final String semanticLabel;
 
   const _ToolbarButton({
@@ -113,7 +113,7 @@ class _ToolbarButton extends StatelessWidget {
         onPressed: onPressed,
         child: Icon(
           icon,
-          color: Colors.white,
+          color: onPressed == null ? Colors.white38 : Colors.white,
           size: CameraToolbar.iconSize,
           semanticLabel: semanticLabel,
         ),
