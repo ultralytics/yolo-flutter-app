@@ -1,6 +1,6 @@
 ## 0.6.17
 
-- **Feature**: Import custom models from Ultralytics Platform links, select them in My models, and retain them for offline use.
+- **Feature**: Import custom models from Ultralytics Platform links, select official and custom models in Models, and retain them for offline use.
 - **Fix**: Keep custom installation and accelerator caches distinct by export identity.
 
 ## 0.6.16

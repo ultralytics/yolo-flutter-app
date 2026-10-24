@@ -12,6 +12,8 @@ import 'package:ultralytics_yolo/widgets/yolo_showcase.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
 
+import 'utils/test_helpers.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -41,6 +43,7 @@ void main() {
   });
 
   testWidgets('showcase controls drive the camera controller', (tester) async {
+    YOLOTestHelpers.setupMockChannel();
     SharedPreferences.setMockInitialValues({
       'ultralytics_yolo.showcase.model': 'saved-custom',
     });
@@ -134,7 +137,10 @@ void main() {
 
     Navigator.of(tester.element(find.byIcon(Icons.menu_book_outlined))).pop();
     await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('↓ YOLO26s'));
+    await tester.tap(find.byTooltip('Models'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.tap(find.text('YOLO26s'));
     await tester.pump();
 
     expect(find.textContaining('Downloading YOLO26s Detect'), findsOneWidget);
@@ -159,7 +165,6 @@ void main() {
         'capturePhoto',
       ]),
     );
-    expect(find.textContaining('Loading YOLO26n Segment'), findsOneWidget);
   });
 
   testWidgets('lens picker handles empty, single, and segmented lens sets', (

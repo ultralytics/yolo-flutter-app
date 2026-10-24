@@ -66,6 +66,7 @@ class VideoCapture: NSObject, @unchecked Sendable {
   var shortSide: CGFloat = 4
   var frameSizeCaptured = false
 
+  private let qrScan = QRCodeScan()
   private var currentBuffer: CVPixelBuffer?
 
   // Called with the very next sample buffer rendered through the video output; matches upstream YOLO iOS
@@ -228,12 +229,22 @@ class VideoCapture: NSObject, @unchecked Sendable {
     }
   }
 
+  func scanQRCode(completion: @escaping @MainActor @Sendable (Result<String?, Error>) -> Void) {
+    cameraQueue.async { self.qrScan.start(completion: completion) }
+  }
+
+  func cancelQRCodeScan() {
+    cameraQueue.async { self.qrScan.cancel() }
+  }
+
   func stop() {
     // Drain any pending `captureNextFrame` completion on the cameraQueue (the same queue that stores it in
     // captureNextFrame and fires it in captureOutput). Without this, stopping before the next sample buffer arrives
     // strands the completion forever, hanging the Dart `await` behind pause/capturePhoto.
     cameraQueue.async { [weak self] in
-      guard let self, let pending = self.frameCaptureCompletion else { return }
+      guard let self else { return }
+      self.qrScan.cancel()
+      guard let pending = self.frameCaptureCompletion else { return }
       self.frameCaptureCompletion = nil
       let completionBox = SendableBox(pending)
       DispatchQueue.main.async { completionBox.value(nil) }
@@ -362,6 +373,7 @@ extension VideoCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
         DispatchQueue.main.async { completionBox.value(imageBox.value) }
       }
     }
+    if qrScan.process(sampleBuffer) { return }
     guard inferenceOK else { return }
     predictOnFrame(sampleBuffer: sampleBuffer)
   }

@@ -445,6 +445,11 @@ class YOLOPlatformView(
                         result.error("invalid_args", "visible is required", null)
                     }
                 }
+                "scanQRCode" -> yoloView.scanQRCode { value -> result.success(value) }
+                "cancelQRCodeScan" -> {
+                    yoloView.scanQRCode(null)
+                    result.success(null)
+                }
                 "stop" -> {
                     yoloView.stop()
                     result.success(null)

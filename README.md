@@ -100,7 +100,7 @@ final results = await yolo.predict(imageBytes);
 
 ## Import models from Ultralytics Platform
 
-In your model's Export tab, choose **Open on phone** on a completed export, then open the app, tap **Scan QR**, and point the camera at the code. Use LiteRT with FP32 or W8A32 precision for Android, or Core ML for iPhone; exports must use batch 1 and static input shapes. The example app previews the model before downloading and adds it to **My models** for selection, removal, and offline use. Core AI import links open in the native iOS app.
+In your model's Export tab, choose **Open on phone** on a completed export, then open the app, tap **Scan QR**, and point the existing camera preview at the code. Tap **Cancel** to return to live inference. Use LiteRT with FP32 or W8A32 precision for Android, or Core ML for iPhone; exports must use batch 1 and static input shapes. The example app previews the model before downloading and adds it to the **Models** picker for selection, removal, and offline use. Tap the active model's name to choose an **Official** model for the current task or a **Custom** import. Core AI import links open in the native iOS app.
 
 Import links authorize one export for ten minutes. Anyone with the link can download it during that time; installed models keep working after the link expires. Each export installs separately, even when model names match. App-link handling belongs to the example app; the plugin's resolver and model picker remain usable with your own download source.
 

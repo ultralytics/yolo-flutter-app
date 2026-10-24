@@ -91,6 +91,7 @@ android {
         // can read standard embedded TFLite metadata as a fallback to Ultralytics' appended-ZIP metadata.
         implementation("com.google.ai.edge.litert:litert:2.1.5")
         implementation("com.google.ai.edge.litert:litert-metadata:1.4.2")
+        implementation("com.google.zxing:core:3.5.4")
         // Optional Snapdragon NPU support: runs Ultralytics QNN context-binary ONNX exports (*_qnn.onnx) via the
         // ONNX Runtime QNN Execution Provider. compileOnly so consumers don't pay the ~70MB arm64 runtime by
         // default — apps opt in by adding the same artifact as `implementation` (see OrtQnnModel).

@@ -13,7 +13,6 @@ import 'package:ultralytics_yolo/widgets/camera_toolbar.dart';
 import 'package:ultralytics_yolo/widgets/focus_reticle.dart';
 import 'package:ultralytics_yolo/widgets/lens_picker.dart';
 import 'package:ultralytics_yolo/widgets/logo_overlay.dart';
-import 'package:ultralytics_yolo/widgets/model_size_segmented_control.dart';
 import 'package:ultralytics_yolo/widgets/performance_label.dart';
 import 'package:ultralytics_yolo/widgets/task_segmented_control.dart';
 import 'package:ultralytics_yolo/widgets/threshold_slider_row.dart';
@@ -53,8 +52,8 @@ class YOLOShowcase extends StatefulWidget {
   /// An installed model to select, including models imported by the host application.
   final YOLOInstalledModel? model;
 
-  /// Host-owned import UI, offered in the model picker.
-  final Future<void> Function()? onImportModel;
+  /// Handles a QR value decoded from the existing camera.
+  final Future<void> Function(String code)? onImportModel;
 
   const YOLOShowcase({
     super.key,
@@ -113,7 +112,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // instead of looking frozen.
   bool _isModelLoading = false;
 
-  Future<void>? _importOperation;
+  Future<String?>? _qrScan;
   bool _isPaused = false;
   bool _torchOn = false;
   bool _isFrontCamera = false;
@@ -187,7 +186,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       });
     });
     _progressSub = YOLOModelManager.downloadProgress.listen((progress) {
-      // Match the model id to a size chip; ignore foreign downloads.
+      // Match the model id to an official size; ignore foreign downloads.
       final size = _sizeForModelId(progress.modelId, _currentTask);
       if (size == null || !mounted) return;
       final done = progress.fraction >= 1;
@@ -195,9 +194,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         if (done) {
           _availableSizes = {..._availableSizes, size};
         }
-        // Only drive the active download spinner for the size the user is currently waiting on. A download abandoned
-        // by a later size tap keeps streaming until it finishes/fails, but must not keep (or resurrect) the chip for a
-        // selection the user has moved off of — `_onSizeChanged`/`_onTaskChanged` already clear the chip on change.
+        // Only drive progress for the size the user is waiting on. A download abandoned by a later selection keeps
+        // streaming until it finishes/fails; `_onSizeChanged`/`_onTaskChanged` clear progress on change.
         if (size == _currentSize) {
           _downloadingSize = done ? null : size;
           _downloadFraction = done ? null : progress.fraction;
@@ -267,6 +265,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
 
   Future<void> _showModels() async {
     final models = await YOLOModelManager.installedModels();
+    await _refreshAvailableSizes(_currentTask);
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
@@ -274,7 +273,23 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const ListTile(title: Text('My models')),
+            ListTile(title: Text('Official · ${_currentTask.label}')),
+            for (final size in _allSizes)
+              ListTile(
+                title: Text('YOLO26$size'),
+                selected: _currentCustomModel == null && _currentSize == size,
+                leading: _currentCustomModel == null && _currentSize == size
+                    ? const Icon(Icons.check)
+                    : null,
+                trailing: _availableSizes.contains(size)
+                    ? null
+                    : const Icon(Icons.download_outlined),
+                onTap: () {
+                  Navigator.pop(context);
+                  _onSizeChanged(size);
+                },
+              ),
+            const ListTile(title: Text('Custom')),
             for (final model in models)
               ListTile(
                 title: Text(model.name),
@@ -298,9 +313,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
               ),
             if (models.isEmpty)
               const ListTile(
-                title: Text(
-                  'Import a model from Ultralytics Platform to use it offline.',
-                ),
+                title: Text('Scan a Platform QR code to add a model.'),
               ),
           ],
         ),
@@ -308,17 +321,22 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     );
   }
 
-  Future<void> _onImportModel() {
-    return _importOperation ??= () async {
-      if (!_isPaused) await _controller.pause();
-      _controller.resetTorchState();
-      if (_torchOn) setState(() => _torchOn = false);
-      try {
-        await widget.onImportModel!();
-      } finally {
-        if (mounted && !_isPaused) await _controller.resume();
-      }
-    }().whenComplete(() => _importOperation = null);
+  Future<void> _onImportModel() async {
+    if (_qrScan != null) {
+      await _controller.cancelQRCodeScan();
+      return;
+    }
+    unawaited(_controller.setShowOverlays(false));
+    final scan = _controller.scanQRCode();
+    setState(() {
+      _qrScan = scan;
+      _isPaused = false;
+    });
+    final code = await scan;
+    if (!mounted) return;
+    setState(() => _qrScan = null);
+    if (!_isModelLoading) _restoreInferenceAfterModelSwitch();
+    if (code != null) await widget.onImportModel!(code);
   }
 
   Future<void> _refreshLenses() async {
@@ -365,8 +383,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     required String size,
   }) => 'yolo26$size${task.modelSuffix}';
 
-  /// Maps `yolo26<size><suffix>` back to its size letter — used to route download-progress events to the matching
-  /// chip.
+  /// Maps `yolo26<size><suffix>` back to its size letter to route download-progress events.
   static String? _sizeForModelId(String id, YOLOTask task) {
     final expectedSuffix = _composeModelId(task: task, size: '').substring(6);
     for (final size in _allSizes) {
@@ -375,7 +392,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     return null;
   }
 
-  /// Probes each official size for the active task to decide which chips are downloaded vs need a `↓` glyph.
+  /// Probes each official size for the active task to decide which entries need a download icon.
   Future<Set<String>> _scanAvailableSizes(YOLOTask task) async {
     final present = <String>{};
     for (final size in _allSizes) {
@@ -575,6 +592,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   void _suppressInferenceForModelSwitch() {
+    unawaited(_controller.cancelQRCodeScan());
     unawaited(_controller.setShowOverlays(false));
   }
 
@@ -779,15 +797,14 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   modelName: _currentCustomModel?.name ?? 'YOLO26$_currentSize',
                   metrics: _metrics,
                   task: _currentTask,
-                  size: _currentCustomModel == null ? _currentSize : null,
-                  onModels: _isModelLoading ? null : _showModels,
+                  customModel: _currentCustomModel != null,
+                  onModels: _isModelLoading || _qrScan != null
+                      ? null
+                      : _showModels,
+                  scanningQRCode: _qrScan != null,
                   onImportModel: widget.onImportModel == null
                       ? null
                       : _onImportModel,
-                  availableSizes: _availableSizes,
-                  supportedSizes: _allSizes,
-                  downloadingSize: _downloadingSize,
-                  downloadFraction: _downloadFraction,
                   modelErrorMessage: _modelErrorMessage,
                   confidence: _confidence,
                   iou: _iou,
@@ -798,7 +815,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   versionLabel: widget.versionLabel,
                   showSemanticTask: widget.showSemanticTask,
                   onTaskChanged: _onTaskChanged,
-                  onSizeChanged: _onSizeChanged,
                   onConfidenceChanged: (v) {
                     setState(() => _confidence = v);
                     unawaited(_controller.setConfidenceThreshold(v));
@@ -830,7 +846,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeInCubic,
                     child: _isModelLoading
-                        ? _ModelSwitchLoadingOverlay(
+                        ? ModelSwitchLoadingOverlay(
                             statusText: _loadingStatusText,
                             progress: _downloadFraction,
                             onCancel: _downloadingSize == null
@@ -849,8 +865,10 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 }
 
-class _ModelSwitchLoadingOverlay extends StatelessWidget {
-  const _ModelSwitchLoadingOverlay({
+/// Shared progress and cancellation UI for downloading or preparing a model.
+class ModelSwitchLoadingOverlay extends StatelessWidget {
+  const ModelSwitchLoadingOverlay({
+    super.key,
     this.statusText,
     this.progress,
     this.onCancel,
@@ -937,7 +955,7 @@ class _ModelSwitchLoadingOverlay extends StatelessWidget {
 /// Stateless overlay sandwich. Layout mirrors `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#layoutPortrait`
 /// and the storyboard segmented-control frames in `Main.storyboard`:
 ///   * Top: 20pt side padding, centered model name (10% view-height), centered FPS line (4%), 8pt gap, task control
-///     (32pt), 4pt gap, model-size control (32pt).
+///     (32pt), 4pt gap, Scan QR and Models buttons.
 ///   * Middle: empty so the camera shows through.
 ///   * Bottom: confidence + IoU sliders (46% view width, 20pt left padding), then zoom indicator, then lens picker,
 ///     then the 66pt full-width toolbar. The Ultralytics logo + optional version label float to the right and left of
@@ -947,11 +965,7 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.modelName,
     required this.metrics,
     required this.task,
-    required this.size,
-    required this.availableSizes,
-    required this.supportedSizes,
-    required this.downloadingSize,
-    required this.downloadFraction,
+    required this.customModel,
     required this.modelErrorMessage,
     required this.confidence,
     required this.iou,
@@ -962,7 +976,6 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.versionLabel,
     required this.showSemanticTask,
     required this.onTaskChanged,
-    required this.onSizeChanged,
     required this.onConfidenceChanged,
     required this.onIouChanged,
     required this.onLensSelected,
@@ -975,6 +988,7 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.onInfo,
     required this.onModels,
     required this.onImportModel,
+    required this.scanningQRCode,
   });
 
   final String modelName;
@@ -983,11 +997,7 @@ class _ShowcaseOverlay extends StatelessWidget {
   >
   metrics;
   final YOLOTask task;
-  final String? size;
-  final Set<String> availableSizes;
-  final Set<String> supportedSizes;
-  final String? downloadingSize;
-  final double? downloadFraction;
+  final bool customModel;
   final String? modelErrorMessage;
   final double confidence;
   final double iou;
@@ -998,7 +1008,6 @@ class _ShowcaseOverlay extends StatelessWidget {
   final String? versionLabel;
   final bool showSemanticTask;
   final ValueChanged<YOLOTask> onTaskChanged;
-  final ValueChanged<String> onSizeChanged;
   final ValueChanged<double> onConfidenceChanged;
   final ValueChanged<double> onIouChanged;
   final ValueChanged<LensInfo> onLensSelected;
@@ -1011,6 +1020,7 @@ class _ShowcaseOverlay extends StatelessWidget {
   final VoidCallback onInfo;
   final VoidCallback? onModels;
   final VoidCallback? onImportModel;
+  final bool scanningQRCode;
 
   // iOS YOLOView ports — kept as constants so the layout reads like the Swift source.
   static const double _sidePadding = 20;
@@ -1134,6 +1144,7 @@ class _ShowcaseOverlay extends StatelessWidget {
             preMs: m.pre,
             modelMs: m.infer,
             postMs: m.post,
+            status: scanningQRCode ? 'Point at the model QR code' : null,
           ),
         ),
         const SizedBox(height: _topGap),
@@ -1143,14 +1154,6 @@ class _ShowcaseOverlay extends StatelessWidget {
           showSemanticTask: showSemanticTask,
         ),
         const SizedBox(height: 4),
-        ModelSizeSegmentedControl(
-          currentSize: size,
-          availableSizes: availableSizes,
-          supportedSizes: supportedSizes,
-          onSizeChanged: onSizeChanged,
-          downloadingSize: downloadingSize,
-          downloadFraction: downloadFraction,
-        ),
         TextButtonTheme(
           data: TextButtonThemeData(
             style: TextButton.styleFrom(
@@ -1165,13 +1168,24 @@ class _ShowcaseOverlay extends StatelessWidget {
               if (onImportModel != null)
                 TextButton.icon(
                   onPressed: onImportModel,
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Scan QR'),
+                  icon: Icon(
+                    scanningQRCode ? Icons.close : Icons.qr_code_scanner,
+                  ),
+                  label: Text(scanningQRCode ? 'Cancel' : 'Scan QR'),
                 ),
-              TextButton.icon(
-                onPressed: onModels,
-                icon: const Icon(Icons.expand_more),
-                label: const Text('My models'),
+              Flexible(
+                child: Tooltip(
+                  message: 'Models',
+                  child: TextButton.icon(
+                    onPressed: onModels,
+                    icon: const Icon(Icons.expand_more),
+                    label: Text(
+                      '$modelName · ${customModel ? 'Custom' : 'Official'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

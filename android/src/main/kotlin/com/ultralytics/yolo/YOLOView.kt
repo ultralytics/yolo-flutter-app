@@ -2,6 +2,11 @@
 
 package com.ultralytics.yolo
 
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.RGBLuminanceSource
+import com.google.zxing.ReaderException
+import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.qrcode.QRCodeReader
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -209,6 +214,21 @@ class YOLOView @JvmOverloads constructor(
             eventCallback?.invoke(event)
         } catch (e: Exception) {
             Log.e(TAG, "Error emitting event", e)
+        }
+    }
+
+    private val qrReader = QRCodeReader()
+    private var qrCompletion: ((String?) -> Unit)? = null
+
+    fun scanQRCode(completion: ((String?) -> Unit)?) {
+        val previous = synchronized(qrReader) {
+            val previous = qrCompletion
+            qrCompletion = completion
+            previous
+        }
+        previous?.let { callback -> post { callback(null) } }
+        if (completion != null && isStopped) {
+            startCamera()
         }
     }
 
@@ -672,6 +692,7 @@ class YOLOView @JvmOverloads constructor(
      * analyzer; the predictor, callbacks and cache stay intact for an instant resume.
      */
     fun pauseCamera() {
+        scanQRCode(null)
         isStopped = true
         intentionallyPaused = true
         try {
@@ -1461,6 +1482,27 @@ class YOLOView @JvmOverloads constructor(
 
         // Check again after bitmap conversion (in case stop() was called during conversion)
         if (isStopped) {
+            imageProxy.close()
+            return
+        }
+
+        val scanningQR = synchronized(qrReader) {
+            val completion = qrCompletion
+            if (completion == null) false else {
+                val pixels = IntArray(bitmap.width * bitmap.height)
+                bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+                val source = RGBLuminanceSource(bitmap.width, bitmap.height, pixels)
+                val value = try {
+                    qrReader.decode(BinaryBitmap(HybridBinarizer(source))).text
+                } catch (_: ReaderException) { null }
+                if (value != null) {
+                    qrCompletion = null
+                    post { completion(value) }
+                }
+                true
+            }
+        }
+        if (scanningQR) {
             imageProxy.close()
             return
         }
@@ -2405,6 +2447,7 @@ class YOLOView @JvmOverloads constructor(
      * Stop camera and inference (can be restarted later)
      */
     fun stop() {
+        scanQRCode(null)
         // Set stopped flag first to prevent new frames from being processed
         isStopped = true
         // A full teardown is not an intentional pause; a later lifecycle restart should rebind normally.

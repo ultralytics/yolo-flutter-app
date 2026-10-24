@@ -498,8 +498,7 @@ class YOLOModelResolver {
       }
 
       checkCancelled();
-      if ((expectedSize != null && receivedBytes != expectedSize) ||
-          (totalBytes >= 0 && receivedBytes != totalBytes)) {
+      if (expectedSize != null && receivedBytes != expectedSize) {
         throw ModelLoadingException(
           'Model download was incomplete. Please try again.',
         );

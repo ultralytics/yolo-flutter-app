@@ -6,7 +6,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:app_links/app_links.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -56,42 +55,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     super.dispose();
   }
 
-  Future<String?> _scanQRCode() async {
-    final navigator = Navigator.of(context);
-    final scanner = MobileScannerController(formats: [BarcodeFormat.qrCode]);
-    final lifecycle = AppLifecycleListener(
-      onStateChange: (state) {
-        if (!scanner.value.hasCameraPermission) return;
-        if (state == AppLifecycleState.inactive) unawaited(scanner.stop());
-        if (state == AppLifecycleState.resumed) unawaited(scanner.start());
-      },
-    );
-    final subscription = scanner.barcodes
-        .expand((capture) => capture.barcodes)
-        .map((barcode) => barcode.rawValue)
-        .where((value) => value != null)
-        .cast<String>()
-        .take(1)
-        .listen((value) => navigator.pop(value));
-    final route = MaterialPageRoute<String>(
-      fullscreenDialog: true,
-      builder: (context) => Scaffold(
-        appBar: AppBar(title: const Text('Scan model QR')),
-        body: MobileScanner(controller: scanner),
-      ),
-    );
-    try {
-      final value = await navigator.push(route);
-      await route.completed;
-      return value;
-    } finally {
-      lifecycle.dispose();
-      await subscription.cancel();
-      await scanner.dispose();
-    }
-  }
-
-  Future<void> _importModel([String? link]) async {
+  Future<void> _importModel(String link) async {
     if (_activeImport != null) return;
     _activeImport = _resolveAndImportModel(link);
     try {
@@ -101,11 +65,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     }
   }
 
-  Future<void> _resolveAndImportModel(String? link) async {
+  Future<void> _resolveAndImportModel(String link) async {
     try {
-      final source = link ?? await _scanQRCode();
-      if (source == null) return;
-      final uri = Uri.parse(source);
+      final uri = Uri.parse(link);
       final parts = uri.pathSegments;
       if (uri.scheme != 'https' ||
           uri.host != 'platform.ultralytics.com' ||
@@ -209,9 +171,15 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       if (mounted) setState(() => _model = model);
     } catch (error) {
       if (mounted) {
+        final message = switch (error) {
+          FormatException() => error.message,
+          YOLOException() => error.message,
+          _ =>
+            'Model import failed. Check your connection and scan a new code.',
+        };
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Model import failed: $error')));
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _importId = null);
@@ -260,26 +228,12 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           ),
           if (_importId != null)
             Positioned.fill(
-              child: ColoredBox(
-                color: Colors.black.withValues(alpha: 0.7),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(
-                        value: _fraction < 1 ? _fraction : null,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text('Installing model…'),
-                      TextButton(
-                        onPressed: _fraction >= 1
-                            ? null
-                            : () => YOLOModelManager.cancelDownload(_importId!),
-                        child: const Text('Cancel'),
-                      ),
-                    ],
-                  ),
-                ),
+              child: ModelSwitchLoadingOverlay(
+                statusText: 'Installing model',
+                progress: _fraction < 1 ? _fraction : null,
+                onCancel: _fraction >= 1
+                    ? null
+                    : () => YOLOModelManager.cancelDownload(_importId!),
               ),
             ),
         ],

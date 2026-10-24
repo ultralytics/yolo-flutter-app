@@ -227,6 +227,10 @@ class YOLOViewController {
         'analysisHeight': config.analysisResolution?.height.round(),
       });
 
+  Future<String?> scanQRCode() => _invoke<String>('scanQRCode');
+
+  Future<void> cancelQRCodeScan() => _invoke('cancelQRCodeScan');
+
   Future<void> stop() => _invoke('stop');
 
   Future<void> restartCamera() => _invoke('restartCamera');
