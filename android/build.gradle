@@ -2,7 +2,7 @@ group 'com.ultralytics.yolo'
 version '1.0'
 
 buildscript {
-    ext.kotlin_version = "2.2.20"
+    ext.kotlin_version = "2.4.21"
     repositories {
         google()
         mavenCentral()
@@ -57,8 +57,8 @@ android {
     ndkVersion = project.hasProperty('ndkVersion') ? project.ndkVersion : "28.2.13676358"
 
     defaultConfig {
-        // LiteRT 2.x declares minSdkVersion 23, so the plugin must advertise the same floor to consumers.
-        minSdk = 23
+        // LiteRT 2.3 declares minSdkVersion 24, so the plugin must advertise the same floor to consumers.
+        minSdk = 24
 
         // Ship ProGuard/R8 keep rules to consuming apps so their release builds don't strip LiteRT/JNI classes.
         consumerProguardFiles 'consumer-rules.pro'
@@ -85,17 +85,19 @@ android {
     }
 
     dependencies {
-        // LiteRT 2.x ("LiteRT Next") — CompiledModel API with the CL/GL GPU accelerator bundled. Profiled on a Galaxy
-        // S26: a non-end2end fp16 YOLO26 model runs at ~4.7ms/inf on GPU vs ~29ms CPU. litert-gpu/-support have no 2.x
-        // release and are dropped (GPU is in core). litert-metadata stays (self-contained: only flatbuffers-java) so we
-        // can read standard embedded TFLite metadata as a fallback to Ultralytics' appended-ZIP metadata.
-        implementation("com.google.ai.edge.litert:litert:2.1.5")
-        implementation("com.google.ai.edge.litert:litert-metadata:1.4.2")
+        // LiteRT 2.x ("LiteRT Next") — CompiledModel API. Profiled on a Galaxy S26: a non-end2end fp16 YOLO26 model
+        // runs at ~4.7ms/inf on GPU vs ~29ms CPU. Since 2.3 the CL/GL GPU accelerator ships separately as litert-gpu,
+        // and the Kotlin API carries Kotlin 2.4 metadata, so consumers need Kotlin Gradle plugin 2.3+. litert-metadata
+        // (self-contained: only flatbuffers-java) reads standard embedded TFLite metadata as a fallback to Ultralytics'
+        // appended-ZIP metadata.
+        implementation("com.google.ai.edge.litert:litert:2.3.0")
+        implementation("com.google.ai.edge.litert:litert-gpu:2.3.0")
+        implementation("com.google.ai.edge.litert:litert-metadata:2.3.0")
         implementation("com.google.zxing:core:3.5.4")
         // Optional Snapdragon NPU support: runs Ultralytics QNN context-binary ONNX exports (*_qnn.onnx) via the
         // ONNX Runtime QNN Execution Provider. compileOnly so consumers don't pay the ~70MB arm64 runtime by
         // default — apps opt in by adding the same artifact as `implementation` (see OrtQnnModel).
-        compileOnly("com.microsoft.onnxruntime:onnxruntime-android-qnn:1.26.0")
+        compileOnly("com.microsoft.onnxruntime:onnxruntime-android-qnn:1.29.0")
         testImplementation("junit:junit:4.13.2")
         androidTestImplementation("androidx.test.ext:junit:1.3.0")
         androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")

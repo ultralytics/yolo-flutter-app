@@ -1,7 +1,14 @@
-## 0.6.17
+## 0.7.1
 
 - **Feature**: Import custom models from Ultralytics Platform links, select official and custom models in Models, and retain them for offline use.
 - **Fix**: Keep custom installation and accelerator caches distinct by export identity.
+
+## 0.7.0
+
+- **Breaking**: Android now requires `minSdkVersion 24` and Kotlin Gradle plugin 2.3 or newer, because LiteRT 2.3
+  declares API 24 and ships Kotlin 2.4 metadata.
+- **Feature**: Upgrade Android inference to LiteRT 2.3.0. For QNN, use `onnxruntime-android-qnn` 1.29.0 with
+  `qnn-runtime` 2.51.0, which runs current Ultralytics QNN exports.
 
 ## 0.6.16
 

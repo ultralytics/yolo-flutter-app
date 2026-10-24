@@ -64,7 +64,7 @@ Ultralytics YOLO Flutter 是官方 Flutter 插件，用于在 iOS 和 Android �
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.6.17
+  ultralytics_yolo: ^0.7.1
 ```
 
 ```bash
@@ -171,8 +171,8 @@ android {
 }
 
 dependencies {
-    implementation 'com.microsoft.onnxruntime:onnxruntime-android-qnn:1.26.0'
-    implementation 'com.qualcomm.qti:qnn-runtime:2.46.0' // 比 AAR 自带的 QAIRT 更新；最新的 Snapdragon 芯片需要
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android-qnn:1.29.0'
+    implementation 'com.qualcomm.qti:qnn-runtime:2.51.0' // 比 AAR 自带的 QAIRT 更新；最新的 Snapdragon 芯片需要
 }
 ```
 

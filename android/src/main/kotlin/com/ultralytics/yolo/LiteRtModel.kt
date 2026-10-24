@@ -128,7 +128,7 @@ class LiteRtModel(
         try {
             // Read the input shape by name. litert-torch (format=litert) names the input `args_0`; legacy onnx2tf
             // exports name it `images`. Custom (non-Ultralytics) TFLite models may use other signature input names, so
-            // also try a few common ones — litert 2.1.5 exposes the input shape only by name (no by-index lookup).
+            // also try a few common ones — LiteRT exposes the input shape only by name (no by-index lookup).
             val nativeDims = sequenceOf("images", "args_0", "input", "input_1", "serving_default_input")
                 .firstNotNullOfOrNull { name ->
                     try {
