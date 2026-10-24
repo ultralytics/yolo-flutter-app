@@ -38,7 +38,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="platform.ultralytics.com" android:pathPrefix="/mobile/models/" />
+                <data android:scheme="https" android:host="platform.ultralytics.com" android:pathPrefix="/deploy/mobile/" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

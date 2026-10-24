@@ -101,8 +101,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           uri.hasPort ||
           uri.userInfo.isNotEmpty ||
           parts.length != 3 ||
-          parts[0] != 'mobile' ||
-          parts[1] != 'models' ||
+          parts[0] != 'deploy' ||
+          parts[1] != 'mobile' ||
           !RegExp(r'^[0-9a-f]{24}$').hasMatch(parts[2]) ||
           uri.fragment.length > 128) {
         throw const FormatException(
@@ -185,17 +185,17 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         _fraction = 0;
       });
       YOLOModelManager.clearDownloadCancellation(parts[2]);
-      final path = await YOLOModelResolver.preparePath(
-        download.toString(),
+      final resolved = await YOLOModelResolver.resolve(
+        modelPath: download.toString(),
+        task: task,
         filename: descriptor['filename'] as String,
         expectedSize: (descriptor['size'] as num).toInt(),
       );
-      await YOLOModelResolver.resolve(modelPath: path, task: task);
       final model = YOLOInstalledModel(
         id: parts[2],
         name: name,
         task: task,
-        path: path,
+        path: resolved.modelPath,
       );
       await YOLOModelManager.saveInstalledModel(model);
       if (mounted) setState(() => _model = model);

@@ -1167,22 +1167,39 @@ void main() {
           );
           expect(client.requestedUrls, ['https://example.test/model.tflite']);
 
-          final first = await YOLOModelResolver.preparePath(
-            'https://example.test/model.tflite',
+          final first = await YOLOModelResolver.resolve(
+            modelPath: 'https://example.test/model.tflite',
             filename: 'export-one.tflite',
             expectedSize: 3,
           );
-          final second = await YOLOModelResolver.preparePath(
-            'https://another.test/model.tflite',
+          final second = await YOLOModelResolver.resolve(
+            modelPath: 'https://another.test/model.tflite',
             filename: 'export-two.tflite',
             expectedSize: 3,
           );
-          expect(first, isNot(second));
-          expect(File(first).readAsBytesSync(), [1, 2, 3]);
-          expect(File(second).readAsBytesSync(), [4, 5, 6]);
+          expect(first.modelPath, isNot(second.modelPath));
+          expect(File(first.modelPath).readAsBytesSync(), [1, 2, 3]);
+          expect(File(second.modelPath).readAsBytesSync(), [4, 5, 6]);
           await expectLater(
-            YOLOModelResolver.preparePath(
-              'https://example.test/model.tflite',
+            YOLOModelResolver.resolve(
+              modelPath: 'https://example.test/model.tflite',
+              task: YOLOTask.segment,
+              filename: 'bad-task.tflite',
+              expectedSize: 3,
+            ),
+            throwsA(isA<ModelLoadingException>()),
+          );
+          expect(File('/tmp/yolo_test/bad-task.tflite').existsSync(), isFalse);
+          final retry = await YOLOModelResolver.resolve(
+            modelPath: 'https://example.test/model.tflite',
+            task: YOLOTask.detect,
+            filename: 'bad-task.tflite',
+            expectedSize: 3,
+          );
+          expect(File(retry.modelPath).readAsBytesSync(), [1, 2, 3]);
+          await expectLater(
+            YOLOModelResolver.resolve(
+              modelPath: 'https://example.test/model.tflite',
               filename: 'incomplete.tflite',
               expectedSize: 4,
             ),
@@ -1197,8 +1214,8 @@ void main() {
             isFalse,
           );
           await expectLater(
-            YOLOModelResolver.preparePath(
-              'https://example.test/model.tflite',
+            YOLOModelResolver.resolve(
+              modelPath: 'https://example.test/model.tflite',
               filename: '../outside.tflite',
             ),
             throwsA(isA<ModelLoadingException>()),

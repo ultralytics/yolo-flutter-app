@@ -11,8 +11,8 @@ import 'package:flutter/material.dart';
 /// Visual tokens: translucent black background, 18% white selected thumb, 11pt system-weight labels in white (light
 /// weight bump when active).
 class ModelSizeSegmentedControl extends StatelessWidget {
-  /// Currently-selected size (one of `n s m l x`).
-  final String currentSize;
+  /// Selected official size, or null while a custom model is active.
+  final String? currentSize;
 
   /// Sizes already present on-disk; missing sizes still appear with the `↓` prefix so the user can tap to start a
   /// download.
@@ -50,7 +50,9 @@ class ModelSizeSegmentedControl extends StatelessWidget {
         .where(supportedSizes.contains)
         .toList(growable: false);
     if (visibleSizes.isEmpty) return const SizedBox.shrink();
-    final effectiveCurrent = visibleSizes.contains(currentSize)
+    final effectiveCurrent = currentSize == null
+        ? null
+        : visibleSizes.contains(currentSize)
         ? currentSize
         : visibleSizes.first;
 
@@ -58,14 +60,16 @@ class ModelSizeSegmentedControl extends StatelessWidget {
     // one static chip instead of crashing with a red error screen.
     if (visibleSizes.length < 2) {
       return Center(
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(8),
+        child: CupertinoButton(
+          color: Colors.white.withValues(
+            alpha: effectiveCurrent == null ? 0.08 : 0.18,
           ),
+          borderRadius: BorderRadius.circular(8),
+          minimumSize: const Size(0, 32),
+          onPressed: () => onSizeChanged(visibleSizes.first),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           child: Text(
-            'YOLO26$effectiveCurrent',
+            'YOLO26${visibleSizes.first}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 11,

@@ -101,31 +101,56 @@ class YOLOModelResolver {
   static Future<YOLOResolvedModel> resolve({
     required String modelPath,
     YOLOTask? task,
+    String? filename,
+    int? expectedSize,
   }) async {
-    final resolvedPath = await preparePath(modelPath);
-    final metadata = await inspect(resolvedPath);
-    final metadataTask = YOLOTaskParsing.tryParse(metadata['task'] as String?);
-
-    if (task != null && metadataTask != null && task != metadataTask) {
+    final uri = Uri.tryParse(modelPath);
+    if (filename != null && uri?.scheme != 'http' && uri?.scheme != 'https') {
       throw ModelLoadingException(
-        'Model task mismatch for $modelPath: expected ${task.name}, '
-        'metadata says ${metadataTask.name}.',
+        'An install filename requires a remote model URL.',
       );
     }
-
-    final effectiveTask = task ?? metadataTask;
-    if (effectiveTask == null) {
-      throw ModelLoadingException(
-        'Could not determine the task for $modelPath. '
-        'Provide task explicitly or use a model with exported metadata.',
-      );
-    }
-
-    return YOLOResolvedModel(
-      modelPath: resolvedPath,
-      task: effectiveTask,
-      metadata: metadata,
+    final resolvedPath = await _resolvePath(
+      modelPath,
+      filename: filename,
+      expectedSize: expectedSize,
     );
+    try {
+      final metadata = await inspect(resolvedPath);
+      final metadataTask = YOLOTaskParsing.tryParse(
+        metadata['task'] as String?,
+      );
+
+      if (task != null && metadataTask != null && task != metadataTask) {
+        throw ModelLoadingException(
+          'Model task mismatch for ${filename ?? modelPath}: expected ${task.name}, '
+          'metadata says ${metadataTask.name}.',
+        );
+      }
+
+      final effectiveTask = task ?? metadataTask;
+      if (effectiveTask == null) {
+        throw ModelLoadingException(
+          'Could not determine the task for ${filename ?? modelPath}. '
+          'Provide task explicitly or use a model with exported metadata.',
+        );
+      }
+
+      return YOLOResolvedModel(
+        modelPath: resolvedPath,
+        task: effectiveTask,
+        metadata: metadata,
+      );
+    } catch (_) {
+      // A named remote installation owns its artifact until validation succeeds.
+      if (filename != null) {
+        final FileSystemEntity artifact = Directory(resolvedPath).existsSync()
+            ? Directory(resolvedPath)
+            : File(resolvedPath);
+        await artifact.delete(recursive: true);
+      }
+      rethrow;
+    }
   }
 
   static Future<Map<String, dynamic>> inspect(String modelPath) async {
@@ -137,12 +162,8 @@ class YOLOModelResolver {
     return Map<String, dynamic>.from(result);
   }
 
-  /// [filename] provides stable installation identity when a remote URL is signed or has a generic basename.
-  static Future<String> preparePath(
-    String modelPath, {
-    String? filename,
-    int? expectedSize,
-  }) => _resolvePath(modelPath, filename: filename, expectedSize: expectedSize);
+  static Future<String> preparePath(String modelPath) =>
+      _resolvePath(modelPath);
 
   static Future<String> _resolvePath(
     String source, {

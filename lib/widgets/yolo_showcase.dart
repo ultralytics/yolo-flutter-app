@@ -774,7 +774,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   modelName: _currentCustomModel?.name ?? 'YOLO26$_currentSize',
                   metrics: _metrics,
                   task: _currentTask,
-                  size: _currentCustomModel == null ? _currentSize : '',
+                  size: _currentCustomModel == null ? _currentSize : null,
                   onModels: _isModelLoading ? null : _showModels,
                   availableSizes: _availableSizes,
                   supportedSizes: _allSizes,
@@ -974,7 +974,7 @@ class _ShowcaseOverlay extends StatelessWidget {
   >
   metrics;
   final YOLOTask task;
-  final String size;
+  final String? size;
   final Set<String> availableSizes;
   final Set<String> supportedSizes;
   final String? downloadingSize;
