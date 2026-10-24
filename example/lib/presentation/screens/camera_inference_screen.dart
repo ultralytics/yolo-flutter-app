@@ -138,7 +138,6 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       final extension = {
         'litert': 'tflite',
         'coreml': 'mlpackage.zip',
-        'coreai': 'aimodel.zip',
       }[format];
       final download = Uri.parse(descriptor['downloadUrl'] as String);
       if (descriptor['version'] != 1 ||

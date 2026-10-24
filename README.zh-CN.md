@@ -100,7 +100,7 @@ final results = await yolo.predict(imageBytes);
 
 ## 从 Ultralytics Platform 导入模型
 
-在模型的 Export 选项卡中，对已完成的导出选择 **Open on phone**，然后使用手机相机扫描二维码。Android 使用 FP32 或 W8A32 精度的 LiteRT，iPhone 使用 Core ML；导出必须使用 batch 1 和静态输入形状。示例应用会先显示模型信息，经确认后下载，并将模型添加到 **My models**，支持选择、删除和离线使用。也可以在此菜单中粘贴导入链接。
+在模型的 Export 选项卡中，对已完成的导出选择 **Open on phone**，然后使用手机相机扫描二维码。Android 使用 FP32 或 W8A32 精度的 LiteRT，iPhone 使用 Core ML；导出必须使用 batch 1 和静态输入形状。示例应用会先显示模型信息，经确认后下载，并将模型添加到 **My models**，支持选择、删除和离线使用。也可以在此菜单中粘贴导入链接。Core AI 导入链接在原生 iOS 应用中打开。
 
 导入链接在十分钟内授权下载单个导出。任何获得链接的人都可以在有效期内下载，已安装的模型在链接过期后仍可使用。每个导出独立安装，名称相同也不会覆盖。应用链接由示例应用处理；插件的解析器和模型选择器仍可使用您自己的下载来源。
 
