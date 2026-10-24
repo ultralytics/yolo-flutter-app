@@ -179,7 +179,7 @@ android {
 
 dependencies {
     implementation 'com.microsoft.onnxruntime:onnxruntime-android-qnn:1.29.0'
-    implementation 'com.qualcomm.qti:qnn-runtime:2.50.0' // newer than the AAR's bundled QAIRT; required for the latest Snapdragons
+    implementation 'com.qualcomm.qti:qnn-runtime:2.51.0' // newer than the AAR's bundled QAIRT; required for the latest Snapdragons
 }
 ```
 

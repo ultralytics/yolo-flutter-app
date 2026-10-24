@@ -82,9 +82,9 @@ dependencies {
     if (qnnEnabled) {
         implementation("com.microsoft.onnxruntime:onnxruntime-android-qnn:1.29.0")
         // Override the AAR's transitive QAIRT 2.42, whose device table predates the Snapdragon 8 Elite Gen 5 (SM8850)
-        // and fails QnnDevice_create with INVALID_CONFIG, with 2.50: the QAIRT that LiteRT 2.3's Qualcomm NPU runtime
-        // is built against, so both NPU paths can share one set of QNN libraries.
-        implementation("com.qualcomm.qti:qnn-runtime:2.50.0")
+        // and fails QnnDevice_create with INVALID_CONFIG, with 2.51: the QAIRT bundled by onnxruntime-qnn 2.7, which
+        // compiles current Ultralytics QNN exports (a context binary needs a runtime at least as new as its compiler).
+        implementation("com.qualcomm.qti:qnn-runtime:2.51.0")
     }
 }
 
