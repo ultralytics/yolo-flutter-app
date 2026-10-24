@@ -221,16 +221,11 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   Future<void> _bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     final storedTask = prefs.getString(_prefsTaskKey);
+    final storedModel = prefs.getString('ultralytics_yolo.showcase.model');
     final models = await YOLOModelManager.installedModels();
     final selected =
         widget.model ??
-        models
-            .where(
-              (model) =>
-                  model.id ==
-                  prefs.getString('ultralytics_yolo.showcase.model'),
-            )
-            .firstOrNull;
+        models.where((model) => model.id == storedModel).firstOrNull;
     if (mounted) {
       setState(() {
         _currentCustomModel = selected;
@@ -399,6 +394,10 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (!mounted) return;
     final loadedTask = task ?? _currentTask;
     final loadedSize = _sizeForModelId(modelPath, loadedTask);
+    final previousCustomModel = _runningCustomModel;
+    final loadedCustomModel = _currentCustomModel?.path == modelPath
+        ? _currentCustomModel
+        : null;
     final preserveError =
         _modelErrorMessage != null &&
         loadedTask == _runningTask &&
@@ -410,19 +409,19 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _loadingStatusText = null;
       if (!preserveError) _modelErrorMessage = null;
       _runningTask = loadedTask;
-      _runningCustomModel = _currentCustomModel?.path == modelPath
-          ? _currentCustomModel
-          : null;
-      unawaited(
-        SharedPreferences.getInstance().then(
-          (prefs) => _runningCustomModel == null
-              ? prefs.remove('ultralytics_yolo.showcase.model')
-              : prefs.setString(
-                  'ultralytics_yolo.showcase.model',
-                  _runningCustomModel!.id,
-                ),
-        ),
-      );
+      _runningCustomModel = loadedCustomModel;
+      if (loadedCustomModel != null || previousCustomModel != null) {
+        unawaited(
+          SharedPreferences.getInstance().then(
+            (prefs) => loadedCustomModel == null
+                ? prefs.remove('ultralytics_yolo.showcase.model')
+                : prefs.setString(
+                    'ultralytics_yolo.showcase.model',
+                    loadedCustomModel.id,
+                  ),
+          ),
+        );
+      }
       if (loadedSize != null) {
         _availableSizes = {..._availableSizes, loadedSize};
         _runningTask = loadedTask;

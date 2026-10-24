@@ -41,7 +41,9 @@ void main() {
   });
 
   testWidgets('showcase controls drive the camera controller', (tester) async {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'ultralytics_yolo.showcase.model': 'saved-custom',
+    });
     await tester.binding.setSurfaceSize(const Size(390, 780));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -90,6 +92,13 @@ void main() {
         .onModelLoad
         ?.call('yolo26n', YOLOTask.detect);
     await tester.pump();
+
+    expect(
+      (await SharedPreferences.getInstance()).getString(
+        'ultralytics_yolo.showcase.model',
+      ),
+      'saved-custom',
+    );
 
     await tester.tap(find.bySemanticsLabel('Pause'));
     await tester.pump();
