@@ -1,13 +1,31 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/models/yolo_exceptions.dart';
 import 'package:ultralytics_yolo/utils/error_handler.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/config/channel_config.dart';
+
+/// A downloaded model selected by stable identity independently of its display name or original download URL.
+class YOLOInstalledModel {
+  const YOLOInstalledModel({
+    required this.id,
+    required this.name,
+    required this.task,
+    required this.path,
+  });
+  final String id;
+  final String name;
+  final YOLOTask task;
+  final String path;
+}
 
 /// Progress snapshot for an in-flight model download.
 class DownloadProgress {
@@ -26,6 +44,84 @@ class DownloadProgress {
 }
 
 class YOLOModelManager {
+  static const _installedModelsKey = 'ultralytics_yolo.installed_models';
+
+  static Future<List<YOLOInstalledModel>> installedModels() async {
+    final prefs = await SharedPreferences.getInstance();
+    final directory = await getApplicationDocumentsDirectory();
+    final entries =
+        jsonDecode(prefs.getString(_installedModelsKey) ?? '[]') as List;
+    return entries
+        .map(
+          (entry) => YOLOInstalledModel(
+            id: entry['id'] as String,
+            name: entry['name'] as String,
+            task: YOLOTask.values.byName(entry['task'] as String),
+            path: '${directory.path}/${entry['filename']}',
+          ),
+        )
+        .where(
+          (entry) =>
+              FileSystemEntity.typeSync(entry.path) !=
+              FileSystemEntityType.notFound,
+        )
+        .toList();
+  }
+
+  /// Registers an artifact installed directly in application documents.
+  static Future<void> saveInstalledModel(YOLOInstalledModel model) async {
+    final directory = await getApplicationDocumentsDirectory();
+    if (File(model.path).parent.path != directory.path) {
+      throw ArgumentError(
+        'Installed models must be in the application documents directory.',
+      );
+    }
+    final entries =
+        (await installedModels())
+            .where((entry) => entry.id != model.id)
+            .toList()
+          ..add(model);
+    await _saveInstalledModels(entries);
+  }
+
+  static Future<void> removeInstalledModel(YOLOInstalledModel model) async {
+    final entries = await installedModels();
+    final installed = entries
+        .where((entry) => entry.id == model.id)
+        .firstOrNull;
+    if (installed == null) return;
+    final type = FileSystemEntity.typeSync(installed.path);
+    if (type == FileSystemEntityType.directory) {
+      await Directory(installed.path).delete(recursive: true);
+    } else if (type == FileSystemEntityType.file) {
+      await File(installed.path).delete();
+    }
+    await _saveInstalledModels(
+      entries.where((entry) => entry.id != model.id).toList(),
+    );
+  }
+
+  static Future<void> _saveInstalledModels(
+    List<YOLOInstalledModel> models,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _installedModelsKey,
+      jsonEncode(
+        models
+            .map(
+              (entry) => {
+                'id': entry.id,
+                'name': entry.name,
+                'task': entry.task.name,
+                'filename': entry.path.split(Platform.pathSeparator).last,
+              },
+            )
+            .toList(),
+      ),
+    );
+  }
+
   // Broadcast sink for in-progress model downloads. Fed by the resolver's download path; consumers (e.g.
   // YOLOShowcase) subscribe to surface a `LinearProgressIndicator` overlay on the active model chip. Kept as a
   // singleton because downloads are global (one URL, one filesystem path) and the resolver is also stateless.

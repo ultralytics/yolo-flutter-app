@@ -2,7 +2,8 @@
 
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart' show CupertinoIcons, CupertinoColors;
+import 'package:flutter/cupertino.dart'
+    show CupertinoButton, CupertinoIcons, CupertinoColors;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,9 +14,7 @@ import 'package:ultralytics_yolo/widgets/camera_toolbar.dart';
 import 'package:ultralytics_yolo/widgets/focus_reticle.dart';
 import 'package:ultralytics_yolo/widgets/lens_picker.dart';
 import 'package:ultralytics_yolo/widgets/logo_overlay.dart';
-import 'package:ultralytics_yolo/widgets/model_size_segmented_control.dart';
 import 'package:ultralytics_yolo/widgets/performance_label.dart';
-import 'package:ultralytics_yolo/widgets/task_segmented_control.dart';
 import 'package:ultralytics_yolo/widgets/threshold_slider_row.dart';
 import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/widgets/zoom_indicator.dart';
@@ -34,7 +33,7 @@ class YOLOShowcase extends StatefulWidget {
   /// Model size (`n/s/m/l/x`) to load on first launch.
   final String initialModelSize;
 
-  /// When `false`, the Semantic task chip is hidden for hosts that do not want to expose semantic segmentation.
+  /// When `false`, the Semantic official models are hidden for hosts that do not want to expose semantic segmentation.
   final bool showSemanticTask;
 
   /// Invoked with a composited JPEG when the user taps the share button.
@@ -50,6 +49,12 @@ class YOLOShowcase extends StatefulWidget {
   /// `package_info_plus` version, e.g. `'v${info.version}'`.
   final String? versionLabel;
 
+  /// An installed model to select, including models imported by the host application.
+  final YOLOInstalledModel? model;
+
+  /// Handles a QR value decoded from the existing camera.
+  final Future<void> Function(String code)? onImportModel;
+
   const YOLOShowcase({
     super.key,
     this.initialTask = YOLOTask.detect,
@@ -59,6 +64,8 @@ class YOLOShowcase extends StatefulWidget {
     this.controller,
     this.theme,
     this.versionLabel,
+    this.model,
+    this.onImportModel,
   });
 
   @override
@@ -78,7 +85,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // model that isn't loaded.
   late YOLOTask _runningTask;
   late String _runningSize;
-  Set<String> _availableSizes = {};
+  YOLOInstalledModel? _currentCustomModel;
+  YOLOInstalledModel? _runningCustomModel;
   String? _downloadingSize;
   double? _downloadFraction;
   String? _loadingStatusText;
@@ -103,6 +111,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // instead of looking frozen.
   bool _isModelLoading = false;
 
+  Future<String?>? _qrScan;
   bool _isPaused = false;
   bool _torchOn = false;
   bool _isFrontCamera = false;
@@ -176,17 +185,13 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       });
     });
     _progressSub = YOLOModelManager.downloadProgress.listen((progress) {
-      // Match the model id to a size chip; ignore foreign downloads.
+      // Match the model id to an official size; ignore foreign downloads.
       final size = _sizeForModelId(progress.modelId, _currentTask);
       if (size == null || !mounted) return;
       final done = progress.fraction >= 1;
       setState(() {
-        if (done) {
-          _availableSizes = {..._availableSizes, size};
-        }
-        // Only drive the active download spinner for the size the user is currently waiting on. A download abandoned
-        // by a later size tap keeps streaming until it finishes/fails, but must not keep (or resurrect) the chip for a
-        // selection the user has moved off of — `_onSizeChanged`/`_onTaskChanged` already clear the chip on change.
+        // Only drive progress for the size the user is waiting on. A download abandoned by a later selection keeps
+        // streaming until it finishes/fails; `_selectOfficialModel` clears progress on change.
         if (size == _currentSize) {
           _downloadingSize = done ? null : size;
           _downloadFraction = done ? null : progress.fraction;
@@ -211,18 +216,215 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   Future<void> _bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     final storedTask = prefs.getString(_prefsTaskKey);
+    final storedModel = prefs.getString('ultralytics_yolo.showcase.model');
+    final models = await YOLOModelManager.installedModels();
+    final selected =
+        widget.model ??
+        models.where((model) => model.id == storedModel).firstOrNull;
     if (mounted) {
       setState(() {
-        if (storedTask != null) {
+        _currentCustomModel = selected;
+        if (selected != null) _currentTask = selected.task;
+        if (storedTask != null && selected == null) {
           final parsed = YOLOTaskParsing.tryParse(storedTask);
           if (parsed != null) _currentTask = parsed;
         }
       });
     }
-    final initial = await _scanAvailableSizes(_currentTask);
-    if (mounted) setState(() => _availableSizes = initial);
     // Defer lens enumeration to after the platform view is initialized.
     unawaited(_refreshLenses());
+  }
+
+  @override
+  void didUpdateWidget(covariant YOLOShowcase oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.model != oldWidget.model && widget.model != null) {
+      _selectCustomModel(widget.model!);
+    }
+  }
+
+  void _selectCustomModel(YOLOInstalledModel model) {
+    if (model.path == _currentModelId) return;
+    _suppressInferenceForModelSwitch();
+    setState(() {
+      _currentCustomModel = model;
+      _currentTask = model.task;
+      _isModelLoading = true;
+      _modelErrorMessage = null;
+      _loadingStatusText = 'Loading ${model.name}';
+      _downloadingSize = null;
+      _downloadFraction = null;
+    });
+  }
+
+  Future<void> _showModels() async {
+    final models = await YOLOModelManager.installedModels();
+    final official = {
+      for (final task in YOLOTask.values)
+        if (widget.showSemanticTask || task != YOLOTask.semantic)
+          task: YOLOModelResolver.officialModels(task: task),
+    }..removeWhere((_, ids) => ids.isEmpty);
+    final ids = official.values.expand((ids) => ids).toList();
+    final local = await Future.wait(
+      ids.map(YOLOModelResolver.isOfficialModelAvailableLocally),
+    );
+    final available = {
+      for (var i = 0; i < ids.length; i++)
+        if (local[i]) ids[i],
+    };
+    if (!mounted) return;
+    final selectedKey = GlobalKey();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final selectedContext = selectedKey.currentContext;
+      if (selectedContext != null) {
+        unawaited(Scrollable.ensureVisible(selectedContext, alignment: 0.5));
+      }
+    });
+    // The sheet routes above the showcase's Theme, so it takes the same theme explicitly.
+    final theme = _theme;
+    final headerStyle = theme.textTheme.labelMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final scan = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.colorScheme.surfaceContainerLow,
+      builder: (context) => Theme(
+        data: theme,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (models.isNotEmpty || widget.onImportModel != null)
+                  ListTile(
+                    title: const Text('Custom'),
+                    titleTextStyle: headerStyle,
+                    dense: true,
+                  ),
+                if (widget.onImportModel != null)
+                  ListTile(
+                    leading: const Icon(CupertinoIcons.qrcode_viewfinder),
+                    title: const Text('Scan QR'),
+                    onTap: () => Navigator.pop(context, true),
+                    trailing: IconButton(
+                      tooltip: 'Platform docs',
+                      constraints: const BoxConstraints.tightFor(
+                        width: 44,
+                        height: 44,
+                      ),
+                      icon: const Icon(CupertinoIcons.question_circle),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        unawaited(
+                          _openInfoUrl(
+                            'https://docs.ultralytics.com/platform/train/models#export-model',
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                for (final model in models)
+                  ListTile(
+                    key: _currentCustomModel?.id == model.id
+                        ? selectedKey
+                        : null,
+                    title: Text(
+                      model.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(model.task.label),
+                    selected: _currentCustomModel?.id == model.id,
+                    selectedColor: theme.colorScheme.onSurface,
+                    leading: Icon(
+                      _currentCustomModel?.id == model.id ? Icons.check : null,
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _selectCustomModel(model);
+                    },
+                    trailing: IconButton(
+                      tooltip: 'Remove model',
+                      color: theme.colorScheme.error,
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await YOLOModelManager.removeInstalledModel(model);
+                        if (mounted && _currentCustomModel?.id == model.id) {
+                          _selectOfficialModel(model.task, 'n');
+                        }
+                      },
+                    ),
+                  ),
+                ListTile(
+                  title: const Text('Official'),
+                  titleTextStyle: headerStyle,
+                  dense: true,
+                ),
+                for (final entry in official.entries)
+                  Padding(
+                    key:
+                        _currentCustomModel == null && _currentTask == entry.key
+                        ? selectedKey
+                        : null,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      children: [
+                        SizedBox(width: 80, child: Text(entry.key.label)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: CameraSegmentedControl<String>(
+                            values: entry.value,
+                            selected:
+                                _currentCustomModel == null &&
+                                    _currentTask == entry.key
+                                ? _currentModelId
+                                : null,
+                            label: (id) => _sizeForModelId(id, entry.key)!,
+                            semanticsLabel: (id) =>
+                                'YOLO26${_sizeForModelId(id, entry.key)} ${entry.key.label}${available.contains(id) ? '' : ', not downloaded'}',
+                            isDimmed: (id) => !available.contains(id),
+                            onSelected: (id) {
+                              Navigator.pop(context);
+                              _selectOfficialModel(
+                                entry.key,
+                                _sizeForModelId(id, entry.key)!,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (scan == true && mounted) await _onImportModel();
+  }
+
+  Future<void> _onImportModel() async {
+    if (_qrScan != null) {
+      await _controller.cancelQRCodeScan();
+      return;
+    }
+    unawaited(_controller.setShowOverlays(false));
+    final scan = _controller.scanQRCode();
+    setState(() {
+      _qrScan = scan;
+      _isPaused = false;
+    });
+    final code = await scan;
+    if (!mounted) return;
+    setState(() => _qrScan = null);
+    if (!_isModelLoading) _restoreInferenceAfterModelSwitch();
+    if (code != null) await widget.onImportModel!(code);
   }
 
   Future<void> _refreshLenses() async {
@@ -261,6 +463,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   static const Set<String> _allSizes = {'n', 's', 'm', 'l', 'x'};
 
   String get _currentModelId =>
+      _currentCustomModel?.path ??
       _composeModelId(task: _currentTask, size: _currentSize);
 
   static String _composeModelId({
@@ -268,26 +471,13 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     required String size,
   }) => 'yolo26$size${task.modelSuffix}';
 
-  /// Maps `yolo26<size><suffix>` back to its size letter — used to route download-progress events to the matching
-  /// chip.
+  /// Maps `yolo26<size><suffix>` back to its size letter to route download-progress events.
   static String? _sizeForModelId(String id, YOLOTask task) {
     final expectedSuffix = _composeModelId(task: task, size: '').substring(6);
     for (final size in _allSizes) {
       if (id == 'yolo26$size$expectedSuffix') return size;
     }
     return null;
-  }
-
-  /// Probes each official size for the active task to decide which chips are downloaded vs need a `↓` glyph.
-  Future<Set<String>> _scanAvailableSizes(YOLOTask task) async {
-    final present = <String>{};
-    for (final size in _allSizes) {
-      final id = _composeModelId(task: task, size: size);
-      if (await YOLOModelResolver.isOfficialModelAvailableLocally(id)) {
-        present.add(size);
-      }
-    }
-    return present;
   }
 
   Future<void> _persistTask(YOLOTask task) async {
@@ -302,16 +492,35 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (!mounted) return;
     final loadedTask = task ?? _currentTask;
     final loadedSize = _sizeForModelId(modelPath, loadedTask);
+    final previousCustomModel = _runningCustomModel;
+    final loadedCustomModel = _currentCustomModel?.path == modelPath
+        ? _currentCustomModel
+        : null;
     final preserveError =
         _modelErrorMessage != null &&
         loadedTask == _runningTask &&
-        loadedSize == _runningSize;
+        modelPath ==
+            (_runningCustomModel?.path ??
+                _composeModelId(task: _runningTask, size: _runningSize));
     setState(() {
       _isModelLoading = false;
       _loadingStatusText = null;
       if (!preserveError) _modelErrorMessage = null;
+      _runningTask = loadedTask;
+      _runningCustomModel = loadedCustomModel;
+      if (loadedCustomModel != null || previousCustomModel != null) {
+        unawaited(
+          SharedPreferences.getInstance().then(
+            (prefs) => loadedCustomModel == null
+                ? prefs.remove('ultralytics_yolo.showcase.model')
+                : prefs.setString(
+                    'ultralytics_yolo.showcase.model',
+                    loadedCustomModel.id,
+                  ),
+          ),
+        );
+      }
       if (loadedSize != null) {
-        _availableSizes = {..._availableSizes, loadedSize};
         _runningTask = loadedTask;
         _runningSize = loadedSize;
         unawaited(_persistTask(loadedTask));
@@ -335,9 +544,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _modelErrorMessage = _modelSwitchErrorMessage(error);
       _currentSize = _runningSize;
       _currentTask = _runningTask;
+      _currentCustomModel = _runningCustomModel;
     });
     _restoreInferenceAfterModelSwitch();
-    unawaited(_refreshAvailableSizes(_runningTask));
   }
 
   String _modelSwitchErrorMessage(Object error) {
@@ -362,78 +571,26 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     return 'Model switch failed. Check network, model asset availability, or device logs.';
   }
 
-  void _onTaskChanged(YOLOTask task) {
-    if (task == _currentTask) return;
+  void _selectOfficialModel(YOLOTask task, String size) {
+    if (task == _currentTask &&
+        size == _currentSize &&
+        _currentCustomModel == null) {
+      return;
+    }
     HapticFeedback.selectionClick();
-    // Match the native iOS app: switching tasks always resets the model size to nano (the smallest/first size)
-    // rather than carrying over the previously selected size.
-    const targetSize = 'n';
     YOLOModelManager.clearDownloadCancellation(
-      _composeModelId(task: task, size: targetSize),
+      _composeModelId(task: task, size: size),
     );
     _suppressInferenceForModelSwitch();
     setState(() {
       _currentTask = task;
-      _currentSize = targetSize;
-      // Abandon any in-flight download chip for the previous selection (the progress listener only resurrects it for
-      // the new current size).
+      _currentSize = size;
+      _currentCustomModel = null;
       _downloadingSize = null;
       _downloadFraction = null;
-      _availableSizes = {};
       _modelErrorMessage = null;
-      _loadingStatusText = _loadingTextFor(task, targetSize);
+      _loadingStatusText = _loadingTextFor(task, size);
       _isModelLoading = true;
-    });
-    unawaited(_updateTargetDownloadState(task, targetSize));
-    unawaited(_refreshAvailableSizes(task));
-    // The `setState` above changes `YOLOView`'s `modelPath`/`task`, so its `didUpdateWidget` performs the single
-    // resolve + native `switchModel`. Don't switch here too — that double-resolves and can race the download.
-  }
-
-  Future<void> _refreshAvailableSizes(YOLOTask task) async {
-    final sizes = await _scanAvailableSizes(task);
-    if (!mounted || task != _currentTask) return;
-    setState(() => _availableSizes = sizes);
-  }
-
-  void _onSizeChanged(String size) {
-    if (size == _currentSize) return;
-    HapticFeedback.selectionClick();
-    final isCached = _availableSizes.contains(size);
-    YOLOModelManager.clearDownloadCancellation(
-      _composeModelId(task: _currentTask, size: size),
-    );
-    _suppressInferenceForModelSwitch();
-    setState(() {
-      _currentSize = size;
-      // Abandon any in-flight download chip for the previous selection (see `_onTaskChanged`).
-      _downloadingSize = isCached ? null : size;
-      _downloadFraction = isCached ? null : 0;
-      _modelErrorMessage = null;
-      _loadingStatusText = isCached
-          ? _loadingTextFor(_currentTask, size)
-          : _loadingTextFor(_currentTask, size, progress: 0);
-      _isModelLoading = true;
-    });
-    // `YOLOView.didUpdateWidget` handles the resolve + native switch off the changed `modelPath` prop (see above).
-  }
-
-  Future<void> _updateTargetDownloadState(YOLOTask task, String size) async {
-    final local = await YOLOModelResolver.isOfficialModelAvailableLocally(
-      _composeModelId(task: task, size: size),
-    );
-    if (!mounted ||
-        !_isModelLoading ||
-        _currentTask != task ||
-        _currentSize != size) {
-      return;
-    }
-    setState(() {
-      _downloadingSize = local ? null : size;
-      _downloadFraction = local ? null : 0;
-      _loadingStatusText = local
-          ? _loadingTextFor(task, size)
-          : _loadingTextFor(task, size, progress: 0);
     });
   }
 
@@ -442,6 +599,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     YOLOModelManager.cancelDownload(_currentModelId);
     setState(() {
       _currentTask = _runningTask;
+      _currentCustomModel = _runningCustomModel;
       _currentSize = _runningSize;
       _isModelLoading = false;
       _downloadingSize = null;
@@ -450,10 +608,10 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _modelErrorMessage = null;
     });
     _restoreInferenceAfterModelSwitch();
-    unawaited(_refreshAvailableSizes(_runningTask));
   }
 
   void _suppressInferenceForModelSwitch() {
+    unawaited(_controller.cancelQRCodeScan());
     unawaited(_controller.setShowOverlays(false));
   }
 
@@ -618,17 +776,17 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     return 'Downloading $model $percent%';
   }
 
+  ThemeData get _theme => widget.theme ?? ThemeData.dark(useMaterial3: true);
+
   @override
   Widget build(BuildContext context) {
-    final theme = widget.theme ?? ThemeData.dark(useMaterial3: true);
     return Theme(
-      data: theme,
+      data: _theme,
       child: Material(
         color: Colors.black,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final viewSize = Size(constraints.maxWidth, constraints.maxHeight);
-            final isLandscape = constraints.maxWidth > constraints.maxHeight;
             // Cache for the focus-stream listener (registered in initState, fires later — needs a synchronous
             // view-size lookup).
             _viewSize = viewSize;
@@ -655,14 +813,17 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                 ),
                 FocusReticle(position: _focusPosition),
                 _ShowcaseOverlay(
-                  modelName: 'YOLO26$_currentSize',
+                  modelName: _currentCustomModel?.name ?? 'YOLO26$_currentSize',
                   metrics: _metrics,
                   task: _currentTask,
-                  size: _currentSize,
-                  availableSizes: _availableSizes,
-                  supportedSizes: _allSizes,
-                  downloadingSize: _downloadingSize,
-                  downloadFraction: _downloadFraction,
+                  customModel: _currentCustomModel != null,
+                  onModels: _isModelLoading || _qrScan != null
+                      ? null
+                      : _showModels,
+                  scanningQRCode: _qrScan != null,
+                  onImportModel: widget.onImportModel == null
+                      ? null
+                      : _onImportModel,
                   modelErrorMessage: _modelErrorMessage,
                   confidence: _confidence,
                   iou: _iou,
@@ -671,9 +832,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   lenses: _lenses,
                   isPaused: _isPaused,
                   versionLabel: widget.versionLabel,
-                  showSemanticTask: widget.showSemanticTask,
-                  onTaskChanged: _onTaskChanged,
-                  onSizeChanged: _onSizeChanged,
                   onConfidenceChanged: (v) {
                     setState(() => _confidence = v);
                     unawaited(_controller.setConfidenceThreshold(v));
@@ -691,13 +849,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   onShare: () => unawaited(_onShare()),
                   onInfo: () => _showInfoSheet(context),
                 ),
-                // Ultralytics logotype, bottom-right — matches `Main.storyboard` logoImage (frame x215 y625 w159 h67
-                // on a 393x852 canvas, anchored bottom-right ~19pt from the edge, sitting above the toolbar).
-                Positioned(
-                  right: 19,
-                  bottom: isLandscape ? 100 : 160,
-                  child: const LogoOverlay(width: 159),
-                ),
                 Positioned.fill(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 180),
@@ -705,7 +856,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeInCubic,
                     child: _isModelLoading
-                        ? _ModelSwitchLoadingOverlay(
+                        ? ModelSwitchLoadingOverlay(
                             statusText: _loadingStatusText,
                             progress: _downloadFraction,
                             onCancel: _downloadingSize == null
@@ -724,8 +875,10 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 }
 
-class _ModelSwitchLoadingOverlay extends StatelessWidget {
-  const _ModelSwitchLoadingOverlay({
+/// Shared progress and cancellation UI for downloading or preparing a model.
+class ModelSwitchLoadingOverlay extends StatelessWidget {
+  const ModelSwitchLoadingOverlay({
+    super.key,
     this.statusText,
     this.progress,
     this.onCancel,
@@ -810,23 +963,18 @@ class _ModelSwitchLoadingOverlay extends StatelessWidget {
 }
 
 /// Stateless overlay sandwich. Layout mirrors `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#layoutPortrait`
-/// and the storyboard segmented-control frames in `Main.storyboard`:
-///   * Top: 20pt side padding, centered model name (10% view-height), centered FPS line (4%), 8pt gap, task control
-///     (32pt), 4pt gap, model-size control (32pt).
-///   * Middle: empty so the camera shows through.
-///   * Bottom: confidence + IoU sliders (46% view width, 20pt left padding), then zoom indicator, then lens picker,
-///     then the 66pt full-width toolbar. The Ultralytics logo + optional version label float to the right and left of
-///     the zoom HUD.
+/// and the model picker in the native app:
+///   * Top: 20pt side padding, centered task caption and model name (the Models button), then FPS.
+///   * Middle: empty so the camera shows through, or the QR viewfinder while scanning.
+///   * Bottom: confidence + IoU sliders (46% view width, 20pt left padding) with the Ultralytics logo beside them,
+///     then the optional version stamp and centered zoom reading on one row, then the lens picker, then the 66pt
+///     full-width toolbar. The QR scrim dims everything except the header, its own copy, and the toolbar.
 class _ShowcaseOverlay extends StatelessWidget {
   const _ShowcaseOverlay({
     required this.modelName,
     required this.metrics,
     required this.task,
-    required this.size,
-    required this.availableSizes,
-    required this.supportedSizes,
-    required this.downloadingSize,
-    required this.downloadFraction,
+    required this.customModel,
     required this.modelErrorMessage,
     required this.confidence,
     required this.iou,
@@ -835,9 +983,6 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.lenses,
     required this.isPaused,
     required this.versionLabel,
-    required this.showSemanticTask,
-    required this.onTaskChanged,
-    required this.onSizeChanged,
     required this.onConfidenceChanged,
     required this.onIouChanged,
     required this.onLensSelected,
@@ -848,6 +993,9 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.onToggleTorch,
     required this.onShare,
     required this.onInfo,
+    required this.onModels,
+    required this.onImportModel,
+    required this.scanningQRCode,
   });
 
   final String modelName;
@@ -856,11 +1004,7 @@ class _ShowcaseOverlay extends StatelessWidget {
   >
   metrics;
   final YOLOTask task;
-  final String size;
-  final Set<String> availableSizes;
-  final Set<String> supportedSizes;
-  final String? downloadingSize;
-  final double? downloadFraction;
+  final bool customModel;
   final String? modelErrorMessage;
   final double confidence;
   final double iou;
@@ -869,9 +1013,6 @@ class _ShowcaseOverlay extends StatelessWidget {
   final List<LensInfo> lenses;
   final bool isPaused;
   final String? versionLabel;
-  final bool showSemanticTask;
-  final ValueChanged<YOLOTask> onTaskChanged;
-  final ValueChanged<String> onSizeChanged;
   final ValueChanged<double> onConfidenceChanged;
   final ValueChanged<double> onIouChanged;
   final ValueChanged<LensInfo> onLensSelected;
@@ -882,111 +1023,137 @@ class _ShowcaseOverlay extends StatelessWidget {
   final VoidCallback onToggleTorch;
   final VoidCallback onShare;
   final VoidCallback onInfo;
+  final VoidCallback? onModels;
+  final VoidCallback? onImportModel;
+  final bool scanningQRCode;
 
   // iOS YOLOView ports — kept as constants so the layout reads like the Swift source.
   static const double _sidePadding = 20;
-  static const double _topGap = 8;
   static const double _sliderRowGap = 2;
 
   @override
   Widget build(BuildContext context) {
-    final topInset = MediaQuery.paddingOf(context).top;
+    final insets = MediaQuery.paddingOf(context);
+    final bottomSafe = defaultTargetPlatform == TargetPlatform.android;
     return SafeArea(
       left: false,
       right: false,
-      bottom: defaultTargetPlatform == TargetPlatform.android,
+      bottom: bottomSafe,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          return constraints.maxWidth > constraints.maxHeight
-              ? _buildLandscape(constraints, topInset)
-              : _buildPortrait();
+          final landscape = constraints.maxWidth > constraints.maxHeight;
+          final sliderWidth = landscape
+              ? (constraints.maxWidth * 0.28).clamp(220.0, 300.0)
+              : (constraints.maxWidth - 2 * _sidePadding) * 0.46;
+          return Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: CameraToolbar.height,
+                child: _bottomControls(sliderWidth),
+              ),
+              // Spans the whole display, safe areas included, so the QR group centers on the screen.
+              if (scanningQRCode)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: -insets.top,
+                  bottom: bottomSafe ? -insets.bottom : 0,
+                  child: _QRScanOverlay(onCancel: onImportModel!),
+                ),
+              if (landscape)
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: Transform.translate(
+                    offset: Offset(0, -insets.top),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: SizedBox(
+                        width: (constraints.maxWidth * 0.62).clamp(
+                          360.0,
+                          620.0,
+                        ),
+                        child: _topControls(),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Positioned(
+                  left: _sidePadding,
+                  right: _sidePadding,
+                  top: 8,
+                  child: _topControls(),
+                ),
+              Positioned(left: 0, right: 0, bottom: 0, child: _toolbar()),
+            ],
+          );
         },
       ),
     );
   }
 
-  Widget _buildPortrait() {
+  Widget _bottomControls(double sliderWidth) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(_sidePadding, 8, _sidePadding, 0),
-          child: _topControls(),
-        ),
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: _sidePadding),
-          child: _thresholdControls(sliderWidthFactor: 0.46),
-        ),
+        // QR mode hides the sliders and the logo beside them.
+        if (!scanningQRCode)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _sidePadding),
+            child: Row(
+              children: [
+                SizedBox(width: sliderWidth, child: _thresholdControls()),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: LogoOverlay(width: 159),
+                  ),
+                ),
+              ],
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(_sidePadding, 4, _sidePadding, 0),
-          child: _zoomLabel(),
+          child: _infoRow(),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(_sidePadding, 2, _sidePadding, 2),
-          child: Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              _lensPicker(),
-              // Version stamp at the lens-tabs vertical level, tucked into the bottom-left corner (negative left
-              // escapes the row's side padding so it sits closer to the screen edge than the controls).
-              if (versionLabel != null)
-                Positioned(
-                  left: -(_sidePadding - 8),
-                  bottom: 0,
-                  child: _version(),
-                ),
-            ],
-          ),
+          child: _lensPicker(),
         ),
-        _toolbar(),
       ],
     );
   }
 
-  Widget _buildLandscape(BoxConstraints constraints, double topInset) {
-    final topWidth = (constraints.maxWidth * 0.62).clamp(360.0, 620.0);
-    final sliderWidth = (constraints.maxWidth * 0.28).clamp(220.0, 300.0);
-    final hasLenses = lenses.isNotEmpty;
+  /// Version stamp on the zoom reading's baseline at the sliders' left edge; the zoom reading stays centered.
+  Widget _infoRow() {
+    const baseline = 14.0;
     return Stack(
-      fit: StackFit.expand,
+      clipBehavior: Clip.none,
       children: [
         Align(
           alignment: Alignment.topCenter,
-          child: Transform.translate(
-            offset: Offset(0, -topInset),
-            child: Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: SizedBox(width: topWidth, child: _topControls()),
-            ),
+          child: Baseline(
+            baseline: baseline,
+            baselineType: TextBaseline.alphabetic,
+            child: _zoomLabel(),
           ),
         ),
-        Positioned(
-          left: _sidePadding,
-          bottom: CameraToolbar.height + (hasLenses ? 18 : 0),
-          width: sliderWidth,
-          child: _thresholdControls(sliderWidthFactor: 1),
-        ),
-        Positioned(
-          left: _sidePadding,
-          right: _sidePadding,
-          bottom: CameraToolbar.height + (hasLenses ? 42 : 8),
-          child: _zoomLabel(),
-        ),
-        if (hasLenses)
-          Positioned(
-            left: _sidePadding,
-            right: _sidePadding,
-            bottom: CameraToolbar.height + 2,
-            child: _lensPicker(),
-          ),
+        // Left edge matches the slider tracks and captions, which CupertinoSlider insets 8 px.
         if (versionLabel != null)
           Positioned(
-            left: _sidePadding,
-            bottom: CameraToolbar.height + 4,
-            child: _version(),
+            left: 8,
+            top: 0,
+            child: Baseline(
+              baseline: baseline,
+              baselineType: TextBaseline.alphabetic,
+              child: _version(),
+            ),
           ),
-        Positioned(left: 0, right: 0, bottom: 0, child: _toolbar()),
       ],
     );
   }
@@ -998,29 +1165,18 @@ class _ShowcaseOverlay extends StatelessWidget {
           ({double fps, double ms, double pre, double infer, double post})
         >(
           valueListenable: metrics,
+          // QR scanning blanks the timing lines in place (zero metrics) so nothing below them moves.
           builder: (context, m, _) => PerformanceLabel(
             modelName: modelName,
-            fps: m.fps,
+            caption:
+                '${task.label.toUpperCase()}${customModel ? ' · CUSTOM' : ''}',
+            onModels: onModels,
+            fps: scanningQRCode ? 0 : m.fps,
             inferenceMs: m.ms,
-            preMs: m.pre,
-            modelMs: m.infer,
-            postMs: m.post,
+            preMs: scanningQRCode ? 0 : m.pre,
+            modelMs: scanningQRCode ? 0 : m.infer,
+            postMs: scanningQRCode ? 0 : m.post,
           ),
-        ),
-        const SizedBox(height: _topGap),
-        TaskSegmentedControl(
-          currentTask: task,
-          onTaskChanged: onTaskChanged,
-          showSemanticTask: showSemanticTask,
-        ),
-        const SizedBox(height: 4),
-        ModelSizeSegmentedControl(
-          currentSize: size,
-          availableSizes: availableSizes,
-          supportedSizes: supportedSizes,
-          onSizeChanged: onSizeChanged,
-          downloadingSize: downloadingSize,
-          downloadFraction: downloadFraction,
         ),
         if (modelErrorMessage != null)
           Padding(
@@ -1052,27 +1208,25 @@ class _ShowcaseOverlay extends StatelessWidget {
     );
   }
 
-  Widget _thresholdControls({required double sliderWidthFactor}) {
+  Widget _thresholdControls() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         ThresholdSliderRow(
-          label: 'Confidence Threshold',
+          label: 'Confidence',
           value: confidence,
           min: 0,
           max: 1,
           onChanged: onConfidenceChanged,
-          sliderWidthFactor: sliderWidthFactor,
         ),
         const SizedBox(height: _sliderRowGap),
         ThresholdSliderRow(
-          label: 'IoU Threshold',
+          label: 'IoU',
           value: iou,
           min: 0,
           max: 1,
           onChanged: onIouChanged,
-          sliderWidthFactor: sliderWidthFactor,
         ),
       ],
     );
@@ -1158,8 +1312,8 @@ class _ShowcaseOverlay extends StatelessWidget {
     return Text(
       versionLabel!,
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.7),
-        fontSize: 10,
+        color: Colors.white.withValues(alpha: 0.6),
+        fontSize: 12,
       ),
     );
   }
@@ -1171,6 +1325,208 @@ class _ShowcaseOverlay extends StatelessWidget {
       onSwitchCamera: onSwitchCamera,
       onShare: onShare,
       onInfo: onInfo,
+      onScanQR: onImportModel,
+      isScanningQR: scanningQRCode,
     );
   }
+}
+
+/// QR mode over the live camera: a dimmed preview with a framed target, what to scan, and Cancel.
+class _QRScanOverlay extends StatelessWidget {
+  const _QRScanOverlay({required this.onCancel});
+
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final device = defaultTargetPlatform == TargetPlatform.android
+        ? 'Android'
+        : 'iPhone';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        final landscape = size.width > size.height;
+        final align = landscape ? TextAlign.left : TextAlign.center;
+        return CustomMultiChildLayout(
+          delegate: _QRScanLayout(
+            side: (landscape ? size.height * 0.5 : size.width * 0.6).clamp(
+              0.0,
+              236.0,
+            ),
+            textWidth: (landscape ? size.width / 2 - 72 : size.width - 64)
+                .clamp(0.0, 310.0),
+            landscape: landscape,
+          ),
+          children: [
+            // First child paints first: the frame's scrim sits under the copy and Cancel.
+            LayoutId(
+              id: _QRSlot.frame,
+              child: const IgnorePointer(
+                child: CustomPaint(painter: _QRFramePainter()),
+              ),
+            ),
+            LayoutId(
+              id: _QRSlot.copy,
+              child: IgnorePointer(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: landscape
+                      ? CrossAxisAlignment.start
+                      : CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Scan a model QR code',
+                      textAlign: align,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'In Ultralytics Platform, click the QR button on an $device export.',
+                      textAlign: align,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.78),
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            LayoutId(
+              id: _QRSlot.cancel,
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                minimumSize: const Size(44, 44),
+                color: const Color.fromRGBO(118, 118, 128, 0.32),
+                borderRadius: BorderRadius.circular(22),
+                onPressed: onCancel,
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+enum _QRSlot { frame, copy, cancel }
+
+/// Portrait stacks copy, 24, frame, 20, Cancel centered on the screen; landscape puts the copy and Cancel 32 px right
+/// of the frame, top-aligned with it so Cancel clears the zoom and lens rows, with the pair centered.
+class _QRScanLayout extends MultiChildLayoutDelegate {
+  _QRScanLayout({
+    required this.side,
+    required this.textWidth,
+    required this.landscape,
+  });
+
+  final double side;
+  final double textWidth;
+  final bool landscape;
+
+  @override
+  void performLayout(Size size) {
+    layoutChild(_QRSlot.frame, BoxConstraints.tight(Size.square(side)));
+    final copy = layoutChild(
+      _QRSlot.copy,
+      BoxConstraints.tightFor(width: textWidth),
+    );
+    final cancel = layoutChild(_QRSlot.cancel, BoxConstraints.loose(size));
+    if (landscape) {
+      final left = (size.width - side - 32 - textWidth) / 2;
+      final top = (size.height - side) / 2;
+      positionChild(_QRSlot.frame, Offset(left, top));
+      positionChild(_QRSlot.copy, Offset(left + side + 32, top));
+      positionChild(
+        _QRSlot.cancel,
+        Offset(left + side + 32, top + copy.height + 20),
+      );
+    } else {
+      final frameTop =
+          (size.height - copy.height - 24 - side - 20 - cancel.height) / 2 +
+          copy.height +
+          24;
+      positionChild(
+        _QRSlot.copy,
+        Offset((size.width - textWidth) / 2, frameTop - 24 - copy.height),
+      );
+      positionChild(_QRSlot.frame, Offset((size.width - side) / 2, frameTop));
+      positionChild(
+        _QRSlot.cancel,
+        Offset((size.width - cancel.width) / 2, frameTop + side + 20),
+      );
+    }
+  }
+
+  @override
+  bool shouldRelayout(_QRScanLayout oldDelegate) =>
+      oldDelegate.side != side ||
+      oldDelegate.textWidth != textWidth ||
+      oldDelegate.landscape != landscape;
+}
+
+/// Dims everything outside its box (the QR target) and draws the target's corner brackets.
+class _QRFramePainter extends CustomPainter {
+  const _QRFramePainter();
+
+  static const double _radius = 28;
+  static const double _stroke = 4;
+  static const double _arm = 44;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final frame = Offset.zero & size;
+    canvas.drawPath(
+      Path()
+        ..fillType = PathFillType.evenOdd
+        ..addRect(frame.inflate(10000))
+        ..addRRect(
+          RRect.fromRectAndRadius(frame, const Radius.circular(_radius)),
+        ),
+      Paint()..color = Colors.black.withValues(alpha: 0.56),
+    );
+    // Brackets sit inside the cutout edge, so the stroke centerline is inset by half its width.
+    final r = frame.deflate(_stroke / 2);
+    const radius = Radius.circular(_radius - _stroke / 2);
+    const corner = _radius - _stroke / 2;
+    const arm = _arm - _stroke / 2;
+    canvas.drawPath(
+      Path()
+        ..moveTo(r.left, r.top + arm)
+        ..lineTo(r.left, r.top + corner)
+        ..arcToPoint(Offset(r.left + corner, r.top), radius: radius)
+        ..lineTo(r.left + arm, r.top)
+        ..moveTo(r.right - arm, r.top)
+        ..lineTo(r.right - corner, r.top)
+        ..arcToPoint(Offset(r.right, r.top + corner), radius: radius)
+        ..lineTo(r.right, r.top + arm)
+        ..moveTo(r.right, r.bottom - arm)
+        ..lineTo(r.right, r.bottom - corner)
+        ..arcToPoint(Offset(r.right - corner, r.bottom), radius: radius)
+        ..lineTo(r.right - arm, r.bottom)
+        ..moveTo(r.left + arm, r.bottom)
+        ..lineTo(r.left + corner, r.bottom)
+        ..arcToPoint(Offset(r.left, r.bottom - corner), radius: radius)
+        ..lineTo(r.left, r.bottom - arm),
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _stroke,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_QRFramePainter oldDelegate) => false;
 }

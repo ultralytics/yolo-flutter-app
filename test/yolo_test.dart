@@ -7,6 +7,7 @@ import 'dart:typed_data' as typed_data;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
+import 'package:ultralytics_yolo/core/yolo_model_manager.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 import 'package:ultralytics_yolo/platform/yolo_platform_interface.dart';
 import 'package:ultralytics_yolo/platform/yolo_platform_impl.dart';
@@ -1145,6 +1146,12 @@ void main() {
             statusCode: HttpStatus.ok,
             chunks: [],
           ),
+          'https://another.test/model.tflite': _FakeHttpResponse(
+            statusCode: HttpStatus.ok,
+            chunks: [
+              [4, 5, 6],
+            ],
+          ),
         });
 
         await HttpOverrides.runZoned(() async {
@@ -1160,6 +1167,72 @@ void main() {
             modelPath,
           );
           expect(client.requestedUrls, ['https://example.test/model.tflite']);
+
+          await expectLater(
+            YOLOModelManager.saveInstalledModel(
+              const YOLOInstalledModel(
+                id: 'outside',
+                name: 'Outside catalog',
+                task: YOLOTask.detect,
+                path: '/tmp/elsewhere/model.tflite',
+              ),
+            ),
+            throwsArgumentError,
+          );
+
+          final first = await YOLOModelResolver.resolve(
+            modelPath: 'https://example.test/model.tflite',
+            filename: 'export-one.tflite',
+            expectedSize: 3,
+          );
+          final second = await YOLOModelResolver.resolve(
+            modelPath: 'https://another.test/model.tflite',
+            filename: 'export-two.tflite',
+            expectedSize: 3,
+          );
+          expect(first.modelPath, isNot(second.modelPath));
+          expect(File(first.modelPath).readAsBytesSync(), [1, 2, 3]);
+          expect(File(second.modelPath).readAsBytesSync(), [4, 5, 6]);
+          await expectLater(
+            YOLOModelResolver.resolve(
+              modelPath: 'https://example.test/model.tflite',
+              task: YOLOTask.segment,
+              filename: 'bad-task.tflite',
+              expectedSize: 3,
+            ),
+            throwsA(isA<ModelLoadingException>()),
+          );
+          expect(File('/tmp/yolo_test/bad-task.tflite').existsSync(), isFalse);
+          final retry = await YOLOModelResolver.resolve(
+            modelPath: 'https://example.test/model.tflite',
+            task: YOLOTask.detect,
+            filename: 'bad-task.tflite',
+            expectedSize: 3,
+          );
+          expect(File(retry.modelPath).readAsBytesSync(), [1, 2, 3]);
+          await expectLater(
+            YOLOModelResolver.resolve(
+              modelPath: 'https://example.test/model.tflite',
+              filename: 'incomplete.tflite',
+              expectedSize: 4,
+            ),
+            throwsA(isA<ModelLoadingException>()),
+          );
+          expect(
+            File('/tmp/yolo_test/incomplete.tflite').existsSync(),
+            isFalse,
+          );
+          expect(
+            File('/tmp/yolo_test/incomplete.tflite.download').existsSync(),
+            isFalse,
+          );
+          await expectLater(
+            YOLOModelResolver.resolve(
+              modelPath: 'https://example.test/model.tflite',
+              filename: '../outside.tflite',
+            ),
+            throwsA(isA<ModelLoadingException>()),
+          );
 
           if (_isAppleTestPlatform) {
             final packagePath = await YOLOModelResolver.preparePath(
@@ -1198,6 +1271,7 @@ void _resetResolverDocuments() {
 bool get _isAppleTestPlatform => Platform.isIOS || Platform.isMacOS;
 
 void _mockFlutterAssets(Map<String, List<int>>? assets) {
+  rootBundle.evict('AssetManifest.bin');
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMessageHandler(
         'flutter/assets',
@@ -1205,6 +1279,14 @@ void _mockFlutterAssets(Map<String, List<int>>? assets) {
             ? null
             : (typed_data.ByteData? message) async {
                 final key = utf8.decode(message!.buffer.asUint8List());
+                if (key == 'AssetManifest.bin') {
+                  return const StandardMessageCodec().encodeMessage({
+                    for (final key in assets.keys)
+                      key: [
+                        {'asset': key},
+                      ],
+                  });
+                }
                 final bytes = assets[key];
                 return bytes == null
                     ? null

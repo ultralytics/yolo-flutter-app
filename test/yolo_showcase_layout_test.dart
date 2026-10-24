@@ -1,5 +1,8 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +14,8 @@ import 'package:ultralytics_yolo/widgets/yolo_controller.dart';
 import 'package:ultralytics_yolo/widgets/yolo_showcase.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 import 'package:ultralytics_yolo/yolo_view.dart';
+
+import 'utils/test_helpers.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +46,10 @@ void main() {
   });
 
   testWidgets('showcase controls drive the camera controller', (tester) async {
-    SharedPreferences.setMockInitialValues({});
+    YOLOTestHelpers.setupMockChannel();
+    SharedPreferences.setMockInitialValues({
+      'ultralytics_yolo.showcase.model': 'saved-custom',
+    });
     await tester.binding.setSurfaceSize(const Size(390, 780));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -69,88 +77,112 @@ void main() {
           .setMockMethodCallHandler(channel, null);
     });
 
-    final captured = <Uint8List>[];
-    final controller = YOLOViewController()..init(channel, 1);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: YOLOShowcase(
-          controller: controller,
-          showSemanticTask: false,
-          versionLabel: 'v1.2.3',
-          onCapture: captured.add,
+    await HttpOverrides.runZoned(() async {
+      final captured = <Uint8List>[];
+      final controller = YOLOViewController()..init(channel, 1);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: YOLOShowcase(
+            controller: controller,
+            showSemanticTask: false,
+            versionLabel: 'v1.2.3',
+            onCapture: captured.add,
+          ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    expect(find.text('Sem'), findsNothing);
+      expect(
+        find.byType(CupertinoSlidingSegmentedControl<YOLOTask>),
+        findsNothing,
+      );
 
-    tester
-        .widget<YOLOView>(find.byType(YOLOView))
-        .onModelLoad
-        ?.call('yolo26n', YOLOTask.detect);
-    await tester.pump();
+      tester
+          .widget<YOLOView>(find.byType(YOLOView))
+          .onModelLoad
+          ?.call('yolo26n', YOLOTask.detect);
+      await tester.pump();
 
-    await tester.tap(find.bySemanticsLabel('Pause'));
-    await tester.pump();
-    await tester.tap(find.bySemanticsLabel('Resume'));
-    await tester.pump();
-    await tester.tap(find.bySemanticsLabel('Turn torch on'));
-    await tester.pump();
-    await tester.tap(find.bySemanticsLabel('Switch camera'));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.bySemanticsLabel('Turn torch on'), findsNothing);
+      expect(
+        (await SharedPreferences.getInstance()).getString(
+          'ultralytics_yolo.showcase.model',
+        ),
+        'saved-custom',
+      );
 
-    controller.onNativeEvent({'type': 'zoom', 'value': 1.5});
-    controller.onNativeEvent({'type': 'lens', 'label': 'Wide'});
-    await tester.pump();
+      await tester.tap(find.bySemanticsLabel('Pause'));
+      await tester.pump();
+      await tester.tap(find.bySemanticsLabel('Resume'));
+      await tester.pump();
+      await tester.tap(find.bySemanticsLabel('Turn torch on'));
+      await tester.pump();
+      await tester.tap(find.bySemanticsLabel('Switch camera'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.bySemanticsLabel('Turn torch on'), findsNothing);
 
-    expect(find.text('1.50x'), findsOneWidget);
-    expect(find.text('Wide'), findsOneWidget);
+      controller.onNativeEvent({'type': 'zoom', 'value': 1.5});
+      controller.onNativeEvent({'type': 'lens', 'label': 'Wide'});
+      await tester.pump();
 
-    await tester.tap(find.text('0.5'));
-    final sliders = tester
-        .widgetList<CupertinoSlider>(find.byType(CupertinoSlider))
-        .toList();
-    sliders[0].onChanged?.call(0.55);
-    sliders[1].onChanged?.call(0.45);
-    await tester.pump();
+      expect(find.text('1.50x'), findsOneWidget);
+      expect(find.text('Wide'), findsOneWidget);
 
-    await tester.tap(find.bySemanticsLabel('Share'));
-    await tester.tap(find.byIcon(CupertinoIcons.info));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(find.text('0.5'));
+      final sliders = tester
+          .widgetList<CupertinoSlider>(find.byType(CupertinoSlider))
+          .toList();
+      sliders[0].onChanged?.call(0.55);
+      sliders[1].onChanged?.call(0.45);
+      await tester.pump();
 
-    expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('Share'));
+      await tester.tap(find.byIcon(CupertinoIcons.info));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
 
-    Navigator.of(tester.element(find.byIcon(Icons.menu_book_outlined))).pop();
-    await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('↓ YOLO26s'));
-    await tester.pump();
+      expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
 
-    expect(find.textContaining('Downloading YOLO26s Detect'), findsOneWidget);
+      Navigator.of(tester.element(find.byIcon(Icons.menu_book_outlined))).pop();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(find.byTooltip('Models'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(find.text('Semantic'), findsNothing);
+      await tester.tap(find.bySemanticsLabel(RegExp(r'^YOLO26s Detect')));
+      await tester.pump();
+      await tester.pump();
 
-    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
-    await tester.pump();
-    await tester.tap(find.text('Seg'));
-    await tester.pump();
+      expect(find.textContaining('Downloading YOLO26s Detect'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Cancel'), findsOneWidget);
 
-    expect(captured.single, orderedEquals([1, 2, 3]));
-    expect(
-      calls.map((call) => call.method),
-      containsAll([
-        'setShowOverlays',
-        'pause',
-        'resume',
-        'switchCamera',
-        'setTorchMode',
-        'setLens',
-        'setConfidenceThreshold',
-        'setIoUThreshold',
-        'capturePhoto',
-      ]),
-    );
-    expect(find.textContaining('Loading YOLO26n Segment'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Models'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.tap(find.bySemanticsLabel(RegExp(r'^YOLO26n Segment')));
+      await tester.pump();
+
+      final selectedView = tester.widget<YOLOView>(find.byType(YOLOView));
+      expect(selectedView.task, YOLOTask.segment);
+      expect(selectedView.modelPath, 'yolo26n-seg');
+
+      expect(captured.single, orderedEquals([1, 2, 3]));
+      expect(
+        calls.map((call) => call.method),
+        containsAll([
+          'setShowOverlays',
+          'pause',
+          'resume',
+          'switchCamera',
+          'setTorchMode',
+          'setLens',
+          'setConfidenceThreshold',
+          'setIoUThreshold',
+          'capturePhoto',
+        ]),
+      );
+    }, createHttpClient: (_) => _ConnectingHttpClient());
   });
 
   testWidgets('lens picker handles empty, single, and segmented lens sets', (
@@ -192,4 +224,21 @@ void main() {
     expect(find.text('1'), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
   });
+}
+
+class _ConnectingHttpClient implements HttpClient {
+  final _connection = Completer<HttpClientRequest>();
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) => _connection.future;
+
+  @override
+  void close({bool force = false}) {
+    if (!_connection.isCompleted) {
+      _connection.completeError(const SocketException('Download canceled'));
+    }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -349,6 +349,19 @@ public final class SwiftYOLOPlatformView: NSObject,
             ))
         }
 
+      case "scanQRCode":
+        guard let view = self.yoloView else {
+          result(nil)
+          return
+        }
+        view.scanQRCode { outcome in
+          result((try? outcome.get()) ?? nil)
+        }
+
+      case "cancelQRCodeScan":
+        self.yoloView?.cancelQRCodeScan()
+        result(nil)
+
       case "stop":
         // Method to stop camera and inference
         self.stopCamera()

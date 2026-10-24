@@ -64,7 +64,7 @@ Ultralytics YOLO Flutter 是官方 Flutter 插件，用于在 iOS 和 Android �
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.7.0
+  ultralytics_yolo: ^0.7.1
 ```
 
 ```bash
@@ -97,6 +97,12 @@ final results = await yolo.predict(imageBytes);
 ```
 
 **[▶️ 示例应用](./example)** | **[📖 安装指南](doc/install.md)** | **[⚡ 快速开始文档](doc/quickstart.md)**
+
+## 从 Ultralytics Platform 导入模型
+
+在模型的 Export 选项卡中，点击已完成的 LiteRT 导出（iPhone 使用 Core ML 导出）上的二维码按钮，然后打开应用，点击底部工具栏中的二维码按钮，并将当前相机预览对准二维码。扫码时相机画面会在取景框外变暗；点击 **Cancel** 或再次点击二维码按钮即可恢复实时推理。Android 使用 FP32 或 W8A32 精度的 LiteRT，iPhone 使用 Core ML；导出必须使用 batch 1 和静态输入形状。示例应用会先显示模型信息，经确认后下载，并将模型添加到 **Models** 选择器，支持选择、删除和离线使用。点击当前模型名称，即可选择 **Custom** 自定义导入模型，或在按任务排列的紧凑行中选择任意 **Official** 官方模型的尺寸。顶部在模型名称上方显示任务，并为导入模型标注 **Custom**。**Custom** 分组还提供 **Scan QR** 行，以及打开 Platform 导出指南的帮助按钮。Core AI 导入链接在原生 iOS 应用中打开。
+
+导入链接在 24 小时内授权下载单个导出。任何获得链接的人都可以在有效期内下载，已安装的模型在链接过期后仍可使用。每个导出独立安装，名称相同也不会覆盖。应用链接由示例应用处理；插件的解析器和模型选择器仍可使用您自己的下载来源。
 
 ## 📦 模型加载方式
 

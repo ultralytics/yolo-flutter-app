@@ -103,31 +103,56 @@ class YOLOModelResolver {
   static Future<YOLOResolvedModel> resolve({
     required String modelPath,
     YOLOTask? task,
+    String? filename,
+    int? expectedSize,
   }) async {
-    final resolvedPath = await preparePath(modelPath);
-    final metadata = await inspect(resolvedPath);
-    final metadataTask = YOLOTaskParsing.tryParse(metadata['task'] as String?);
-
-    if (task != null && metadataTask != null && task != metadataTask) {
+    final uri = Uri.tryParse(modelPath);
+    if (filename != null && uri?.scheme != 'http' && uri?.scheme != 'https') {
       throw ModelLoadingException(
-        'Model task mismatch for $modelPath: expected ${task.name}, '
-        'metadata says ${metadataTask.name}.',
+        'An install filename requires a remote model URL.',
       );
     }
-
-    final effectiveTask = task ?? metadataTask;
-    if (effectiveTask == null) {
-      throw ModelLoadingException(
-        'Could not determine the task for $modelPath. '
-        'Provide task explicitly or use a model with exported metadata.',
-      );
-    }
-
-    return YOLOResolvedModel(
-      modelPath: resolvedPath,
-      task: effectiveTask,
-      metadata: metadata,
+    final resolvedPath = await _resolvePath(
+      modelPath,
+      filename: filename,
+      expectedSize: expectedSize,
     );
+    try {
+      final metadata = await inspect(resolvedPath);
+      final metadataTask = YOLOTaskParsing.tryParse(
+        metadata['task'] as String?,
+      );
+
+      if (task != null && metadataTask != null && task != metadataTask) {
+        throw ModelLoadingException(
+          'Model task mismatch for ${filename ?? modelPath}: expected ${task.name}, '
+          'metadata says ${metadataTask.name}.',
+        );
+      }
+
+      final effectiveTask = task ?? metadataTask;
+      if (effectiveTask == null) {
+        throw ModelLoadingException(
+          'Could not determine the task for ${filename ?? modelPath}. '
+          'Provide task explicitly or use a model with exported metadata.',
+        );
+      }
+
+      return YOLOResolvedModel(
+        modelPath: resolvedPath,
+        task: effectiveTask,
+        metadata: metadata,
+      );
+    } catch (_) {
+      // A named remote installation owns its artifact until validation succeeds.
+      if (filename != null) {
+        final FileSystemEntity artifact = Directory(resolvedPath).existsSync()
+            ? Directory(resolvedPath)
+            : File(resolvedPath);
+        await artifact.delete(recursive: true);
+      }
+      rethrow;
+    }
   }
 
   static Future<Map<String, dynamic>> inspect(String modelPath) async {
@@ -142,10 +167,18 @@ class YOLOModelResolver {
   static Future<String> preparePath(String modelPath) =>
       _resolvePath(modelPath);
 
-  static Future<String> _resolvePath(String source) async {
+  static Future<String> _resolvePath(
+    String source, {
+    String? filename,
+    int? expectedSize,
+  }) async {
     final uri = Uri.tryParse(source);
     if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
-      return _downloadRemoteModel(uri);
+      return _downloadRemoteModel(
+        uri,
+        filename: filename,
+        expectedSize: expectedSize,
+      );
     }
 
     if (source.startsWith('assets/')) {
@@ -203,14 +236,16 @@ class YOLOModelResolver {
       )) {
         return true;
       }
-      return await _loadAssetBytes(
-            'assets/models/${artifact.iosArchiveName}',
-          ) !=
-          null;
+    } else if (File(
+      '${directory.path}/${artifact.androidAssetName}',
+    ).existsSync()) {
+      return true;
     }
-    final filename = artifact.androidAssetName;
-    if (File('${directory.path}/$filename').existsSync()) return true;
-    return await _loadAssetBytes('assets/models/$filename') != null;
+    final filename = _isIosLikePlatform
+        ? artifact.iosArchiveName
+        : artifact.androidAssetName;
+    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+    return manifest.listAssets().contains('assets/models/$filename');
   }
 
   static Directory _officialModelDirectory(Directory documents) {
@@ -278,9 +313,22 @@ class YOLOModelResolver {
     return _extractMlPackageArchiveFile(archiveFile, archiveName, modelDir);
   }
 
-  static Future<String> _downloadRemoteModel(Uri uri) async {
+  static Future<String> _downloadRemoteModel(
+    Uri uri, {
+    String? filename,
+    int? expectedSize,
+  }) async {
     final documents = await getApplicationDocumentsDirectory();
-    final fileName = uri.pathSegments.isEmpty ? 'model' : uri.pathSegments.last;
+    final fileName =
+        filename ??
+        (uri.pathSegments.isEmpty ? 'model' : uri.pathSegments.last);
+    if (fileName.isEmpty ||
+        fileName.contains('/') ||
+        fileName.contains('\\') ||
+        fileName == '.' ||
+        fileName == '..') {
+      throw ModelLoadingException('Invalid model filename.');
+    }
     final url = uri.toString();
     final isOfficialAsset =
         url.startsWith('$_androidModelReleaseBaseUrl/') ||
@@ -303,7 +351,12 @@ class YOLOModelResolver {
         }
       }
       final archiveFile = File('${directory.path}/$fileName');
-      await _downloadToFile(url, archiveFile, progressId: modelName);
+      await _downloadToFile(
+        url,
+        archiveFile,
+        progressId: modelName,
+        expectedSize: expectedSize,
+      );
       return _extractMlPackageArchiveFile(archiveFile, fileName, targetDir);
     }
 
@@ -317,6 +370,7 @@ class YOLOModelResolver {
       url,
       file,
       progressId: _normalizeOfficialModelId(fileName),
+      expectedSize: expectedSize,
     );
     return file.path;
   }
@@ -384,6 +438,7 @@ class YOLOModelResolver {
     String url,
     File targetFile, {
     String? progressId,
+    int? expectedSize,
   }) async {
     targetFile.parent.createSync(recursive: true);
     final client = HttpClient();
@@ -393,6 +448,7 @@ class YOLOModelResolver {
         progressId,
         () => client.close(force: true),
       );
+      YOLOModelManager.emitProgress(progressId, 0);
     }
     final temporaryFile = File('${targetFile.path}.download');
     void checkCancelled() {
@@ -413,7 +469,7 @@ class YOLOModelResolver {
       checkCancelled();
       if (response.statusCode != HttpStatus.ok) {
         throw ModelLoadingException(
-          'Failed to download model from $url (HTTP ${response.statusCode}).',
+          'Failed to download model (HTTP ${response.statusCode}).',
         );
       }
 
@@ -423,17 +479,13 @@ class YOLOModelResolver {
       var receivedBytes = 0;
       double lastFraction = -1;
 
-      if (progressId != null) {
-        YOLOModelManager.emitProgress(progressId, 0);
-      }
-
       final sink = temporaryFile.openWrite();
       try {
         await response.forEach((chunk) {
           checkCancelled();
           sink.add(chunk);
-          if (progressId == null || totalBytes <= 0) return;
           receivedBytes += chunk.length;
+          if (progressId == null || totalBytes <= 0) return;
           // Cap the in-flight fraction at 0.99 so listeners never observe `1.0` from the streaming loop — the terminal
           // emit at `1.0` is reserved for the post-rename success path so a chip never lights up "downloaded" for a
           // transfer that turns out to be 0-byte / corrupt.
@@ -449,6 +501,11 @@ class YOLOModelResolver {
       }
 
       checkCancelled();
+      if (expectedSize != null && receivedBytes != expectedSize) {
+        throw ModelLoadingException(
+          'Model download was incomplete. Please try again.',
+        );
+      }
       // Some endpoints (e.g. GitHub release redirects that resolve to a 200 with no body, or chunked-encoding
       // responses that completed with zero chunks) leave the `.download` file in a state where openWrite + close
       // never materialised a real file on disk. Fall through to renameSync would then throw `PathNotFoundException`
@@ -457,7 +514,7 @@ class YOLOModelResolver {
       // marks the chip "downloaded" never sees success for a failed transfer.
       if (!temporaryFile.existsSync() || temporaryFile.lengthSync() == 0) {
         throw ModelLoadingException(
-          'Downloaded 0 bytes for $url. The asset may be missing from the release.',
+          'Downloaded an empty model file. Please try again.',
         );
       }
 

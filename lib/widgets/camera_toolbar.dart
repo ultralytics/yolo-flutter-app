@@ -4,7 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Bottom action toolbar (play/pause, switch camera, share, info). Matches `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`'s
+/// Bottom action toolbar (play/pause, switch camera, share, optional QR scan, info). Matches `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`'s
 /// toolbar layout:
 ///   * `toolbar.backgroundColor = .black.withAlphaComponent(0.7)`.
 ///   * `toolBarHeight: CGFloat = 66` — the toolbar is 66pt tall.
@@ -33,6 +33,12 @@ class CameraToolbar extends StatelessWidget {
   /// Fires on the info button.
   final VoidCallback onInfo;
 
+  /// Starts QR scanning through the current camera stream, or cancels the active scan.
+  final VoidCallback? onScanQR;
+
+  /// Highlights the QR button while scanning; tapping it again cancels.
+  final bool isScanningQR;
+
   const CameraToolbar({
     super.key,
     required this.isPaused,
@@ -40,6 +46,8 @@ class CameraToolbar extends StatelessWidget {
     required this.onSwitchCamera,
     required this.onShare,
     required this.onInfo,
+    this.onScanQR,
+    this.isScanningQR = false,
   });
 
   @override
@@ -68,6 +76,13 @@ class CameraToolbar extends StatelessWidget {
               onPressed: onShare,
               semanticLabel: 'Share',
             ),
+            if (onScanQR != null)
+              _ToolbarButton(
+                icon: CupertinoIcons.qrcode_viewfinder,
+                onPressed: onScanQR!,
+                semanticLabel: 'Scan QR',
+                selected: isScanningQR,
+              ),
             _ToolbarButton(
               icon: CupertinoIcons.info,
               onPressed: onInfo,
@@ -85,23 +100,42 @@ class _ToolbarButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String semanticLabel;
 
+  /// Toggle state for mode buttons such as QR scanning; null for plain actions.
+  final bool? selected;
+
   const _ToolbarButton({
     required this.icon,
     required this.onPressed,
     required this.semanticLabel,
+    this.selected,
   });
+
+  static const _activeColor = Color(0xFFFFD60A);
 
   @override
   Widget build(BuildContext context) {
+    final active = selected ?? false;
     return Expanded(
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: onPressed,
-        child: Icon(
-          icon,
-          color: Colors.white,
-          size: CameraToolbar.iconSize,
-          semanticLabel: semanticLabel,
+      child: Semantics(
+        selected: selected,
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: onPressed,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active ? _activeColor.withValues(alpha: 0.16) : null,
+            ),
+            child: SizedBox.square(
+              dimension: 44,
+              child: Icon(
+                icon,
+                color: active ? _activeColor : Colors.white,
+                size: CameraToolbar.iconSize,
+                semanticLabel: semanticLabel,
+              ),
+            ),
+          ),
         ),
       ),
     );

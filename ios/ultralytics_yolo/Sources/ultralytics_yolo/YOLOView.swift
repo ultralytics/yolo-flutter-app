@@ -481,6 +481,13 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     start(position: position)
   }
 
+  func scanQRCode(completion: @escaping @MainActor @Sendable (Result<String?, Error>) -> Void) {
+    videoCapture.scanQRCode(completion: completion)
+    resume()
+  }
+
+  func cancelQRCodeScan() { videoCapture.cancelQRCodeScan() }
+
   public func stop() {
     videoCapture.stop()
     videoCapture.delegate = nil

@@ -1,5 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
+import 'package:flutter/cupertino.dart' show CupertinoButton, CupertinoIcons;
 import 'package:flutter/material.dart';
 
 /// Top HUD: model name (`YOLO26n`) over an FPS / inference-time line.
@@ -11,6 +12,13 @@ import 'package:flutter/material.dart';
 class PerformanceLabel extends StatelessWidget {
   /// Active model display name, e.g. `YOLO26n`.
   final String modelName;
+
+  /// Task caption above [modelName], e.g. `DETECT`. When set, the caption and name form one model menu button with a
+  /// trailing chevron, enabled while [onModels] is non-null.
+  final String? caption;
+
+  /// Opens the model menu from the [caption] and name button.
+  final VoidCallback? onModels;
 
   /// Smoothed frames-per-second from [YOLOPerformanceMetrics].
   final double fps;
@@ -30,6 +38,8 @@ class PerformanceLabel extends StatelessWidget {
   const PerformanceLabel({
     super.key,
     required this.modelName,
+    this.caption,
+    this.onModels,
     required this.fps,
     required this.inferenceMs,
     this.preMs = 0,
@@ -39,19 +49,22 @@ class PerformanceLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final title = Text(
+      modelName,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 28,
+        fontWeight: FontWeight.w400,
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          modelName,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
+        if (caption == null) title else _modelMenu(title),
         const SizedBox(height: 2),
         // Both timing lines keep their height before the first result arrives (blank text, not absent
         // widgets), so the rows below don't shift down when inference starts.
@@ -78,6 +91,47 @@ class PerformanceLabel extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _modelMenu(Widget title) {
+    final secondary = Colors.white.withValues(alpha: 0.62);
+    return Tooltip(
+      message: 'Models',
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        onPressed: onModels,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              caption!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: secondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(child: title),
+                const SizedBox(width: 6),
+                Icon(
+                  CupertinoIcons.chevron_down,
+                  size: 13,
+                  color: onModels == null
+                      ? Colors.white.withValues(alpha: 0.35)
+                      : secondary,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

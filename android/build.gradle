@@ -93,6 +93,7 @@ android {
         implementation("com.google.ai.edge.litert:litert:2.3.0")
         implementation("com.google.ai.edge.litert:litert-gpu:2.3.0")
         implementation("com.google.ai.edge.litert:litert-metadata:2.3.0")
+        implementation("com.google.zxing:core:3.5.4")
         // Optional Snapdragon NPU support: runs Ultralytics QNN context-binary ONNX exports (*_qnn.onnx) via the
         // ONNX Runtime QNN Execution Provider. compileOnly so consumers don't pay the ~70MB arm64 runtime by
         // default — apps opt in by adding the same artifact as `implementation` (see OrtQnnModel).
