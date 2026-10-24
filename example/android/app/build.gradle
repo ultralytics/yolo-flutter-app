@@ -32,7 +32,7 @@ android {
 
     defaultConfig {
         applicationId = "com.ultralytics.yolo"
-        minSdk = flutter.minSdkVersion
+        minSdk = 24 // plugin floor (LiteRT 2.3); flutter.minSdkVersion is 21 before Flutter 3.35
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
