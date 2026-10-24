@@ -7,6 +7,7 @@ import 'dart:typed_data' as typed_data;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
+import 'package:ultralytics_yolo/core/yolo_model_manager.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 import 'package:ultralytics_yolo/platform/yolo_platform_interface.dart';
 import 'package:ultralytics_yolo/platform/yolo_platform_impl.dart';
@@ -1166,6 +1167,18 @@ void main() {
             modelPath,
           );
           expect(client.requestedUrls, ['https://example.test/model.tflite']);
+
+          await expectLater(
+            YOLOModelManager.saveInstalledModel(
+              const YOLOInstalledModel(
+                id: 'outside',
+                name: 'Outside catalog',
+                task: YOLOTask.detect,
+                path: '/tmp/elsewhere/model.tflite',
+              ),
+            ),
+            throwsArgumentError,
+          );
 
           final first = await YOLOModelResolver.resolve(
             modelPath: 'https://example.test/model.tflite',

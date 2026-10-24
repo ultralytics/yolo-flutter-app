@@ -68,7 +68,14 @@ class YOLOModelManager {
         .toList();
   }
 
+  /// Registers an artifact installed directly in application documents.
   static Future<void> saveInstalledModel(YOLOInstalledModel model) async {
+    final directory = await getApplicationDocumentsDirectory();
+    if (File(model.path).parent.path != directory.path) {
+      throw ArgumentError(
+        'Installed models must be in the application documents directory.',
+      );
+    }
     final entries =
         (await installedModels())
             .where((entry) => entry.id != model.id)
