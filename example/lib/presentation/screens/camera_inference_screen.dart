@@ -135,10 +135,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
       }
       final task = YOLOTaskParsing.tryParse(descriptor['task'] as String?);
       final format = descriptor['format'];
-      final extension = {
-        'litert': 'tflite',
-        'coreml': 'mlpackage.zip',
-      }[format];
+      final extension = {'litert': 'tflite', 'coreml': 'mlpackage.zip'}[format];
       final download = Uri.parse(descriptor['downloadUrl'] as String);
       if (descriptor['version'] != 1 ||
           descriptor['exportId'] != parts[2] ||
