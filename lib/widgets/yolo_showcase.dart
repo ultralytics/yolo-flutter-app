@@ -329,6 +329,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   ),
                   subtitle: Text(model.task.label),
                   selected: _currentCustomModel?.id == model.id,
+                  selectedColor: Theme.of(context).colorScheme.onSurface,
                   leading: Icon(
                     _currentCustomModel?.id == model.id ? Icons.check : null,
                   ),
