@@ -280,119 +280,128 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         unawaited(Scrollable.ensureVisible(selectedContext, alignment: 0.5));
       }
     });
-    final headerStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    // The sheet routes above the showcase's Theme, so it takes the same theme explicitly.
+    final theme = _theme;
+    final headerStyle = theme.textTheme.labelMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
     );
     final scan = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (models.isNotEmpty || widget.onImportModel != null)
+      backgroundColor: theme.colorScheme.surfaceContainerLow,
+      builder: (context) => Theme(
+        data: theme,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (models.isNotEmpty || widget.onImportModel != null)
+                  ListTile(
+                    title: const Text('Custom'),
+                    titleTextStyle: headerStyle,
+                    dense: true,
+                  ),
+                if (widget.onImportModel != null)
+                  ListTile(
+                    leading: const Icon(CupertinoIcons.qrcode_viewfinder),
+                    title: const Text('Scan QR'),
+                    onTap: () => Navigator.pop(context, true),
+                    trailing: IconButton(
+                      tooltip: 'Platform docs',
+                      constraints: const BoxConstraints.tightFor(
+                        width: 44,
+                        height: 44,
+                      ),
+                      icon: const Icon(CupertinoIcons.question_circle),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        unawaited(
+                          _openInfoUrl(
+                            'https://docs.ultralytics.com/platform/train/models#export-model',
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                for (final model in models)
+                  ListTile(
+                    key: _currentCustomModel?.id == model.id
+                        ? selectedKey
+                        : null,
+                    title: Text(
+                      model.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(model.task.label),
+                    selected: _currentCustomModel?.id == model.id,
+                    selectedColor: theme.colorScheme.onSurface,
+                    leading: Icon(
+                      _currentCustomModel?.id == model.id ? Icons.check : null,
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _selectCustomModel(model);
+                    },
+                    trailing: IconButton(
+                      tooltip: 'Remove model',
+                      color: theme.colorScheme.error,
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await YOLOModelManager.removeInstalledModel(model);
+                        if (mounted && _currentCustomModel?.id == model.id) {
+                          _selectOfficialModel(model.task, 'n');
+                        }
+                      },
+                    ),
+                  ),
                 ListTile(
-                  title: const Text('Custom'),
+                  title: const Text('Official'),
                   titleTextStyle: headerStyle,
                   dense: true,
                 ),
-              if (widget.onImportModel != null)
-                ListTile(
-                  leading: const Icon(CupertinoIcons.qrcode_viewfinder),
-                  title: const Text('Scan QR'),
-                  onTap: () => Navigator.pop(context, true),
-                  trailing: IconButton(
-                    tooltip: 'Platform docs',
-                    constraints: const BoxConstraints.tightFor(
-                      width: 44,
-                      height: 44,
+                for (final entry in official.entries)
+                  Padding(
+                    key:
+                        _currentCustomModel == null && _currentTask == entry.key
+                        ? selectedKey
+                        : null,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
                     ),
-                    icon: const Icon(CupertinoIcons.question_circle),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      unawaited(
-                        _openInfoUrl(
-                          'https://docs.ultralytics.com/platform/train/models#export-model',
+                    child: Row(
+                      children: [
+                        SizedBox(width: 80, child: Text(entry.key.label)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: CameraSegmentedControl<String>(
+                            values: entry.value,
+                            selected:
+                                _currentCustomModel == null &&
+                                    _currentTask == entry.key
+                                ? _currentModelId
+                                : null,
+                            label: (id) => _sizeForModelId(id, entry.key)!,
+                            semanticsLabel: (id) =>
+                                'YOLO26${_sizeForModelId(id, entry.key)} ${entry.key.label}${available.contains(id) ? '' : ', not downloaded'}',
+                            isDimmed: (id) => !available.contains(id),
+                            onSelected: (id) {
+                              Navigator.pop(context);
+                              _selectOfficialModel(
+                                entry.key,
+                                _sizeForModelId(id, entry.key)!,
+                              );
+                            },
+                          ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
-                ),
-              for (final model in models)
-                ListTile(
-                  key: _currentCustomModel?.id == model.id ? selectedKey : null,
-                  title: Text(
-                    model.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(model.task.label),
-                  selected: _currentCustomModel?.id == model.id,
-                  selectedColor: Theme.of(context).colorScheme.onSurface,
-                  leading: Icon(
-                    _currentCustomModel?.id == model.id ? Icons.check : null,
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _selectCustomModel(model);
-                  },
-                  trailing: IconButton(
-                    tooltip: 'Remove model',
-                    color: Theme.of(context).colorScheme.error,
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () async {
-                      Navigator.pop(context);
-                      await YOLOModelManager.removeInstalledModel(model);
-                      if (mounted && _currentCustomModel?.id == model.id) {
-                        _selectOfficialModel(model.task, 'n');
-                      }
-                    },
-                  ),
-                ),
-              ListTile(
-                title: const Text('Official'),
-                titleTextStyle: headerStyle,
-                dense: true,
-              ),
-              for (final entry in official.entries)
-                Padding(
-                  key: _currentCustomModel == null && _currentTask == entry.key
-                      ? selectedKey
-                      : null,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    children: [
-                      SizedBox(width: 80, child: Text(entry.key.label)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: CameraSegmentedControl<String>(
-                          values: entry.value,
-                          selected:
-                              _currentCustomModel == null &&
-                                  _currentTask == entry.key
-                              ? _currentModelId
-                              : null,
-                          label: (id) => _sizeForModelId(id, entry.key)!,
-                          semanticsLabel: (id) =>
-                              'YOLO26${_sizeForModelId(id, entry.key)} ${entry.key.label}${available.contains(id) ? '' : ', not downloaded'}',
-                          isDimmed: (id) => !available.contains(id),
-                          onSelected: (id) {
-                            Navigator.pop(context);
-                            _selectOfficialModel(
-                              entry.key,
-                              _sizeForModelId(id, entry.key)!,
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -767,11 +776,12 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     return 'Downloading $model $percent%';
   }
 
+  ThemeData get _theme => widget.theme ?? ThemeData.dark(useMaterial3: true);
+
   @override
   Widget build(BuildContext context) {
-    final theme = widget.theme ?? ThemeData.dark(useMaterial3: true);
     return Theme(
-      data: theme,
+      data: _theme,
       child: Material(
         color: Colors.black,
         child: LayoutBuilder(
@@ -1330,8 +1340,8 @@ class _QRScanOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final device = defaultTargetPlatform == TargetPlatform.android
-        ? 'an Android'
-        : 'an iPhone';
+        ? 'Android'
+        : 'iPhone';
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.biggest;
@@ -1375,7 +1385,7 @@ class _QRScanOverlay extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'In Ultralytics Platform, open $device export and choose Open on phone.',
+                      'In Ultralytics Platform, open an $device export and choose Open on $device.',
                       textAlign: align,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.78),
