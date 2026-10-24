@@ -32,9 +32,10 @@ Make sure:
 
 Make sure your app uses:
 
-- `minSdkVersion 23`
+- `minSdkVersion 24`
 - `compileSdkVersion 36`
 - `targetSdkVersion 36`
+- Kotlin Gradle plugin 2.3+ (`org.jetbrains.kotlin.android` in `android/settings.gradle`); LiteRT's Kotlin API is built with Kotlin 2.4, so older plugins fail with `Module was compiled with an incompatible version of Kotlin`
 
 ## 📦 Model Loading Problems
 

@@ -1,3 +1,10 @@
+## 0.7.0
+
+- **Breaking**: Android now requires `minSdkVersion 24` and Kotlin Gradle plugin 2.3 or newer, because LiteRT 2.3
+  declares API 24 and ships Kotlin 2.4 metadata.
+- **Feature**: Upgrade Android inference to LiteRT 2.3.0. For QNN, use `onnxruntime-android-qnn` 1.29.0 with
+  `qnn-runtime` 2.51.0, which runs current Ultralytics QNN exports.
+
 ## 0.6.16
 
 - **Fix**: Stretch depth inputs to match validation and calibration on Android and iOS, retaining the full model-resolution

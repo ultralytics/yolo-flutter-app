@@ -18,7 +18,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.6.16
+  ultralytics_yolo: ^0.7.0
 ```
 
 Run the installation command:
@@ -77,7 +77,7 @@ android {
     compileSdkVersion 36
 
     defaultConfig {
-        minSdkVersion 23  // Minimum API level 23 required
+        minSdkVersion 24  // Minimum API level 24 required
         targetSdkVersion 36
     }
 }
@@ -229,7 +229,8 @@ android {
 | Platform    | Minimum Version | Recommended   |
 | ----------- | --------------- | ------------- |
 | **iOS**     | 13.0+           | 15.0+         |
-| **Android** | API 23+         | API 28+       |
+| **Android** | API 24+         | API 28+       |
+| **Kotlin**  | 2.3+ (Android)  | Latest stable |
 | **Flutter** | 3.32.1+         | Latest stable |
 | **Dart**    | 3.8.1+          | Latest stable |
 
