@@ -256,6 +256,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   void _selectCustomModel(YOLOInstalledModel model) {
+    if (model.path == _currentModelId) return;
     _suppressInferenceForModelSwitch();
     setState(() {
       _currentCustomModel = model;
