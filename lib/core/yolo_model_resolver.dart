@@ -46,9 +46,10 @@ class YOLOModelResolver {
       'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.7.0';
   static const String _iosModelReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
-  // Official assets keep their filenames across releases, so a new asset set needs a new cache directory.
-  static const String _officialModelCacheDirectory = 'mobile-standard-v2';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
+  // Official assets keep their filenames across releases, so a platform's cache directory moves with its asset release.
+  static String get _officialModelCacheDirectory =>
+      _isIosLikePlatform ? 'mobile-standard-v1' : 'mobile-standard-v2';
 
   static const List<String> _yolo26Sizes = ['n', 's', 'm', 'l', 'x'];
   // Canonical YOLO26 task x size matrix. Keep generated so the app, docs, and export script all represent the same
@@ -213,8 +214,10 @@ class YOLOModelResolver {
   }
 
   static Directory _officialModelDirectory(Directory documents) {
-    final previous = Directory('${documents.path}/mobile-standard-v1');
-    if (previous.existsSync()) previous.deleteSync(recursive: true);
+    final stale = Directory('${documents.path}/mobile-standard-v1');
+    if (!_isIosLikePlatform && stale.existsSync()) {
+      stale.deleteSync(recursive: true);
+    }
     return Directory('${documents.path}/$_officialModelCacheDirectory');
   }
 

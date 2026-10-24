@@ -1018,7 +1018,7 @@ void main() {
         'uses cached official models and rejects unsupported ones',
         () async {
           final cachedPath = _isAppleTestPlatform
-              ? '/tmp/yolo_test/mobile-standard-v2/yolo26n.mlpackage'
+              ? '/tmp/yolo_test/mobile-standard-v1/yolo26n.mlpackage'
               : '/tmp/yolo_test/mobile-standard-v2/yolo26n_w8a32.tflite';
           if (_isAppleTestPlatform) {
             Directory(cachedPath).createSync(recursive: true);
