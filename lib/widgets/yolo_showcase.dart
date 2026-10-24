@@ -1221,16 +1221,7 @@ class _ShowcaseOverlay extends StatelessWidget {
               onPressed: onModels,
               iconAlignment: IconAlignment.end,
               icon: const Icon(Icons.expand_more),
-              label: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(modelName, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(
-                    '${task.label}${customModel ? ' · Custom' : ''}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ],
-              ),
+              label: Text('${task.label}${customModel ? ' · Custom' : ''}'),
             ),
           ),
         ),
