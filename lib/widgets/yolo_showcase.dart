@@ -296,36 +296,27 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   title: const Text('Custom'),
                   titleTextStyle: headerStyle,
                   dense: true,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.onImportModel != null)
-                        IconButton(
-                          tooltip: 'Scan QR',
-                          constraints: const BoxConstraints.tightFor(
-                            width: 44,
-                            height: 44,
-                          ),
-                          icon: const Icon(CupertinoIcons.qrcode_viewfinder),
-                          onPressed: () => Navigator.pop(context, true),
+                ),
+              if (widget.onImportModel != null)
+                ListTile(
+                  leading: const Icon(CupertinoIcons.qrcode_viewfinder),
+                  title: const Text('Scan QR'),
+                  onTap: () => Navigator.pop(context, true),
+                  trailing: IconButton(
+                    tooltip: 'Platform docs',
+                    constraints: const BoxConstraints.tightFor(
+                      width: 44,
+                      height: 44,
+                    ),
+                    icon: const Icon(CupertinoIcons.question_circle),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      unawaited(
+                        _openInfoUrl(
+                          'https://docs.ultralytics.com/platform/train/models#export-model',
                         ),
-                      IconButton(
-                        tooltip: 'Platform docs',
-                        constraints: const BoxConstraints.tightFor(
-                          width: 44,
-                          height: 44,
-                        ),
-                        icon: const Icon(Icons.menu_book_outlined),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          unawaited(
-                            _openInfoUrl(
-                              'https://docs.ultralytics.com/platform/train/models#export-model',
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               for (final model in models)
