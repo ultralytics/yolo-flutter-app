@@ -59,6 +59,13 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   Future<String?> _scanQRCode() async {
     final navigator = Navigator.of(context);
     final scanner = MobileScannerController(formats: [BarcodeFormat.qrCode]);
+    final lifecycle = AppLifecycleListener(
+      onStateChange: (state) {
+        if (!scanner.value.hasCameraPermission) return;
+        if (state == AppLifecycleState.inactive) unawaited(scanner.stop());
+        if (state == AppLifecycleState.resumed) unawaited(scanner.start());
+      },
+    );
     final subscription = scanner.barcodes
         .expand((capture) => capture.barcodes)
         .map((barcode) => barcode.rawValue)
@@ -66,17 +73,19 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
         .cast<String>()
         .take(1)
         .listen((value) => navigator.pop(value));
+    final route = MaterialPageRoute<String>(
+      fullscreenDialog: true,
+      builder: (context) => Scaffold(
+        appBar: AppBar(title: const Text('Scan model QR')),
+        body: MobileScanner(controller: scanner),
+      ),
+    );
     try {
-      return await navigator.push<String>(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (context) => Scaffold(
-            appBar: AppBar(title: const Text('Scan model QR')),
-            body: MobileScanner(controller: scanner),
-          ),
-        ),
-      );
+      final value = await navigator.push(route);
+      await route.completed;
+      return value;
     } finally {
+      lifecycle.dispose();
       await subscription.cancel();
       await scanner.dispose();
     }
