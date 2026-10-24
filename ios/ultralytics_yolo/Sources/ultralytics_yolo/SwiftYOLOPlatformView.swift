@@ -350,12 +350,17 @@ public final class SwiftYOLOPlatformView: NSObject,
         }
 
       case "scanQRCode":
-        guard let view = self.yoloView else { result(nil); return }
+        guard let view = self.yoloView else {
+          result(nil)
+          return
+        }
         view.scanQRCode { outcome in
           switch outcome {
           case .success(let value): result(value)
           case .failure(let error):
-            result(FlutterError(code: "QR_SCAN_FAILED", message: error.localizedDescription, details: nil))
+            result(
+              FlutterError(
+                code: "QR_SCAN_FAILED", message: error.localizedDescription, details: nil))
           }
         }
 
