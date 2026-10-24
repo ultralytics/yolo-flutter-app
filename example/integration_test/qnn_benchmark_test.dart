@@ -27,7 +27,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 const String _releaseBase =
-    'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6';
+    'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.7.0';
 const bool _runBench = bool.fromEnvironment('RUN_BENCH');
 const bool _runQnn = bool.fromEnvironment('RUN_QNN');
 const bool _runSoak = bool.fromEnvironment('RUN_SOAK');

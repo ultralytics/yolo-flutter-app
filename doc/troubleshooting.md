@@ -157,7 +157,7 @@ YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)
 # Classification models use imgsz=224.
 ```
 
-On a Samsung Galaxy S26, the legacy `yolo26n_int8.tflite` asset compiled with the LiteRT OpenCL GPU delegate and ran around 15 FPS / 32 ms in the live camera example. Leave `useGpu: true` (the default), inspect LiteRT logs for `LITERT_CL` or CPU fallback, and benchmark the exact model you plan to ship.
+On a Samsung Galaxy S26, the official `yolo26n_w8a32.tflite` asset compiles fully on the LiteRT OpenCL GPU delegate and takes 15.9 ms per image (11.5 ms inference); see the [performance guide](performance.md) for every task and device. Leave `useGpu: true` (the default), inspect LiteRT logs for `LITERT_CL` or CPU fallback, and benchmark the exact model you plan to ship.
 
 ## 🧠 Memory Issues
 

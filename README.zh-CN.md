@@ -122,8 +122,8 @@ final yolo = YOLO(modelPath: YOLO.defaultOfficialModel() ?? 'yolo26n');
 
 | 平台                | 运行时资产                    | Release                                                                                          |
 | ------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
-| Android             | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
-| Android NPU（可选） | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.6.6`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.6.6) |
+| Android             | LiteRT w8a32 `.tflite`        | [yolo-flutter-app `v0.7.0`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.7.0) |
+| Android NPU（可选） | QNN `*_v73/_v81_qnn.onnx`     | [yolo-flutter-app `v0.7.0`](https://github.com/ultralytics/yolo-flutter-app/releases/tag/v0.7.0) |
 | iOS                 | Core ML int8 `.mlpackage.zip` | [yolo-ios-app `v8.3.0`](https://github.com/ultralytics/yolo-ios-app/releases/tag/v8.3.0)         |
 
 Flutter 解析器在 Android 上使用 TFLite release，在 Apple 平台上使用 Core ML release。这些 release 标签被刻意固定，以保证首次下载可复现。官方导出矩阵、URL 模式与模型属性详见[模型指南](doc/models.md)。
@@ -157,7 +157,7 @@ final yolo = YOLO(
 
 ### 4. 高通 NPU 模型（Android，可选启用）
 
-Android 默认使用 LiteRT（TFLite），这一点保持不变——现有应用无需任何改动，QNN 支持也不会给你的构建增加任何体积。任何以 `_qnn.onnx` 结尾的模型路径（通过 `yolo export model=yolo26n.pt format=qnn nms=None imgsz=640` 导出，分类任务使用 `imgsz=224`）都会改由 ONNX Runtime QNN Execution Provider 路由到 Hexagon NPU 上运行。使用 `ultralytics>=8.4.142` 时，`nms=None` 选择原始一对多输出，由 Android 端执行 NMS。
+Android 默认使用 LiteRT（TFLite），这一点保持不变——现有应用无需任何改动，QNN 支持也不会给你的构建增加任何体积。任何以 `_qnn.onnx` 结尾的模型路径（通过 `yolo export model=yolo26n.pt format=qnn nms=None imgsz=640` 导出，分类任务使用 `imgsz=224`）都会改由 ONNX Runtime QNN Execution Provider 路由到 Hexagon NPU 上运行。请使用 `ultralytics>=8.4.188` 导出：更早的版本在 `onnxruntime-qnn` 2.4 或更新版本下生成的上下文二进制在此无法加载，并报错 `Input name not found`。`nms=None` 选择原始一对多输出，由 Android 端执行 NMS。
 
 运行 QNN 模型需要配备 Hexagon HTP 的 Snapdragon 设备（官方 `_v73` 资产要求 Snapdragon 8 Gen 2 或更新；`_v81` 面向 Snapdragon 8 Elite Gen 5），并在应用的 `android/app/build.gradle` 中添加三处配置：
 
@@ -178,7 +178,7 @@ dependencies {
 
 ```dart
 final yolo = YOLO(
-  modelPath: 'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6/yolo26n_v73_qnn.onnx',
+  modelPath: 'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.7.0/yolo26n_v73_qnn.onnx',
   task: YOLOTask.detect,
 );
 ```
@@ -220,7 +220,7 @@ uv pip install --torch-backend cpu "ultralytics-opencv-headless[export-litert]>=
 uv run python scripts/export-tflite-models.py --verify
 ```
 
-使用 `--upload --repo ultralytics/yolo-flutter-app --tag v0.6.6` 替换现有 `.tflite` 资产。QNN 使用 Ultralytics 按相同的任务 `imgsz` 导出；Core ML 资产由 `../yolo-ios-app/scripts/export-models.py` 生成，并替换 iOS `v8.3.0` release 上的现有资产。所有移动端资产的固定输入尺寸统一为：分类任务 224 × 224，其余任务 640 × 640。
+使用 `--upload --repo ultralytics/yolo-flutter-app --tag v0.7.0` 替换现有 `.tflite` 资产。QNN 使用 Ultralytics 按相同的任务 `imgsz` 导出；Core ML 资产由 `../yolo-ios-app/scripts/export-models.py` 生成，并替换 iOS `v8.3.0` release 上的现有资产。所有移动端资产的固定输入尺寸统一为：分类任务 224 × 224，其余任务 640 × 640。
 
 Android 推理运行在 [LiteRT](https://developers.google.com/edge/litert) 2.x 之上，带有自动的 GPU -> CPU 加速器降级链。w8a32 资产作为官方下载产物（最小的可在 GPU 上编译的 litert 格式）；在受支持的设备上，GPU delegate 会编译整个计算图，否则回退到 CPU。GPU 覆盖仍取决于设备驱动和计算图，因此请在目标硬件上确认 delegate 的放置（GPU delegate 以 FP16 运行计算图）：
 
