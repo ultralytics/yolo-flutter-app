@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:app_links/app_links.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -55,35 +56,33 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     super.dispose();
   }
 
-  Future<void> _pasteImportLink() async {
-    final input = TextEditingController();
-    final value = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Import model'),
-        content: TextField(
-          controller: input,
-          autofocus: true,
-          keyboardType: TextInputType.url,
-          decoration: const InputDecoration(labelText: 'Platform import link'),
+  Future<String?> _scanQRCode() async {
+    final navigator = Navigator.of(context);
+    final scanner = MobileScannerController(formats: [BarcodeFormat.qrCode]);
+    final subscription = scanner.barcodes
+        .expand((capture) => capture.barcodes)
+        .map((barcode) => barcode.rawValue)
+        .where((value) => value != null)
+        .cast<String>()
+        .take(1)
+        .listen((value) => navigator.pop(value));
+    try {
+      return await navigator.push<String>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (context) => Scaffold(
+            appBar: AppBar(title: const Text('Scan model QR')),
+            body: MobileScanner(controller: scanner),
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, input.text),
-            child: const Text('Import'),
-          ),
-        ],
-      ),
-    );
-    input.dispose();
-    if (value != null) await _importModel(value);
+      );
+    } finally {
+      await subscription.cancel();
+      await scanner.dispose();
+    }
   }
 
-  Future<void> _importModel(String link) async {
+  Future<void> _importModel([String? link]) async {
     if (_activeImport != null) return;
     _activeImport = _resolveAndImportModel(link);
     try {
@@ -93,9 +92,11 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
     }
   }
 
-  Future<void> _resolveAndImportModel(String link) async {
+  Future<void> _resolveAndImportModel(String? link) async {
     try {
-      final uri = Uri.parse(link);
+      final source = link ?? await _scanQRCode();
+      if (source == null) return;
+      final uri = Uri.parse(source);
       final parts = uri.pathSegments;
       if (uri.scheme != 'https' ||
           uri.host != 'platform.ultralytics.com' ||
@@ -107,7 +108,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           !RegExp(r'^[0-9a-f]{24}$').hasMatch(parts[2]) ||
           uri.fragment.length > 128) {
         throw const FormatException(
-          'Use a mobile import link from Ultralytics Platform.',
+          'Scan a model QR code from Ultralytics Platform.',
         );
       }
       final client = HttpClient();
@@ -246,7 +247,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             versionLabel: _versionLabel,
             onCapture: _onCapture,
             model: _model,
-            onImportModel: () => unawaited(_pasteImportLink()),
+            onImportModel: _importModel,
           ),
           if (_importId != null)
             Positioned.fill(

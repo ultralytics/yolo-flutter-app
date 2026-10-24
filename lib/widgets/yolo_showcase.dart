@@ -54,7 +54,7 @@ class YOLOShowcase extends StatefulWidget {
   final YOLOInstalledModel? model;
 
   /// Host-owned import UI, offered in the model picker.
-  final VoidCallback? onImportModel;
+  final Future<void> Function()? onImportModel;
 
   const YOLOShowcase({
     super.key,
@@ -113,6 +113,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // instead of looking frozen.
   bool _isModelLoading = false;
 
+  Future<void>? _importOperation;
   bool _isPaused = false;
   bool _torchOn = false;
   bool _isFrontCamera = false;
@@ -301,19 +302,23 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   'Import a model from Ultralytics Platform to use it offline.',
                 ),
               ),
-            if (widget.onImportModel != null)
-              ListTile(
-                leading: const Icon(Icons.link),
-                title: const Text('Paste Platform import link'),
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onImportModel!();
-                },
-              ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _onImportModel() {
+    return _importOperation ??= () async {
+      if (!_isPaused) await _controller.pause();
+      _controller.resetTorchState();
+      if (_torchOn) setState(() => _torchOn = false);
+      try {
+        await widget.onImportModel!();
+      } finally {
+        if (mounted && !_isPaused) await _controller.resume();
+      }
+    }().whenComplete(() => _importOperation = null);
   }
 
   Future<void> _refreshLenses() async {
@@ -776,6 +781,9 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   task: _currentTask,
                   size: _currentCustomModel == null ? _currentSize : null,
                   onModels: _isModelLoading ? null : _showModels,
+                  onImportModel: widget.onImportModel == null
+                      ? null
+                      : _onImportModel,
                   availableSizes: _availableSizes,
                   supportedSizes: _allSizes,
                   downloadingSize: _downloadingSize,
@@ -966,6 +974,7 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.onShare,
     required this.onInfo,
     required this.onModels,
+    required this.onImportModel,
   });
 
   final String modelName;
@@ -1001,6 +1010,7 @@ class _ShowcaseOverlay extends StatelessWidget {
   final VoidCallback onShare;
   final VoidCallback onInfo;
   final VoidCallback? onModels;
+  final VoidCallback? onImportModel;
 
   // iOS YOLOView ports — kept as constants so the layout reads like the Swift source.
   static const double _sidePadding = 20;
@@ -1141,10 +1151,30 @@ class _ShowcaseOverlay extends StatelessWidget {
           downloadingSize: downloadingSize,
           downloadFraction: downloadFraction,
         ),
-        TextButton.icon(
-          onPressed: onModels,
-          icon: const Icon(Icons.expand_more),
-          label: const Text('My models'),
+        TextButtonTheme(
+          data: TextButtonThemeData(
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              backgroundColor: Colors.black.withValues(alpha: 0.7),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 16,
+            children: [
+              if (onImportModel != null)
+                TextButton.icon(
+                  onPressed: onImportModel,
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: const Text('Scan QR'),
+                ),
+              TextButton.icon(
+                onPressed: onModels,
+                icon: const Icon(Icons.expand_more),
+                label: const Text('My models'),
+              ),
+            ],
+          ),
         ),
         if (modelErrorMessage != null)
           Padding(
