@@ -229,7 +229,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           if (_importId != null)
             Positioned.fill(
               child: ModelSwitchLoadingOverlay(
-                statusText: 'Installing model',
+                statusText: _fraction < 1
+                    ? 'Downloading model'
+                    : 'Installing model',
                 progress: _fraction < 1 ? _fraction : null,
                 onCancel: _fraction >= 1
                     ? null

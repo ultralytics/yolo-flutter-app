@@ -267,20 +267,29 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     final models = await YOLOModelManager.installedModels();
     await _refreshAvailableSizes(_currentTask);
     if (!mounted) return;
+    final headerStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
     await showModalBottomSheet<void>(
       context: context,
       builder: (context) => SafeArea(
         child: ListView(
           shrinkWrap: true,
           children: [
-            ListTile(title: Text('Official · ${_currentTask.label}')),
+            ListTile(
+              title: Text('Official · ${_currentTask.label}'),
+              titleTextStyle: headerStyle,
+              dense: true,
+            ),
             for (final size in _allSizes)
               ListTile(
                 title: Text('YOLO26$size'),
                 selected: _currentCustomModel == null && _currentSize == size,
-                leading: _currentCustomModel == null && _currentSize == size
-                    ? const Icon(Icons.check)
-                    : null,
+                leading: Icon(
+                  _currentCustomModel == null && _currentSize == size
+                      ? Icons.check
+                      : null,
+                ),
                 trailing: _availableSizes.contains(size)
                     ? null
                     : const Icon(Icons.download_outlined),
@@ -289,12 +298,20 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   _onSizeChanged(size);
                 },
               ),
-            const ListTile(title: Text('Custom')),
+            if (models.isNotEmpty || widget.onImportModel != null)
+              ListTile(
+                title: const Text('Custom'),
+                titleTextStyle: headerStyle,
+                dense: true,
+              ),
             for (final model in models)
               ListTile(
                 title: Text(model.name),
                 subtitle: Text(model.task.label),
                 selected: _currentCustomModel?.id == model.id,
+                leading: Icon(
+                  _currentCustomModel?.id == model.id ? Icons.check : null,
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _selectCustomModel(model);
@@ -311,7 +328,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   },
                 ),
               ),
-            if (models.isEmpty)
+            if (models.isEmpty && widget.onImportModel != null)
               const ListTile(
                 title: Text('Scan a Platform QR code to add a model.'),
               ),
@@ -1178,6 +1195,7 @@ class _ShowcaseOverlay extends StatelessWidget {
                   message: 'Models',
                   child: TextButton.icon(
                     onPressed: onModels,
+                    iconAlignment: IconAlignment.end,
                     icon: const Icon(Icons.expand_more),
                     label: Text(
                       '$modelName · ${customModel ? 'Custom' : 'Official'}',

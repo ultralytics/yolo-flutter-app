@@ -150,6 +150,10 @@ void main() {
     await tester.tap(find.text('Seg'));
     await tester.pump();
 
+    final selectedView = tester.widget<YOLOView>(find.byType(YOLOView));
+    expect(selectedView.task, YOLOTask.segment);
+    expect(selectedView.modelPath, 'yolo26n-seg');
+
     expect(captured.single, orderedEquals([1, 2, 3]));
     expect(
       calls.map((call) => call.method),

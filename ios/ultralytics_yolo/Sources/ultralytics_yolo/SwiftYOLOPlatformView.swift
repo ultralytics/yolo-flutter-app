@@ -355,13 +355,7 @@ public final class SwiftYOLOPlatformView: NSObject,
           return
         }
         view.scanQRCode { outcome in
-          switch outcome {
-          case .success(let value): result(value)
-          case .failure(let error):
-            result(
-              FlutterError(
-                code: "QR_SCAN_FAILED", message: error.localizedDescription, details: nil))
-          }
+          result((try? outcome.get()) ?? nil)
         }
 
       case "cancelQRCodeScan":
