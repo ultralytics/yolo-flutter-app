@@ -4,7 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Bottom action toolbar (play/pause, switch camera, share, info). Matches `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`'s
+/// Bottom action toolbar (play/pause, switch camera, share, optional QR scan, info). Matches `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`'s
 /// toolbar layout:
 ///   * `toolbar.backgroundColor = .black.withAlphaComponent(0.7)`.
 ///   * `toolBarHeight: CGFloat = 66` — the toolbar is 66pt tall.
@@ -33,6 +33,10 @@ class CameraToolbar extends StatelessWidget {
   /// Fires on the info button.
   final VoidCallback onInfo;
 
+  /// Starts or cancels QR scanning through the current camera stream.
+  final VoidCallback? onScanQR;
+  final bool isScanningQR;
+
   const CameraToolbar({
     super.key,
     required this.isPaused,
@@ -40,6 +44,8 @@ class CameraToolbar extends StatelessWidget {
     required this.onSwitchCamera,
     required this.onShare,
     required this.onInfo,
+    this.onScanQR,
+    this.isScanningQR = false,
   });
 
   @override
@@ -68,6 +74,14 @@ class CameraToolbar extends StatelessWidget {
               onPressed: onShare,
               semanticLabel: 'Share',
             ),
+            if (onScanQR != null)
+              _ToolbarButton(
+                icon: isScanningQR
+                    ? CupertinoIcons.xmark
+                    : CupertinoIcons.qrcode_viewfinder,
+                onPressed: onScanQR!,
+                semanticLabel: isScanningQR ? 'Cancel QR scan' : 'Scan QR',
+              ),
             _ToolbarButton(
               icon: CupertinoIcons.info,
               onPressed: onInfo,

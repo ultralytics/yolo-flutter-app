@@ -1271,6 +1271,7 @@ void _resetResolverDocuments() {
 bool get _isAppleTestPlatform => Platform.isIOS || Platform.isMacOS;
 
 void _mockFlutterAssets(Map<String, List<int>>? assets) {
+  rootBundle.evict('AssetManifest.bin');
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMessageHandler(
         'flutter/assets',
@@ -1278,6 +1279,14 @@ void _mockFlutterAssets(Map<String, List<int>>? assets) {
             ? null
             : (typed_data.ByteData? message) async {
                 final key = utf8.decode(message!.buffer.asUint8List());
+                if (key == 'AssetManifest.bin') {
+                  return const StandardMessageCodec().encodeMessage({
+                    for (final key in assets.keys)
+                      key: [
+                        {'asset': key},
+                      ],
+                  });
+                }
                 final bytes = assets[key];
                 return bytes == null
                     ? null

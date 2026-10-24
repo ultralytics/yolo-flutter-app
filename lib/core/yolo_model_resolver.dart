@@ -236,14 +236,16 @@ class YOLOModelResolver {
       )) {
         return true;
       }
-      return await _loadAssetBytes(
-            'assets/models/${artifact.iosArchiveName}',
-          ) !=
-          null;
+    } else if (File(
+      '${directory.path}/${artifact.androidAssetName}',
+    ).existsSync()) {
+      return true;
     }
-    final filename = artifact.androidAssetName;
-    if (File('${directory.path}/$filename').existsSync()) return true;
-    return await _loadAssetBytes('assets/models/$filename') != null;
+    final filename = _isIosLikePlatform
+        ? artifact.iosArchiveName
+        : artifact.androidAssetName;
+    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+    return manifest.listAssets().contains('assets/models/$filename');
   }
 
   static Future<String> _resolveAndroidOfficialModel(
@@ -442,6 +444,7 @@ class YOLOModelResolver {
         progressId,
         () => client.close(force: true),
       );
+      YOLOModelManager.emitProgress(progressId, 0);
     }
     final temporaryFile = File('${targetFile.path}.download');
     void checkCancelled() {
@@ -471,10 +474,6 @@ class YOLOModelResolver {
       final totalBytes = response.contentLength;
       var receivedBytes = 0;
       double lastFraction = -1;
-
-      if (progressId != null) {
-        YOLOModelManager.emitProgress(progressId, 0);
-      }
 
       final sink = temporaryFile.openWrite();
       try {
