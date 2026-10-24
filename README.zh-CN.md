@@ -216,7 +216,7 @@ Android TFLite release 资产由 [`scripts/export-tflite-models.py`](scripts/exp
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install --torch-backend cpu "ultralytics-opencv-headless[export-litert]>=8.4.142"
+uv pip install --torch-backend cpu "ultralytics-opencv-headless[export-litert]>=8.4.188"
 uv run python scripts/export-tflite-models.py --verify
 ```
 

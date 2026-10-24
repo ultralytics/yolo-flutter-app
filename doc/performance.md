@@ -50,20 +50,24 @@ API 37. Its 3 nm [Snapdragon 8 Elite Gen 5](https://www.qualcomm.com/smartphones
 (SM8850) has an 8-core Qualcomm Oryon CPU (2 Prime cores up to 4.6 GHz and 6 Performance cores up to 3.62 GHz),
 Adreno GPU, and Hexagon NPU.
 
-| Model         | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | GPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | NPU<br><sup>QNN W8A16<br>(ms)</sup>    |
-| ------------- | -------- | --------------------------- | -------------------------------------- | -------------------------------------- | -------------------------------------- |
-| YOLO26n       | Detect   | 640                         | 36.9<br><sup>1.9 / 32.6 / 2.3</sup>    | 10.6<br><sup>1.8 / 6.2 / 2.6</sup>     | **10.2**<br><sup>1.9 / 6.0 / 2.3</sup> |
-| YOLO26n-seg   | Segment  | 640                         | 50.5<br><sup>1.9 / 42.9 / 5.8</sup>    | 18.0<br><sup>1.9 / 9.5 / 6.6</sup>     | **16.2**<br><sup>2.1 / 8.4 / 5.7</sup> |
-| YOLO26n-sem   | Semantic | 640                         | 45.7<br><sup>1.9 / 35.7 / 8.2</sup>    | 30.6<br><sup>1.9 / 20.5 / 8.3</sup>    | **10.8**<br><sup>2.0 / 6.2 / 2.6</sup> |
-| YOLO26n-depth | Depth    | 640                         | 66.8<br><sup>2.2 / 55.0 / 9.7</sup>    | 21.9<br><sup>2.1 / 10.1 / 9.8</sup>    | **19.3**<br><sup>2.2 / 7.4 / 9.7</sup> |
-| YOLO26n-cls   | Classify | 224                         | 3.6<br><sup>0.3 / 3.3 / 0.0</sup>      | 2.0<br><sup>0.4 / 1.4 / 0.2</sup>      | **0.8**<br><sup>0.3 / 0.5 / 0.0</sup>  |
-| YOLO26n-pose  | Pose     | 640                         | 39.9<br><sup>2.0 / 36.5 / 1.4</sup>    | 10.0<br><sup>1.8 / 6.7 / 1.4</sup>     | **9.7**<br><sup>1.9 / 5.9 / 1.8</sup>  |
-| YOLO26n-obb   | OBB      | 640                         | 36.3<br><sup>2.0 / 33.2 / 1.2</sup>    | 10.1<br><sup>2.6 / 5.9 / 1.6</sup>     | **8.1**<br><sup>1.9 / 5.1 / 1.0</sup>  |
+| Model         | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | GPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | NPU<br><sup>QNN W8A16<br>(ms)</sup>    | NPU<br><sup>LiteRT FP32<br>(ms)</sup>  |
+| ------------- | -------- | --------------------------- | -------------------------------------- | -------------------------------------- | -------------------------------------- | -------------------------------------- |
+| YOLO26n       | Detect   | 640                         | 36.9<br><sup>1.9 / 32.6 / 2.3</sup>    | 10.6<br><sup>1.8 / 6.2 / 2.6</sup>     | 10.2<br><sup>1.9 / 6.0 / 2.3</sup>     | **10.1**<br><sup>3.5 / 4.0 / 2.5</sup> |
+| YOLO26n-seg   | Segment  | 640                         | 50.5<br><sup>1.9 / 42.9 / 5.8</sup>    | 18.0<br><sup>1.9 / 9.5 / 6.6</sup>     | **16.2**<br><sup>2.1 / 8.4 / 5.7</sup> | 19.2<br><sup>3.6 / 5.9 / 9.7</sup>     |
+| YOLO26n-sem   | Semantic | 640                         | 45.7<br><sup>1.9 / 35.7 / 8.2</sup>    | 30.6<br><sup>1.9 / 20.5 / 8.3</sup>    | **10.8**<br><sup>2.0 / 6.2 / 2.6</sup> | 25.8<br><sup>3.6 / 11.0 / 11.3</sup>   |
+| YOLO26n-depth | Depth    | 640                         | 66.8<br><sup>2.2 / 55.0 / 9.7</sup>    | 21.9<br><sup>2.1 / 10.1 / 9.8</sup>    | **19.3**<br><sup>2.2 / 7.4 / 9.7</sup> | 24.8<br><sup>4.3 / 6.0 / 14.5</sup>    |
+| YOLO26n-cls   | Classify | 224                         | 3.6<br><sup>0.3 / 3.3 / 0.0</sup>      | 2.0<br><sup>0.4 / 1.4 / 0.2</sup>      | **0.8**<br><sup>0.3 / 0.5 / 0.0</sup>  | 1.5<br><sup>0.6 / 0.7 / 0.3</sup>      |
+| YOLO26n-pose  | Pose     | 640                         | 39.9<br><sup>2.0 / 36.5 / 1.4</sup>    | 10.0<br><sup>1.8 / 6.7 / 1.4</sup>     | **9.7**<br><sup>1.9 / 5.9 / 1.8</sup>  | 11.5<br><sup>3.5 / 4.2 / 3.8</sup>     |
+| YOLO26n-obb   | OBB      | 640                         | 36.3<br><sup>2.0 / 33.2 / 1.2</sup>    | 10.1<br><sup>2.6 / 5.9 / 1.6</sup>     | **8.1**<br><sup>1.9 / 5.1 / 1.0</sup>  | 8.2<br><sup>3.5 / 3.7 / 0.9</sup>      |
 
-**Benchmark:** Mean of 15 `predict()` calls after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.7.0` and the
-official `v0.7.0` assets (Ultralytics 8.4.188 exports). Backend order rotates between tasks in one sequential sweep. Native logs confirmed that
-every CPU row used LiteRT CPU/XNNPACK, every GPU row delegated the complete graph to LiteRT OpenCL (`LITERT_CL`), and
-every NPU row used the QNN Hexagon HTP backend.
+**Benchmark:** Mean of 15 `predict()` calls after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.7.1` and the
+official `v0.7.0` assets (Ultralytics 8.4.188 exports). Backend order rotates between tasks in one sequential sweep.
+Native logs confirmed that every CPU row used LiteRT CPU/XNNPACK, every GPU row delegated the complete graph to LiteRT
+OpenCL (`LITERT_CL`), and every QNN row used the Hexagon HTP backend. The LiteRT NPU column runs an FP32 export
+(`format=litert` without `quantize`) through `litert-npu-runtime-qualcomm` 2.3.0, which compiles it on the device; the
+first load includes that compile (about 0.3 s for `n`, up to 6 s for `x`). It was measured with a prototype NPU build of
+the plugin, which this release does not include. LiteRT reports an NPU compile even when it silently runs the graph on
+the GPU, so every NPU row was checked against the GPU time.
 
 ### Pixel 10 w8a32 LiteRT
 
@@ -83,9 +87,12 @@ device because Google does not publish them in the linked specifications.
 | YOLO26n-pose  | Pose     | 640                         | **35.2**<br><sup>1.5 / 31.9 / 1.8</sup> | 38.2<br><sup>3.5 / 29.3 / 5.4</sup>      |
 | YOLO26n-obb   | OBB      | 640                         | **32.7**<br><sup>1.5 / 29.3 / 1.9</sup> | 38.8<br><sup>3.8 / 29.6 / 5.4</sup>      |
 
-**Benchmark:** Mean of 15 `predict()` calls after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.7.0` and the
-official `v0.7.0` assets (Ultralytics 8.4.188 exports). CPU/GPU order alternates between tasks in one sequential sweep. Native logs confirmed that
-every CPU row used LiteRT CPU/XNNPACK and every GPU row delegated the complete graph to LiteRT OpenCL (`LITERT_CL`).
+**Benchmark:** Mean of 15 `predict()` calls after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.7.1` and the
+official `v0.7.0` assets (Ultralytics 8.4.188 exports). CPU/GPU order alternates between tasks in one sequential sweep.
+Native logs confirmed that every CPU row used LiteRT CPU/XNNPACK and every GPU row delegated the complete graph to LiteRT
+OpenCL (`LITERT_CL`).
+The Tensor NPU has no LiteRT column: Google's EdgeTPU service rejects apps that are not on its allowlist, and LiteRT
+then runs the model on the GPU.
 
 ### Galaxy S26 Exynos w8a32 LiteRT
 
@@ -94,19 +101,23 @@ and Android 17 / API 37. Its 2 nm [Exynos 2600](https://semiconductor.samsung.co
 has a 10-core Armv9.3 CPU (1 C1-Ultra core up to 3.8 GHz, 3 performance C1-Pro cores up to 3.26 GHz, and 6 efficiency
 C1-Pro cores up to 2.76 GHz), Xclipse 960 GPU, and Samsung NPU.
 
-| Model         | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | GPU<br><sup>w8a32 LiteRT<br>(ms)</sup>   |
-| ------------- | -------- | --------------------------- | -------------------------------------- | ---------------------------------------- |
-| YOLO26n       | Detect   | 640                         | 30.2<br><sup>1.3 / 27.3 / 1.6</sup>    | **15.9**<br><sup>1.4 / 11.5 / 2.9</sup>  |
-| YOLO26n-seg   | Segment  | 640                         | 45.6<br><sup>1.3 / 39.1 / 5.2</sup>    | **30.5**<br><sup>1.3 / 23.6 / 5.6</sup>  |
-| YOLO26n-sem   | Semantic | 640                         | 38.1<br><sup>1.3 / 28.6 / 8.2</sup>    | **26.1**<br><sup>1.3 / 16.8 / 7.9</sup>  |
-| YOLO26n-depth | Depth    | 640                         | 63.5<br><sup>1.4 / 53.6 / 8.4</sup>    | **37.3**<br><sup>1.4 / 24.6 / 11.3</sup> |
-| YOLO26n-cls   | Classify | 224                         | 3.8<br><sup>0.2 / 3.4 / 0.2</sup>      | **2.8**<br><sup>0.2 / 2.6 / 0.0</sup>    |
-| YOLO26n-pose  | Pose     | 640                         | 31.1<br><sup>1.3 / 28.4 / 1.4</sup>    | **18.4**<br><sup>1.6 / 13.0 / 3.8</sup>  |
-| YOLO26n-obb   | OBB      | 640                         | 27.9<br><sup>1.3 / 25.7 / 0.9</sup>    | **15.3**<br><sup>1.9 / 11.4 / 2.1</sup>  |
+| Model         | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | GPU<br><sup>w8a32 LiteRT<br>(ms)</sup>  | NPU<br><sup>LiteRT w8a32 AOT<br>(ms)</sup> |
+| ------------- | -------- | --------------------------- | -------------------------------------- | --------------------------------------- | ------------------------------------------ |
+| YOLO26n       | Detect   | 640                         | 30.2<br><sup>1.3 / 27.3 / 1.6</sup>    | 15.9<br><sup>1.4 / 11.5 / 2.9</sup>     | **12.2**<br><sup>1.3 / 8.6 / 2.2</sup>     |
+| YOLO26n-seg   | Segment  | 640                         | 45.6<br><sup>1.3 / 39.1 / 5.2</sup>    | 30.5<br><sup>1.3 / 23.6 / 5.6</sup>     | **17.0**<br><sup>1.4 / 9.7 / 5.8</sup>     |
+| YOLO26n-sem   | Semantic | 640                         | 38.1<br><sup>1.3 / 28.6 / 8.2</sup>    | **26.1**<br><sup>1.3 / 16.8 / 7.9</sup> | 28.3<br><sup>1.7 / 15.1 / 11.5</sup>       |
+| YOLO26n-depth | Depth    | 640                         | 63.5<br><sup>1.4 / 53.6 / 8.4</sup>    | 37.3<br><sup>1.4 / 24.6 / 11.3</sup>    | **28.4**<br><sup>2.1 / 12.9 / 13.4</sup>   |
+| YOLO26n-cls   | Classify | 224                         | 3.8<br><sup>0.2 / 3.4 / 0.2</sup>      | **2.8**<br><sup>0.2 / 2.6 / 0.0</sup>   | 6.1<br><sup>0.5 / 5.2 / 0.4</sup>          |
+| YOLO26n-pose  | Pose     | 640                         | 31.1<br><sup>1.3 / 28.4 / 1.4</sup>    | 18.4<br><sup>1.6 / 13.0 / 3.8</sup>     | **13.5**<br><sup>1.8 / 9.5 / 2.2</sup>     |
+| YOLO26n-obb   | OBB      | 640                         | 27.9<br><sup>1.3 / 25.7 / 0.9</sup>    | 15.3<br><sup>1.9 / 11.4 / 2.1</sup>     | **11.4**<br><sup>1.7 / 8.3 / 1.4</sup>     |
 
-**Benchmark:** Mean of 15 `predict()` calls after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.7.0` and the
-official `v0.7.0` assets (Ultralytics 8.4.188 exports). CPU/GPU order alternates between tasks in one sequential sweep. Native logs confirmed that
-every CPU row used LiteRT CPU/XNNPACK and every GPU row delegated the complete graph to LiteRT OpenCL (`LITERT_CL`).
+**Benchmark:** Mean of 15 `predict()` calls after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.7.1` and the
+official `v0.7.0` assets (Ultralytics 8.4.188 exports). CPU/GPU order alternates between tasks in one sequential sweep.
+Native logs confirmed that every CPU row used LiteRT CPU/XNNPACK and every GPU row delegated the complete graph to LiteRT
+OpenCL (`LITERT_CL`).
+The NPU column uses the `w8a32` assets compiled ahead of time for the Exynos 2600 (`E9965`) with LiteRT's Samsung
+compiler plugin, run through the prototype NPU build. Samsung has no on-device compiler in LiteRT 2.3, and Google does
+not yet publish a Samsung NPU runtime, so these rows used a dispatch library built from the LiteRT 2.3 sources.
 
 ### Xiaomi 17T Pro w8a32 LiteRT
 
@@ -116,19 +127,23 @@ LPDDR5X memory and Android 16 / API 36. Its 3 nm
 8-core Armv9.3 CPU (1 C1-Ultra core up to 4.21 GHz, 3 C1-Premium cores up to 3.5 GHz, and 4 C1-Pro cores up to
 2.7 GHz), Mali-G1 Ultra MC12 GPU, and MediaTek NPU 990.
 
-| Model         | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | GPU<br><sup>w8a32 LiteRT<br>(ms)</sup>   |
-| ------------- | -------- | --------------------------- | -------------------------------------- | ---------------------------------------- |
-| YOLO26n       | Detect   | 640                         | 31.4<br><sup>1.5 / 28.0 / 1.9</sup>    | **25.6**<br><sup>1.4 / 22.2 / 2.0</sup>  |
-| YOLO26n-seg   | Segment  | 640                         | 77.8<br><sup>2.6 / 65.3 / 9.9</sup>    | **47.4**<br><sup>2.6 / 33.6 / 11.3</sup> |
-| YOLO26n-sem   | Semantic | 640                         | 81.3<br><sup>2.6 / 62.2 / 16.5</sup>   | **79.3**<br><sup>2.6 / 59.5 / 17.1</sup> |
-| YOLO26n-depth | Depth    | 640                         | 111.3<br><sup>3.4 / 91.1 / 16.8</sup>  | **55.3**<br><sup>2.8 / 36.3 / 16.1</sup> |
-| YOLO26n-cls   | Classify | 224                         | **6.3**<br><sup>0.5 / 5.4 / 0.4</sup>  | 8.1<br><sup>0.5 / 7.5 / 0.1</sup>        |
-| YOLO26n-pose  | Pose     | 640                         | 53.9<br><sup>2.6 / 49.5 / 1.8</sup>    | **32.8**<br><sup>2.7 / 26.7 / 3.4</sup>  |
-| YOLO26n-obb   | OBB      | 640                         | 49.5<br><sup>2.7 / 44.4 / 2.4</sup>    | **29.4**<br><sup>2.8 / 22.7 / 3.9</sup>  |
+| Model         | Task     | size<br><sup>(pixels)</sup> | CPU<br><sup>w8a32 LiteRT<br>(ms)</sup> | GPU<br><sup>w8a32 LiteRT<br>(ms)</sup>   | NPU<br><sup>LiteRT FP32<br>(ms)</sup>    |
+| ------------- | -------- | --------------------------- | -------------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| YOLO26n       | Detect   | 640                         | 31.4<br><sup>1.5 / 28.0 / 1.9</sup>    | 25.6<br><sup>1.4 / 22.2 / 2.0</sup>      | **11.0**<br><sup>1.3 / 7.8 / 1.8</sup>   |
+| YOLO26n-seg   | Segment  | 640                         | 77.8<br><sup>2.6 / 65.3 / 9.9</sup>    | 47.4<br><sup>2.6 / 33.6 / 11.3</sup>     | **36.5**<br><sup>2.6 / 23.4 / 10.4</sup> |
+| YOLO26n-sem   | Semantic | 640                         | 81.3<br><sup>2.6 / 62.2 / 16.5</sup>   | **79.3**<br><sup>2.6 / 59.5 / 17.1</sup> | 87.6<br><sup>2.6 / 68.3 / 16.7</sup>     |
+| YOLO26n-depth | Depth    | 640                         | 111.3<br><sup>3.4 / 91.1 / 16.8</sup>  | **55.3**<br><sup>2.8 / 36.3 / 16.1</sup> | —                                        |
+| YOLO26n-cls   | Classify | 224                         | 6.3<br><sup>0.5 / 5.4 / 0.4</sup>      | 8.1<br><sup>0.5 / 7.5 / 0.1</sup>        | **3.2**<br><sup>0.5 / 2.2 / 0.5</sup>    |
+| YOLO26n-pose  | Pose     | 640                         | 53.9<br><sup>2.6 / 49.5 / 1.8</sup>    | 32.8<br><sup>2.7 / 26.7 / 3.4</sup>      | **16.2**<br><sup>2.9 / 11.1 / 2.3</sup>  |
+| YOLO26n-obb   | OBB      | 640                         | 49.5<br><sup>2.7 / 44.4 / 2.4</sup>    | **29.4**<br><sup>2.8 / 22.7 / 3.9</sup>  | —                                        |
 
-**Benchmark:** Mean of 15 `predict()` calls after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.7.0` and the
-official `v0.7.0` assets (Ultralytics 8.4.188 exports). CPU/GPU order alternates between tasks in one sequential sweep. Native logs confirmed that
-every CPU row used LiteRT CPU/XNNPACK and every GPU row delegated the complete graph to LiteRT OpenCL (`LITERT_CL`).
+**Benchmark:** Mean of 15 `predict()` calls after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.7.1` and the
+official `v0.7.0` assets (Ultralytics 8.4.188 exports). CPU/GPU order alternates between tasks in one sequential sweep.
+Native logs confirmed that every CPU row used LiteRT CPU/XNNPACK and every GPU row delegated the complete graph to LiteRT
+OpenCL (`LITERT_CL`).
+The NPU column uses the same FP32 exports and prototype build as the Xiaomi 17, through
+`litert-npu-runtime-mediatek` 2.3.0. Depth and OBB have no NPU result: the MediaTek NPU compiler rejects their
+exponential and trigonometric ops, and LiteRT runs those graphs on the GPU.
 
 ### iPhone 17 Pro Core ML
 
@@ -146,12 +161,14 @@ Neural Engine.
 | YOLO26n-pose  | Pose     | 640                         | 12.0<br><sup>0.0 / 12.0 / 0.0</sup>          | **4.0**<br><sup>0.0 / 4.0 / 0.0</sup>                                   |
 | YOLO26n-obb   | OBB      | 640                         | 10.7<br><sup>0.0 / 10.7 / 0.0</sup>          | **3.9**<br><sup>0.0 / 3.9 / 0.0</sup>                                   |
 
-**Benchmark:** Mean of 15 `predict()` calls after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.7.0` and the
+**Benchmark:** Mean of 15 `predict()` calls after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.7.1` and the
 official `v8.3.0` assets. CPU/accelerator order alternates between tasks in one sequential sweep. The CPU rows
 request Core ML `.cpuOnly`; the CPU + ANE preferred rows request `.cpuAndNeuralEngine`, with final operation placement
 controlled by Core ML. Native model descriptions confirmed 224 × 224 input for classification and 640 × 640 for
 every other task. Core ML models re-exported with Ultralytics 8.4.188 measured within 0.3 ms of every row on the same
-phone.
+phone. On iOS 27.0.1, `.cpuOnly` inference of the `l` and `x` depth, pose, and OBB models crashes inside Core ML's CPU
+kernels (`EXC_BAD_ACCESS` in `libBNNS`); the same models run with `.cpuAndNeuralEngine`, and every other task and size
+runs on the CPU.
 
 Reproduce the Android sweep with:
 
@@ -212,13 +229,13 @@ segment/semantic postprocess work from #549 and #550. What was tried, what worke
 - **High-resolution segment overlays** (#549): the visible combined mask now scales logits to model-input resolution
   before thresholding, matching the iOS SDK's sharp segment overlay path instead of upscaling a 160x160 RGBA mask.
   A naive Kotlin bilinear paint measured **15.5 ms postprocess** and was rejected; caching per-column interpolation
-  reduced the [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) GPU path to **6.7-8.0 ms postprocess** for
+  reduced the [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) GPU path to **6.6 ms postprocess** for
   `yolo26n-seg`, trading a small amount of time for model-resolution masks while keeping the cache-local
   decode/mask-gen wins above. Raw mask payloads remain at the existing cropped proto resolution.
 - **Preprocessing cleanup**: the Android path writes NCHW inputs directly for NCHW LiteRT/QNN models, eliminating the
   extra HWC→CHW float transpose, and clears only real letterbox padding instead of repainting the full target bitmap
   every frame. On the [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) w8a32 GPU sweep, 640px preprocessing is
-  now ~1.8-1.9 ms across detect/segment/semantic/pose and ~2.9 ms for OBB, down from the old 6-9 ms range for
+  now ~1.8-1.9 ms across detect/segment/semantic/pose and ~2.6 ms for OBB, down from the old 6-9 ms range for
   single-image `predict()` benchmarks. The live camera HUD can still show ~5-10 ms `pre` in portrait because that path
   also rotates and letterboxes each CameraX frame before packing RGB.
 - **Rejected live-camera preprocessing prototypes**: fusing CameraX RGBA `ImageProxy` → rotated/letterboxed CHW floats
@@ -238,54 +255,45 @@ segment/semantic postprocess work from #549 and #550. What was tried, what worke
   copy of the dense map (decoded identically on the Dart side). Outputs unchanged.
 - **Native depth painting**: ported the iOS Accelerate depth-colorization pattern to the existing Android C++ decode
   library, replacing bounds-checked Kotlin min/max and color sweeps while preserving the metric `Float32List`, invalid
-  pixel transparency, and near-to-far gradient. On the Xiaomi 17, postprocess fell from **50.2-54.1 ms** to
-  **8.2-9.7 ms** across all five official 640px depth models (**-82.8% mean**). The grouped physical-device test
-  verified exact native min/max equality against every positive finite output pixel and confirmed that all five models
-  compiled fully on the LiteRT GPU:
+  pixel transparency, and near-to-far gradient. In its A/B test on the Xiaomi 17, postprocess fell from **50.2-54.1 ms**
+  to **8.2-9.7 ms** across all five official 640px depth models (**-82.8% mean**), with exact native min/max equality
+  against every positive finite output pixel. Current Xiaomi 17 depth timings with the `v0.7.0` assets and full
+  640×640 maps:
 
-  | Depth model | Preprocess | GPU inference | Post before | Post after | Optimized total |
-  | ----------- | ---------- | ------------- | ----------- | ---------- | --------------- |
-  | YOLO26n     | 2.0 ms     | 12.9 ms       | 54.1 ms     | **8.2 ms** | **23.0 ms**     |
-  | YOLO26s     | 2.2 ms     | 20.5 ms       | 50.2 ms     | **9.1 ms** | **31.8 ms**     |
-  | YOLO26m     | 2.8 ms     | 35.2 ms       | 51.0 ms     | **9.7 ms** | **47.7 ms**     |
-  | YOLO26l     | 1.9 ms     | 45.2 ms       | 51.5 ms     | **8.8 ms** | **56.0 ms**     |
-  | YOLO26x     | 2.1 ms     | 79.6 ms       | 51.9 ms     | **8.6 ms** | **90.3 ms**     |
+  | Depth model | GPU preprocess | GPU inference | GPU post | GPU total   | CPU total |
+  | ----------- | -------------- | ------------- | -------- | ----------- | --------- |
+  | YOLO26n     | 2.1 ms         | 10.1 ms       | 9.8 ms   | **21.9 ms** | 66.8 ms   |
+  | YOLO26s     | 3.4 ms         | 20.5 ms       | 13.7 ms  | **37.6 ms** | 104.1 ms  |
+  | YOLO26m     | 3.6 ms         | 33.2 ms       | 14.2 ms  | **51.0 ms** | 155.5 ms  |
+  | YOLO26l     | 2.9 ms         | 38.4 ms       | 12.7 ms  | **54.1 ms** | 186.5 ms  |
+  | YOLO26x     | 2.8 ms         | 62.6 ms       | 12.0 ms  | **77.3 ms** | 287.7 ms  |
 
-  Each row is the mean of 15 `predict()` calls after 3 warmups on `bus.jpg`; maps were 480x640 after letterbox crop.
-  Inference varied with GPU/thermal state between the before/after sweeps, so the attributable A/B result is the
-  instrumented postprocess column rather than the total-time difference.
+  Each row is the mean of 15 `predict()` calls after 3 warmups on `bus.jpg`. Every GPU row compiled fully on the
+  LiteRT GPU, so Depth should use the GPU on this device.
 
-  The matching LiteRT XNNPACK CPU sweep confirms that Depth should use the GPU on this device:
-
-  | Depth model | CPU preprocess | CPU inference | CPU post | CPU total  |
-  | ----------- | -------------- | ------------- | -------- | ---------- |
-  | YOLO26n     | 5.07 ms        | 300.91 ms     | 19.15 ms | 325.13 ms  |
-  | YOLO26s     | 4.60 ms        | 413.98 ms     | 19.17 ms | 437.75 ms  |
-  | YOLO26m     | 4.75 ms        | 725.81 ms     | 19.21 ms | 749.77 ms  |
-  | YOLO26l     | 4.68 ms        | 894.44 ms     | 19.19 ms | 918.31 ms  |
-  | YOLO26x     | 4.65 ms        | 1481.00 ms    | 19.82 ms | 1505.47 ms |
-
-- **Core ML Depth backend sweep**: the same grouped physical-device harness ran all five official INT8 Core ML Depth
-  models on the [iPhone 17 Pro hardware described above](#iphone-17-pro-core-ml). CPU + ANE preferred values request
-  `.cpuAndNeuralEngine`; CPU values request `.cpuOnly`. Each row is 15 `predict()` calls after 3 warmups on `bus.jpg`,
-  with a 480x640 typed metric map:
+- **Core ML Depth backend sweep**: all five official INT8 Core ML Depth models on the
+  [iPhone 17 Pro hardware described above](#iphone-17-pro-core-ml) (iOS 27.0.1). CPU + ANE preferred values request
+  `.cpuAndNeuralEngine`; CPU values request `.cpuOnly`. Each row is 15 `predict()` calls after 3 warmups on `bus.jpg`:
 
   | Depth model | CPU inference | CPU post | CPU total | CPU + ANE preferred inference | Preferred post | Preferred total |
   | ----------- | ------------- | -------- | --------- | ----------------------------- | -------------- | --------------- |
-  | YOLO26n     | 23.90 ms      | 0.85 ms  | 24.75 ms  | 4.67 ms                       | 0.87 ms        | **5.54 ms**     |
-  | YOLO26s     | 33.67 ms      | 0.90 ms  | 34.57 ms  | 6.15 ms                       | 0.85 ms        | **7.01 ms**     |
-  | YOLO26m     | 55.27 ms      | 0.93 ms  | 56.21 ms  | 9.64 ms                       | 0.89 ms        | **10.54 ms**    |
-  | YOLO26l     | 67.32 ms      | 0.93 ms  | 68.25 ms  | 10.87 ms                      | 0.94 ms        | **11.80 ms**    |
-  | YOLO26x     | 116.77 ms     | 0.94 ms  | 117.71 ms | 19.38 ms                      | 0.93 ms        | **20.30 ms**    |
+  | YOLO26n     | 25.1 ms       | 1.0 ms   | 26.0 ms   | 4.7 ms                        | 0.9 ms         | **5.5 ms**      |
+  | YOLO26s     | 34.9 ms       | 1.0 ms   | 35.9 ms   | 6.2 ms                        | 0.8 ms         | **7.1 ms**      |
+  | YOLO26m     | 58.4 ms       | 1.0 ms   | 59.4 ms   | 9.7 ms                        | 0.9 ms         | **10.5 ms**     |
+  | YOLO26l     | crashes       | —        | —         | 11.3 ms                       | 0.9 ms         | **12.2 ms**     |
+  | YOLO26x     | crashes       | —        | —         | 19.1 ms                       | 0.9 ms         | **20.1 ms**     |
 
-  Vision performs scaling inside the request, so `preMs` is 0 and preprocessing is included in inference. These are
-  single-image burst measurements; the iOS app's sustained 720p camera path measures 16.5 ms/frame for YOLO26n Depth.
+  Vision performs scaling inside the request, so `preMs` is 0 and preprocessing is included in inference. The `l` and
+  `x` CPU runs crash inside Core ML's CPU kernels on iOS 27.0.1 (see the iPhone table above). These are single-image
+  burst measurements; the iOS app's sustained 720p camera path measures 16.5 ms/frame for YOLO26n Depth.
 
 **Tested and intentionally NOT changed (don't re-litigate without new evidence):**
 
 - `htp_performance_mode`: burst/sustained/high_performance are identical for our use — ORT votes the same max DCVS
   corner for burst and sustained; the default stays `burst`.
-- `offload_graph_io_quantization=0`: no measurable effect on normal-sized outputs.
+- `offload_graph_io_quantization=0` is the Ultralytics export default from 8.4.188: with the offload on,
+  `onnxruntime-qnn` 2.4+ writes an EPContext I/O-name map that this plugin's ONNX Runtime cannot read. Keeping I/O
+  quantization on the HTP measured no slower than the July QAIRT 2.46 assets.
 - **Naive A8W8 quantization**: 33% faster inference but zero detections — a shared uint8 scale on the concatenated
   output destroys scores. W8A16 stays the export default.
 - **fp16 GPU variants**: identical inference time to INT8 on the LiteRT GPU accelerator (it computes in fp16
@@ -308,7 +316,7 @@ segment/semantic postprocess work from #549 and #550. What was tried, what worke
    needs an mAP validation loop in the exporter.
 2. **Zero-copy I/O**: LiteRT supports AHardwareBuffer/GL/CL tensor interop and ORT QNN has a shared-memory
    allocator (`QnnHtpShared`), but both are C/C++-API-only today — revisit when the Kotlin/Java surfaces catch up,
-   or via a small JNI shim. Attacks the remaining ~3.5 ms preprocess copy.
+   or via a small JNI shim. Attacks the remaining ~2 ms preprocess copy.
 3. **RGBA camera input**: feeding 4-channel frames avoids the RGB repack (the GPU's native layout is 4-channel).
 4. **Per-run HTP power votes** (`qnn.htp_perf_mode` run options): vote high during camera sessions, low after —
    battery/thermal optimization for sustained use rather than a latency win.
@@ -358,7 +366,7 @@ final yolo = YOLO(
 
 On Android, inference runs on LiteRT 2.x with an automatic **GPU → CPU accelerator ladder**: with `useGpu: true` the plugin compiles the whole model for the GPU when it can; models the GPU cannot compile fall back to XNNPACK CPU. (iOS uses Core ML.)
 
-The official YOLO26 Android assets (w8a32 LiteRT) compile on the LiteRT GPU path on supported devices, though GPU coverage still depends on the device driver and graph. For example, a Galaxy S26 compiled the legacy `yolo26n_int8.tflite` fully with the OpenCL delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran at about **15 FPS / 32 ms** in the live camera example app. Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
+The official YOLO26 Android assets (w8a32 LiteRT) compile on the LiteRT GPU path on supported devices, though GPU coverage still depends on the device driver and graph. For example, a Galaxy S26 compiles the official `yolo26n_w8a32.tflite` fully with the OpenCL delegate (`Replacing 414 out of 414 node(s) with delegate (LITERT_CL)`) and takes 15.9 ms per image (11.5 ms inference). Always confirm delegate placement with device logs instead of assuming a quantization format implies CPU or GPU.
 
 non-end-to-end LiteRT exports are still useful for GPU benchmarking (the GPU delegate runs them in FP16):
 
@@ -433,7 +441,7 @@ This is the canonical record of the on-device profiling behind the Ultralytics Y
 
 - **Device (ground truth):** Samsung Galaxy S26 (`SM S9420`), Android 16 / API 36.
 - **Build:** Flutter example debug APK, package `com.ultralytics.yolo`.
-- **Model:** `yolo26n_int8.tflite`, official YOLO26 detect asset, 640x640 input, `quantize=8`, `nms=False, end2end=False` (equivalent to `nms=None` with Ultralytics >=8.4.142).
+- **Model:** the legacy `yolo26n_int8.tflite` detect asset (640x640, `quantize=8`) these camera experiments used; the official assets are now `w8a32` (see the tables above).
 - **Runtime:** Android LiteRT 2.x `CompiledModel` with `useGpu: true`.
 - **UI:** `YOLOShowcase` real-time camera view with the default task/size controls and threshold sliders.
 - **Numbers:** EMA-smoothed app metrics after the camera and model are warm.
@@ -464,26 +472,6 @@ The on-screen `ms` value comes from native `YOLOResult.speed`, forwarded through
 
 **Shipped:** The example app now enters Flutter immediately. The size segmented control tolerates zero-width and narrow warm-up constraints before the real viewport metrics arrive, and model changes use a single modal loading overlay.
 
-### Experiment: Official INT8 TFLite on GPU
-
-**Q:** Can the official Android `yolo26n_int8.tflite` asset run on GPU?
-
-**A:** Yes on the Galaxy S26. LiteRT loaded the GPU accelerator and compiled the full graph with the OpenCL delegate:
-
-```text
-RegisterAccelerator: name=LiteRT GPU
-Replacing 395 out of 395 node(s) with delegate (LITERT_CL)
-ObjectDetector: LiteRT compiled on GPU; inputDims=[1, 640, 640, 3] outputDims=[[1, 84, 8400]]
-```
-
-Observed app-level result:
-
-| Device     | Model                 | Runtime                  | On-screen FPS | On-screen ms |
-| ---------- | --------------------- | ------------------------ | ------------- | ------------ |
-| Galaxy S26 | `yolo26n_int8.tflite` | LiteRT GPU (`LITERT_CL`) | ~15.2 FPS     | ~32 ms       |
-
-**Conclusion:** Keep official Android assets as int8 TFLite for download size and confirm GPU placement per device from LiteRT logs. Do not assume int8 means CPU-only on current LiteRT, and do not assume all int8 graphs receive the same GPU coverage: driver support is device-dependent, and graphs the GPU cannot compile fall back to CPU.
-
 ### Experiment: Segment and Semantic Post-Processing
 
 **Q:** Beyond the GPU forward pass, where does per-frame time go for the segment and semantic tasks?
@@ -492,7 +480,7 @@ Observed app-level result:
 
 **Shipped:** Both predictors index the flat `run()` output in place (no per-frame reshape allocation or copy) and walk contiguous memory: the segment proto mask matmul iterates channels contiguously, and the semantic argmax reads one cache line per pixel for the NHWC layout. Output is bit-identical (verified `diff=0` against the old kernels on a standalone benchmark).
 
-**Result:** A host-JVM microbenchmark of the changed loops showed ~1.8-2.1x on the semantic argmax and ~1.55x on the segment proto matmul plus detection indexing; the removed per-frame reshape copy is additional savings on top. On the Galaxy S26 (GPU, bundled nano models) segment `yolo26n-seg` ran ~25 FPS / ~30 ms and semantic `yolo26n-sem` ~20-22 FPS / ~43 ms, both with correct mask overlays and no crashes.
+**Result:** A host-JVM microbenchmark of the changed loops showed ~1.8-2.1x on the semantic argmax and ~1.55x on the segment proto matmul plus detection indexing; the removed per-frame reshape copy is additional savings on top. On the Galaxy S26 both tasks rendered correct mask overlays without crashes; the tables above have their current timings.
 
 **Conclusion:** Keep model outputs flat and index by stride, and confirm output equivalence with an explicit diff when refactoring post-processing. This brings Android to parity with the iOS SDK, whose Swift decode reads `MLMultiArray` through a raw `Float` pointer and bulk-copies mask rows ([yolo-ios-app](https://github.com/ultralytics/yolo-ios-app) PR #246).
 
@@ -540,9 +528,9 @@ The app UI correctly showed the resolver failure. To validate the camera/inferen
 
 ### Open Levers
 
-- **Release-device matrix:** Repeat the S26 test on Pixel, older Snapdragon, Tensor, and Exynos devices to record GPU delegate coverage and fallback behavior.
-- **CPU baseline:** Force `useGpu: false` on the same official int8 assets and record FPS/ms/power deltas.
-- **FP16 benchmark:** Compare non-end-to-end fp16 TFLite exports against the official int8 assets on devices where both compile on GPU.
+- **LiteRT NPU tier:** the measured LiteRT NPU path (FP32 exports compiled on the device on Qualcomm and MediaTek, AOT on
+  Exynos) needs a reliable placement signal before it can ship: LiteRT 2.3's Kotlin API reports an NPU compile even when
+  the graph silently runs on the GPU.
 - **Camera preset tuning:** Measure CameraX target resolution and analyzer throughput separately from model processing.
 - **Frame-rate policy:** Explore explicit camera frame duration / analyzer throttling for latency vs. thermal tradeoffs.
 - **iOS post-processing port:** The iOS SDK further reduced segment/semantic decode with raw `MLMultiArray` pointer reads and `[Float]` mask coefficients (yolo-ios-app PR #246); mirror any remaining hot-loop `NSNumber` reads in the plugin's `ios/ultralytics_yolo/Sources/ultralytics_yolo/*.swift` if profiling shows them.
