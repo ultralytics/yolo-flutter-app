@@ -1197,10 +1197,18 @@ class _ShowcaseOverlay extends StatelessWidget {
                     onPressed: onModels,
                     iconAlignment: IconAlignment.end,
                     icon: const Icon(Icons.expand_more),
-                    label: Text(
-                      '$modelName · ${customModel ? 'Custom' : 'Official'}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            modelName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(' · ${customModel ? 'Custom' : 'Official'}'),
+                      ],
                     ),
                   ),
                 ),
