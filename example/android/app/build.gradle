@@ -20,6 +20,12 @@ def hasReleaseSigning = keystoreProperties["storeFile"] &&
 // Gradle property, e.g.:  ENABLE_QNN=1 flutter build appbundle --release
 def qnnEnabled = project.hasProperty("qnn") || (System.getenv("ENABLE_QNN") in ["1", "true", "TRUE", "yes"])
 
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
 android {
     namespace = "com.ultralytics.yolo"
     compileSdk = flutter.compileSdkVersion

@@ -8,7 +8,7 @@
 -keep interface com.google.ai.edge.litert.** { *; }
 -dontwarn com.google.ai.edge.litert.**
 
-# TFLite schema/metadata flatbuffers and LiteRT's @UsedByReflection annotations still live under org.tensorflow.
+# The TFLite model schema flatbuffers (org.tensorflow.lite.schema) that litert-metadata parses stay under org.tensorflow.
 -keep class org.tensorflow.** { *; }
 -keep interface org.tensorflow.** { *; }
 -dontwarn org.tensorflow.**

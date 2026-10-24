@@ -64,7 +64,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 
 ```yaml
 dependencies:
-  ultralytics_yolo: ^0.6.16
+  ultralytics_yolo: ^0.7.0
 ```
 
 ```bash

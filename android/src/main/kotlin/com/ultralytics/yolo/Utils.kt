@@ -59,8 +59,7 @@ object YOLOUtils {
      * @param modelPath The model path (can be an asset path or absolute filesystem path)
      * @return ByteBuffer containing the model data
      */
-    // Memory-maps a model file bundled in assets (replaces the litert-support FileUtil.loadMappedFile, which has no
-    // LiteRT 2.x release).
+    // Memory-maps a model file bundled in assets (in place of litert-support's FileUtil.loadMappedFile).
     private fun loadMappedAsset(context: Context, assetPath: String): java.nio.MappedByteBuffer {
         context.assets.openFd(assetPath).use { afd ->
             java.io.FileInputStream(afd.fileDescriptor).use { fis ->
