@@ -178,7 +178,7 @@ object YOLOFileUtils {
 
     private fun loadMetadataFromFlatbuffer(context: Context, modelPath: String): Map<String, Any>? = try {
         val buffer = YOLOUtils.loadModelFile(context, modelPath)
-        val extractor = org.tensorflow.lite.support.metadata.MetadataExtractor(buffer)
+        val extractor = com.google.ai.edge.litert.support.metadata.MetadataExtractor(buffer)
         var result: Map<String, Any>? = null
         extractor.associatedFileNames?.forEach { name ->
             if (result == null) {

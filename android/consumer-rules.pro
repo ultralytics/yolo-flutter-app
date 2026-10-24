@@ -8,7 +8,7 @@
 -keep interface com.google.ai.edge.litert.** { *; }
 -dontwarn com.google.ai.edge.litert.**
 
-# Legacy TFLite / LiteRT metadata (MetadataExtractor reads embedded model metadata via flatbuffers + reflection).
+# TFLite schema/metadata flatbuffers and LiteRT's @UsedByReflection annotations still live under org.tensorflow.
 -keep class org.tensorflow.** { *; }
 -keep interface org.tensorflow.** { *; }
 -dontwarn org.tensorflow.**
