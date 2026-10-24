@@ -3,11 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart'
-    show
-        CupertinoActivityIndicator,
-        CupertinoIcons,
-        CupertinoColors,
-        CupertinoSlidingSegmentedControl;
+    show CupertinoButton, CupertinoIcons, CupertinoColors;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -381,53 +377,23 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                       SizedBox(width: 80, child: Text(entry.key.label)),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: CupertinoSlidingSegmentedControl<String>(
-                          backgroundColor: Colors.black.withValues(alpha: 0.7),
-                          thumbColor: Colors.white.withValues(alpha: 0.18),
-                          groupValue:
+                        child: CameraSegmentedControl<String>(
+                          values: entry.value,
+                          selected:
                               _currentCustomModel == null &&
                                   _currentTask == entry.key
                               ? _currentModelId
                               : null,
-                          onValueChanged: (id) {
-                            if (id == null) return;
+                          label: (id) => _sizeForModelId(id, entry.key)!,
+                          semanticsLabel: (id) =>
+                              'YOLO26${_sizeForModelId(id, entry.key)} ${entry.key.label}${available.contains(id) ? '' : ', not downloaded'}',
+                          isDimmed: (id) => !available.contains(id),
+                          onSelected: (id) {
                             Navigator.pop(context);
                             _selectOfficialModel(
                               entry.key,
                               _sizeForModelId(id, entry.key)!,
                             );
-                          },
-                          children: {
-                            for (final id in entry.value)
-                              id: SizedBox(
-                                height: 40,
-                                child: Center(
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (!available.contains(id))
-                                        const Icon(
-                                          Icons.download_outlined,
-                                          size: 14,
-                                          color: Colors.white70,
-                                        ),
-                                      Text(
-                                        _sizeForModelId(id, entry.key)!,
-                                        semanticsLabel:
-                                            'YOLO26${_sizeForModelId(id, entry.key)} ${entry.key.label}${available.contains(id) ? '' : ', not downloaded'}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.white.withValues(
-                                            alpha: _currentModelId == id
-                                                ? 1
-                                                : 0.72,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
                           },
                         ),
                       ),
@@ -819,7 +785,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final viewSize = Size(constraints.maxWidth, constraints.maxHeight);
-            final isLandscape = constraints.maxWidth > constraints.maxHeight;
             // Cache for the focus-stream listener (registered in initState, fires later — needs a synchronous
             // view-size lookup).
             _viewSize = viewSize;
@@ -881,13 +846,6 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                   onToggleTorch: () => unawaited(_onToggleTorch()),
                   onShare: () => unawaited(_onShare()),
                   onInfo: () => _showInfoSheet(context),
-                ),
-                // Ultralytics logotype, bottom-right — matches `Main.storyboard` logoImage (frame x215 y625 w159 h67
-                // on a 393x852 canvas, anchored bottom-right ~19pt from the edge, sitting above the toolbar).
-                Positioned(
-                  right: 19,
-                  bottom: isLandscape ? 100 : 160,
-                  child: const LogoOverlay(width: 159),
                 ),
                 Positioned.fill(
                   child: AnimatedSwitcher(
@@ -1004,11 +962,11 @@ class ModelSwitchLoadingOverlay extends StatelessWidget {
 
 /// Stateless overlay sandwich. Layout mirrors `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift#layoutPortrait`
 /// and the model picker in the native app:
-///   * Top: 20pt side padding, centered model name and FPS, then the Models button.
-///   * Middle: empty so the camera shows through.
-///   * Bottom: confidence + IoU sliders (46% view width, 20pt left padding), then zoom indicator, then lens picker,
-///     then the 66pt full-width toolbar. The Ultralytics logo + optional version label float to the right and left of
-///     the zoom HUD.
+///   * Top: 20pt side padding, centered task caption and model name (the Models button), then FPS.
+///   * Middle: empty so the camera shows through, or the QR viewfinder while scanning.
+///   * Bottom: confidence + IoU sliders (46% view width, 20pt left padding) with the Ultralytics logo beside them,
+///     then the optional version stamp and centered zoom reading on one row, then the lens picker, then the 66pt
+///     full-width toolbar. The QR scrim dims everything except the header, its own copy, and the toolbar.
 class _ShowcaseOverlay extends StatelessWidget {
   const _ShowcaseOverlay({
     required this.modelName,
@@ -1069,122 +1027,131 @@ class _ShowcaseOverlay extends StatelessWidget {
 
   // iOS YOLOView ports — kept as constants so the layout reads like the Swift source.
   static const double _sidePadding = 20;
-  static const double _topGap = 8;
   static const double _sliderRowGap = 2;
 
   @override
   Widget build(BuildContext context) {
-    final topInset = MediaQuery.paddingOf(context).top;
+    final insets = MediaQuery.paddingOf(context);
+    final bottomSafe = defaultTargetPlatform == TargetPlatform.android;
     return SafeArea(
       left: false,
       right: false,
-      bottom: defaultTargetPlatform == TargetPlatform.android,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return constraints.maxWidth > constraints.maxHeight
-                  ? _buildLandscape(constraints, topInset)
-                  : _buildPortrait();
-            },
-          ),
-          if (scanningQRCode)
-            const IgnorePointer(
-              child: Center(
-                child: CupertinoActivityIndicator(
-                  radius: 18,
-                  color: Colors.white,
-                ),
+      bottom: bottomSafe,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final landscape = constraints.maxWidth > constraints.maxHeight;
+          final sliderWidth = landscape
+              ? (constraints.maxWidth * 0.28).clamp(220.0, 300.0)
+              : (constraints.maxWidth - 2 * _sidePadding) * 0.46;
+          return Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: CameraToolbar.height,
+                child: _bottomControls(sliderWidth),
               ),
-            ),
-        ],
+              // Spans the whole display, safe areas included, so the QR group centers on the screen.
+              if (scanningQRCode)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: -insets.top,
+                  bottom: bottomSafe ? -insets.bottom : 0,
+                  child: _QRScanOverlay(onCancel: onImportModel!),
+                ),
+              if (landscape)
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: Transform.translate(
+                    offset: Offset(0, -insets.top),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: SizedBox(
+                        width: (constraints.maxWidth * 0.62).clamp(
+                          360.0,
+                          620.0,
+                        ),
+                        child: _topControls(),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Positioned(
+                  left: _sidePadding,
+                  right: _sidePadding,
+                  top: 8,
+                  child: _topControls(),
+                ),
+              Positioned(left: 0, right: 0, bottom: 0, child: _toolbar()),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildPortrait() {
+  Widget _bottomControls(double sliderWidth) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(_sidePadding, 8, _sidePadding, 0),
-          child: _topControls(),
-        ),
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: _sidePadding),
-          child: _thresholdControls(sliderWidthFactor: 0.46),
-        ),
+        // QR mode hides the sliders and the logo beside them.
+        if (!scanningQRCode)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _sidePadding),
+            child: Row(
+              children: [
+                SizedBox(width: sliderWidth, child: _thresholdControls()),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: LogoOverlay(width: 159),
+                  ),
+                ),
+              ],
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(_sidePadding, 4, _sidePadding, 0),
-          child: _zoomLabel(),
+          child: _infoRow(),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(_sidePadding, 2, _sidePadding, 2),
-          child: Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              _lensPicker(),
-              // Version stamp at the lens-tabs vertical level, tucked into the bottom-left corner (negative left
-              // escapes the row's side padding so it sits closer to the screen edge than the controls).
-              if (versionLabel != null)
-                Positioned(
-                  left: -(_sidePadding - 8),
-                  bottom: 0,
-                  child: _version(),
-                ),
-            ],
-          ),
+          child: _lensPicker(),
         ),
-        _toolbar(),
       ],
     );
   }
 
-  Widget _buildLandscape(BoxConstraints constraints, double topInset) {
-    final topWidth = (constraints.maxWidth * 0.62).clamp(360.0, 620.0);
-    final sliderWidth = (constraints.maxWidth * 0.28).clamp(220.0, 300.0);
-    final hasLenses = lenses.isNotEmpty;
+  /// Version stamp on the zoom reading's baseline at the sliders' left edge; the zoom reading stays centered.
+  Widget _infoRow() {
+    const baseline = 14.0;
     return Stack(
-      fit: StackFit.expand,
+      clipBehavior: Clip.none,
       children: [
         Align(
           alignment: Alignment.topCenter,
-          child: Transform.translate(
-            offset: Offset(0, -topInset),
-            child: Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: SizedBox(width: topWidth, child: _topControls()),
-            ),
+          child: Baseline(
+            baseline: baseline,
+            baselineType: TextBaseline.alphabetic,
+            child: _zoomLabel(),
           ),
         ),
-        Positioned(
-          left: _sidePadding,
-          bottom: CameraToolbar.height + (hasLenses ? 18 : 0),
-          width: sliderWidth,
-          child: _thresholdControls(sliderWidthFactor: 1),
-        ),
-        Positioned(
-          left: _sidePadding,
-          right: _sidePadding,
-          bottom: CameraToolbar.height + (hasLenses ? 42 : 8),
-          child: _zoomLabel(),
-        ),
-        if (hasLenses)
-          Positioned(
-            left: _sidePadding,
-            right: _sidePadding,
-            bottom: CameraToolbar.height + 2,
-            child: _lensPicker(),
-          ),
+        // Left edge matches the slider tracks and captions, which CupertinoSlider insets 8 px.
         if (versionLabel != null)
           Positioned(
-            left: _sidePadding,
-            bottom: CameraToolbar.height + 4,
-            child: _version(),
+            left: 8,
+            top: 0,
+            child: Baseline(
+              baseline: baseline,
+              baselineType: TextBaseline.alphabetic,
+              child: _version(),
+            ),
           ),
-        Positioned(left: 0, right: 0, bottom: 0, child: _toolbar()),
       ],
     );
   }
@@ -1196,33 +1163,17 @@ class _ShowcaseOverlay extends StatelessWidget {
           ({double fps, double ms, double pre, double infer, double post})
         >(
           valueListenable: metrics,
+          // QR scanning blanks the timing lines in place (zero metrics) so nothing below them moves.
           builder: (context, m, _) => PerformanceLabel(
             modelName: modelName,
-            fps: m.fps,
+            caption:
+                '${task.label.toUpperCase()}${customModel ? ' · CUSTOM' : ''}',
+            onModels: onModels,
+            fps: scanningQRCode ? 0 : m.fps,
             inferenceMs: m.ms,
-            preMs: m.pre,
-            modelMs: m.infer,
-            postMs: m.post,
-            status: scanningQRCode ? 'Scanning for QR code…' : null,
-            onCancel: scanningQRCode ? onImportModel : null,
-          ),
-        ),
-        const SizedBox(height: _topGap),
-        TextButtonTheme(
-          data: TextButtonThemeData(
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
-              backgroundColor: Colors.black.withValues(alpha: 0.7),
-            ),
-          ),
-          child: Tooltip(
-            message: 'Models',
-            child: TextButton.icon(
-              onPressed: onModels,
-              iconAlignment: IconAlignment.end,
-              icon: const Icon(Icons.expand_more),
-              label: Text('${task.label}${customModel ? ' · Custom' : ''}'),
-            ),
+            preMs: scanningQRCode ? 0 : m.pre,
+            modelMs: scanningQRCode ? 0 : m.infer,
+            postMs: scanningQRCode ? 0 : m.post,
           ),
         ),
         if (modelErrorMessage != null)
@@ -1255,27 +1206,25 @@ class _ShowcaseOverlay extends StatelessWidget {
     );
   }
 
-  Widget _thresholdControls({required double sliderWidthFactor}) {
+  Widget _thresholdControls() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         ThresholdSliderRow(
-          label: 'Confidence Threshold',
+          label: 'Confidence',
           value: confidence,
           min: 0,
           max: 1,
           onChanged: onConfidenceChanged,
-          sliderWidthFactor: sliderWidthFactor,
         ),
         const SizedBox(height: _sliderRowGap),
         ThresholdSliderRow(
-          label: 'IoU Threshold',
+          label: 'IoU',
           value: iou,
           min: 0,
           max: 1,
           onChanged: onIouChanged,
-          sliderWidthFactor: sliderWidthFactor,
         ),
       ],
     );
@@ -1361,8 +1310,8 @@ class _ShowcaseOverlay extends StatelessWidget {
     return Text(
       versionLabel!,
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.7),
-        fontSize: 10,
+        color: Colors.white.withValues(alpha: 0.6),
+        fontSize: 12,
       ),
     );
   }
@@ -1378,4 +1327,204 @@ class _ShowcaseOverlay extends StatelessWidget {
       isScanningQR: scanningQRCode,
     );
   }
+}
+
+/// QR mode over the live camera: a dimmed preview with a framed target, what to scan, and Cancel.
+class _QRScanOverlay extends StatelessWidget {
+  const _QRScanOverlay({required this.onCancel});
+
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final device = defaultTargetPlatform == TargetPlatform.android
+        ? 'an Android'
+        : 'an iPhone';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        final landscape = size.width > size.height;
+        final align = landscape ? TextAlign.left : TextAlign.center;
+        return CustomMultiChildLayout(
+          delegate: _QRScanLayout(
+            side: (landscape ? size.height * 0.5 : size.width * 0.6).clamp(
+              0.0,
+              236.0,
+            ),
+            textWidth: (landscape ? size.width / 2 - 72 : size.width - 64)
+                .clamp(0.0, 310.0),
+            landscape: landscape,
+          ),
+          children: [
+            // First child paints first: the frame's scrim sits under the copy and Cancel.
+            LayoutId(
+              id: _QRSlot.frame,
+              child: const IgnorePointer(
+                child: CustomPaint(painter: _QRFramePainter()),
+              ),
+            ),
+            LayoutId(
+              id: _QRSlot.copy,
+              child: IgnorePointer(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: landscape
+                      ? CrossAxisAlignment.start
+                      : CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Scan a model QR code',
+                      textAlign: align,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'In Ultralytics Platform, open $device export and choose Open on phone.',
+                      textAlign: align,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.78),
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            LayoutId(
+              id: _QRSlot.cancel,
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                minimumSize: const Size(44, 44),
+                color: const Color.fromRGBO(118, 118, 128, 0.32),
+                borderRadius: BorderRadius.circular(22),
+                onPressed: onCancel,
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+enum _QRSlot { frame, copy, cancel }
+
+/// Portrait stacks copy, 24, frame, 20, Cancel centered on the screen; landscape puts the copy and Cancel 32 px right
+/// of the frame, top-aligned with it so Cancel clears the zoom and lens rows, with the pair centered.
+class _QRScanLayout extends MultiChildLayoutDelegate {
+  _QRScanLayout({
+    required this.side,
+    required this.textWidth,
+    required this.landscape,
+  });
+
+  final double side;
+  final double textWidth;
+  final bool landscape;
+
+  @override
+  void performLayout(Size size) {
+    layoutChild(_QRSlot.frame, BoxConstraints.tight(Size.square(side)));
+    final copy = layoutChild(
+      _QRSlot.copy,
+      BoxConstraints.tightFor(width: textWidth),
+    );
+    final cancel = layoutChild(_QRSlot.cancel, BoxConstraints.loose(size));
+    if (landscape) {
+      final left = (size.width - side - 32 - textWidth) / 2;
+      final top = (size.height - side) / 2;
+      positionChild(_QRSlot.frame, Offset(left, top));
+      positionChild(_QRSlot.copy, Offset(left + side + 32, top));
+      positionChild(
+        _QRSlot.cancel,
+        Offset(left + side + 32, top + copy.height + 20),
+      );
+    } else {
+      final frameTop =
+          (size.height - copy.height - 24 - side - 20 - cancel.height) / 2 +
+          copy.height +
+          24;
+      positionChild(
+        _QRSlot.copy,
+        Offset((size.width - textWidth) / 2, frameTop - 24 - copy.height),
+      );
+      positionChild(_QRSlot.frame, Offset((size.width - side) / 2, frameTop));
+      positionChild(
+        _QRSlot.cancel,
+        Offset((size.width - cancel.width) / 2, frameTop + side + 20),
+      );
+    }
+  }
+
+  @override
+  bool shouldRelayout(_QRScanLayout oldDelegate) =>
+      oldDelegate.side != side ||
+      oldDelegate.textWidth != textWidth ||
+      oldDelegate.landscape != landscape;
+}
+
+/// Dims everything outside its box (the QR target) and draws the target's corner brackets.
+class _QRFramePainter extends CustomPainter {
+  const _QRFramePainter();
+
+  static const double _radius = 28;
+  static const double _stroke = 4;
+  static const double _arm = 44;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final frame = Offset.zero & size;
+    canvas.drawPath(
+      Path()
+        ..fillType = PathFillType.evenOdd
+        ..addRect(frame.inflate(10000))
+        ..addRRect(
+          RRect.fromRectAndRadius(frame, const Radius.circular(_radius)),
+        ),
+      Paint()..color = Colors.black.withValues(alpha: 0.56),
+    );
+    // Brackets sit inside the cutout edge, so the stroke centerline is inset by half its width.
+    final r = frame.deflate(_stroke / 2);
+    const radius = Radius.circular(_radius - _stroke / 2);
+    const corner = _radius - _stroke / 2;
+    const arm = _arm - _stroke / 2;
+    canvas.drawPath(
+      Path()
+        ..moveTo(r.left, r.top + arm)
+        ..lineTo(r.left, r.top + corner)
+        ..arcToPoint(Offset(r.left + corner, r.top), radius: radius)
+        ..lineTo(r.left + arm, r.top)
+        ..moveTo(r.right - arm, r.top)
+        ..lineTo(r.right - corner, r.top)
+        ..arcToPoint(Offset(r.right, r.top + corner), radius: radius)
+        ..lineTo(r.right, r.top + arm)
+        ..moveTo(r.right, r.bottom - arm)
+        ..lineTo(r.right, r.bottom - corner)
+        ..arcToPoint(Offset(r.right - corner, r.bottom), radius: radius)
+        ..lineTo(r.right - arm, r.bottom)
+        ..moveTo(r.left + arm, r.bottom)
+        ..lineTo(r.left + corner, r.bottom)
+        ..arcToPoint(Offset(r.left, r.bottom - corner), radius: radius)
+        ..lineTo(r.left, r.bottom - arm),
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _stroke,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_QRFramePainter oldDelegate) => false;
 }

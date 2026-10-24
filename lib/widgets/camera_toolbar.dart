@@ -33,10 +33,10 @@ class CameraToolbar extends StatelessWidget {
   /// Fires on the info button.
   final VoidCallback onInfo;
 
-  /// Starts QR scanning through the current camera stream.
+  /// Starts QR scanning through the current camera stream, or cancels the active scan.
   final VoidCallback? onScanQR;
 
-  /// Disables the QR entry point while scanning.
+  /// Highlights the QR button while scanning; tapping it again cancels.
   final bool isScanningQR;
 
   const CameraToolbar({
@@ -79,8 +79,9 @@ class CameraToolbar extends StatelessWidget {
             if (onScanQR != null)
               _ToolbarButton(
                 icon: CupertinoIcons.qrcode_viewfinder,
-                onPressed: isScanningQR ? null : onScanQR,
+                onPressed: onScanQR!,
                 semanticLabel: 'Scan QR',
+                selected: isScanningQR,
               ),
             _ToolbarButton(
               icon: CupertinoIcons.info,
@@ -96,26 +97,45 @@ class CameraToolbar extends StatelessWidget {
 
 class _ToolbarButton extends StatelessWidget {
   final IconData icon;
-  final VoidCallback? onPressed;
+  final VoidCallback onPressed;
   final String semanticLabel;
+
+  /// Toggle state for mode buttons such as QR scanning; null for plain actions.
+  final bool? selected;
 
   const _ToolbarButton({
     required this.icon,
     required this.onPressed,
     required this.semanticLabel,
+    this.selected,
   });
+
+  static const _activeColor = Color(0xFFFFD60A);
 
   @override
   Widget build(BuildContext context) {
+    final active = selected ?? false;
     return Expanded(
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: onPressed,
-        child: Icon(
-          icon,
-          color: onPressed == null ? Colors.white38 : Colors.white,
-          size: CameraToolbar.iconSize,
-          semanticLabel: semanticLabel,
+      child: Semantics(
+        selected: selected,
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: onPressed,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active ? _activeColor.withValues(alpha: 0.16) : null,
+            ),
+            child: SizedBox.square(
+              dimension: 44,
+              child: Icon(
+                icon,
+                color: active ? _activeColor : Colors.white,
+                size: CameraToolbar.iconSize,
+                semanticLabel: semanticLabel,
+              ),
+            ),
+          ),
         ),
       ),
     );

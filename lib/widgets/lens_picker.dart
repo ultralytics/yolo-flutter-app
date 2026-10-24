@@ -94,47 +94,14 @@ class LensPicker extends StatelessWidget {
     }
 
     // Content-hug pill like the iOS app, not a screen-wide bar.
-    return CupertinoSlidingSegmentedControl<double>(
-      groupValue: selected.zoomFactor,
-      backgroundColor: Colors.black.withValues(alpha: 0.38),
-      thumbColor: Colors.white.withValues(alpha: 0.18),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-      onValueChanged: (zoom) {
-        if (zoom == null) return;
-        final picked = lenses.firstWhere(
-          (l) => l.zoomFactor == zoom,
-          orElse: () => selected,
-        );
-        onLensSelected(picked);
-      },
-      children: {
-        for (final lens in lenses)
-          lens.zoomFactor: Semantics(
-            // Name each chip for screen readers (the bare `0.5`/`1`/`2` glyphs are ambiguous out of context) and
-            // expose its selected state. Visuals are unchanged.
-            button: true,
-            selected: lens.zoomFactor == selected.zoomFactor,
-            label: lens.label.isNotEmpty
-                ? lens.label
-                : '${_formatZoom(lens)}x zoom',
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text(
-                _formatZoom(lens),
-                style: TextStyle(
-                  // systemYellow when selected; white otherwise — matches the iOS reference exactly.
-                  color: lens.zoomFactor == selected.zoomFactor
-                      ? CupertinoColors.systemYellow
-                      : Colors.white,
-                  fontSize: 13,
-                  fontWeight: lens.zoomFactor == selected.zoomFactor
-                      ? FontWeight.w700
-                      : FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-      },
+    return CameraSegmentedControl<LensInfo>(
+      values: lenses,
+      selected: selected,
+      label: _formatZoom,
+      // Name each chip for screen readers (the bare `0.5`/`1`/`2` glyphs are ambiguous out of context).
+      semanticsLabel: (lens) =>
+          lens.label.isNotEmpty ? lens.label : '${_formatZoom(lens)}x zoom',
+      onSelected: onLensSelected,
     );
   }
 
@@ -156,5 +123,79 @@ class LensPicker extends StatelessWidget {
       if (zoom + 0.01 >= lens.zoomFactor) best = lens;
     }
     return best ?? sorted.first;
+  }
+}
+
+/// Camera-overlay segmented control with the lens picker's tokens above, shared by [LensPicker] and the showcase
+/// model sizes so both read as one control family. [isDimmed] values (e.g. sizes not on the device) render at 50% white
+/// and stay tappable.
+class CameraSegmentedControl<T extends Object> extends StatelessWidget {
+  /// Segments in display order.
+  final List<T> values;
+
+  /// Selected segment, or `null` for none.
+  final T? selected;
+
+  /// Visible segment text.
+  final String Function(T value) label;
+
+  /// Screen-reader name for each segment.
+  final String Function(T value) semanticsLabel;
+
+  /// Invoked with the tapped segment.
+  final ValueChanged<T> onSelected;
+
+  /// Dims segments that are not ready yet; `null` dims none.
+  final bool Function(T value)? isDimmed;
+
+  const CameraSegmentedControl({
+    super.key,
+    required this.values,
+    required this.selected,
+    required this.label,
+    required this.semanticsLabel,
+    required this.onSelected,
+    this.isDimmed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoSlidingSegmentedControl<T>(
+      groupValue: selected,
+      backgroundColor: Colors.black.withValues(alpha: 0.38),
+      thumbColor: Colors.white.withValues(alpha: 0.18),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+      onValueChanged: (value) {
+        if (value != null) onSelected(value);
+      },
+      children: {
+        for (final value in values)
+          value: Semantics(
+            button: true,
+            selected: value == selected,
+            label: semanticsLabel(value),
+            child: ExcludeSemantics(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Text(
+                  label(value),
+                  style: TextStyle(
+                    // systemYellow when selected; white otherwise — matches the iOS reference exactly.
+                    color: value == selected
+                        ? CupertinoColors.systemYellow
+                        : Colors.white.withValues(
+                            alpha: isDimmed?.call(value) ?? false ? 0.5 : 1,
+                          ),
+                    fontSize: 13,
+                    fontWeight: value == selected
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      },
+    );
   }
 }

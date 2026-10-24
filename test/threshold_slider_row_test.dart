@@ -33,9 +33,7 @@ void main() {
 
       final screenWidth = tester.getSize(find.byType(Scaffold)).width;
       final sliderRect = tester.getRect(find.byType(CupertinoSlider));
-      final captionRect = tester.getRect(
-        find.text('0.25 Confidence Threshold'),
-      );
+      final captionRect = tester.getRect(find.text('Confidence Threshold'));
 
       // Slider must live in the left ~46%: its left edge near the 20pt pad, its center well left of screen center.
       expect(
