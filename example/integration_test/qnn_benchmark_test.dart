@@ -136,11 +136,6 @@ void main() {
     await tester.runAsync(() async {
       final modelSizes = _modelSizes.split(',');
       expect(modelSizes, everyElement(isIn(['n', 's', 'm', 'l', 'x'])));
-      expect(
-        !_runQnn || modelSizes.every((size) => size == 'n'),
-        isTrue,
-        reason: 'QNN execution supports only the n model size',
-      );
       final image = await _download('https://ultralytics.com/images/bus.jpg');
       for (final (index, entry) in _tasks.entries.indexed) {
         // Rotate model-size order across tasks so no size is systematically measured last.

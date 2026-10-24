@@ -54,7 +54,7 @@ URL patterns:
 The Flutter resolver uses the LiteRT release for Android and the Core ML release for Apple platforms. QNN models are
 not auto-resolved by model ID — pass their URL or file path explicitly; any path ending in `_qnn.onnx` runs on the
 Hexagon NPU via the ONNX Runtime QNN Execution Provider (see the README's NPU section for the required Gradle opt-in).
-QNN assets are nano-only and use channel-last inputs with in-graph ArgMax class maps for semantic segmentation. The
+QNN assets cover every size (`n` to `x`) and use channel-last inputs with in-graph ArgMax class maps for semantic segmentation. The
 native iOS app uses the same Core ML release through `RemoteModels.swift`. These release tags are intentionally pinned
 in code for reproducible first-use downloads; when official assets move to a new release, update the resolver
 constants, docs, and URL tests in the same PR.
@@ -73,7 +73,7 @@ Official export properties:
 | Calibration        | None (w8a32 dynamic-range)                    | exporter default                        |
 | Postprocessing     | Android native                                | Swift/Core ML                           |
 
-Export scripts require `ultralytics>=8.4.142`. LiteRT uses `nms=None` for raw one-to-many outputs with Android-side
+Export scripts require `ultralytics>=8.4.188`. LiteRT uses `nms=None` for raw one-to-many outputs with Android-side
 NMS. Core ML uses `nms=False` for NMS-free detect, segment, pose, and OBB outputs; classification, semantic, and depth
 retain their native outputs. `nms=True` embeds NMS where supported. The `end2end` metadata field describes the
 exported graph; use `nms` to configure exports. Android `w8a32` uses int8 weights and FP32 activations without calibration.
@@ -238,7 +238,7 @@ Use Linux x86 or macOS with Python ≥3.10 for LiteRT export.
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install --torch-backend cpu "ultralytics-opencv-headless[export-litert]>=8.4.142"
+uv pip install --torch-backend cpu "ultralytics-opencv-headless[export-litert]>=8.4.188"
 uv run python scripts/export-tflite-models.py --verify
 ```
 
@@ -246,7 +246,7 @@ Use `--upload --repo ultralytics/yolo-flutter-app --tag v0.7.0` to replace the e
 script exports YOLO26 `n/s/m/l/x` models for every task in its `TASKS` registry, including depth. Output files are
 written under `exports/yolo26-tflite/release-assets/` and are ignored by Git. The `w8a32` format (int8 weights, FP32
 activations) is dynamic-range quantization, so no calibration data is required. Use Ultralytics QNN export on a
-supported QNN export host with `ultralytics>=8.4.188` and `nms=None` to export the matching nano QNN assets for HTP v73 and v81. QNN uses raw one-to-many outputs with Android-side NMS; it does not support the NMS-free head or embedded NMS.
+supported QNN export host with `ultralytics>=8.4.188` and `nms=None` to export the matching QNN assets for HTP v73 and v81. QNN uses raw one-to-many outputs with Android-side NMS; it does not support the NMS-free head or embedded NMS.
 
 Android inference runs on LiteRT 2.x with an automatic GPU -> CPU accelerator ladder. w8a32 assets are the official download artifacts (the smallest GPU-compatible litert format); the GPU delegate compiles the whole graph on supported devices and otherwise falls back to CPU. GPU coverage still depends on the device driver and graph, so confirm delegate placement on your target hardware (the GPU delegate runs the graph in FP16):
 
