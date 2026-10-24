@@ -1385,7 +1385,7 @@ class _QRScanOverlay extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'In Ultralytics Platform, open an $device export and choose Open on $device.',
+                      'In Ultralytics Platform, click the QR button on an $device export.',
                       textAlign: align,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.78),
