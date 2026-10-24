@@ -30,7 +30,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = ROOT / "exports" / "yolo26-tflite"
 DEFAULT_REPO = "ultralytics/yolo-flutter-app"
-DEFAULT_TAG = "v0.6.6"
+DEFAULT_TAG = "v0.7.0"
 QUANTIZE = "w8a32"
 SIZES = ("n", "s", "m", "l", "x")
 

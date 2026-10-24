@@ -41,13 +41,15 @@ class YOLOResolvedModel {
 class YOLOModelResolver {
   // Pinned release assets provide reproducible first-use downloads. Update these constants, docs, and URL tests together
   // when the official model asset set moves to a new release. The official Android assets are LiteRT `_w8a32.tflite`
-  // and opt-in QNN `_qnn.onnx` models on v0.6.6. QNN models use explicit paths rather than model-ID resolution.
+  // and opt-in QNN `_qnn.onnx` models on v0.7.0. QNN models use explicit paths rather than model-ID resolution.
   static const String _androidModelReleaseBaseUrl =
-      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6';
+      'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.7.0';
   static const String _iosModelReleaseBaseUrl =
       'https://github.com/ultralytics/yolo-ios-app/releases/download/v8.3.0';
-  static const String _officialModelCacheDirectory = 'mobile-standard-v1';
   static bool get _isIosLikePlatform => Platform.isIOS || Platform.isMacOS;
+  // Official assets keep their filenames across releases, so a platform's cache directory moves with its asset release.
+  static String get _officialModelCacheDirectory =>
+      _isIosLikePlatform ? 'mobile-standard-v1' : 'mobile-standard-v2';
 
   static const List<String> _yolo26Sizes = ['n', 's', 'm', 'l', 'x'];
   // Canonical YOLO26 task x size matrix. Keep generated so the app, docs, and export script all represent the same
@@ -194,9 +196,7 @@ class YOLOModelResolver {
     final artifact = _officialModelForId(modelId);
     if (artifact == null) return false;
     final documents = await getApplicationDocumentsDirectory();
-    final directory = Directory(
-      '${documents.path}/$_officialModelCacheDirectory',
-    );
+    final directory = _officialModelDirectory(documents);
     if (_isIosLikePlatform) {
       if (await _hasValidMlPackage(
         Directory('${directory.path}/${artifact.id}.mlpackage'),
@@ -213,14 +213,20 @@ class YOLOModelResolver {
     return await _loadAssetBytes('assets/models/$filename') != null;
   }
 
+  static Directory _officialModelDirectory(Directory documents) {
+    final stale = Directory('${documents.path}/mobile-standard-v1');
+    if (!_isIosLikePlatform && stale.existsSync()) {
+      stale.deleteSync(recursive: true);
+    }
+    return Directory('${documents.path}/$_officialModelCacheDirectory');
+  }
+
   static Future<String> _resolveAndroidOfficialModel(
     _OfficialModelArtifact artifact,
   ) async {
     final filename = artifact.androidAssetName;
     final documents = await getApplicationDocumentsDirectory();
-    final directory = Directory(
-      '${documents.path}/$_officialModelCacheDirectory',
-    );
+    final directory = _officialModelDirectory(documents);
     final modelFile = File('${directory.path}/$filename');
     if (modelFile.existsSync()) return modelFile.path;
     final legacyFile = File('${documents.path}/$filename');
@@ -243,9 +249,7 @@ class YOLOModelResolver {
   ) async {
     final archiveName = artifact.iosArchiveName;
     final documents = await getApplicationDocumentsDirectory();
-    final directory = Directory(
-      '${documents.path}/$_officialModelCacheDirectory',
-    );
+    final directory = _officialModelDirectory(documents);
     final modelDir = Directory('${directory.path}/${artifact.id}.mlpackage');
     if (await _hasValidMlPackage(modelDir)) return modelDir.path;
     final legacyModelDir = Directory(
@@ -282,7 +286,7 @@ class YOLOModelResolver {
         url.startsWith('$_androidModelReleaseBaseUrl/') ||
         url.startsWith('$_iosModelReleaseBaseUrl/');
     final directory = isOfficialAsset
-        ? Directory('${documents.path}/$_officialModelCacheDirectory')
+        ? _officialModelDirectory(documents)
         : documents;
 
     final suffix = _appleModelSuffix(fileName);

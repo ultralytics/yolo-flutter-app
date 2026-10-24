@@ -180,7 +180,7 @@ void main() {
             modelId,
             iosLike: false,
           ),
-          'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.6.6/${modelId}_w8a32.tflite',
+          'https://github.com/ultralytics/yolo-flutter-app/releases/download/v0.7.0/${modelId}_w8a32.tflite',
         );
         expect(
           YOLOModelResolver.officialModelDownloadUrlForTesting(
@@ -1019,7 +1019,7 @@ void main() {
         () async {
           final cachedPath = _isAppleTestPlatform
               ? '/tmp/yolo_test/mobile-standard-v1/yolo26n.mlpackage'
-              : '/tmp/yolo_test/mobile-standard-v1/yolo26n_w8a32.tflite';
+              : '/tmp/yolo_test/mobile-standard-v2/yolo26n_w8a32.tflite';
           if (_isAppleTestPlatform) {
             Directory(cachedPath).createSync(recursive: true);
             File('$cachedPath/Manifest.json').writeAsStringSync('{}');
@@ -1098,7 +1098,7 @@ void main() {
         } else {
           expect(
             officialPath,
-            '/tmp/yolo_test/mobile-standard-v1/yolo26s_w8a32.tflite',
+            '/tmp/yolo_test/mobile-standard-v2/yolo26s_w8a32.tflite',
           );
           expect(File(officialPath).readAsBytesSync(), bytes);
           expect(assetPath, '/tmp/yolo_test/custom.tflite');

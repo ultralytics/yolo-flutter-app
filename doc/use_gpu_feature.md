@@ -62,7 +62,7 @@ YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)
 
 Here the FP32 model runs in FP16 on the LiteRT GPU delegate, `nms=None` selects the raw one-to-many head and leaves NMS to the plugin (requires `ultralytics>=8.4.142`). Keep `useGpu: true` and verify the actual delegate from LiteRT logs.
 
-On a Galaxy S26, the legacy `yolo26n_int8.tflite` asset compiled fully with the LiteRT OpenCL GPU delegate (`Replacing 395 out of 395 node(s) with delegate (LITERT_CL)`) and ran around **15 FPS / 32 ms** in the live camera example.
+On a Galaxy S26, the official `yolo26n_w8a32.tflite` asset compiles fully with the LiteRT OpenCL GPU delegate (`Replacing 414 out of 414 node(s) with delegate (LITERT_CL)`) and takes **15.9 ms** per image (11.5 ms inference); the [performance guide](performance.md) has every task and device.
 
 ### iOS
 
