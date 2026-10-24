@@ -50,6 +50,12 @@ class YOLOShowcase extends StatefulWidget {
   /// `package_info_plus` version, e.g. `'v${info.version}'`.
   final String? versionLabel;
 
+  /// An installed model to select, including models imported by the host application.
+  final YOLOInstalledModel? model;
+
+  /// Host-owned import UI, offered in the model picker.
+  final VoidCallback? onImportModel;
+
   const YOLOShowcase({
     super.key,
     this.initialTask = YOLOTask.detect,
@@ -59,6 +65,8 @@ class YOLOShowcase extends StatefulWidget {
     this.controller,
     this.theme,
     this.versionLabel,
+    this.model,
+    this.onImportModel,
   });
 
   @override
@@ -78,6 +86,8 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   // model that isn't loaded.
   late YOLOTask _runningTask;
   late String _runningSize;
+  YOLOInstalledModel? _currentCustomModel;
+  YOLOInstalledModel? _runningCustomModel;
   Set<String> _availableSizes = {};
   String? _downloadingSize;
   double? _downloadFraction;
@@ -211,9 +221,21 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   Future<void> _bootstrap() async {
     final prefs = await SharedPreferences.getInstance();
     final storedTask = prefs.getString(_prefsTaskKey);
+    final models = await YOLOModelManager.installedModels();
+    final selected =
+        widget.model ??
+        models
+            .where(
+              (model) =>
+                  model.id ==
+                  prefs.getString('ultralytics_yolo.showcase.model'),
+            )
+            .firstOrNull;
     if (mounted) {
       setState(() {
-        if (storedTask != null) {
+        _currentCustomModel = selected;
+        if (selected != null) _currentTask = selected.task;
+        if (storedTask != null && selected == null) {
           final parsed = YOLOTaskParsing.tryParse(storedTask);
           if (parsed != null) _currentTask = parsed;
         }
@@ -223,6 +245,79 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     if (mounted) setState(() => _availableSizes = initial);
     // Defer lens enumeration to after the platform view is initialized.
     unawaited(_refreshLenses());
+  }
+
+  @override
+  void didUpdateWidget(covariant YOLOShowcase oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.model != oldWidget.model && widget.model != null) {
+      _selectCustomModel(widget.model!);
+    }
+  }
+
+  void _selectCustomModel(YOLOInstalledModel model) {
+    _suppressInferenceForModelSwitch();
+    setState(() {
+      _currentCustomModel = model;
+      _currentTask = model.task;
+      _isModelLoading = true;
+      _modelErrorMessage = null;
+      _loadingStatusText = 'Loading ${model.name}';
+      _downloadingSize = null;
+      _downloadFraction = null;
+    });
+  }
+
+  Future<void> _showModels() async {
+    final models = await YOLOModelManager.installedModels();
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('My models')),
+            for (final model in models)
+              ListTile(
+                title: Text(model.name),
+                subtitle: Text(model.task.label),
+                selected: _currentCustomModel?.id == model.id,
+                onTap: () {
+                  Navigator.pop(context);
+                  _selectCustomModel(model);
+                },
+                trailing: IconButton(
+                  tooltip: 'Remove model',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await YOLOModelManager.removeInstalledModel(model);
+                    if (mounted && _currentCustomModel?.id == model.id) {
+                      _onSizeChanged('n');
+                    }
+                  },
+                ),
+              ),
+            if (models.isEmpty)
+              const ListTile(
+                title: Text(
+                  'Import a model from Ultralytics Platform to use it offline.',
+                ),
+              ),
+            if (widget.onImportModel != null)
+              ListTile(
+                leading: const Icon(Icons.link),
+                title: const Text('Paste Platform import link'),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onImportModel!();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _refreshLenses() async {
@@ -261,6 +356,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   static const Set<String> _allSizes = {'n', 's', 'm', 'l', 'x'};
 
   String get _currentModelId =>
+      _currentCustomModel?.path ??
       _composeModelId(task: _currentTask, size: _currentSize);
 
   static String _composeModelId({
@@ -305,11 +401,27 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     final preserveError =
         _modelErrorMessage != null &&
         loadedTask == _runningTask &&
-        loadedSize == _runningSize;
+        modelPath ==
+            (_runningCustomModel?.path ??
+                _composeModelId(task: _runningTask, size: _runningSize));
     setState(() {
       _isModelLoading = false;
       _loadingStatusText = null;
       if (!preserveError) _modelErrorMessage = null;
+      _runningTask = loadedTask;
+      _runningCustomModel = _currentCustomModel?.path == modelPath
+          ? _currentCustomModel
+          : null;
+      unawaited(
+        SharedPreferences.getInstance().then(
+          (prefs) => _runningCustomModel == null
+              ? prefs.remove('ultralytics_yolo.showcase.model')
+              : prefs.setString(
+                  'ultralytics_yolo.showcase.model',
+                  _runningCustomModel!.id,
+                ),
+        ),
+      );
       if (loadedSize != null) {
         _availableSizes = {..._availableSizes, loadedSize};
         _runningTask = loadedTask;
@@ -335,6 +447,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
       _modelErrorMessage = _modelSwitchErrorMessage(error);
       _currentSize = _runningSize;
       _currentTask = _runningTask;
+      _currentCustomModel = _runningCustomModel;
     });
     _restoreInferenceAfterModelSwitch();
     unawaited(_refreshAvailableSizes(_runningTask));
@@ -363,7 +476,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   void _onTaskChanged(YOLOTask task) {
-    if (task == _currentTask) return;
+    if (task == _currentTask && _currentCustomModel == null) return;
     HapticFeedback.selectionClick();
     // Match the native iOS app: switching tasks always resets the model size to nano (the smallest/first size)
     // rather than carrying over the previously selected size.
@@ -374,6 +487,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     _suppressInferenceForModelSwitch();
     setState(() {
       _currentTask = task;
+      _currentCustomModel = null;
       _currentSize = targetSize;
       // Abandon any in-flight download chip for the previous selection (the progress listener only resurrects it for
       // the new current size).
@@ -397,7 +511,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   }
 
   void _onSizeChanged(String size) {
-    if (size == _currentSize) return;
+    if (size == _currentSize && _currentCustomModel == null) return;
     HapticFeedback.selectionClick();
     final isCached = _availableSizes.contains(size);
     YOLOModelManager.clearDownloadCancellation(
@@ -406,6 +520,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     _suppressInferenceForModelSwitch();
     setState(() {
       _currentSize = size;
+      _currentCustomModel = null;
       // Abandon any in-flight download chip for the previous selection (see `_onTaskChanged`).
       _downloadingSize = isCached ? null : size;
       _downloadFraction = isCached ? null : 0;
@@ -442,6 +557,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
     YOLOModelManager.cancelDownload(_currentModelId);
     setState(() {
       _currentTask = _runningTask;
+      _currentCustomModel = _runningCustomModel;
       _currentSize = _runningSize;
       _isModelLoading = false;
       _downloadingSize = null;
@@ -655,10 +771,11 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
                 ),
                 FocusReticle(position: _focusPosition),
                 _ShowcaseOverlay(
-                  modelName: 'YOLO26$_currentSize',
+                  modelName: _currentCustomModel?.name ?? 'YOLO26$_currentSize',
                   metrics: _metrics,
                   task: _currentTask,
-                  size: _currentSize,
+                  size: _currentCustomModel == null ? _currentSize : '',
+                  onModels: _isModelLoading ? null : _showModels,
                   availableSizes: _availableSizes,
                   supportedSizes: _allSizes,
                   downloadingSize: _downloadingSize,
@@ -848,6 +965,7 @@ class _ShowcaseOverlay extends StatelessWidget {
     required this.onToggleTorch,
     required this.onShare,
     required this.onInfo,
+    required this.onModels,
   });
 
   final String modelName;
@@ -882,6 +1000,7 @@ class _ShowcaseOverlay extends StatelessWidget {
   final VoidCallback onToggleTorch;
   final VoidCallback onShare;
   final VoidCallback onInfo;
+  final VoidCallback? onModels;
 
   // iOS YOLOView ports — kept as constants so the layout reads like the Swift source.
   static const double _sidePadding = 20;
@@ -1021,6 +1140,11 @@ class _ShowcaseOverlay extends StatelessWidget {
           onSizeChanged: onSizeChanged,
           downloadingSize: downloadingSize,
           downloadFraction: downloadFraction,
+        ),
+        TextButton.icon(
+          onPressed: onModels,
+          icon: const Icon(Icons.expand_more),
+          label: const Text('My models'),
         ),
         if (modelErrorMessage != null)
           Padding(

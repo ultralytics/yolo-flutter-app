@@ -137,13 +137,25 @@ class YOLOModelResolver {
     return Map<String, dynamic>.from(result);
   }
 
-  static Future<String> preparePath(String modelPath) =>
-      _resolvePath(modelPath);
+  /// [filename] provides stable installation identity when a remote URL is signed or has a generic basename.
+  static Future<String> preparePath(
+    String modelPath, {
+    String? filename,
+    int? expectedSize,
+  }) => _resolvePath(modelPath, filename: filename, expectedSize: expectedSize);
 
-  static Future<String> _resolvePath(String source) async {
+  static Future<String> _resolvePath(
+    String source, {
+    String? filename,
+    int? expectedSize,
+  }) async {
     final uri = Uri.tryParse(source);
     if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
-      return _downloadRemoteModel(uri);
+      return _downloadRemoteModel(
+        uri,
+        filename: filename,
+        expectedSize: expectedSize,
+      );
     }
 
     if (source.startsWith('assets/')) {
@@ -274,9 +286,22 @@ class YOLOModelResolver {
     return _extractMlPackageArchiveFile(archiveFile, archiveName, modelDir);
   }
 
-  static Future<String> _downloadRemoteModel(Uri uri) async {
+  static Future<String> _downloadRemoteModel(
+    Uri uri, {
+    String? filename,
+    int? expectedSize,
+  }) async {
     final documents = await getApplicationDocumentsDirectory();
-    final fileName = uri.pathSegments.isEmpty ? 'model' : uri.pathSegments.last;
+    final fileName =
+        filename ??
+        (uri.pathSegments.isEmpty ? 'model' : uri.pathSegments.last);
+    if (fileName.isEmpty ||
+        fileName.contains('/') ||
+        fileName.contains('\\') ||
+        fileName == '.' ||
+        fileName == '..') {
+      throw ModelLoadingException('Invalid model filename.');
+    }
     final url = uri.toString();
     final isOfficialAsset =
         url.startsWith('$_androidModelReleaseBaseUrl/') ||
@@ -299,7 +324,12 @@ class YOLOModelResolver {
         }
       }
       final archiveFile = File('${directory.path}/$fileName');
-      await _downloadToFile(url, archiveFile, progressId: modelName);
+      await _downloadToFile(
+        url,
+        archiveFile,
+        progressId: modelName,
+        expectedSize: expectedSize,
+      );
       return _extractMlPackageArchiveFile(archiveFile, fileName, targetDir);
     }
 
@@ -313,6 +343,7 @@ class YOLOModelResolver {
       url,
       file,
       progressId: _normalizeOfficialModelId(fileName),
+      expectedSize: expectedSize,
     );
     return file.path;
   }
@@ -380,6 +411,7 @@ class YOLOModelResolver {
     String url,
     File targetFile, {
     String? progressId,
+    int? expectedSize,
   }) async {
     targetFile.parent.createSync(recursive: true);
     final client = HttpClient();
@@ -409,7 +441,7 @@ class YOLOModelResolver {
       checkCancelled();
       if (response.statusCode != HttpStatus.ok) {
         throw ModelLoadingException(
-          'Failed to download model from $url (HTTP ${response.statusCode}).',
+          'Failed to download model (HTTP ${response.statusCode}).',
         );
       }
 
@@ -428,8 +460,8 @@ class YOLOModelResolver {
         await response.forEach((chunk) {
           checkCancelled();
           sink.add(chunk);
-          if (progressId == null || totalBytes <= 0) return;
           receivedBytes += chunk.length;
+          if (progressId == null || totalBytes <= 0) return;
           // Cap the in-flight fraction at 0.99 so listeners never observe `1.0` from the streaming loop — the terminal
           // emit at `1.0` is reserved for the post-rename success path so a chip never lights up "downloaded" for a
           // transfer that turns out to be 0-byte / corrupt.
@@ -445,6 +477,12 @@ class YOLOModelResolver {
       }
 
       checkCancelled();
+      if ((expectedSize != null && receivedBytes != expectedSize) ||
+          (totalBytes >= 0 && receivedBytes != totalBytes)) {
+        throw ModelLoadingException(
+          'Model download was incomplete. Please try again.',
+        );
+      }
       // Some endpoints (e.g. GitHub release redirects that resolve to a 200 with no body, or chunked-encoding
       // responses that completed with zero chunks) leave the `.download` file in a state where openWrite + close
       // never materialised a real file on disk. Fall through to renameSync would then throw `PathNotFoundException`
@@ -453,7 +491,7 @@ class YOLOModelResolver {
       // marks the chip "downloaded" never sees success for a failed transfer.
       if (!temporaryFile.existsSync() || temporaryFile.lengthSync() == 0) {
         throw ModelLoadingException(
-          'Downloaded 0 bytes for $url. The asset may be missing from the release.',
+          'Downloaded an empty model file. Please try again.',
         );
       }
 

@@ -104,6 +104,12 @@ final yolo = YOLO(
 );
 ```
 
+### Platform imports and offline selection
+
+The example app accepts short-lived Platform import links through verified Android App Links or **My models → Paste Platform import link**. It resolves the descriptor on Platform, confirms the task and device format, and downloads directly from storage. A full export ID supplies the filename to `YOLOModelResolver.preparePath(..., filename: ..., expectedSize: ...)`, preventing collisions between signed URLs or matching model basenames. The resolver streams to a temporary file and validates the byte count before installation; `resolve` checks embedded task metadata before the model is saved.
+
+`YOLOModelManager.installedModels`, `saveInstalledModel`, and `removeInstalledModel` own the local catalog. `YOLOShowcase(model: installedModel, onImportModel: ...)` lets the host select an installed model and provide import presentation. The shared picker persists successful selection and restores models offline. The app-link handler is confined to the example; other plugin consumers configure their own domain associations. Platform associates the production iOS URL with the native iOS app, so the Flutter iOS example uses pasted import links.
+
 ## 🍳 Custom Model Cookbook
 
 ### 1. Bundled Flutter asset on Android

@@ -1145,6 +1145,12 @@ void main() {
             statusCode: HttpStatus.ok,
             chunks: [],
           ),
+          'https://another.test/model.tflite': _FakeHttpResponse(
+            statusCode: HttpStatus.ok,
+            chunks: [
+              [4, 5, 6],
+            ],
+          ),
         });
 
         await HttpOverrides.runZoned(() async {
@@ -1160,6 +1166,43 @@ void main() {
             modelPath,
           );
           expect(client.requestedUrls, ['https://example.test/model.tflite']);
+
+          final first = await YOLOModelResolver.preparePath(
+            'https://example.test/model.tflite',
+            filename: 'export-one.tflite',
+            expectedSize: 3,
+          );
+          final second = await YOLOModelResolver.preparePath(
+            'https://another.test/model.tflite',
+            filename: 'export-two.tflite',
+            expectedSize: 3,
+          );
+          expect(first, isNot(second));
+          expect(File(first).readAsBytesSync(), [1, 2, 3]);
+          expect(File(second).readAsBytesSync(), [4, 5, 6]);
+          await expectLater(
+            YOLOModelResolver.preparePath(
+              'https://example.test/model.tflite',
+              filename: 'incomplete.tflite',
+              expectedSize: 4,
+            ),
+            throwsA(isA<ModelLoadingException>()),
+          );
+          expect(
+            File('/tmp/yolo_test/incomplete.tflite').existsSync(),
+            isFalse,
+          );
+          expect(
+            File('/tmp/yolo_test/incomplete.tflite.download').existsSync(),
+            isFalse,
+          );
+          await expectLater(
+            YOLOModelResolver.preparePath(
+              'https://example.test/model.tflite',
+              filename: '../outside.tflite',
+            ),
+            throwsA(isA<ModelLoadingException>()),
+          );
 
           if (_isAppleTestPlatform) {
             final packagePath = await YOLOModelResolver.preparePath(

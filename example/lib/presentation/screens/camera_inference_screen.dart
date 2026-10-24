@@ -1,13 +1,18 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
 import 'dart:io';
+import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
+import 'package:ultralytics_yolo/core/yolo_model_manager.dart';
+import 'package:ultralytics_yolo/core/yolo_model_resolver.dart';
 
 /// Real-time YOLO camera inference. Thin shell over [YOLOShowcase] that wires the capture callback to the platform
 /// share sheet via `share_plus` and stamps the live app version in the bottom-left (matching `yolo-ios-app`). Kept
@@ -22,11 +27,187 @@ class CameraInferenceScreen extends StatefulWidget {
 
 class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   String? _versionLabel;
+  YOLOInstalledModel? _model;
+  StreamSubscription<Uri>? _links;
+  StreamSubscription<DownloadProgress>? _progress;
+  String? _importId;
+  Future<void>? _activeImport;
+  double _fraction = 0;
 
   @override
   void initState() {
     super.initState();
     _loadVersion();
+    _links = AppLinks().uriLinkStream.listen(
+      (uri) => unawaited(_importModel(uri)),
+    );
+    _progress = YOLOModelManager.downloadProgress.listen((progress) {
+      if (mounted && progress.modelId == _importId) {
+        setState(() => _fraction = progress.fraction);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _links?.cancel();
+    _progress?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _pasteImportLink() async {
+    final input = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import model'),
+        content: TextField(
+          controller: input,
+          autofocus: true,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(labelText: 'Platform import link'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, input.text),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+    input.dispose();
+    if (value != null) await _importModel(Uri.parse(value));
+  }
+
+  Future<void> _importModel(Uri uri) async {
+    if (_activeImport != null) return;
+    _activeImport = _resolveAndImportModel(uri);
+    try {
+      await _activeImport;
+    } finally {
+      _activeImport = null;
+    }
+  }
+
+  Future<void> _resolveAndImportModel(Uri uri) async {
+    try {
+      final parts = uri.pathSegments;
+      if (uri.scheme != 'https' ||
+          uri.host != 'platform.ultralytics.com' ||
+          uri.hasPort ||
+          uri.userInfo.isNotEmpty ||
+          parts.length != 3 ||
+          parts[0] != 'mobile' ||
+          parts[1] != 'models' ||
+          !RegExp(r'^[0-9a-f]{24}$').hasMatch(parts[2]) ||
+          uri.fragment.length > 128) {
+        throw const FormatException(
+          'Use a mobile import link from Ultralytics Platform.',
+        );
+      }
+      final client = HttpClient();
+      Map<String, dynamic> descriptor;
+      try {
+        final request = await client.getUrl(
+          Uri.https(
+            'platform.ultralytics.com',
+            '/api/mobile/models/${parts[2]}',
+            Uri.splitQueryString(uri.fragment),
+          ),
+        );
+        final response = await request.close();
+        if (response.statusCode != HttpStatus.ok) {
+          throw const FormatException(
+            'Import link expired or unavailable. Create a new QR code in Platform.',
+          );
+        }
+        descriptor =
+            jsonDecode(await utf8.decoder.bind(response).join())
+                as Map<String, dynamic>;
+      } finally {
+        client.close(force: true);
+      }
+      final task = YOLOTaskParsing.tryParse(descriptor['task'] as String?);
+      final format = descriptor['format'];
+      final extension = {
+        'litert': 'tflite',
+        'coreml': 'mlpackage.zip',
+        'coreai': 'aimodel.zip',
+      }[format];
+      final download = Uri.parse(descriptor['downloadUrl'] as String);
+      if (descriptor['version'] != 1 ||
+          descriptor['exportId'] != parts[2] ||
+          task == null ||
+          extension == null ||
+          descriptor['filename'] != '${parts[2]}.$extension' ||
+          download.scheme != 'https' ||
+          (descriptor['size'] as num) <= 0 ||
+          (Platform.isAndroid ? format != 'litert' : format == 'litert')) {
+        throw const FormatException(
+          'This export is incompatible with this device. Export LiteRT for Android or Core ML for iPhone.',
+        );
+      }
+      final existing = (await YOLOModelManager.installedModels())
+          .where((model) => model.id == parts[2])
+          .firstOrNull;
+      if (!mounted) return;
+      if (existing != null) {
+        setState(() => _model = existing);
+        return;
+      }
+      final name = descriptor['name'] as String;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(name),
+          content: Text(
+            '${task.label} · ${((descriptor['size'] as num) / (1024 * 1024)).toStringAsFixed(1)} MB\nDownload for offline use?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Download'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || confirmed != true) return;
+      setState(() {
+        _importId = parts[2];
+        _fraction = 0;
+      });
+      YOLOModelManager.clearDownloadCancellation(parts[2]);
+      final path = await YOLOModelResolver.preparePath(
+        download.toString(),
+        filename: descriptor['filename'] as String,
+        expectedSize: (descriptor['size'] as num).toInt(),
+      );
+      await YOLOModelResolver.resolve(modelPath: path, task: task);
+      final model = YOLOInstalledModel(
+        id: parts[2],
+        name: name,
+        task: task,
+        path: path,
+      );
+      await YOLOModelManager.saveInstalledModel(model);
+      if (mounted) setState(() => _model = model);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Model import failed: $error')));
+      }
+    } finally {
+      if (mounted) setState(() => _importId = null);
+    }
   }
 
   Future<void> _loadVersion() async {
@@ -61,7 +242,40 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
   Widget build(BuildContext context) {
     // Show all 7 tasks (Detect / Segment / Semantic / Depth / Classify / Pose / OBB) to match the iOS app's task control.
     return Scaffold(
-      body: YOLOShowcase(versionLabel: _versionLabel, onCapture: _onCapture),
+      body: Stack(
+        children: [
+          YOLOShowcase(
+            versionLabel: _versionLabel,
+            onCapture: _onCapture,
+            model: _model,
+            onImportModel: () => unawaited(_pasteImportLink()),
+          ),
+          if (_importId != null)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.7),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        value: _fraction < 1 ? _fraction : null,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Installing model…'),
+                      TextButton(
+                        onPressed: _fraction >= 1
+                            ? null
+                            : () => YOLOModelManager.cancelDownload(_importId!),
+                        child: const Text('Cancel'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

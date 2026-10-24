@@ -1,3 +1,8 @@
+## 0.6.17
+
+- **Feature**: Import custom models from Ultralytics Platform links, select them in My models, and retain them for offline use.
+- **Fix**: Keep custom installation and accelerator caches distinct by export identity.
+
 ## 0.6.16
 
 - **Fix**: Stretch depth inputs to match validation and calibration on Android and iOS, retaining the full model-resolution
