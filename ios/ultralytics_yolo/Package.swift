@@ -3,7 +3,6 @@
 //
 // Swift Package Manager manifest for the ultralytics_yolo Flutter plugin's iOS layer. CocoaPods (see
 // ../ultralytics_yolo.podspec) and SwiftPM compile the same Sources/ultralytics_yolo tree; keep the two in sync.
-// `import Flutter` resolves implicitly through Flutter's SPM integration, so Flutter is not declared as a dependency.
 
 import PackageDescription
 
@@ -17,6 +16,7 @@ let package = Package(
     .library(name: "ultralytics-yolo", targets: ["ultralytics_yolo"])
   ],
   dependencies: [
+    .package(name: "FlutterFramework", path: "../FlutterFramework"),
     // Shared YOLO inference core, the single source of truth for iOS (https://github.com/ultralytics/yolo-ios-app).
     // Mirrors the CocoaPods `s.dependency 'UltralyticsYOLO', '>= 8.9.17', '< 9.0'` range in the podspec.
     .package(url: "https://github.com/ultralytics/yolo-ios-app.git", "8.9.17"..<"9.0.0")
@@ -25,6 +25,7 @@ let package = Package(
     .target(
       name: "ultralytics_yolo",
       dependencies: [
+        .product(name: "FlutterFramework", package: "FlutterFramework"),
         .product(name: "UltralyticsYOLO", package: "yolo-ios-app")
       ],
       exclude: ["README.md"],
