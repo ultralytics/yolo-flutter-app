@@ -231,7 +231,7 @@ android {
 | **iOS**     | 13.0+           | 15.0+         |
 | **Android** | API 24+         | API 28+       |
 | **Kotlin**  | 2.3+ (Android)  | Latest stable |
-| **Flutter** | 3.32.1+         | Latest stable |
+| **Flutter** | 3.41.0+         | Latest stable |
 | **Dart**    | 3.8.1+          | Latest stable |
 
 ## 🔍 Troubleshooting Installation
