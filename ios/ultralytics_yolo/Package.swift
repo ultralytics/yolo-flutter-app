@@ -19,14 +19,14 @@ let package = Package(
     .package(name: "FlutterFramework", path: "../FlutterFramework"),
     // Shared YOLO inference core, the single source of truth for iOS (https://github.com/ultralytics/yolo-ios-app).
     // Mirrors the CocoaPods `s.dependency 'UltralyticsYOLO', '>= 8.9.17', '< 9.0'` range in the podspec.
-    .package(url: "https://github.com/ultralytics/yolo-ios-app.git", "8.9.17"..<"9.0.0")
+    .package(url: "https://github.com/ultralytics/yolo-ios-app.git", "8.9.17"..<"9.0.0"),
   ],
   targets: [
     .target(
       name: "ultralytics_yolo",
       dependencies: [
         .product(name: "FlutterFramework", package: "FlutterFramework"),
-        .product(name: "UltralyticsYOLO", package: "yolo-ios-app")
+        .product(name: "UltralyticsYOLO", package: "yolo-ios-app"),
       ],
       exclude: ["README.md"],
       resources: [
