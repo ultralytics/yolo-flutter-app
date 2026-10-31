@@ -94,8 +94,8 @@ OpenCL (`LITERT_CL`).
 The Tensor NPU has no YOLO LiteRT column: on-device compilation fails because Google's EdgeTPU service rejects apps
 that are not on its allowlist, and LiteRT then falls back to the GPU. Google supports Tensor only through
 [ahead-of-time compilation](https://developers.google.com/edge/litert/next/npu) with the
-[Tensor SDK](https://developers.google.com/edge/litert/next/tensor-sdk) beta, which requires sign-up. A third-party model
-precompiled for Tensor G5 ran fully on the NPU from the same non-allowlisted app, but we have not yet compiled or
+[Tensor SDK](https://developers.google.com/edge/litert/next/tensor-sdk) beta, which requires sign-up. A third-party
+model precompiled for Tensor G5 ran fully on the NPU from the same non-allowlisted app, but we have not yet compiled or
 measured YOLO this way.
 
 ### Galaxy S26 Exynos w8a32 LiteRT
