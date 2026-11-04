@@ -54,10 +54,12 @@ jobs:
           PREVIOUS_TAG: ${{ steps.check_pubdev.outputs.previous_tag }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          git config --global user.name "UltralyticsAssistant"
-          git config --global user.email "web@ultralytics.com"
-          git tag -a "$CURRENT_TAG" -m "$(git log -1 --pretty=%B)"
-          git push origin "$CURRENT_TAG"
+          if [ -z "$(git tag -l "$CURRENT_TAG")" ]; then
+            git config --global user.name "UltralyticsAssistant"
+            git config --global user.email "web@ultralytics.com"
+            git tag -a "$CURRENT_TAG" -m "$(git log -1 --pretty=%B)"
+            git push origin "$CURRENT_TAG"
+          fi
           ultralytics-actions-summarize-release
           uv cache prune --ci
 
