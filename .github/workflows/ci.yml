@@ -121,7 +121,7 @@ jobs:
         run: scripts/build_play_store_assets.sh --verify-aab example/build/app/outputs/bundle/release/app-release.aab
 
   example-ios:
-    runs-on: macos-26
+    runs-on: macos-latest
     timeout-minutes: 35
 
     steps:
