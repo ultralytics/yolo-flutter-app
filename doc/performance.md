@@ -62,8 +62,8 @@ Adreno GPU, and Hexagon NPU.
 
 **Benchmark:** Mean of 15 `predict()` calls after 3 warmups on `bus.jpg`, using `ultralytics_yolo` `0.7.1` and the
 official `v0.7.0` assets (Ultralytics 8.4.188 exports). Backend order rotates between tasks in one sequential sweep.
-Native logs confirmed that every CPU row used LiteRT CPU/XNNPACK, every GPU row delegated the complete graph to LiteRT
-OpenCL (`LITERT_CL`), and every QNN row used the Hexagon HTP backend. The LiteRT NPU column runs an FP32 export
+Native logs confirmed that every CPU row used [LiteRT](https://docs.ultralytics.com/integrations/litert) CPU/XNNPACK, every GPU row delegated the complete graph to LiteRT
+OpenCL (`LITERT_CL`), and every [QNN](https://docs.ultralytics.com/integrations/qnn) row used the Hexagon HTP backend. The LiteRT NPU column runs an FP32 export
 (`format=litert` without `quantize`) through `litert-npu-runtime-qualcomm` 2.3.0, which compiles it on the device; the
 first load includes that compile (about 0.3 s for `n`, up to 6 s for `x`). It was measured with a prototype NPU build of
 the plugin, which this release does not include. LiteRT reports an NPU compile even when it silently runs the graph on
@@ -146,7 +146,7 @@ official `v0.7.0` assets (Ultralytics 8.4.188 exports). CPU/GPU order alternates
 Native logs confirmed that every CPU row used LiteRT CPU/XNNPACK and every GPU row delegated the complete graph to LiteRT
 OpenCL (`LITERT_CL`).
 The NPU column uses the same FP32 exports and prototype build as the Xiaomi 17, through
-`litert-npu-runtime-mediatek` 2.3.0. Depth and OBB have no NPU result: the MediaTek NPU compiler rejects their
+`litert-npu-runtime-mediatek` 2.3.0. Depth and OBB have no NPU result: the [MediaTek NPU](https://docs.ultralytics.com/integrations/mediatek) compiler rejects their
 exponential and trigonometric ops, and LiteRT runs those graphs on the GPU.
 
 ### iPhone 17 Pro Core ML
