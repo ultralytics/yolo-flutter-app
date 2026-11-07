@@ -1516,9 +1516,19 @@ class YOLOView @JvmOverloads constructor(
     private inner class OverlayView(context: Context) : View(context) {
         private val paint = Paint().apply { isAntiAlias = true }
         private val maskPaint = Paint()
+        // Reused per frame so boxes, labels and keypoints allocate nothing.
+        private val boxRect = RectF()
+        private val labelRect = RectF()
+        private val labelFontMetrics = Paint.FontMetrics()
+        private val labelChars = StringBuilder()
+        private var poseXY = FloatArray(0)
 
-        private fun labelText(name: String, confidence: Float) =
-            "$name ${"%.1f".format(confidence * 100)}"
+        /** "name 90.5": the class name and confidence percent with one decimal, built without allocating. */
+        private fun labelText(name: String, confidence: Float): CharSequence {
+            val tenths = (confidence * 1000 + 0.5f).toInt()
+            labelChars.setLength(0)
+            return labelChars.append(name).append(' ').append(tenths / 10).append('.').append(tenths % 10)
+        }
 
         private fun colorFor(index: Int, confidence: Float): Int {
             val alpha = (confidence * 255).toInt().coerceIn((0.6f * 255).toInt(), 255)
@@ -1533,7 +1543,7 @@ class YOLOView @JvmOverloads constructor(
 
         private fun drawLabel(
             canvas: Canvas,
-            text: String,
+            text: CharSequence,
             color: Int,
             anchorLeft: Float,
             anchorTop: Float,
@@ -1543,8 +1553,9 @@ class YOLOView @JvmOverloads constructor(
             centered: Boolean = false
         ) {
             paint.textSize = LABEL_TEXT_SIZE
-            val fm = paint.fontMetrics
-            val textWidth = paint.measureText(text)
+            val fm = labelFontMetrics
+            paint.getFontMetrics(fm)
+            val textWidth = paint.measureText(text, 0, text.length)
             val textHeight = fm.bottom - fm.top
             val pad = 8f
             val labelWidth = textWidth + 2 * pad
@@ -1571,15 +1582,15 @@ class YOLOView @JvmOverloads constructor(
                 labelTop = labelBottom - labelHeight
             }
 
-            val bgRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
+            labelRect.set(labelLeft, labelTop, labelRight, labelBottom)
             paint.style = Paint.Style.FILL
             paint.color = color
-            canvas.drawRoundRect(bgRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
+            canvas.drawRoundRect(labelRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
 
             paint.color = labelTextColor(color)
-            val centerY = (bgRect.top + bgRect.bottom) / 2
+            val centerY = (labelRect.top + labelRect.bottom) / 2
             val baseline = centerY - (fm.descent + fm.ascent) / 2
-            canvas.drawText(text, bgRect.left + pad, baseline, paint)
+            canvas.drawText(text, 0, text.length, labelRect.left + pad, baseline, paint)
         }
 
         init {
@@ -1637,14 +1648,15 @@ class YOLOView @JvmOverloads constructor(
             }
 
             fun mapRect(rect: RectF): RectF {
-                val topLeft = mapPoint(rect.left, rect.top)
-                val bottomRight = mapPoint(rect.right, rect.bottom)
-                return RectF(
-                    minOf(topLeft.x, bottomRight.x),
-                    minOf(topLeft.y, bottomRight.y),
-                    maxOf(topLeft.x, bottomRight.x),
-                    maxOf(topLeft.y, bottomRight.y)
+                val left = imageRect.left + rect.left * scale
+                val right = imageRect.left + rect.right * scale
+                boxRect.set(
+                    if (isFrontCamera) vw - right else left,
+                    imageRect.top + rect.top * scale,
+                    if (isFrontCamera) vw - left else right,
+                    imageRect.top + rect.bottom * scale
                 )
+                return boxRect
             }
 
             when (task) {
@@ -1779,10 +1791,15 @@ class YOLOView @JvmOverloads constructor(
 
                     // Keypoints & skeleton
                     for (person in result.keypointsList) {
-                        val points = person.xyn.mapIndexed { i, (x, y) ->
-                            if (person.conf[i] > 0.25f) mapPoint(x * iw, y * ih) else null
+                        val count = person.xyn.size
+                        if (poseXY.size < 2 * count) poseXY = FloatArray(2 * count)
+                        for (i in 0 until count) {
+                            val (x, y) = person.xyn[i]
+                            val px = imageRect.left + x * iw * scale
+                            poseXY[2 * i] = if (person.conf[i] > 0.25f) (if (isFrontCamera) vw - px else px) else Float.NaN
+                            poseXY[2 * i + 1] = imageRect.top + y * ih * scale
                         }
-                        drawPose(canvas, points, paint, radius = 8f, lineWidth = KEYPOINT_LINE_WIDTH)
+                        drawPose(canvas, poseXY, count, paint, radius = 8f, lineWidth = KEYPOINT_LINE_WIDTH)
                     }
                 }
                 // ----------------------------------------

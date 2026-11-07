@@ -277,7 +277,10 @@ class YOLO(
         val labelPadding = 8f
         val textBounds = Rect()
 
-        // Box and label backgrounds keep 0.6 opacity; the label text color follows the class color's luma.
+        // Boxes and label backgrounds keep 0.6 opacity; the label text color follows the class color's luma.
+        fun boxColor(color: Int) = color and 0xFFFFFF or 0x99000000.toInt()
+
+        // Draws the label background in the current paint color (the box's), then its text.
         fun drawLabel(labelText: String, bounds: RectF, color: Int) {
             paint.getTextBounds(labelText, 0, labelText.length, textBounds)
             val labelRect = calculateSmartLabelRect(
@@ -288,8 +291,6 @@ class YOLO(
                 output.height.toFloat()
             )
             paint.style = Paint.Style.FILL
-            paint.color = color
-            paint.alpha = 153
             canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
             paint.color = labelTextColor(color)
             canvas.drawText(labelText, labelRect.left + labelPadding, labelRect.bottom - labelPadding, paint)
@@ -300,8 +301,7 @@ class YOLO(
             for (box in result.boxes) {
                 val color = classColor(box.index, colors)
                 val rect = transformRect(box.xywh)
-                paint.color = color
-                paint.alpha = 153
+                paint.color = boxColor(color)
                 canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
                 drawLabel("${box.cls} ${(box.conf * 100).toInt()}%", rect, color)
             }
@@ -352,8 +352,7 @@ class YOLO(
                             labelTop + textBounds.height() + labelPadding * 2
                         )
                         paint.style = Paint.Style.FILL
-                        paint.color = color
-                        paint.alpha = 153
+                        paint.color = boxColor(color)
                         canvas.drawRoundRect(labelRect, cornerRadius, cornerRadius, paint)
                         paint.color = labelTextColor(color)
                         canvas.drawText(labelText, labelRect.left + labelPadding, labelRect.bottom - labelPadding, paint)
@@ -364,17 +363,17 @@ class YOLO(
             YOLOTask.POSE -> {
                 drawBoxes()
                 for (keypoints in result.keypointsList) {
-                    val points = keypoints.xy.mapIndexed { i, (x, y) ->
-                        if (keypoints.conf[i] > 0.25f) transformPoint(x, y) else null
+                    val xy = FloatArray(keypoints.xy.size * 2) { j ->
+                        val (x, y) = keypoints.xy[j / 2]
+                        if (j % 2 == 1) y * scaleY else if (keypoints.conf[j / 2] > 0.25f) x * scaleX else Float.NaN
                     }
-                    drawPose(canvas, points, paint, radius = 8f, lineWidth = 2f)
+                    drawPose(canvas, xy, keypoints.xy.size, paint, radius = 8f, lineWidth = 2f)
                 }
             }
             YOLOTask.OBB -> {
                 for (obbResult in result.obb) {
                     val color = classColor(obbResult.index, colors)
-                    paint.color = color
-                    paint.alpha = 153
+                    paint.color = boxColor(color)
                     val poly = obbResult.box.toPolygon(resultWidth, resultHeight).map {
                         transformPoint(it.x * resultWidth, it.y * resultHeight)
                     }

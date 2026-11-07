@@ -130,13 +130,16 @@ class BoundingBoxView {
       path.apply(transform)
     }
     shapeLayer.path = path.cgPath
-    shapeLayer.strokeColor = color.withAlphaComponent(alpha).cgColor  // Apply color and alpha to the stroke
+    // Opaque class colors with alpha on the layers, so no colors are allocated per box per frame.
+    shapeLayer.strokeColor = color.cgColor
+    shapeLayer.opacity = Float(alpha)
     shapeLayer.isHidden = false  // Make the shape layer visible
 
     textLayer.string = label  // Set the label text
-    textLayer.backgroundColor = color.withAlphaComponent(alpha).cgColor  // Apply color and alpha to the background
+    textLayer.backgroundColor = color.cgColor
+    textLayer.foregroundColor = labelTextColor(for: color).cgColor
+    textLayer.opacity = Float(alpha)
     textLayer.isHidden = false  // Make the text layer visible
-    textLayer.foregroundColor = labelTextColor(for: color).withAlphaComponent(alpha).cgColor
 
     let textSize = DetectionLabelStyle.size(for: label, fontSize: textLayer.fontSize)
     let labelAnchor = angle == nil ? frame.origin : path.bounds.origin

@@ -6,7 +6,6 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.PointF
 import android.util.Log
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -15,22 +14,22 @@ import kotlin.math.roundToInt
 internal const val OPAQUE = 0xFF000000.toInt()
 
 /** Default class palette (opaque ARGB), indexed by class id % 20. */
-private val ultralyticsColors = listOf(
+private val ultralyticsColors = intArrayOf(
     0x042AFF, 0x0BDBEB, 0xF3F3F3, 0x00DFB7, 0x111F68, 0xFF6FDD, 0xFF444F, 0xCCED00, 0x00F344, 0xBD00FF,
     0x00B4FF, 0xDD00BA, 0x00FFFF, 0x26C000, 0x01FFB3, 0x7D24FF, 0x7B0068, 0xFF1B6C, 0xFC6D2F, 0xA2FF0B,
-).map { it or OPAQUE }
+).map { it or OPAQUE }.toIntArray()
 
-private val posePalette = listOf(
+private val posePalette = intArrayOf(
     0xFF8000, 0xFF9933, 0xFFB266, 0xE6E600, 0xFF99FF, 0x99CCFF, 0xFF66FF, 0xFF33FF, 0x66B2FF, 0x3399FF,
     0xFF9999, 0xFF6666, 0xFF3333, 0x99FF99, 0x66FF66, 0x33FF33, 0x00FF00, 0x0000FF, 0xFF0000, 0xFFFFFF,
-).map { it or OPAQUE }
+).map { it or OPAQUE }.toIntArray()
 
-// COCO-17 keypoint and limb indices into posePalette, and the 0-indexed skeleton.
+// COCO-17 keypoint and limb indices into posePalette, and the 0-indexed skeleton as (start, end) pairs.
 private val kptColorIndices = intArrayOf(16, 16, 16, 16, 16, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0, 0)
 private val limbColorIndices = intArrayOf(0, 0, 0, 0, 7, 7, 7, 9, 9, 9, 9, 9, 16, 16, 16, 16, 16, 16, 16)
-private val skeleton = listOf(
-    15 to 13, 13 to 11, 16 to 14, 14 to 12, 11 to 12, 5 to 11, 6 to 12, 5 to 6, 5 to 7, 6 to 8,
-    7 to 9, 8 to 10, 1 to 2, 0 to 1, 0 to 2, 1 to 3, 2 to 4, 3 to 5, 4 to 6,
+private val skeleton = intArrayOf(
+    15, 13, 13, 11, 16, 14, 14, 12, 11, 12, 5, 11, 6, 12, 5, 6, 5, 7, 6, 8,
+    7, 9, 8, 10, 1, 2, 0, 1, 0, 2, 1, 3, 2, 4, 3, 5, 4, 6,
 )
 
 /** Jet depth colormap (opaque ARGB, low = dark blue, high = dark red): `clamp(1.5 - |4t - center|, 0, 1)`. */
@@ -39,11 +38,14 @@ val depthColors = IntArray(256) { i ->
     OPAQUE or (channel(3) shl 16) or (channel(2) shl 8) or channel(1)
 }
 
-/** Class color: the model's `colors` metadata entry when present, else the default palette. */
+/** Class color: the model's `colors` metadata entry when present, else the default palette (no boxing). */
 fun classColor(index: Int, colors: List<Int>): Int =
-    colors.getOrElse(index) { ultralyticsColors[index % ultralyticsColors.size] }
+    if (index < colors.size) colors[index] else ultralyticsColors[index % ultralyticsColors.size]
 
-/** Label font: the system default typeface (Roboto) at this size in px (the minimum for size-scaled static labels). */
+/**
+ * Label font owner: annotation labels use the system default typeface (Roboto, regular weight, never overridden) at
+ * this size in px; size-scaled static labels never go below it.
+ */
 const val LABEL_TEXT_SIZE = 40f
 
 /** Label text color on a class-colored background: #111F68 when its luma exceeds 150, else white. */
@@ -53,25 +55,27 @@ fun labelTextColor(background: Int): Int {
 }
 
 /**
- * Draw one pose ([points] null below the confidence threshold). COCO-17 layouts use the pose palette and skeleton;
- * other layouts color keypoint k with the class palette and draw no limbs.
+ * Draw one pose of [count] keypoints from [xy] (x0, y0, x1, y1, ...; x is NaN below the confidence threshold) without
+ * allocating. COCO-17 layouts use the pose palette and skeleton; other layouts color keypoint k with the class palette
+ * and draw no limbs.
  */
-fun drawPose(canvas: Canvas, points: List<PointF?>, paint: Paint, radius: Float, lineWidth: Float) {
-    val coco = points.size == kptColorIndices.size
+fun drawPose(canvas: Canvas, xy: FloatArray, count: Int, paint: Paint, radius: Float, lineWidth: Float) {
+    val coco = count == kptColorIndices.size
     paint.style = Paint.Style.FILL
-    points.forEachIndexed { k, point ->
-        if (point == null) return@forEachIndexed
+    for (k in 0 until count) {
+        if (xy[2 * k].isNaN()) continue
         paint.color = if (coco) posePalette[kptColorIndices[k]] else ultralyticsColors[k % ultralyticsColors.size]
-        canvas.drawCircle(point.x, point.y, radius, paint)
+        canvas.drawCircle(xy[2 * k], xy[2 * k + 1], radius, paint)
     }
     if (!coco) return
     paint.style = Paint.Style.STROKE
     paint.strokeWidth = lineWidth
-    skeleton.forEachIndexed { j, (a, b) ->
-        val start = points[a] ?: return@forEachIndexed
-        val end = points[b] ?: return@forEachIndexed
+    for (j in limbColorIndices.indices) {
+        val a = 2 * skeleton[2 * j]
+        val b = 2 * skeleton[2 * j + 1]
+        if (xy[a].isNaN() || xy[b].isNaN()) continue
         paint.color = posePalette[limbColorIndices[j]]
-        canvas.drawLine(start.x, start.y, end.x, end.y, paint)
+        canvas.drawLine(xy[a], xy[a + 1], xy[b], xy[b + 1], paint)
     }
 }
 
