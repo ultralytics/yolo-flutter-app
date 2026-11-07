@@ -320,13 +320,14 @@ object YOLOFileUtils {
      * ints indexed by class id; null when absent or malformed, so annotations fall back to the default palette.
      */
     private fun parseColors(colors: Any?): List<Int>? = when (colors) {
-        is String -> parseColors(runCatching { org.yaml.snakeyaml.Yaml().load<Any?>(colors) }.getOrNull())
+        is String -> parseColors(runCatching { org.yaml.snakeyaml.Yaml().load<Any?>(colors) }.getOrNull() as? List<*>)
         is List<*> -> colors.map { color ->
-            (color as? String)?.takeIf { it.length == 7 && it[0] == '#' }?.substring(1)?.toIntOrNull(16)?.or(OPAQUE)
-                ?: return null
+            (color as? String)?.takeIf { hexColor.matches(it) }?.substring(1)?.toInt(16)?.or(OPAQUE) ?: return null
         }
         else -> null
     }
+
+    private val hexColor = Regex("#[0-9a-fA-F]{6}")
 
     /** Parse Ultralytics metadata YAML text into the standard metadata map shape (keys: task, labels, colors). */
     private fun parseMetadataYaml(text: String): Map<String, Any>? {

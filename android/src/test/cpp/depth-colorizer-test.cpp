@@ -28,6 +28,12 @@ int main() {
     assert(constant_pixels[0] == colors[0] && constant_pixels[1] == black &&
            constant_pixels[2] == black && constant_pixels[3] == colors[0]);
 
-    const std::array<float, 4> invalid = {0, -1, nan, inf};
+    const std::array<float, 3> subnormal = {1, 1e-40f, 4};
+    std::array<int32_t, 3> subnormal_pixels{};
+    assert(colorize_depth(subnormal.data(), subnormal.size(), subnormal_pixels.data(), colors.data(), range));
+    assert(range.min == 1 && range.max == 4 && subnormal_pixels[1] == black);
+    assert(subnormal_pixels[0] == colors[255] && subnormal_pixels[2] == colors[0]);
+
+    const std::array<float, 5> invalid = {0, -1, nan, inf, 1e-40f};
     assert(!colorize_depth(invalid.data(), invalid.size(), pixels.data(), colors.data(), range));
 }

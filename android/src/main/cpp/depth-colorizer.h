@@ -24,21 +24,23 @@ inline float percentile(std::vector<float> &values, float q) {
 }
 
 // Colors depth like ultralytics/utils/plotting.py colorize_depth (disparity mode): v = 1/d for valid d, normalized
-// between the 2nd and 98th percentiles of ~4k evenly strided valid v (Python uses ~64k; 4k keeps the frame time and moves
-// the percentiles < 0.2%), near = warm (the end of colors). Invalid pixels are opaque black. range receives the valid
-// depth min/max.
+// between the 2nd and 98th percentiles of ~4k evenly strided valid v (Python uses ~64k; 4k keeps the frame time and can
+// shift the 98th percentile by ~1% of the range), near = warm (the end of colors). Invalid pixels are opaque black. range
+// receives the valid depth min/max.
 inline bool colorize_depth(
         const float *depth,
         int size,
         int32_t *pixels,
         const int32_t *colors,
         DepthRange &range) {
+    // Finite and normal: subnormal depths would make 1/d infinite.
+    const auto is_valid = [](float value) { return std::isfinite(value) && value >= FLT_MIN; };
     float min_depth = FLT_MAX;
     float max_depth = -FLT_MAX;
     int valid = 0;
     for (int i = 0; i < size; ++i) {
         const float value = depth[i];
-        if (std::isfinite(value) && value > 0.0f) {
+        if (is_valid(value)) {
             min_depth = std::min(min_depth, value);
             max_depth = std::max(max_depth, value);
             ++valid;
@@ -51,7 +53,7 @@ inline bool colorize_depth(
     sample.reserve(valid / stride + 1);
     for (int i = 0, skip = 0; i < size; ++i) {
         const float value = depth[i];
-        if (std::isfinite(value) && value > 0.0f && skip-- == 0) {
+        if (is_valid(value) && skip-- == 0) {
             sample.push_back(1.0f / value);
             skip = stride - 1;
         }
@@ -60,7 +62,7 @@ inline bool colorize_depth(
     const float scale = 255.0f / std::max(percentile(sample, 0.98f) - lo, 1e-6f);
     for (int i = 0; i < size; ++i) {
         const float value = depth[i];
-        pixels[i] = std::isfinite(value) && value > 0.0f
+        pixels[i] = is_valid(value)
                     ? colors[static_cast<int>(std::clamp((1.0f / value - lo) * scale, 0.0f, 255.0f))]
                     : static_cast<int32_t>(0xFF000000);
     }
