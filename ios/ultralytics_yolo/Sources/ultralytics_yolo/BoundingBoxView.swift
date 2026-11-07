@@ -136,7 +136,7 @@ class BoundingBoxView {
     textLayer.string = label  // Set the label text
     textLayer.backgroundColor = color.withAlphaComponent(alpha).cgColor  // Apply color and alpha to the background
     textLayer.isHidden = false  // Make the text layer visible
-    textLayer.foregroundColor = UIColor.white.withAlphaComponent(alpha).cgColor  // Set text color
+    textLayer.foregroundColor = labelTextColor(for: color).withAlphaComponent(alpha).cgColor
 
     let textSize = DetectionLabelStyle.size(for: label, fontSize: textLayer.fontSize)
     let labelAnchor = angle == nil ? frame.origin : path.bounds.origin

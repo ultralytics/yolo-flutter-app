@@ -51,7 +51,7 @@ class Segmenter(
     private var maskOutIndex = 1
 
     init {
-        val loadedLabels = YOLOFileUtils.loadModelLabels(context, modelPath)
+        val loadedLabels = loadModelLabels(context, modelPath)
         if (loadedLabels != null) {
             this.labels = loadedLabels
             Log.i("Segmenter", "Labels successfully loaded from appended ZIP.")
@@ -352,7 +352,7 @@ class Segmenter(
         val probabilityMasks = if (returnIndividualMasks) mutableListOf<List<List<Float>>>() else null
         val coeffCount = min(maskConfidenceLength, maskC)
         detections.forEach { det ->
-            val color = ultralyticsColors[det.cls % ultralyticsColors.size]
+            val color = classColor(det.cls, colors)
             val instanceMask = if (returnIndividualMasks) {
                 Array(contentRect.height()) { FloatArray(contentRect.width()) }
             } else {

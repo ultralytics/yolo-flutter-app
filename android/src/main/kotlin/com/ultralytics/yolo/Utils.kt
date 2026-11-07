@@ -3,31 +3,74 @@
 package com.ultralytics.yolo
 
 import android.content.Context
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.PointF
 import android.util.Log
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
-val ultralyticsColors: List<Int> = listOf(
-    Color.argb(153, 4, 42, 255),
-    Color.argb(153, 11, 219, 235),
-    Color.argb(153, 243, 243, 243),
-    Color.argb(153, 0, 223, 183),
-    Color.argb(153, 17, 31, 104),
-    Color.argb(153, 255, 111, 221),
-    Color.argb(153, 255, 68, 79),
-    Color.argb(153, 204, 237, 0),
-    Color.argb(153, 0, 243, 68),
-    Color.argb(153, 189, 0, 255),
-    Color.argb(153, 0, 180, 255),
-    Color.argb(153, 221, 0, 186),
-    Color.argb(153, 0, 255, 255),
-    Color.argb(153, 38, 192, 0),
-    Color.argb(153, 1, 255, 179),
-    Color.argb(153, 125, 36, 255),
-    Color.argb(153, 123, 0, 104),
-    Color.argb(153, 255, 27, 108),
-    Color.argb(153, 252, 109, 47),
-    Color.argb(153, 162, 255, 11)
+// Annotation colors, mirroring ultralytics/utils/plotting.py Colors.
+internal const val OPAQUE = 0xFF000000.toInt()
+
+/** Default class palette (opaque ARGB), indexed by class id % 20. */
+private val ultralyticsColors = listOf(
+    0x042AFF, 0x0BDBEB, 0xF3F3F3, 0x00DFB7, 0x111F68, 0xFF6FDD, 0xFF444F, 0xCCED00, 0x00F344, 0xBD00FF,
+    0x00B4FF, 0xDD00BA, 0x00FFFF, 0x26C000, 0x01FFB3, 0x7D24FF, 0x7B0068, 0xFF1B6C, 0xFC6D2F, 0xA2FF0B,
+).map { it or OPAQUE }
+
+private val posePalette = listOf(
+    0xFF8000, 0xFF9933, 0xFFB266, 0xE6E600, 0xFF99FF, 0x99CCFF, 0xFF66FF, 0xFF33FF, 0x66B2FF, 0x3399FF,
+    0xFF9999, 0xFF6666, 0xFF3333, 0x99FF99, 0x66FF66, 0x33FF33, 0x00FF00, 0x0000FF, 0xFF0000, 0xFFFFFF,
+).map { it or OPAQUE }
+
+// COCO-17 keypoint and limb indices into posePalette, and the 0-indexed skeleton.
+private val kptColorIndices = intArrayOf(16, 16, 16, 16, 16, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0, 0)
+private val limbColorIndices = intArrayOf(0, 0, 0, 0, 7, 7, 7, 9, 9, 9, 9, 9, 16, 16, 16, 16, 16, 16, 16)
+private val skeleton = listOf(
+    15 to 13, 13 to 11, 16 to 14, 14 to 12, 11 to 12, 5 to 11, 6 to 12, 5 to 6, 5 to 7, 6 to 8,
+    7 to 9, 8 to 10, 1 to 2, 0 to 1, 0 to 2, 1 to 3, 2 to 4, 3 to 5, 4 to 6,
 )
+
+/** Jet depth colormap (opaque ARGB, low = dark blue, high = dark red): `clamp(1.5 - |4t - center|, 0, 1)`. */
+val depthColors = IntArray(256) { i ->
+    fun channel(center: Int) = ((1.5f - abs(4f * i / 255f - center)).coerceIn(0f, 1f) * 255f).roundToInt()
+    OPAQUE or (channel(3) shl 16) or (channel(2) shl 8) or channel(1)
+}
+
+/** Class color: the model's `colors` metadata entry when present, else the default palette. */
+fun classColor(index: Int, colors: List<Int>): Int =
+    colors.getOrElse(index) { ultralyticsColors[index % ultralyticsColors.size] }
+
+/** Label text color on a class-colored background: #111F68 when its luma exceeds 150, else white. */
+fun labelTextColor(background: Int): Int {
+    val luma = 0.299 * (background shr 16 and 0xFF) + 0.587 * (background shr 8 and 0xFF) + 0.114 * (background and 0xFF)
+    return if (luma > 150) 0xFF111F68.toInt() else Color.WHITE
+}
+
+/**
+ * Draw one pose ([points] null below the confidence threshold). COCO-17 layouts use the pose palette and skeleton;
+ * other layouts color keypoint k with the class palette and draw no limbs.
+ */
+fun drawPose(canvas: Canvas, points: List<PointF?>, paint: Paint, radius: Float, lineWidth: Float) {
+    val coco = points.size == kptColorIndices.size
+    paint.style = Paint.Style.FILL
+    points.forEachIndexed { k, point ->
+        if (point == null) return@forEachIndexed
+        paint.color = if (coco) posePalette[kptColorIndices[k]] else ultralyticsColors[k % ultralyticsColors.size]
+        canvas.drawCircle(point.x, point.y, radius, paint)
+    }
+    if (!coco) return
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = lineWidth
+    skeleton.forEachIndexed { j, (a, b) ->
+        val start = points[a] ?: return@forEachIndexed
+        val end = points[b] ?: return@forEachIndexed
+        paint.color = posePalette[limbColorIndices[j]]
+        canvas.drawLine(start.x, start.y, end.x, end.y, paint)
+    }
+}
 
 /**
  * Utility functions for YOLO operations

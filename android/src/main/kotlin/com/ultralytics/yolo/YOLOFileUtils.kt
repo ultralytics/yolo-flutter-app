@@ -135,6 +135,7 @@ object YOLOFileUtils {
                                             sortedKeys.map { key -> namesObj.getString(key) }
                                         )
                                     }
+                                    parseColors(metadataJson.opt("colors")?.toString())?.let { put("colors", it) }
                                 }
                                 break
                             }
@@ -171,11 +172,6 @@ object YOLOFileUtils {
         return loadMetadataFromFlatbuffer(context, modelPath)
     }
 
-    /** Labels from [loadModelMetadata] (appended-ZIP or embedded FlatBuffers metadata). */
-    fun loadModelLabels(context: Context, modelPath: String): List<String>? {
-        return (loadModelMetadata(context, modelPath)?.get("labels") as? List<*>)?.filterIsInstance<String>()
-    }
-
     private fun loadMetadataFromFlatbuffer(context: Context, modelPath: String): Map<String, Any>? = try {
         val buffer = YOLOUtils.loadModelFile(context, modelPath)
         val extractor = com.google.ai.edge.litert.support.metadata.MetadataExtractor(buffer)
@@ -207,6 +203,7 @@ object YOLOFileUtils {
                     // names is a dict-style string like "{0: 'person', 1: 'bicycle'}", valid as a YAML flow map
                     parseNames(org.yaml.snakeyaml.Yaml().load<Any?>(names))?.let { put("labels", it) }
                 }
+                parseColors(props["colors"])?.let { put("colors", it) }
             }.ifEmpty { null }
         }
     } catch (e: Exception) {
@@ -318,12 +315,25 @@ object YOLOFileUtils {
         else -> null
     }
 
-    /** Parse Ultralytics metadata YAML text into the standard metadata map shape (keys: task, labels). */
+    /**
+     * Convert optional `colors` metadata (a list of "#rrggbb" strings, or its Python/JSON repr string) into opaque ARGB
+     * ints indexed by class id; null when absent or malformed, so annotations fall back to the default palette.
+     */
+    private fun parseColors(colors: Any?): List<Int>? = when (colors) {
+        is String -> parseColors(org.yaml.snakeyaml.Yaml().load<Any?>(colors))
+        is List<*> -> colors.map { color ->
+            (color as? String)?.removePrefix("#")?.takeIf { it.length == 6 }?.toIntOrNull(16)?.or(OPAQUE) ?: return null
+        }
+        else -> null
+    }
+
+    /** Parse Ultralytics metadata YAML text into the standard metadata map shape (keys: task, labels, colors). */
     private fun parseMetadataYaml(text: String): Map<String, Any>? {
         val parsed = org.yaml.snakeyaml.Yaml().load<Any?>(text) as? Map<*, *> ?: return null
         val map = buildMap<String, Any> {
             (parsed["task"] as? String)?.takeIf { it.isNotEmpty() }?.let { put("task", it) }
             parseNames(parsed["names"])?.let { put("labels", it) }
+            parseColors(parsed["colors"])?.let { put("colors", it) }
         }
         return map.ifEmpty { null }
     }

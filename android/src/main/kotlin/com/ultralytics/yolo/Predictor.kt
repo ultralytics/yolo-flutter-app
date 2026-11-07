@@ -90,6 +90,8 @@ interface Predictor {
     abstract fun getIouThreshold(): Double
 
     var labels: List<String>
+    /** Per-class colors from the model's optional `colors` metadata; empty means the default palette. */
+    val colors: List<Int>
     var isUpdating: Boolean
     var inputSize: Size
 
@@ -117,6 +119,7 @@ interface Predictor {
 abstract class BasePredictor : Predictor {
     override var isUpdating: Boolean = false
     override lateinit var labels: List<String>
+    override var colors: List<Int> = emptyList()
     protected lateinit var rtModel: InferenceModel
     override lateinit var inputSize: Size
     val accelerator: String
@@ -163,6 +166,13 @@ abstract class BasePredictor : Predictor {
             inferenceMs = (inferEnd - preEnd) / 1_000_000.0,
             postMs = (now - inferEnd) / 1_000_000.0,
         )
+    }
+
+    /** Labels from [YOLOFileUtils.loadModelMetadata], which also sets the model's optional class [colors]. */
+    protected fun loadModelLabels(context: Context, modelPath: String): List<String>? {
+        val metadata = YOLOFileUtils.loadModelMetadata(context, modelPath)
+        colors = (metadata?.get("colors") as? List<*>)?.filterIsInstance<Int>().orEmpty()
+        return (metadata?.get("labels") as? List<*>)?.filterIsInstance<String>()
     }
 
     protected fun labelName(index: Int): String {

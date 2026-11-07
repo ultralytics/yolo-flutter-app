@@ -4,8 +4,6 @@ package com.ultralytics.yolo
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Color
-import kotlin.math.roundToInt
 
 /** Monocular metric-depth predictor shared by LiteRT GPU/CPU and ONNX Runtime QNN backends. */
 class DepthEstimator(
@@ -23,7 +21,7 @@ class DepthEstimator(
     private var colorPixels = IntArray(0)
 
     init {
-        YOLOFileUtils.loadModelLabels(context, modelPath)?.let { labels = it }
+        loadModelLabels(context, modelPath)?.let { labels = it }
         val model = InferenceModel.create(context, modelPath, useGpu, "DepthEstimator")
         try {
             val inDims = model.inputDims
@@ -105,10 +103,7 @@ class DepthEstimator(
         val values = if (includeRawMaskData) output.copyOf() else null
         val size = width * height
         if (colorPixels.size != size) colorPixels = IntArray(size)
-        val range = colorizeDepth(
-            output, colorPixels, colors
-        )
-            ?: error("Depth output contains no valid values")
+        val range = colorizeDepth(output, colorPixels, depthColors) ?: error("Depth output contains no valid values")
 
         return DepthMap(
             values = values,
@@ -127,28 +122,6 @@ class DepthEstimator(
     ): FloatArray?
 
     companion object {
-        private val colors = IntArray(256).also { table ->
-            val stops = arrayOf(
-                intArrayOf(48, 18, 59),
-                intArrayOf(50, 100, 200),
-                intArrayOf(40, 190, 140),
-                intArrayOf(245, 210, 60),
-                intArrayOf(180, 20, 40),
-            )
-            for (index in table.indices) {
-                val position = index.toFloat() / table.lastIndex * (stops.size - 1)
-                val lower = position.toInt().coerceAtMost(stops.size - 2)
-                val fraction = position - lower
-                val first = stops[lower]
-                val second = stops[lower + 1]
-                table[index] = Color.rgb(
-                    (first[0] + (second[0] - first[0]) * fraction).roundToInt(),
-                    (first[1] + (second[1] - first[1]) * fraction).roundToInt(),
-                    (first[2] + (second[2] - first[2]) * fraction).roundToInt(),
-                )
-            }
-        }
-
         init {
             System.loadLibrary("ultralytics")
         }

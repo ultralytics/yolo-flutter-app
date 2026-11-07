@@ -37,7 +37,7 @@ class ObjectDetector(
     init {
         // Labels from the model metadata: Ultralytics' appended ZIP, falling back to standard embedded TFLite
         // (FlatBuffers) metadata so drag-and-dropped custom models keep their labels.
-        val loadedLabels = YOLOFileUtils.loadModelLabels(context, modelPath)
+        val loadedLabels = loadModelLabels(context, modelPath)
         if (loadedLabels != null) {
             this.labels = loadedLabels
             Log.i(TAG, "Labels loaded from model metadata.")

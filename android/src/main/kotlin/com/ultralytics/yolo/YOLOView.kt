@@ -74,89 +74,6 @@ class YOLOView @JvmOverloads constructor(
         private const val BOX_LINE_WIDTH = 8f
         private const val BOX_CORNER_RADIUS = 12f
         private const val KEYPOINT_LINE_WIDTH = 6f
-
-        // Colors derived from Ultralytics
-        private val ultralyticsColors = arrayOf(
-            Color.argb(153, 4,   42,  255),
-            Color.argb(153, 11,  219, 235),
-            Color.argb(153, 243, 243, 243),
-            Color.argb(153, 0,   223, 183),
-            Color.argb(153, 17,  31,  104),
-            Color.argb(153, 255, 111, 221),
-            Color.argb(153, 255, 68,  79),
-            Color.argb(153, 204, 237, 0),
-            Color.argb(153, 0,   243, 68),
-            Color.argb(153, 189, 0,   255),
-            Color.argb(153, 0,   180, 255),
-            Color.argb(153, 221, 0,   186),
-            Color.argb(153, 0,   255, 255),
-            Color.argb(153, 38,  192, 0),
-            Color.argb(153, 1,   255, 179),
-            Color.argb(153, 125, 36,  255),
-            Color.argb(153, 123, 0,   104),
-            Color.argb(153, 255, 27,  108),
-            Color.argb(153, 252, 109, 47),
-            Color.argb(153, 162, 255, 11)
-        )
-
-        // Pose
-        private val posePalette = arrayOf(
-            floatArrayOf(255f, 128f,  0f),
-            floatArrayOf(255f, 153f,  51f),
-            floatArrayOf(255f, 178f, 102f),
-            floatArrayOf(230f, 230f,   0f),
-            floatArrayOf(255f, 153f, 255f),
-            floatArrayOf(153f, 204f, 255f),
-            floatArrayOf(255f, 102f, 255f),
-            floatArrayOf(255f,  51f, 255f),
-            floatArrayOf(102f, 178f, 255f),
-            floatArrayOf( 51f, 153f, 255f),
-            floatArrayOf(255f, 153f, 153f),
-            floatArrayOf(255f, 102f, 102f),
-            floatArrayOf(255f,  51f,  51f),
-            floatArrayOf(153f, 255f, 153f),
-            floatArrayOf(102f, 255f, 102f),
-            floatArrayOf( 51f, 255f,  51f),
-            floatArrayOf(  0f, 255f,   0f),
-            floatArrayOf(  0f,   0f, 255f),
-            floatArrayOf(255f,   0f,   0f),
-            floatArrayOf(255f, 255f, 255f),
-        )
-
-        private val kptColorIndices = intArrayOf(
-            16,16,16,16,16,
-            9, 9, 9, 9, 9, 9,
-            0, 0, 0, 0, 0, 0
-        )
-
-        private val limbColorIndices = intArrayOf(
-            0, 0, 0, 0,
-            7, 7, 7,
-            9, 9, 9, 9, 9,
-            16,16,16,16,16,16,16
-        )
-
-        private val skeleton = arrayOf(
-            intArrayOf(16, 14),
-            intArrayOf(14, 12),
-            intArrayOf(17, 15),
-            intArrayOf(15, 13),
-            intArrayOf(12, 13),
-            intArrayOf(6, 12),
-            intArrayOf(7, 13),
-            intArrayOf(6, 7),
-            intArrayOf(6, 8),
-            intArrayOf(7, 9),
-            intArrayOf(8, 10),
-            intArrayOf(9, 11),
-            intArrayOf(2, 3),
-            intArrayOf(1, 2),
-            intArrayOf(1, 3),
-            intArrayOf(2, 4),
-            intArrayOf(3, 5),
-            intArrayOf(4, 6),
-            intArrayOf(5, 7)
-        )
     }
 
     // Callback to notify inference results externally
@@ -1604,7 +1521,7 @@ class YOLOView @JvmOverloads constructor(
 
         private fun colorFor(index: Int, confidence: Float): Int {
             val alpha = (confidence * 255).toInt().coerceIn((0.6f * 255).toInt(), 255)
-            val baseColor = ultralyticsColors[index % ultralyticsColors.size]
+            val baseColor = classColor(index, predictor?.colors.orEmpty())
             return Color.argb(
                 alpha,
                 Color.red(baseColor),
@@ -1658,7 +1575,7 @@ class YOLOView @JvmOverloads constructor(
             paint.color = color
             canvas.drawRoundRect(bgRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
 
-            paint.color = Color.WHITE
+            paint.color = labelTextColor(color)
             val centerY = (bgRect.top + bgRect.bottom) / 2
             val baseline = centerY - (fm.descent + fm.ascent) / 2
             canvas.drawText(text, bgRect.left + pad, baseline, paint)
@@ -1805,7 +1722,7 @@ class YOLOView @JvmOverloads constructor(
                     (result.semanticMask?.maskImage ?: result.depthMap?.image)?.let { maskBitmap ->
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
                         val maskPaint = Paint().apply {
-                            alpha = if (task == YOLOTask.DEPTH) 179 else 128
+                            alpha = if (task == YOLOTask.DEPTH) 153 else 128
                             isFilterBitmap = task == YOLOTask.DEPTH
                         }
 
@@ -1865,48 +1782,10 @@ class YOLOView @JvmOverloads constructor(
 
                     // Keypoints & skeleton
                     for (person in result.keypointsList) {
-                        val points = arrayOfNulls<PointF>(person.xyn.size)
-                        for (i in person.xyn.indices) {
-                            val kp = person.xyn[i]
-                            val conf = person.conf[i]
-                            if (conf > 0.25f) {
-                                val point = mapPoint(kp.first * iw, kp.second * ih)
-
-                                val colorIdx = if (i < kptColorIndices.size) kptColorIndices[i] else 0
-                                val rgbArray = posePalette[colorIdx % posePalette.size]
-                                paint.color = Color.argb(
-                                    255,
-                                    rgbArray[0].toInt().coerceIn(0,255),
-                                    rgbArray[1].toInt().coerceIn(0,255),
-                                    rgbArray[2].toInt().coerceIn(0,255)
-                                )
-                                paint.style = Paint.Style.FILL
-                                canvas.drawCircle(point.x, point.y, 8f, paint)
-
-                                points[i] = point
-                            }
+                        val points = person.xyn.mapIndexed { i, (x, y) ->
+                            if (person.conf[i] > 0.25f) mapPoint(x * iw, y * ih) else null
                         }
-
-                        // Skeleton connection
-                        paint.style = Paint.Style.STROKE
-                        paint.strokeWidth = KEYPOINT_LINE_WIDTH
-                        for ((idx, bone) in skeleton.withIndex()) {
-                            val i1 = bone[0] - 1  // 1-indexed to 0-indexed
-                            val i2 = bone[1] - 1
-                            val p1 = points.getOrNull(i1)
-                            val p2 = points.getOrNull(i2)
-                            if (p1 != null && p2 != null) {
-                                val limbColorIdx = if (idx < limbColorIndices.size) limbColorIndices[idx] else 0
-                                val rgbArray = posePalette[limbColorIdx % posePalette.size]
-                                paint.color = Color.argb(
-                                    255,
-                                    rgbArray[0].toInt().coerceIn(0,255),
-                                    rgbArray[1].toInt().coerceIn(0,255),
-                                    rgbArray[2].toInt().coerceIn(0,255)
-                                )
-                                canvas.drawLine(p1.x, p1.y, p2.x, p2.y, paint)
-                            }
-                        }
+                        drawPose(canvas, points, paint, radius = 8f, lineWidth = KEYPOINT_LINE_WIDTH)
                     }
                 }
                 // ----------------------------------------
