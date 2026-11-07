@@ -43,6 +43,9 @@ Use a simple rule:
 
 ## 📊 Measured Backend Performance
 
+See the [LiteRT](https://docs.ultralytics.com/integrations/litert), [Qualcomm QNN](https://docs.ultralytics.com/integrations/qnn),
+and [MediaTek](https://docs.ultralytics.com/integrations/mediatek) guides for export and deployment details.
+
 ### Xiaomi 17 LiteRT and QNN
 
 **Hardware:** [Xiaomi 17](https://www.mi.com/global/product/xiaomi-17/) with 12 GB LPDDR5X memory and Android 17 /

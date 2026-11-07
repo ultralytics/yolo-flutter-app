@@ -165,8 +165,8 @@ Pass an `http` or `https` URL and the plugin will download it into app storage b
 
 ### 4. Qualcomm NPU models (Android, opt-in)
 
-Android ships with LiteRT (TFLite) and that remains the default — nothing changes for existing apps, and the
-QNN support adds zero bytes to your build. Any model path ending in `_qnn.onnx` (a Qualcomm QNN context binary
+Android ships with [LiteRT](https://docs.ultralytics.com/integrations/litert) (TFLite) and that remains the default — nothing changes for existing apps, and the
+[QNN](https://docs.ultralytics.com/integrations/qnn) support adds zero bytes to your build. Any model path ending in `_qnn.onnx` (a Qualcomm QNN context binary
 exported with `yolo export model=yolo26n.pt format=qnn nms=None imgsz=640`, or `imgsz=224` for classification) is routed to the Hexagon NPU through the ONNX Runtime QNN Execution
 Provider instead. Export with `ultralytics>=8.4.188`: earlier releases running `onnxruntime-qnn` 2.4 or newer write
 context binaries that fail to load here with `Input name not found`. `nms=None` selects raw one-to-many outputs for
