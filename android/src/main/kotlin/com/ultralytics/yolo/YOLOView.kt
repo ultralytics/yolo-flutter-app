@@ -1515,6 +1515,7 @@ class YOLOView @JvmOverloads constructor(
 
     private inner class OverlayView(context: Context) : View(context) {
         private val paint = Paint().apply { isAntiAlias = true }
+        private val maskPaint = Paint()
 
         private fun labelText(name: String, confidence: Float) =
             "$name ${"%.1f".format(confidence * 100)}"
@@ -1541,7 +1542,7 @@ class YOLOView @JvmOverloads constructor(
             viewHeight: Float,
             centered: Boolean = false
         ) {
-            paint.textSize = 40f
+            paint.textSize = LABEL_TEXT_SIZE
             val fm = paint.fontMetrics
             val textWidth = paint.measureText(text)
             val textHeight = fm.bottom - fm.top
@@ -1696,10 +1697,8 @@ class YOLOView @JvmOverloads constructor(
                     // Segmentation mask
                     result.masks?.combinedMask?.let { maskBitmap ->
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
-                        val maskPaint = Paint().apply {
-                            alpha = 128
-                            isFilterBitmap = false
-                        }
+                        maskPaint.alpha = 128
+                        maskPaint.isFilterBitmap = false
                         
                         if (isFrontCamera) {
                             // For front camera, flip the mask horizontally
@@ -1721,10 +1720,8 @@ class YOLOView @JvmOverloads constructor(
                 YOLOTask.SEMANTIC, YOLOTask.DEPTH -> {
                     (result.semanticMask?.maskImage ?: result.depthMap?.image)?.let { maskBitmap ->
                         val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
-                        val maskPaint = Paint().apply {
-                            alpha = if (task == YOLOTask.DEPTH) 153 else 128
-                            isFilterBitmap = task == YOLOTask.DEPTH
-                        }
+                        maskPaint.alpha = if (task == YOLOTask.DEPTH) 153 else 128
+                        maskPaint.isFilterBitmap = task == YOLOTask.DEPTH
 
                         if (isFrontCamera) {
                             canvas.save()

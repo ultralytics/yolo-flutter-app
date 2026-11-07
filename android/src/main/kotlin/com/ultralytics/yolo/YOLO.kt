@@ -250,7 +250,7 @@ class YOLO(
         val paint = Paint().apply {
             style = Paint.Style.STROKE
             strokeWidth = lineThickness.coerceAtLeast(3f) // Minimum 3f
-            textSize = calculatedTextSize.coerceAtLeast(40f) // Minimum 40f
+            textSize = calculatedTextSize.coerceAtLeast(LABEL_TEXT_SIZE)
         }
 
         val resultWidth = result.origShape.width.toFloat().takeIf { it > 0f } ?: output.width.toFloat()
@@ -275,10 +275,10 @@ class YOLO(
         val colors = predictor.colors
         val cornerRadius = 12f
         val labelPadding = 8f
+        val textBounds = Rect()
 
         // Box and label backgrounds keep 0.6 opacity; the label text color follows the class color's luma.
         fun drawLabel(labelText: String, bounds: RectF, color: Int) {
-            val textBounds = Rect()
             paint.getTextBounds(labelText, 0, labelText.length, textBounds)
             val labelRect = calculateSmartLabelRect(
                 bounds,
@@ -339,12 +339,11 @@ class YOLO(
             }
             YOLOTask.CLASSIFY -> {
                 result.probs?.let { probs ->
-                    paint.textSize = 40f
+                    paint.textSize = LABEL_TEXT_SIZE
                     var labelTop = 20f
                     for ((i, cls) in probs.top5Labels.withIndex()) {
                         val labelText = "$cls ${"%.1f".format(probs.top5Confs[i] * 100)}"
                         val color = classColor(probs.top5Indices.getOrNull(i) ?: probs.top1Index, colors)
-                        val textBounds = Rect()
                         paint.getTextBounds(labelText, 0, labelText.length, textBounds)
                         val labelRect = RectF(
                             20f,

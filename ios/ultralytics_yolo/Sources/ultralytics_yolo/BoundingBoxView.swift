@@ -13,8 +13,8 @@
 import Foundation
 import UIKit
 
+/// Annotation label style; the label font is the system font (SF).
 enum DetectionLabelStyle {
-  static let fontName = "Avenir"
   static let maxTextSize = CGSize(width: 400, height: 100)
   static let horizontalPadding: CGFloat = 12
   static let verticalOffset: CGFloat = 2
@@ -29,7 +29,7 @@ enum DetectionLabelStyle {
   }
 
   static func font(size: CGFloat) -> UIFont {
-    UIFont(name: fontName, size: size) ?? UIFont.systemFont(ofSize: size)
+    UIFont.systemFont(ofSize: size)
   }
 
   @MainActor static func configure(_ textLayer: CATextLayer, fontSize: CGFloat) {

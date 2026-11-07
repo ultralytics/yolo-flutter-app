@@ -43,6 +43,9 @@ val depthColors = IntArray(256) { i ->
 fun classColor(index: Int, colors: List<Int>): Int =
     colors.getOrElse(index) { ultralyticsColors[index % ultralyticsColors.size] }
 
+/** Label font: the system default typeface (Roboto) at this size in px (the minimum for size-scaled static labels). */
+const val LABEL_TEXT_SIZE = 40f
+
 /** Label text color on a class-colored background: #111F68 when its luma exceeds 150, else white. */
 fun labelTextColor(background: Int): Int {
     val luma = 0.299 * (background shr 16 and 0xFF) + 0.587 * (background shr 8 and 0xFF) + 0.114 * (background and 0xFF)

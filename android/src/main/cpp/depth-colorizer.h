@@ -24,8 +24,9 @@ inline float percentile(std::vector<float> &values, float q) {
 }
 
 // Colors depth like ultralytics/utils/plotting.py colorize_depth (disparity mode): v = 1/d for valid d, normalized
-// between the 2nd and 98th percentiles of ~64k evenly strided valid v (near = warm, the end of colors). Invalid pixels
-// are opaque black. range receives the valid depth min/max.
+// between the 2nd and 98th percentiles of ~4k evenly strided valid v (Python uses ~64k; 4k keeps the frame time and moves
+// the percentiles < 0.2%), near = warm (the end of colors). Invalid pixels are opaque black. range receives the valid
+// depth min/max.
 inline bool colorize_depth(
         const float *depth,
         int size,
@@ -45,7 +46,7 @@ inline bool colorize_depth(
     }
     if (valid == 0) return false;
 
-    const int stride = std::max(1, valid / 65536);
+    const int stride = std::max(1, valid / 4096);
     std::vector<float> sample;
     sample.reserve(valid / stride + 1);
     for (int i = 0, skip = 0; i < size; ++i) {
