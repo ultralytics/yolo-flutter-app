@@ -320,9 +320,10 @@ object YOLOFileUtils {
      * ints indexed by class id; null when absent or malformed, so annotations fall back to the default palette.
      */
     private fun parseColors(colors: Any?): List<Int>? = when (colors) {
-        is String -> parseColors(org.yaml.snakeyaml.Yaml().load<Any?>(colors))
+        is String -> parseColors(runCatching { org.yaml.snakeyaml.Yaml().load<Any?>(colors) }.getOrNull())
         is List<*> -> colors.map { color ->
-            (color as? String)?.removePrefix("#")?.takeIf { it.length == 6 }?.toIntOrNull(16)?.or(OPAQUE) ?: return null
+            (color as? String)?.takeIf { it.length == 7 && it[0] == '#' }?.substring(1)?.toIntOrNull(16)?.or(OPAQUE)
+                ?: return null
         }
         else -> null
     }
