@@ -765,7 +765,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     sliderConf.addTarget(self, action: #selector(sliderChanged), for: .valueChanged)
     self.addSubview(sliderConf)
 
-    labelSliderIoU.text = "0.7 IoU Threshold"
+    labelSliderIoU.text = "0.5 IoU Threshold"
     labelSliderIoU.textAlignment = .left
     labelSliderIoU.textColor = .black
     labelSliderIoU.font = UIFont.preferredFont(forTextStyle: .subheadline)
@@ -773,7 +773,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
 
     sliderIoU.minimumValue = 0
     sliderIoU.maximumValue = 1
-    sliderIoU.value = 0.7
+    sliderIoU.value = 0.5
     sliderIoU.minimumTrackTintColor = .darkGray
     sliderIoU.maximumTrackTintColor = .systemGray.withAlphaComponent(0.7)
     sliderIoU.addTarget(self, action: #selector(sliderChanged), for: .valueChanged)
@@ -783,7 +783,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       self.labelSliderNumItems.text = "0 items (max " + String(Int(sliderNumItems.value)) + ")"
     }
     self.labelSliderConf.text = "0.25 Confidence Threshold"
-    self.labelSliderIoU.text = "0.7 IoU Threshold"
+    self.labelSliderIoU.text = "0.5 IoU Threshold"
 
     labelZoom.text = "1.00x"
     labelZoom.textColor = .black

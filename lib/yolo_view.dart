@@ -70,7 +70,7 @@ class YOLOView extends StatefulWidget {
     this.onModelLoad,
     this.streamingConfig,
     this.confidenceThreshold = 0.25,
-    this.iouThreshold = 0.7,
+    this.iouThreshold = 0.5,
     this.useGpu = true,
     this.lensFacing = LensFacing.back,
   });

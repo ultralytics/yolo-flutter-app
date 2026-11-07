@@ -303,7 +303,7 @@ class YOLOView @JvmOverloads constructor(
 
     // detection thresholds (can be changed externally via setters)
     private var confidenceThreshold = 0.25  // initial value
-    private var iouThreshold = 0.7
+    private var iouThreshold = 0.5
     private var numItemsThreshold = 30
     private var showOverlays = true
     private lateinit var zoomLabel: TextView

@@ -59,7 +59,7 @@ class YOLOPlatformView(
         var modelPath = creationParams?.get("modelPath") as? String ?: "yolo26n"
         val taskString = creationParams?.get("task") as? String ?: "detect"
         val confidenceParam = creationParams?.get("confidenceThreshold") as? Double ?: 0.25
-        val iouParam = creationParams?.get("iouThreshold") as? Double ?: 0.7
+        val iouParam = creationParams?.get("iouThreshold") as? Double ?: 0.5
 
         // Parse lensFacing parameter
         val lensFacingParam = creationParams?.get("lensFacing") as? String ?: "back"

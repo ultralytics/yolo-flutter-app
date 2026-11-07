@@ -14,7 +14,7 @@ class PoseEstimator(
     override var labels: List<String>,
     private val useGpu: Boolean = true,
     private var confidenceThreshold: Float = 0.25f,   // Can be changed as needed
-    private var iouThreshold: Float = 0.7f,
+    private var iouThreshold: Float = 0.5f,
     private var numItemsThreshold: Int = 30
 ) : BasePredictor() {
 

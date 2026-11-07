@@ -38,7 +38,7 @@ public final class SwiftYOLOPlatformView: NSObject,
 
   // Track current threshold values to maintain state
   private var currentConfidenceThreshold: Double = 0.25
-  private var currentIouThreshold: Double = 0.7
+  private var currentIouThreshold: Double = 0.5
   private var currentNumItemsThreshold: Int = 30
 
   init(
@@ -80,7 +80,7 @@ public final class SwiftYOLOPlatformView: NSObject,
 
       // Get new threshold parameters
       let confidenceThreshold = dict["confidenceThreshold"] as? Double ?? 0.25
-      let iouThreshold = dict["iouThreshold"] as? Double ?? 0.7
+      let iouThreshold = dict["iouThreshold"] as? Double ?? 0.5
       let numItemsThreshold = dict["numItemsThreshold"] as? Int ?? 30
       let useGpu = dict["useGpu"] as? Bool ?? true
 

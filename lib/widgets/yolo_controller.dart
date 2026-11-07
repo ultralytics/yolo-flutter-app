@@ -34,7 +34,7 @@ class YOLOViewController {
   MethodChannel? _methodChannel;
   int? _viewId;
   double _confidenceThreshold = 0.25;
-  double _iouThreshold = 0.7;
+  double _iouThreshold = 0.5;
   int _numItemsThreshold = 30;
   bool _torchEnabled = false;
   bool _showOverlays = true;

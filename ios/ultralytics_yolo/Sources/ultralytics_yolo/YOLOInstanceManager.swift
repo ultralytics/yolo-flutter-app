@@ -161,7 +161,7 @@ class YOLOInstanceManager {
 
     // Store original thresholds
     let originalConfThreshold = yolo.getConfidenceThreshold() ?? 0.25
-    let originalIouThreshold = yolo.getIouThreshold() ?? 0.7
+    let originalIouThreshold = yolo.getIouThreshold() ?? 0.5
 
     // Apply custom thresholds if provided
     if let confThreshold = confidenceThreshold {

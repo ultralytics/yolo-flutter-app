@@ -163,7 +163,7 @@ class ObjectDetector(
 
     // Thresholds (like setConfidenceThreshold, setIouThreshold in TFLiteDetector)
     private var confidenceThreshold = 0.25f
-    private var iouThreshold = 0.7f
+    private var iouThreshold = 0.5f
 
     override fun setConfidenceThreshold(conf: Double) {
         confidenceThreshold = conf.toFloat()
