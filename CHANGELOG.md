@@ -1,10 +1,11 @@
 ## 0.7.2
 
-- **Feature**: Draw annotations in a model's Ultralytics Platform class colors (`colors` metadata) on Android and iOS, with
-  dark label text on light colors, 0.5 masks, jet depth and dot-decimal confidence. Requires UltralyticsYOLO `>= 8.9.19`.
+- **Feature**: Draw annotations in a model's Ultralytics Platform class colors (`colors` metadata) on Android and iOS.
+  Requires UltralyticsYOLO `>= 8.9.19`.
 - **Performance**: The Android live overlay draws detect, segment and pose without per-box allocations, and depth
   colorization is ~40% faster.
 - **Fix**: Default NMS IoU to 0.5 on Android, iOS and Dart, matching Ultralytics predict.
+- **Fix**: The iOS Swift package declares its FlutterFramework dependency; requires Flutter 3.41.0 or newer.
 
 ## 0.7.1
 
