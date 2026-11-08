@@ -9,10 +9,9 @@ These sources are compiled by **both** build systems from this same tree: the Sw
 ## What Lives Here
 
 - the platform view + method-channel bridge to the Dart API (`YOLOPlugin`, `YOLOInstanceManager`, `SwiftYOLOPlatformView`)
-- the real-time camera/view layer (`YOLOView`, `VideoCapture`, `YOLOCamera`, `BoundingBoxView`)
-- live-overlay drawing (`YOLOOverlayStyle`) and stream configuration (`YOLOStreamConfig`)
+- the real-time camera/view layer (`YOLOView`, `VideoCapture`, `YOLOCamera`) and stream configuration (`YOLOStreamConfig`)
 
-Core ML loading, metadata inspection, and the per-task predictors come from the `UltralyticsYOLO` package — not this directory.
+Core ML loading, metadata inspection, the per-task predictors, and annotation drawing (`BoundingBoxView`, class colors, pose keypoints, label style) come from the `UltralyticsYOLO` package — not this directory.
 
 ## Current Model Flow
 

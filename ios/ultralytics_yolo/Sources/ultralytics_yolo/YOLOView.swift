@@ -519,7 +519,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
   func setUpBoundingBoxViews() {
     // Ensure all bounding box views are initialized up to the maximum allowed.
     while boundingBoxViews.count < maxBoundingBoxViews {
-      boundingBoxViews.append(BoundingBoxView())
+      boundingBoxViews.append(BoundingBoxView(fontSize: 11))
     }
 
   }

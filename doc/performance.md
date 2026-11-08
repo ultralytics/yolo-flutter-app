@@ -12,7 +12,7 @@ Good performance comes from choosing the right model, limiting unnecessary work,
 
 Depth stretches the full image to the model input on Android and iOS, matching Ultralytics validation and calibration.
 The full model-resolution map covers the original image; official models return 640×640 maps without cropped padding.
-The iOS implementation requires UltralyticsYOLO 8.9.19 through both CocoaPods and Swift Package Manager.
+The iOS implementation requires UltralyticsYOLO 8.9.20 through both CocoaPods and Swift Package Manager.
 
 Validated on Xiaomi 17 with the official YOLO26n depth model: CPU and GPU inference for 1280×720, 720×1280 and
 1242×375 images, plus live front and rear cameras in all four portrait/landscape orientations. Each result returned a
