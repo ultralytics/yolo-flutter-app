@@ -14,7 +14,6 @@ class PoseEstimator(
     override var labels: List<String>,
     private val useGpu: Boolean = true,
     private var confidenceThreshold: Float = 0.25f,   // Can be changed as needed
-    private var iouThreshold: Float = 0.5f,
     private var numItemsThreshold: Int = 30
 ) : BasePredictor() {
 
@@ -128,7 +127,7 @@ class PoseEstimator(
             flat = flat,
             numAnchors = numAnchors,
             confidenceThreshold = confidenceThreshold,
-            iouThreshold = iouThreshold,
+            iouThreshold = IOU_THRESHOLD,
             origWidth = origWidth,
             origHeight = origHeight
         )
@@ -371,11 +370,6 @@ class PoseEstimator(
         super.setConfidenceThreshold(conf)
     }
 
-    override fun setIouThreshold(iou: Double) {
-        iouThreshold = iou.toFloat()
-        super.setIouThreshold(iou)
-    }
-
     override fun setNumItemsThreshold(n: Int) {
         numItemsThreshold = n
         super.setNumItemsThreshold(n)
@@ -383,10 +377,6 @@ class PoseEstimator(
 
     override fun getConfidenceThreshold(): Double {
         return confidenceThreshold.toDouble()
-    }
-
-    override fun getIouThreshold(): Double {
-        return iouThreshold.toDouble()
     }
 
     private data class PoseDetection(

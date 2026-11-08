@@ -166,7 +166,7 @@ class YOLOInstanceManager {
     if let confThreshold = confidenceThreshold {
       yolo.setConfidenceThreshold(confThreshold)
     }
-    yolo.setIouThreshold(iouThreshold ?? 0.5)  // plugin default; SDK releases up to 8.9.18 default to 0.7
+    yolo.setIouThreshold(iouThreshold ?? defaultIouThreshold)
 
     result = yolo.callAsFunction(image)
 

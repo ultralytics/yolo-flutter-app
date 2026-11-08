@@ -8,6 +8,9 @@ import 'package:ultralytics_yolo/models/yolo_task.dart';
 import 'package:ultralytics_yolo/utils/logger.dart';
 import 'package:ultralytics_yolo/yolo_streaming_config.dart';
 
+/// Default NMS IoU threshold, matching Ultralytics predict.
+const double defaultIouThreshold = 0.5;
+
 /// Describes a discoverable camera lens (e.g. ultra-wide, wide, telephoto).
 class LensInfo {
   const LensInfo({required this.zoomFactor, required this.label});
@@ -34,7 +37,7 @@ class YOLOViewController {
   MethodChannel? _methodChannel;
   int? _viewId;
   double _confidenceThreshold = 0.25;
-  double _iouThreshold = 0.5;
+  double _iouThreshold = defaultIouThreshold;
   int _numItemsThreshold = 30;
   bool _torchEnabled = false;
   bool _showOverlays = true;
