@@ -31,6 +31,7 @@ import android.util.SizeF
 import kotlin.math.abs
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.withScale
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -1641,110 +1642,51 @@ class YOLOView @JvmOverloads constructor(
                 (vh + ih * scale) / 2f
             )
 
-            fun mapPoint(x: Float, y: Float): PointF {
+            // View mapping from image pixels, mirrored for the front camera.
+            fun mapX(x: Float): Float {
                 val px = imageRect.left + x * scale
-                val py = imageRect.top + y * scale
-                return PointF(if (isFrontCamera) vw - px else px, py)
+                return if (isFrontCamera) vw - px else px
             }
 
-            fun mapRect(rect: RectF): RectF {
-                val left = imageRect.left + rect.left * scale
-                val right = imageRect.left + rect.right * scale
-                boxRect.set(
-                    if (isFrontCamera) vw - right else left,
-                    imageRect.top + rect.top * scale,
-                    if (isFrontCamera) vw - left else right,
-                    imageRect.top + rect.bottom * scale
-                )
-                return boxRect
+            fun mapY(y: Float) = imageRect.top + y * scale
+
+            fun mapPoint(x: Float, y: Float) = PointF(mapX(x), mapY(y))
+
+            fun drawBoxes() {
+                for (box in result.boxes) {
+                    val newColor = colorFor(box.index, box.conf)
+                    // Draw at the box's true position and let the canvas clip whatever falls outside the view. Do
+                    // NOT pin an edge to the bound while keeping the width — that shifts a partially off-screen box
+                    // inward (a left edge clamped to 0 pushes the right edge too far right, and vice versa).
+                    val x1 = mapX(box.xywh.left)
+                    val x2 = mapX(box.xywh.right)
+                    boxRect.set(minOf(x1, x2), mapY(box.xywh.top), maxOf(x1, x2), mapY(box.xywh.bottom))
+                    paint.color = newColor
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = BOX_LINE_WIDTH
+                    canvas.drawRoundRect(boxRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
+                    val label = labelText(box.cls, box.conf)
+                    drawLabel(canvas, label, newColor, boxRect.left, boxRect.top, boxRect.right, vw, vh)
+                }
+            }
+
+            fun drawMask(bitmap: Bitmap, alpha: Int, filter: Boolean) {
+                maskPaint.alpha = alpha
+                maskPaint.isFilterBitmap = filter
+                canvas.withScale(if (isFrontCamera) -1f else 1f, 1f, vw / 2f, 0f) {
+                    drawBitmap(bitmap, null, imageRect, maskPaint)
+                }
             }
 
             when (task) {
-                // ----------------------------------------
-                // DETECT
-                // ----------------------------------------
-                YOLOTask.DETECT -> {
-                    for (box in result.boxes) {
-                        val newColor = colorFor(box.index, box.conf)
-
-                        val rect = mapRect(box.xywh)
-                        // Draw at the box's true position and let the canvas clip whatever falls outside the view. Do
-                        // NOT pin an edge to the bound while keeping the width — that shifts a partially off-screen box
-                        // inward (a left edge clamped to 0 pushes the right edge too far right, and vice versa).
-
-                        paint.color = newColor
-                        paint.style = Paint.Style.STROKE
-                        paint.strokeWidth = BOX_LINE_WIDTH
-                        canvas.drawRoundRect(
-                            rect.left, rect.top, rect.right, rect.bottom,
-                            BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
-                            paint
-                        )
-
-                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, rect.left, rect.top, rect.right, vw, vh)
-                    }
-                }
-                // ----------------------------------------
-                // SEGMENT
-                // ----------------------------------------
+                YOLOTask.DETECT -> drawBoxes()
                 YOLOTask.SEGMENT -> {
-                    // Bounding boxes & labels
-                    for (box in result.boxes) {
-                        val newColor = colorFor(box.index, box.conf)
-
-                        val rect = mapRect(box.xywh)
-
-                        paint.color = newColor
-                        paint.style = Paint.Style.STROKE
-                        paint.strokeWidth = BOX_LINE_WIDTH
-                        canvas.drawRoundRect(
-                            rect.left, rect.top, rect.right, rect.bottom,
-                            BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
-                            paint
-                        )
-
-                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, rect.left, rect.top, rect.right, vw, vh)
-                    }
-
-                    // Segmentation mask
-                    result.masks?.combinedMask?.let { maskBitmap ->
-                        val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
-                        maskPaint.alpha = 128
-                        maskPaint.isFilterBitmap = false
-                        
-                        if (isFrontCamera) {
-                            // For front camera, flip the mask horizontally
-                            canvas.save()
-                            // Translate to center, flip horizontally, translate back
-                            canvas.translate(vw / 2f, 0f)
-                            canvas.scale(-1f, 1f)
-                            canvas.translate(-vw / 2f, 0f)
-                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
-                            canvas.restore()
-                        } else {
-                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
-                        }
-                    }
+                    drawBoxes()
+                    result.masks?.combinedMask?.let { drawMask(it, 128, filter = false) }
                 }
-                // ----------------------------------------
-                // DENSE MAPS
-                // ----------------------------------------
                 YOLOTask.SEMANTIC, YOLOTask.DEPTH -> {
-                    (result.semanticMask?.maskImage ?: result.depthMap?.image)?.let { maskBitmap ->
-                        val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
-                        maskPaint.alpha = if (task == YOLOTask.DEPTH) 153 else 128
-                        maskPaint.isFilterBitmap = task == YOLOTask.DEPTH
-
-                        if (isFrontCamera) {
-                            canvas.save()
-                            canvas.translate(vw / 2f, 0f)
-                            canvas.scale(-1f, 1f)
-                            canvas.translate(-vw / 2f, 0f)
-                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
-                            canvas.restore()
-                        } else {
-                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
-                        }
+                    (result.semanticMask?.maskImage ?: result.depthMap?.image)?.let {
+                        drawMask(it, if (task == YOLOTask.DEPTH) 153 else 128, filter = task == YOLOTask.DEPTH)
                     }
                 }
                 // ----------------------------------------
@@ -1771,33 +1713,14 @@ class YOLOView @JvmOverloads constructor(
                 // POSE
                 // ----------------------------------------
                 YOLOTask.POSE -> {
-                    // Bounding boxes
-                    for (box in result.boxes) {
-                        val newColor = colorFor(box.index, box.conf)
-
-                        val rect = mapRect(box.xywh)
-
-                        paint.color = newColor
-                        paint.style = Paint.Style.STROKE
-                        paint.strokeWidth = BOX_LINE_WIDTH
-                        canvas.drawRoundRect(
-                            rect.left, rect.top, rect.right, rect.bottom,
-                            BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
-                            paint
-                        )
-                        
-                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, rect.left, rect.top, rect.right, vw, vh)
-                    }
-
-                    // Keypoints & skeleton
+                    drawBoxes()
                     for (person in result.keypointsList) {
                         val count = person.xyn.size
                         if (poseXY.size < 2 * count) poseXY = FloatArray(2 * count)
                         for (i in 0 until count) {
                             val (x, y) = person.xyn[i]
-                            val px = imageRect.left + x * iw * scale
-                            poseXY[2 * i] = if (person.conf[i] > 0.25f) (if (isFrontCamera) vw - px else px) else Float.NaN
-                            poseXY[2 * i + 1] = imageRect.top + y * ih * scale
+                            poseXY[2 * i] = if (person.conf[i] > 0.25f) mapX(x * iw) else Float.NaN
+                            poseXY[2 * i + 1] = mapY(y * ih)
                         }
                         drawPose(canvas, poseXY, count, paint, radius = 8f, lineWidth = KEYPOINT_LINE_WIDTH)
                     }

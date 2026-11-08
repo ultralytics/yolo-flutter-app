@@ -156,10 +156,6 @@ object YOLOFileUtils {
         return null
     }
 
-    fun loadLabelsFromAppendedZip(context: Context, modelPath: String): List<String>? {
-        return (loadMetadataFromAppendedZip(context, modelPath)?.get("labels") as? List<*>)?.filterIsInstance<String>()
-    }
-
     /**
      * Model metadata from Ultralytics' appended-ZIP, falling back to the standard embedded TFLite (FlatBuffers)
      * metadata. The fallback lets users drag-and-drop custom models that carry only standard TFLite metadata and still

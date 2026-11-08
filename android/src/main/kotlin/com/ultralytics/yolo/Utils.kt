@@ -42,10 +42,7 @@ val depthColors = IntArray(256) { i ->
 fun classColor(index: Int, colors: List<Int>): Int =
     if (index < colors.size) colors[index] else ultralyticsColors[index % ultralyticsColors.size]
 
-/**
- * Label font owner: annotation labels use the system default typeface (Roboto, regular weight, never overridden) at
- * this size in px; size-scaled static labels never go below it.
- */
+/** Label font owner: system default typeface (Roboto, regular) at this px size, the floor for scaled static labels. */
 const val LABEL_TEXT_SIZE = 40f
 
 /** Label text color on a class-colored background: #111F68 when its luma exceeds 150, else white. */
