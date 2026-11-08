@@ -63,7 +63,8 @@ class BoundingBoxView {
   ///   - color: The class color for the box stroke and label background, and its label text color.
   ///   - alpha: The opacity level for the bounding box stroke and label.
   ///   - angle: Optional rotation angle in radians for oriented boxes.
-  func show(frame: CGRect, label: String, color: ClassColor, alpha: CGFloat, angle: CGFloat? = nil) {
+  func show(frame: CGRect, label: String, color: ClassColor, alpha: CGFloat, angle: CGFloat? = nil)
+  {
     CATransaction.begin()
     CATransaction.setDisableActions(true)  // Disable implicit animations
 
@@ -90,7 +91,8 @@ class BoundingBoxView {
     textLayer.isHidden = !DetectionLabelStyle.isVisible(path.bounds, within: bounds)
     if !textLayer.isHidden {
       textLayer.frame = DetectionLabelStyle.frame(
-        for: label, fontSize: textLayer.fontSize, anchor: angle == nil ? frame.origin : path.bounds.origin,
+        for: label, fontSize: textLayer.fontSize,
+        anchor: angle == nil ? frame.origin : path.bounds.origin,
         within: bounds)
     }
     CATransaction.commit()
