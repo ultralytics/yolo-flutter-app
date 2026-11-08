@@ -105,7 +105,7 @@ class _YOLOShowcaseState extends State<YOLOShowcase> {
   final ValueNotifier<String> _lensLabel = ValueNotifier('');
 
   double _confidence = 0.25;
-  double _iou = 0.7;
+  double _iou = defaultIouThreshold;
 
   // True while a model is downloading/loading after a size or task tap, so the UI can show a clear loading overlay
   // instead of looking frozen.

@@ -93,7 +93,7 @@ Future<Map<String, dynamic>> predict(
 | --------------------- | ----------- | -------- | ------- | ------------------------------- |
 | `imageBytes`          | `Uint8List` | ✅       | -       | Raw image data                  |
 | `confidenceThreshold` | `double?`   | ❌       | `0.25`  | Confidence threshold (0.0-1.0)  |
-| `iouThreshold`        | `double?`   | ❌       | `0.7`   | IoU threshold for NMS (0.0-1.0) |
+| `iouThreshold`        | `double?`   | ❌       | `0.5`   | IoU threshold for NMS (0.0-1.0) |
 
 **Returns**: `Future<Map<String, dynamic>>` - Prediction results
 
@@ -247,7 +247,7 @@ class YOLOView extends StatefulWidget {
     this.onModelLoad,
     this.streamingConfig,
     this.confidenceThreshold = 0.25,
-    this.iouThreshold = 0.7,
+    this.iouThreshold = 0.5,
     this.useGpu = true,
     this.lensFacing = LensFacing.back,
   }) : super(key: key);
@@ -270,7 +270,7 @@ class YOLOView extends StatefulWidget {
 | `onModelLoad`          | `void Function(String, YOLOTask?)?`         | ❌       | `null`            | Called after a model loads or switches successfully; carries the request's model path and requested task (null when inferred from metadata) |
 | `streamingConfig`      | `YOLOStreamingConfig?`                      | ❌       | `null`            | Streaming configuration                                                                                                                     |
 | `confidenceThreshold`  | `double`                                    | ❌       | `0.25`            | Initial confidence threshold for YOLOView                                                                                                   |
-| `iouThreshold`         | `double`                                    | ❌       | `0.7`             | Initial IoU threshold for YOLOView                                                                                                          |
+| `iouThreshold`         | `double`                                    | ❌       | `0.5`             | Initial IoU threshold for YOLOView                                                                                                          |
 | `useGpu`               | `bool`                                      | ❌       | `true`            | Allow GPU acceleration on Android (LiteRT 2.x GPU → CPU ladder); set `false` to force CPU                                                   |
 | `lensFacing`           | `LensFacing`                                | ❌       | `LensFacing.back` | Initial camera lens selection                                                                                                               |
 
@@ -1044,7 +1044,7 @@ final void Function(String modelPath, YOLOTask? task)? onModelLoad;
 The plugin does not export named constants; these defaults are baked into the implementation:
 
 - Confidence threshold: `0.25` (`YOLOViewController`)
-- IoU threshold: `0.7` (`YOLOViewController`)
+- IoU threshold: `0.5` (`YOLOViewController`)
 - Max detections (`numItemsThreshold`): `30` (`YOLOViewController`)
 - `YOLOPerformanceMetrics.isGoodPerformance`: FPS ≥ 15 and processing time ≤ 100 ms
 - `YOLOPerformanceMetrics.hasPerformanceIssues`: FPS < 10 or processing time > 200 ms

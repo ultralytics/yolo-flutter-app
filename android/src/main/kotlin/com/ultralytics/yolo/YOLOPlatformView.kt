@@ -59,7 +59,6 @@ class YOLOPlatformView(
         var modelPath = creationParams?.get("modelPath") as? String ?: "yolo26n"
         val taskString = creationParams?.get("task") as? String ?: "detect"
         val confidenceParam = creationParams?.get("confidenceThreshold") as? Double ?: 0.25
-        val iouParam = creationParams?.get("iouThreshold") as? Double ?: 0.7
 
         // Parse lensFacing parameter
         val lensFacingParam = creationParams?.get("lensFacing") as? String ?: "back"
@@ -75,7 +74,7 @@ class YOLOPlatformView(
 
         // Set initial thresholds
         yoloView.setConfidenceThreshold(confidenceParam)
-        yoloView.setIouThreshold(iouParam)
+        (creationParams?.get("iouThreshold") as? Double)?.let { yoloView.setIouThreshold(it) }
 
         // Set lens facing before initializing camera
         yoloView.setLensFacing(lensFacing, preferWideBackCamera)

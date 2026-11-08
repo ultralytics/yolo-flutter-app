@@ -161,21 +161,17 @@ class YOLOInstanceManager {
 
     // Store original thresholds
     let originalConfThreshold = yolo.getConfidenceThreshold() ?? 0.25
-    let originalIouThreshold = yolo.getIouThreshold() ?? 0.7
 
     // Apply custom thresholds if provided
     if let confThreshold = confidenceThreshold {
       yolo.setConfidenceThreshold(confThreshold)
     }
-    if let iouThres = iouThreshold {
-      yolo.setIouThreshold(iouThres)
-    }
+    yolo.setIouThreshold(iouThreshold ?? defaultIouThreshold)
 
     result = yolo.callAsFunction(image)
 
     // Restore original thresholds
     yolo.setConfidenceThreshold(originalConfThreshold)
-    yolo.setIouThreshold(originalIouThreshold)
 
     var resultDict = convertToFlutterFormat(result: result)
     resultDict["accelerator"] = accelerators[instanceId]

@@ -124,7 +124,7 @@ class ObjectDetector(
                 w = out2,   // anchors
                 h = out1,   // features
                 confidenceThreshold = confidenceThreshold,
-                iouThreshold = iouThreshold,
+                iouThreshold = IOU_THRESHOLD,
                 numItemsThreshold = numItemsThreshold,
                 numClasses = classCount
             )
@@ -161,26 +161,16 @@ class ObjectDetector(
         )
     }
 
-    // Thresholds (like setConfidenceThreshold, setIouThreshold in TFLiteDetector)
+    // Confidence threshold (like setConfidenceThreshold in TFLiteDetector)
     private var confidenceThreshold = 0.25f
-    private var iouThreshold = 0.7f
 
     override fun setConfidenceThreshold(conf: Double) {
         confidenceThreshold = conf.toFloat()
         super.setConfidenceThreshold(conf)
     }
 
-    override fun setIouThreshold(iou: Double) {
-        iouThreshold = iou.toFloat()
-        super.setIouThreshold(iou)
-    }
-
     override fun getConfidenceThreshold(): Double {
         return confidenceThreshold.toDouble()
-    }
-
-    override fun getIouThreshold(): Double {
-        return iouThreshold.toDouble()
     }
 
     override fun setNumItemsThreshold(n: Int) {

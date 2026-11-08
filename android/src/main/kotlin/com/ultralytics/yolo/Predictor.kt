@@ -96,6 +96,9 @@ interface Predictor {
     var inputSize: Size
 
     companion object {
+        /** Default NMS IoU threshold, matching Ultralytics predict. */
+        const val DEFAULT_IOU_THRESHOLD = 0.5
+
         fun create(
             context: Context,
             modelPath: String,
@@ -133,7 +136,7 @@ abstract class BasePredictor : Predictor {
     protected var t4: Double = 0.0
 
     var CONFIDENCE_THRESHOLD:Float = 0.25f
-    var IOU_THRESHOLD:Float = 0.7f
+    var IOU_THRESHOLD:Float = Predictor.DEFAULT_IOU_THRESHOLD.toFloat()
     var isFrontCamera: Boolean = false
     var cameraRotationDegrees: Int? = null
     var includeRawMaskData: Boolean = true

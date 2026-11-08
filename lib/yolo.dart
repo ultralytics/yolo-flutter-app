@@ -230,7 +230,7 @@ class YOLO {
   ///
   /// [imageBytes] The raw image data as a Uint8List
   /// [confidenceThreshold] Optional confidence threshold (0.0-1.0). Defaults to 0.25 if not specified.
-  /// [iouThreshold] Optional IoU threshold for NMS (0.0-1.0). Defaults to 0.7 if not specified.
+  /// [iouThreshold] Optional IoU threshold for NMS (0.0-1.0). Defaults to 0.5 if not specified.
   /// returns A map containing:
   ///   - 'boxes': List of bounding boxes
   ///   - 'detections': List of YOLOResult-compatible detection maps
