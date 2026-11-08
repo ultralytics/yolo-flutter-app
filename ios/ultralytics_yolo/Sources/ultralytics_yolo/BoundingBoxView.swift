@@ -12,62 +12,7 @@
 
 import Foundation
 import UIKit
-
-/// Annotation label style; the label font is the system font (SF).
-enum DetectionLabelStyle {
-  static let maxTextSize = CGSize(width: 400, height: 100)
-  static let horizontalPadding: CGFloat = 12
-  static let verticalOffset: CGFloat = 2
-  static let cornerRadius: CGFloat = 3
-
-  static func text(className: String, confidence: CGFloat) -> String {
-    String(format: "%@ %.1f", className, confidence * 100)
-  }
-
-  static func alpha(confidence: CGFloat) -> CGFloat {
-    max(0.6, (confidence - 0.2) / (1.0 - 0.2) * 0.9)
-  }
-
-  static func font(size: CGFloat) -> UIFont {
-    UIFont.systemFont(ofSize: size)
-  }
-
-  @MainActor static func configure(_ textLayer: CATextLayer, fontSize: CGFloat) {
-    let font = font(size: fontSize)
-    textLayer.contentsScale = UIScreen.main.scale
-    textLayer.fontSize = fontSize
-    textLayer.font = font
-    textLayer.alignmentMode = .center
-    textLayer.cornerRadius = cornerRadius
-    textLayer.masksToBounds = true
-  }
-
-  static func attributes(fontSize: CGFloat, alpha: CGFloat = 1) -> [NSAttributedString.Key: Any] {
-    [
-      .font: font(size: fontSize),
-      .foregroundColor: UIColor.white.withAlphaComponent(alpha),
-    ]
-  }
-
-  static func size(for label: String, fontSize: CGFloat) -> CGSize {
-    let textRect = label.boundingRect(
-      with: maxTextSize,
-      options: .truncatesLastVisibleLine,
-      attributes: attributes(fontSize: fontSize),
-      context: nil
-    )
-    return CGSize(width: textRect.width + horizontalPadding, height: textRect.height)
-  }
-
-  static func frame(for label: String, fontSize: CGFloat, anchor: CGPoint) -> CGRect {
-    let textSize = size(for: label, fontSize: fontSize)
-    let origin = CGPoint(
-      x: anchor.x - verticalOffset,
-      y: anchor.y - textSize.height - verticalOffset
-    )
-    return CGRect(origin: origin, size: textSize)
-  }
-}
+import UltralyticsYOLO
 
 /// Manages the visualization of bounding boxes and associated labels for object detection results.
 @MainActor
@@ -115,10 +60,11 @@ class BoundingBoxView {
   /// - Parameters:
   ///   - frame: The CGRect frame defining the bounding box's size and position.
   ///   - label: The text label to display (e.g., object class and confidence).
-  ///   - color: The color of the bounding box stroke and label background.
-  ///   - alpha: The opacity level for the bounding box stroke and label background.
+  ///   - color: The class color for the box stroke and label background, and its label text color.
+  ///   - alpha: The opacity level for the bounding box stroke and label.
   ///   - angle: Optional rotation angle in radians for oriented boxes.
-  func show(frame: CGRect, label: String, color: UIColor, alpha: CGFloat, angle: CGFloat? = nil) {
+  func show(frame: CGRect, label: String, color: ClassColor, alpha: CGFloat, angle: CGFloat? = nil)
+  {
     CATransaction.begin()
     CATransaction.setDisableActions(true)  // Disable implicit animations
 
@@ -131,57 +77,24 @@ class BoundingBoxView {
     }
     shapeLayer.path = path.cgPath
     // Opaque class colors with alpha on the layers, so no colors are allocated per box per frame.
-    shapeLayer.strokeColor = color.cgColor
+    shapeLayer.strokeColor = color.color.cgColor
     shapeLayer.opacity = Float(alpha)
-    shapeLayer.isHidden = false  // Make the shape layer visible
+    shapeLayer.isHidden = false
 
-    textLayer.string = label  // Set the label text
-    textLayer.backgroundColor = color.cgColor
-    textLayer.foregroundColor = labelTextColor(for: color).cgColor
+    textLayer.string = label
+    textLayer.backgroundColor = color.color.cgColor
+    textLayer.foregroundColor = color.textColor.cgColor
     textLayer.opacity = Float(alpha)
-    textLayer.isHidden = false  // Make the text layer visible
 
-    let textSize = DetectionLabelStyle.size(for: label, fontSize: textLayer.fontSize)
-    let labelAnchor = angle == nil ? frame.origin : path.bounds.origin
-
-    // Clamp the label into the visible parent layer so off-screen detections still show their label.
-    let screenBounds: CGRect
-    if let superlayer = shapeLayer.superlayer {
-      screenBounds = superlayer.bounds
-    } else {
-      screenBounds = UIScreen.main.bounds
+    // Place the label with the shared style, clamped into the parent layer; hide it when the box is off-screen.
+    let bounds = shapeLayer.superlayer?.bounds ?? .zero
+    textLayer.isHidden = !DetectionLabelStyle.isVisible(path.bounds, within: bounds)
+    if !textLayer.isHidden {
+      textLayer.frame = DetectionLabelStyle.frame(
+        for: label, fontSize: textLayer.fontSize,
+        anchor: angle == nil ? frame.origin : path.bounds.origin,
+        within: bounds)
     }
-
-    var labelX = labelAnchor.x - DetectionLabelStyle.verticalOffset
-    var labelY = labelAnchor.y - textSize.height - DetectionLabelStyle.verticalOffset
-
-    // Check top boundary
-    if labelY < 0 {
-      // Place label inside the top of the bounding box
-      labelY = labelAnchor.y + DetectionLabelStyle.verticalOffset
-    }
-
-    // Check left boundary
-    if labelX < 0 {
-      labelX = 0
-    }
-
-    // Check right boundary
-    if labelX + textSize.width > screenBounds.width {
-      labelX = screenBounds.width - textSize.width
-      // If label is still too wide, align it with the right edge of the box
-      if labelX < 0 {
-        labelX = max(0, labelAnchor.x - textSize.width)
-      }
-    }
-
-    // Check bottom boundary (in case label was moved inside the box)
-    if labelY + textSize.height > screenBounds.height {
-      labelY = screenBounds.height - textSize.height
-    }
-
-    let textOrigin = CGPoint(x: labelX, y: labelY)
-    textLayer.frame = CGRect(origin: textOrigin, size: textSize)  // Set the text layer frame
     CATransaction.commit()
   }
 
