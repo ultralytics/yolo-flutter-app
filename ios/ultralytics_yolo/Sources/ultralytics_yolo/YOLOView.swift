@@ -622,7 +622,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       boundingBoxViews[i].show(
         frame: rect,
         label: DetectionLabelStyle.text(className: prediction.cls, confidence: confidence),
-        color: ultralyticsColors[prediction.index % ultralyticsColors.count],
+        color: classColor(prediction.index, colors: predictions.colors),
         alpha: DetectionLabelStyle.alpha(confidence: confidence))
     }
   }
@@ -658,7 +658,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         boundingBoxViews[i].show(
           frame: rect,
           label: DetectionLabelStyle.text(className: detection.cls, confidence: confidence),
-          color: ultralyticsColors[detection.index % ultralyticsColors.count],
+          color: classColor(detection.index, colors: predictions.colors),
           alpha: DetectionLabelStyle.alpha(confidence: confidence),
           angle: CGFloat(box.angle)
         )
@@ -698,11 +698,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
       return
     }
 
-    var colorIndex = 0
-    if let index = result.names.firstIndex(of: top1) {
-      colorIndex = index % ultralyticsColors.count
-    }
-    let color = ultralyticsColors[colorIndex]
+    let color = classColor(result.names.firstIndex(of: top1) ?? 0, colors: result.colors)
 
     let confidence = CGFloat(top1Conf)
     let labelText = DetectionLabelStyle.text(className: top1, confidence: confidence)
@@ -711,9 +707,9 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     let fontSize: CGFloat = 18
     DetectionLabelStyle.configure(textLayer, fontSize: fontSize)
     textLayer.string = labelText
-    let alpha = DetectionLabelStyle.alpha(confidence: confidence)
-    textLayer.foregroundColor = labelTextColor(for: color).withAlphaComponent(alpha).cgColor
-    textLayer.backgroundColor = color.withAlphaComponent(alpha).cgColor
+    textLayer.foregroundColor = color.textColor.cgColor
+    textLayer.backgroundColor = color.color.cgColor
+    textLayer.opacity = Float(DetectionLabelStyle.alpha(confidence: confidence))
     let textSize = DetectionLabelStyle.size(for: labelText, fontSize: fontSize)
     textLayer.frame = CGRect(
       x: (bounds.width - textSize.width) / 2,

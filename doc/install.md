@@ -18,7 +18,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.7.1
+  ultralytics_yolo: ^0.7.2
 ```
 
 Run the installation command:
