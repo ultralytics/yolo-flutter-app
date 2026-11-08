@@ -31,6 +31,7 @@ import android.util.SizeF
 import kotlin.math.abs
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.withScale
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -74,89 +75,6 @@ class YOLOView @JvmOverloads constructor(
         private const val BOX_LINE_WIDTH = 8f
         private const val BOX_CORNER_RADIUS = 12f
         private const val KEYPOINT_LINE_WIDTH = 6f
-
-        // Colors derived from Ultralytics
-        private val ultralyticsColors = arrayOf(
-            Color.argb(153, 4,   42,  255),
-            Color.argb(153, 11,  219, 235),
-            Color.argb(153, 243, 243, 243),
-            Color.argb(153, 0,   223, 183),
-            Color.argb(153, 17,  31,  104),
-            Color.argb(153, 255, 111, 221),
-            Color.argb(153, 255, 68,  79),
-            Color.argb(153, 204, 237, 0),
-            Color.argb(153, 0,   243, 68),
-            Color.argb(153, 189, 0,   255),
-            Color.argb(153, 0,   180, 255),
-            Color.argb(153, 221, 0,   186),
-            Color.argb(153, 0,   255, 255),
-            Color.argb(153, 38,  192, 0),
-            Color.argb(153, 1,   255, 179),
-            Color.argb(153, 125, 36,  255),
-            Color.argb(153, 123, 0,   104),
-            Color.argb(153, 255, 27,  108),
-            Color.argb(153, 252, 109, 47),
-            Color.argb(153, 162, 255, 11)
-        )
-
-        // Pose
-        private val posePalette = arrayOf(
-            floatArrayOf(255f, 128f,  0f),
-            floatArrayOf(255f, 153f,  51f),
-            floatArrayOf(255f, 178f, 102f),
-            floatArrayOf(230f, 230f,   0f),
-            floatArrayOf(255f, 153f, 255f),
-            floatArrayOf(153f, 204f, 255f),
-            floatArrayOf(255f, 102f, 255f),
-            floatArrayOf(255f,  51f, 255f),
-            floatArrayOf(102f, 178f, 255f),
-            floatArrayOf( 51f, 153f, 255f),
-            floatArrayOf(255f, 153f, 153f),
-            floatArrayOf(255f, 102f, 102f),
-            floatArrayOf(255f,  51f,  51f),
-            floatArrayOf(153f, 255f, 153f),
-            floatArrayOf(102f, 255f, 102f),
-            floatArrayOf( 51f, 255f,  51f),
-            floatArrayOf(  0f, 255f,   0f),
-            floatArrayOf(  0f,   0f, 255f),
-            floatArrayOf(255f,   0f,   0f),
-            floatArrayOf(255f, 255f, 255f),
-        )
-
-        private val kptColorIndices = intArrayOf(
-            16,16,16,16,16,
-            9, 9, 9, 9, 9, 9,
-            0, 0, 0, 0, 0, 0
-        )
-
-        private val limbColorIndices = intArrayOf(
-            0, 0, 0, 0,
-            7, 7, 7,
-            9, 9, 9, 9, 9,
-            16,16,16,16,16,16,16
-        )
-
-        private val skeleton = arrayOf(
-            intArrayOf(16, 14),
-            intArrayOf(14, 12),
-            intArrayOf(17, 15),
-            intArrayOf(15, 13),
-            intArrayOf(12, 13),
-            intArrayOf(6, 12),
-            intArrayOf(7, 13),
-            intArrayOf(6, 7),
-            intArrayOf(6, 8),
-            intArrayOf(7, 9),
-            intArrayOf(8, 10),
-            intArrayOf(9, 11),
-            intArrayOf(2, 3),
-            intArrayOf(1, 2),
-            intArrayOf(1, 3),
-            intArrayOf(2, 4),
-            intArrayOf(3, 5),
-            intArrayOf(4, 6),
-            intArrayOf(5, 7)
-        )
     }
 
     // Callback to notify inference results externally
@@ -1598,13 +1516,24 @@ class YOLOView @JvmOverloads constructor(
 
     private inner class OverlayView(context: Context) : View(context) {
         private val paint = Paint().apply { isAntiAlias = true }
+        private val maskPaint = Paint()
+        // Reused per frame so boxes, labels and keypoints allocate nothing.
+        private val boxRect = RectF()
+        private val labelRect = RectF()
+        private val labelFontMetrics = Paint.FontMetrics()
+        private val labelChars = StringBuilder()
+        private var poseXY = FloatArray(0)
 
-        private fun labelText(name: String, confidence: Float) =
-            "$name ${"%.1f".format(confidence * 100)}"
+        /** "name 90.5": the class name and confidence percent with one decimal, built without allocating. */
+        private fun labelText(name: String, confidence: Float): CharSequence {
+            val tenths = (confidence * 1000 + 0.5f).toInt()
+            labelChars.setLength(0)
+            return labelChars.append(name).append(' ').append(tenths / 10).append('.').append(tenths % 10)
+        }
 
         private fun colorFor(index: Int, confidence: Float): Int {
             val alpha = (confidence * 255).toInt().coerceIn((0.6f * 255).toInt(), 255)
-            val baseColor = ultralyticsColors[index % ultralyticsColors.size]
+            val baseColor = classColor(index, predictor?.colors.orEmpty())
             return Color.argb(
                 alpha,
                 Color.red(baseColor),
@@ -1615,7 +1544,7 @@ class YOLOView @JvmOverloads constructor(
 
         private fun drawLabel(
             canvas: Canvas,
-            text: String,
+            text: CharSequence,
             color: Int,
             anchorLeft: Float,
             anchorTop: Float,
@@ -1624,9 +1553,10 @@ class YOLOView @JvmOverloads constructor(
             viewHeight: Float,
             centered: Boolean = false
         ) {
-            paint.textSize = 40f
-            val fm = paint.fontMetrics
-            val textWidth = paint.measureText(text)
+            paint.textSize = LABEL_TEXT_SIZE
+            val fm = labelFontMetrics
+            paint.getFontMetrics(fm)
+            val textWidth = paint.measureText(text, 0, text.length)
             val textHeight = fm.bottom - fm.top
             val pad = 8f
             val labelWidth = textWidth + 2 * pad
@@ -1653,15 +1583,15 @@ class YOLOView @JvmOverloads constructor(
                 labelTop = labelBottom - labelHeight
             }
 
-            val bgRect = RectF(labelLeft, labelTop, labelRight, labelBottom)
+            labelRect.set(labelLeft, labelTop, labelRight, labelBottom)
             paint.style = Paint.Style.FILL
             paint.color = color
-            canvas.drawRoundRect(bgRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
+            canvas.drawRoundRect(labelRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
 
-            paint.color = Color.WHITE
-            val centerY = (bgRect.top + bgRect.bottom) / 2
+            paint.color = labelTextColor(color)
+            val centerY = (labelRect.top + labelRect.bottom) / 2
             val baseline = centerY - (fm.descent + fm.ascent) / 2
-            canvas.drawText(text, bgRect.left + pad, baseline, paint)
+            canvas.drawText(text, 0, text.length, labelRect.left + pad, baseline, paint)
         }
 
         init {
@@ -1712,113 +1642,51 @@ class YOLOView @JvmOverloads constructor(
                 (vh + ih * scale) / 2f
             )
 
-            fun mapPoint(x: Float, y: Float): PointF {
+            // View mapping from image pixels, mirrored for the front camera.
+            fun mapX(x: Float): Float {
                 val px = imageRect.left + x * scale
-                val py = imageRect.top + y * scale
-                return PointF(if (isFrontCamera) vw - px else px, py)
+                return if (isFrontCamera) vw - px else px
             }
 
-            fun mapRect(rect: RectF): RectF {
-                val topLeft = mapPoint(rect.left, rect.top)
-                val bottomRight = mapPoint(rect.right, rect.bottom)
-                return RectF(
-                    minOf(topLeft.x, bottomRight.x),
-                    minOf(topLeft.y, bottomRight.y),
-                    maxOf(topLeft.x, bottomRight.x),
-                    maxOf(topLeft.y, bottomRight.y)
-                )
+            fun mapY(y: Float) = imageRect.top + y * scale
+
+            fun mapPoint(x: Float, y: Float) = PointF(mapX(x), mapY(y))
+
+            fun drawBoxes() {
+                for (box in result.boxes) {
+                    val newColor = colorFor(box.index, box.conf)
+                    // Draw at the box's true position and let the canvas clip whatever falls outside the view. Do
+                    // NOT pin an edge to the bound while keeping the width — that shifts a partially off-screen box
+                    // inward (a left edge clamped to 0 pushes the right edge too far right, and vice versa).
+                    val x1 = mapX(box.xywh.left)
+                    val x2 = mapX(box.xywh.right)
+                    boxRect.set(minOf(x1, x2), mapY(box.xywh.top), maxOf(x1, x2), mapY(box.xywh.bottom))
+                    paint.color = newColor
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = BOX_LINE_WIDTH
+                    canvas.drawRoundRect(boxRect, BOX_CORNER_RADIUS, BOX_CORNER_RADIUS, paint)
+                    val label = labelText(box.cls, box.conf)
+                    drawLabel(canvas, label, newColor, boxRect.left, boxRect.top, boxRect.right, vw, vh)
+                }
+            }
+
+            fun drawMask(bitmap: Bitmap, alpha: Int, filter: Boolean) {
+                maskPaint.alpha = alpha
+                maskPaint.isFilterBitmap = filter
+                canvas.withScale(if (isFrontCamera) -1f else 1f, 1f, vw / 2f, 0f) {
+                    drawBitmap(bitmap, null, imageRect, maskPaint)
+                }
             }
 
             when (task) {
-                // ----------------------------------------
-                // DETECT
-                // ----------------------------------------
-                YOLOTask.DETECT -> {
-                    for (box in result.boxes) {
-                        val newColor = colorFor(box.index, box.conf)
-
-                        val rect = mapRect(box.xywh)
-                        // Draw at the box's true position and let the canvas clip whatever falls outside the view. Do
-                        // NOT pin an edge to the bound while keeping the width — that shifts a partially off-screen box
-                        // inward (a left edge clamped to 0 pushes the right edge too far right, and vice versa).
-
-                        paint.color = newColor
-                        paint.style = Paint.Style.STROKE
-                        paint.strokeWidth = BOX_LINE_WIDTH
-                        canvas.drawRoundRect(
-                            rect.left, rect.top, rect.right, rect.bottom,
-                            BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
-                            paint
-                        )
-
-                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, rect.left, rect.top, rect.right, vw, vh)
-                    }
-                }
-                // ----------------------------------------
-                // SEGMENT
-                // ----------------------------------------
+                YOLOTask.DETECT -> drawBoxes()
                 YOLOTask.SEGMENT -> {
-                    // Bounding boxes & labels
-                    for (box in result.boxes) {
-                        val newColor = colorFor(box.index, box.conf)
-
-                        val rect = mapRect(box.xywh)
-
-                        paint.color = newColor
-                        paint.style = Paint.Style.STROKE
-                        paint.strokeWidth = BOX_LINE_WIDTH
-                        canvas.drawRoundRect(
-                            rect.left, rect.top, rect.right, rect.bottom,
-                            BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
-                            paint
-                        )
-
-                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, rect.left, rect.top, rect.right, vw, vh)
-                    }
-
-                    // Segmentation mask
-                    result.masks?.combinedMask?.let { maskBitmap ->
-                        val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
-                        val maskPaint = Paint().apply {
-                            alpha = 128
-                            isFilterBitmap = false
-                        }
-                        
-                        if (isFrontCamera) {
-                            // For front camera, flip the mask horizontally
-                            canvas.save()
-                            // Translate to center, flip horizontally, translate back
-                            canvas.translate(vw / 2f, 0f)
-                            canvas.scale(-1f, 1f)
-                            canvas.translate(-vw / 2f, 0f)
-                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
-                            canvas.restore()
-                        } else {
-                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
-                        }
-                    }
+                    drawBoxes()
+                    result.masks?.combinedMask?.let { drawMask(it, 128, filter = false) }
                 }
-                // ----------------------------------------
-                // DENSE MAPS
-                // ----------------------------------------
                 YOLOTask.SEMANTIC, YOLOTask.DEPTH -> {
-                    (result.semanticMask?.maskImage ?: result.depthMap?.image)?.let { maskBitmap ->
-                        val src = Rect(0, 0, maskBitmap.width, maskBitmap.height)
-                        val maskPaint = Paint().apply {
-                            alpha = if (task == YOLOTask.DEPTH) 179 else 128
-                            isFilterBitmap = task == YOLOTask.DEPTH
-                        }
-
-                        if (isFrontCamera) {
-                            canvas.save()
-                            canvas.translate(vw / 2f, 0f)
-                            canvas.scale(-1f, 1f)
-                            canvas.translate(-vw / 2f, 0f)
-                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
-                            canvas.restore()
-                        } else {
-                            canvas.drawBitmap(maskBitmap, src, imageRect, maskPaint)
-                        }
+                    (result.semanticMask?.maskImage ?: result.depthMap?.image)?.let {
+                        drawMask(it, if (task == YOLOTask.DEPTH) 153 else 128, filter = task == YOLOTask.DEPTH)
                     }
                 }
                 // ----------------------------------------
@@ -1845,68 +1713,16 @@ class YOLOView @JvmOverloads constructor(
                 // POSE
                 // ----------------------------------------
                 YOLOTask.POSE -> {
-                    // Bounding boxes
-                    for (box in result.boxes) {
-                        val newColor = colorFor(box.index, box.conf)
-
-                        val rect = mapRect(box.xywh)
-
-                        paint.color = newColor
-                        paint.style = Paint.Style.STROKE
-                        paint.strokeWidth = BOX_LINE_WIDTH
-                        canvas.drawRoundRect(
-                            rect.left, rect.top, rect.right, rect.bottom,
-                            BOX_CORNER_RADIUS, BOX_CORNER_RADIUS,
-                            paint
-                        )
-                        
-                        drawLabel(canvas, labelText(box.cls, box.conf), newColor, rect.left, rect.top, rect.right, vw, vh)
-                    }
-
-                    // Keypoints & skeleton
+                    drawBoxes()
                     for (person in result.keypointsList) {
-                        val points = arrayOfNulls<PointF>(person.xyn.size)
-                        for (i in person.xyn.indices) {
-                            val kp = person.xyn[i]
-                            val conf = person.conf[i]
-                            if (conf > 0.25f) {
-                                val point = mapPoint(kp.first * iw, kp.second * ih)
-
-                                val colorIdx = if (i < kptColorIndices.size) kptColorIndices[i] else 0
-                                val rgbArray = posePalette[colorIdx % posePalette.size]
-                                paint.color = Color.argb(
-                                    255,
-                                    rgbArray[0].toInt().coerceIn(0,255),
-                                    rgbArray[1].toInt().coerceIn(0,255),
-                                    rgbArray[2].toInt().coerceIn(0,255)
-                                )
-                                paint.style = Paint.Style.FILL
-                                canvas.drawCircle(point.x, point.y, 8f, paint)
-
-                                points[i] = point
-                            }
+                        val count = person.xyn.size
+                        if (poseXY.size < 2 * count) poseXY = FloatArray(2 * count)
+                        for (i in 0 until count) {
+                            val (x, y) = person.xyn[i]
+                            poseXY[2 * i] = if (person.conf[i] > 0.25f) mapX(x * iw) else Float.NaN
+                            poseXY[2 * i + 1] = mapY(y * ih)
                         }
-
-                        // Skeleton connection
-                        paint.style = Paint.Style.STROKE
-                        paint.strokeWidth = KEYPOINT_LINE_WIDTH
-                        for ((idx, bone) in skeleton.withIndex()) {
-                            val i1 = bone[0] - 1  // 1-indexed to 0-indexed
-                            val i2 = bone[1] - 1
-                            val p1 = points.getOrNull(i1)
-                            val p2 = points.getOrNull(i2)
-                            if (p1 != null && p2 != null) {
-                                val limbColorIdx = if (idx < limbColorIndices.size) limbColorIndices[idx] else 0
-                                val rgbArray = posePalette[limbColorIdx % posePalette.size]
-                                paint.color = Color.argb(
-                                    255,
-                                    rgbArray[0].toInt().coerceIn(0,255),
-                                    rgbArray[1].toInt().coerceIn(0,255),
-                                    rgbArray[2].toInt().coerceIn(0,255)
-                                )
-                                canvas.drawLine(p1.x, p1.y, p2.x, p2.y, paint)
-                            }
-                        }
+                        drawPose(canvas, poseXY, count, paint, radius = 8f, lineWidth = KEYPOINT_LINE_WIDTH)
                     }
                 }
                 // ----------------------------------------

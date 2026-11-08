@@ -100,7 +100,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
         guard let maskLayer = self.maskLayer else { return }
 
         maskLayer.isHidden = false
-        maskLayer.opacity = task == .depth ? 0.7 : 0.5
+        maskLayer.opacity = task == .depth ? 0.6 : 0.5
 
         // Fit the mask to the true aspect-fill image rect (from the actual frame size), not a hardcoded-ratio
         // overlay rect, so the mask registers with the preview. Mirrors yolo-ios-app YOLOView.
@@ -708,7 +708,7 @@ public class YOLOView: UIView, VideoCaptureDelegate {
     DetectionLabelStyle.configure(textLayer, fontSize: fontSize)
     textLayer.string = labelText
     let alpha = DetectionLabelStyle.alpha(confidence: confidence)
-    textLayer.foregroundColor = UIColor.white.withAlphaComponent(alpha).cgColor
+    textLayer.foregroundColor = labelTextColor(for: color).withAlphaComponent(alpha).cgColor
     textLayer.backgroundColor = color.withAlphaComponent(alpha).cgColor
     let textSize = DetectionLabelStyle.size(for: labelText, fontSize: fontSize)
     textLayer.frame = CGRect(

@@ -4,7 +4,6 @@ package com.ultralytics.yolo
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.util.Log
 import kotlin.math.roundToInt
 
@@ -26,7 +25,7 @@ class SemanticSegmenter(
     private var scoreScratch = FloatArray(0)
 
     init {
-        YOLOFileUtils.loadModelLabels(context, modelPath)?.let { labels = it }
+        loadModelLabels(context, modelPath)?.let { labels = it }
 
         rtModel = InferenceModel.create(context, modelPath, useGpu, "SemanticSegmenter")
 
@@ -187,10 +186,7 @@ class SemanticSegmenter(
     private fun semanticColors(classCount: Int): IntArray {
         if (colorCache.size == classCount) return colorCache
 
-        colorCache = IntArray(classCount) { classIndex ->
-            val color = ultralyticsColors[classIndex % ultralyticsColors.size]
-            Color.argb(255, Color.red(color), Color.green(color), Color.blue(color))
-        }
+        colorCache = IntArray(classCount) { classColor(it, colors) }
         return colorCache
     }
 

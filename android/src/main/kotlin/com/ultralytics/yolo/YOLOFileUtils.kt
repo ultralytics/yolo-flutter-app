@@ -135,6 +135,7 @@ object YOLOFileUtils {
                                             sortedKeys.map { key -> namesObj.getString(key) }
                                         )
                                     }
+                                    parseColors(metadataJson.opt("colors")?.toString())?.let { put("colors", it) }
                                 }
                                 break
                             }
@@ -155,10 +156,6 @@ object YOLOFileUtils {
         return null
     }
 
-    fun loadLabelsFromAppendedZip(context: Context, modelPath: String): List<String>? {
-        return (loadMetadataFromAppendedZip(context, modelPath)?.get("labels") as? List<*>)?.filterIsInstance<String>()
-    }
-
     /**
      * Model metadata from Ultralytics' appended-ZIP, falling back to the standard embedded TFLite (FlatBuffers)
      * metadata. The fallback lets users drag-and-drop custom models that carry only standard TFLite metadata and still
@@ -169,11 +166,6 @@ object YOLOFileUtils {
         if (modelPath.lowercase().endsWith(".onnx")) return loadMetadataFromOnnx(context, modelPath)
         loadMetadataFromAppendedZip(context, modelPath)?.let { return it }
         return loadMetadataFromFlatbuffer(context, modelPath)
-    }
-
-    /** Labels from [loadModelMetadata] (appended-ZIP or embedded FlatBuffers metadata). */
-    fun loadModelLabels(context: Context, modelPath: String): List<String>? {
-        return (loadModelMetadata(context, modelPath)?.get("labels") as? List<*>)?.filterIsInstance<String>()
     }
 
     private fun loadMetadataFromFlatbuffer(context: Context, modelPath: String): Map<String, Any>? = try {
@@ -207,6 +199,7 @@ object YOLOFileUtils {
                     // names is a dict-style string like "{0: 'person', 1: 'bicycle'}", valid as a YAML flow map
                     parseNames(org.yaml.snakeyaml.Yaml().load<Any?>(names))?.let { put("labels", it) }
                 }
+                parseColors(props["colors"])?.let { put("colors", it) }
             }.ifEmpty { null }
         }
     } catch (e: Exception) {
@@ -318,12 +311,27 @@ object YOLOFileUtils {
         else -> null
     }
 
-    /** Parse Ultralytics metadata YAML text into the standard metadata map shape (keys: task, labels). */
+    /**
+     * Convert optional `colors` metadata (a list of "#rrggbb" strings, or its Python/JSON repr string) into opaque ARGB
+     * ints indexed by class id; null when absent or malformed, so annotations fall back to the default palette.
+     */
+    private fun parseColors(colors: Any?): List<Int>? = when (colors) {
+        is String -> parseColors(runCatching { org.yaml.snakeyaml.Yaml().load<Any?>(colors) }.getOrNull() as? List<*>)
+        is List<*> -> colors.map { color ->
+            (color as? String)?.takeIf { hexColor.matches(it) }?.substring(1)?.toInt(16)?.or(OPAQUE) ?: return null
+        }
+        else -> null
+    }
+
+    private val hexColor = Regex("#[0-9a-fA-F]{6}")
+
+    /** Parse Ultralytics metadata YAML text into the standard metadata map shape (keys: task, labels, colors). */
     private fun parseMetadataYaml(text: String): Map<String, Any>? {
         val parsed = org.yaml.snakeyaml.Yaml().load<Any?>(text) as? Map<*, *> ?: return null
         val map = buildMap<String, Any> {
             (parsed["task"] as? String)?.takeIf { it.isNotEmpty() }?.let { put("task", it) }
             parseNames(parsed["names"])?.let { put("labels", it) }
+            parseColors(parsed["colors"])?.let { put("colors", it) }
         }
         return map.ifEmpty { null }
     }

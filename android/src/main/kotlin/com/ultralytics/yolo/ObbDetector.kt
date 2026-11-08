@@ -31,7 +31,7 @@ class ObbDetector(
     private var outAnchors = 0
 
     init {
-        val loadedLabels = YOLOFileUtils.loadModelLabels(context, modelPath)
+        val loadedLabels = loadModelLabels(context, modelPath)
         if (loadedLabels != null) {
             this.labels = loadedLabels
             Log.i("ObbDetector", "Labels successfully loaded from appended ZIP.")
@@ -97,15 +97,10 @@ class ObbDetector(
         // Apply numItemsThreshold limit
         val limitedDetections = obbDetections.take(numItemsThreshold)
 
-        val annotatedImage = if (rotateForCamera) null else {
-            drawOBBsOnBitmap(bitmap, limitedDetections, origWidth, origHeight)
-        }
-
         val timing = finishTiming(preEnd, inferEnd)
         return YOLOResult(
             origShape = Size(origWidth, origHeight),
             obb = limitedDetections,
-            annotatedImage = annotatedImage,
             speed = timing.speedMs,
             fps = timing.fps,
             preMs = timing.preMs,
@@ -164,58 +159,6 @@ class ObbDetector(
     }
 
     data class Detection(val obb: OBB, val score: Float, val cls: Int)
-
-    private fun drawOBBsOnBitmap(
-        bitmap: Bitmap,
-        obbDetections: List<OBBResult>,
-        origWidth: Int,
-        origHeight: Int
-    ): Bitmap {
-        val output = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-        val canvas = Canvas(output)
-        val paint = Paint().apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 3f
-        }
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            textSize = 40f
-        }
-        val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        for (detection in obbDetections) {
-            paint.color = ultralyticsColors[detection.index % ultralyticsColors.size]
-
-            val poly = detection.box.toPolygon(origWidth.toFloat(), origHeight.toFloat()).map {
-                PointF(it.x * bitmap.width, it.y * bitmap.height)
-            }
-            if (poly.size >= 4) {
-                val path = Path().apply {
-                    moveTo(poly[0].x, poly[0].y)
-                    for (p in poly.drop(1)) {
-                        lineTo(p.x, p.y)
-                    }
-                    close()
-                }
-                canvas.drawPath(path, paint)
-
-                val label = "${detection.cls} ${"%.1f".format(detection.confidence * 100)}"
-                val labelWidth = textPaint.measureText(label) + 12f
-                val labelHeight = textPaint.textSize
-                val labelRect = RectF(
-                    poly[0].x - 2f,
-                    poly[0].y - labelHeight - 2f,
-                    poly[0].x - 2f + labelWidth,
-                    poly[0].y - 2f
-                )
-                labelPaint.color = paint.color
-                labelPaint.alpha = 153
-                canvas.drawRoundRect(labelRect, 3f, 3f, labelPaint)
-                canvas.drawText(label, labelRect.left + 6f, labelRect.bottom - 8f, textPaint)
-            }
-        }
-        return output
-    }
-
 
     private fun nonMaxSuppressionOBB(
         boxes: List<OBB>,

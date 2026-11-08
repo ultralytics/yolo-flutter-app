@@ -10,6 +10,7 @@ int main() {
     std::array<int32_t, 256> colors{};
     for (int i = 0; i < 256; ++i) colors[i] = 0xff000000 | i;
 
+    const int32_t black = static_cast<int32_t>(0xFF000000);
     const float nan = std::numeric_limits<float>::quiet_NaN();
     const float inf = std::numeric_limits<float>::infinity();
     const std::array<float, 6> depth = {1, 2, nan, inf, -1, 4};
@@ -17,16 +18,22 @@ int main() {
     DepthRange range{};
     assert(colorize_depth(depth.data(), depth.size(), pixels.data(), colors.data(), range));
     assert(range.min == 1 && range.max == 4);
-    assert(pixels[0] == colors[255] && pixels[1] != 0 && pixels[2] == 0);
-    assert(pixels[3] == 0 && pixels[4] == 0 && pixels[5] == colors[0]);
+    assert(pixels[0] == colors[255] && pixels[1] != black && pixels[2] == black);
+    assert(pixels[3] == black && pixels[4] == black && pixels[5] == colors[0]);
 
     const std::array<float, 4> constant = {3, nan, 0, 3};
     std::array<int32_t, 4> constant_pixels{};
     assert(colorize_depth(constant.data(), constant.size(), constant_pixels.data(), colors.data(), range));
     assert(range.min == 3 && range.max == 3);
-    assert(constant_pixels[0] == colors[0] && constant_pixels[1] == 0 &&
-           constant_pixels[2] == 0 && constant_pixels[3] == colors[0]);
+    assert(constant_pixels[0] == colors[0] && constant_pixels[1] == black &&
+           constant_pixels[2] == black && constant_pixels[3] == colors[0]);
 
-    const std::array<float, 4> invalid = {0, -1, nan, inf};
+    const std::array<float, 3> subnormal = {1, 1e-40f, 4};
+    std::array<int32_t, 3> subnormal_pixels{};
+    assert(colorize_depth(subnormal.data(), subnormal.size(), subnormal_pixels.data(), colors.data(), range));
+    assert(range.min == 1 && range.max == 4 && subnormal_pixels[1] == black);
+    assert(subnormal_pixels[0] == colors[255] && subnormal_pixels[2] == colors[0]);
+
+    const std::array<float, 5> invalid = {0, -1, nan, inf, 1e-40f};
     assert(!colorize_depth(invalid.data(), invalid.size(), pixels.data(), colors.data(), range));
 }

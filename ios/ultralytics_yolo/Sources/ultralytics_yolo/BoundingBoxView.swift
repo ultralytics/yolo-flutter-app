@@ -13,8 +13,8 @@
 import Foundation
 import UIKit
 
+/// Annotation label style; the label font is the system font (SF).
 enum DetectionLabelStyle {
-  static let fontName = "Avenir"
   static let maxTextSize = CGSize(width: 400, height: 100)
   static let horizontalPadding: CGFloat = 12
   static let verticalOffset: CGFloat = 2
@@ -29,7 +29,7 @@ enum DetectionLabelStyle {
   }
 
   static func font(size: CGFloat) -> UIFont {
-    UIFont(name: fontName, size: size) ?? UIFont.systemFont(ofSize: size)
+    UIFont.systemFont(ofSize: size)
   }
 
   @MainActor static func configure(_ textLayer: CATextLayer, fontSize: CGFloat) {
@@ -130,13 +130,16 @@ class BoundingBoxView {
       path.apply(transform)
     }
     shapeLayer.path = path.cgPath
-    shapeLayer.strokeColor = color.withAlphaComponent(alpha).cgColor  // Apply color and alpha to the stroke
+    // Opaque class colors with alpha on the layers, so no colors are allocated per box per frame.
+    shapeLayer.strokeColor = color.cgColor
+    shapeLayer.opacity = Float(alpha)
     shapeLayer.isHidden = false  // Make the shape layer visible
 
     textLayer.string = label  // Set the label text
-    textLayer.backgroundColor = color.withAlphaComponent(alpha).cgColor  // Apply color and alpha to the background
+    textLayer.backgroundColor = color.cgColor
+    textLayer.foregroundColor = labelTextColor(for: color).cgColor
+    textLayer.opacity = Float(alpha)
     textLayer.isHidden = false  // Make the text layer visible
-    textLayer.foregroundColor = UIColor.white.withAlphaComponent(alpha).cgColor  // Set text color
 
     let textSize = DetectionLabelStyle.size(for: label, fontSize: textLayer.fontSize)
     let labelAnchor = angle == nil ? frame.origin : path.bounds.origin
