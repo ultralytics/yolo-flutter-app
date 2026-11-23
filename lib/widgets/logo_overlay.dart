@@ -1,6 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Watermark Ultralytics logotype. Bundled inside the plugin so consumers don't have to copy the asset into their own
 /// app.

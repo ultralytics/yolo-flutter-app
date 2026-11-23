@@ -201,22 +201,15 @@ class YOLOModelManager {
   bool _isInitialized = false;
 
   YOLOModelManager({
-    required MethodChannel channel,
-    required String instanceId,
-    required String modelPath,
-    required YOLOTask task,
-    required bool useGpu,
-    Map<String, dynamic>? classifierOptions,
-    int? viewId,
+    required this._channel,
+    required this._instanceId,
+    required this._modelPath,
+    required this._task,
+    required this._useGpu,
+    this._classifierOptions,
+    this._viewId,
     int? numItemsThreshold,
-  }) : _channel = channel,
-       _instanceId = instanceId,
-       _modelPath = modelPath,
-       _task = task,
-       _useGpu = useGpu,
-       _classifierOptions = classifierOptions,
-       _viewId = viewId,
-       _numItemsThreshold = numItemsThreshold ?? 30;
+  }) : _numItemsThreshold = numItemsThreshold ?? 30;
 
   Future<void> initializeInstance() async {
     try {

@@ -2,7 +2,7 @@
 
 name: ultralytics_yolo
 description: Flutter plugin for Ultralytics YOLO computer vision models.
-version: 0.7.2
+version: 0.8.0
 homepage: https://github.com/ultralytics/yolo-flutter-app
 repository: https://github.com/ultralytics/yolo-flutter-app
 issue_tracker: https://github.com/ultralytics/yolo-flutter-app/issues
@@ -18,12 +18,14 @@ funding:
   - https://github.com/sponsors/ultralytics
 
 environment:
-  sdk: ^3.8.1
-  flutter: ">=3.41.0"
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
 
 dependencies:
+  cupertino_ui: ^1.1.7
   flutter:
     sdk: flutter
+  material_ui: ^1.11.1
   path_provider: ^2.1.5
   plugin_platform_interface: ^2.1.8
   shared_preferences: ^2.2.0

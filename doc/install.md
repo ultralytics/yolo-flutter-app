@@ -18,7 +18,8 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
-  ultralytics_yolo: ^0.7.2
+  material_ui: ^1.11.1
+  ultralytics_yolo: ^0.8.0
 ```
 
 Run the installation command:
@@ -139,7 +140,7 @@ Create a simple test to verify everything works:
 
 ```dart
 // lib/test_yolo.dart
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 class TestYOLO extends StatelessWidget {
@@ -231,8 +232,8 @@ android {
 | **iOS**     | 13.0+           | 15.0+         |
 | **Android** | API 24+         | API 28+       |
 | **Kotlin**  | 2.3+ (Android)  | Latest stable |
-| **Flutter** | 3.41.0+         | Latest stable |
-| **Dart**    | 3.8.1+          | Latest stable |
+| **Flutter** | 3.47.0+         | Latest stable |
+| **Dart**    | 3.13.0+         | Latest stable |
 
 ## 🔍 Troubleshooting Installation
 

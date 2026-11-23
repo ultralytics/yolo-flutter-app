@@ -1,8 +1,8 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-import 'package:flutter/cupertino.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Bottom action toolbar (play/pause, switch camera, share, optional QR scan, info). Matches `yolo-ios-app/Sources/UltralyticsYOLO/YOLOView.swift`'s
 /// toolbar layout:

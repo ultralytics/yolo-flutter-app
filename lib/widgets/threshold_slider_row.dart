@@ -1,7 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// One labeled slider row: a caption spanning the slider's width, with the name (`Confidence`) on the left and the
 /// live value (`0.25`) right-aligned in tabular figures, over the slider.

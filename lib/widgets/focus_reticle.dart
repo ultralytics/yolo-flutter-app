@@ -1,6 +1,6 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Animated tap-to-focus reticle. Sits in the parent `Stack`; whenever [position] flips to a new non-null offset it
 /// fades in (100 ms) then back out (300 ms). Renders the plugin's `assets/focus_reticle.png`.

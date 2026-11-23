@@ -1,7 +1,8 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-import 'package:flutter/cupertino.dart' show CupertinoButton, CupertinoIcons;
-import 'package:flutter/material.dart';
+import 'package:cupertino_ui/cupertino_ui.dart'
+    show CupertinoButton, CupertinoIcons;
+import 'package:material_ui/material_ui.dart';
 
 /// Top HUD: model name (`YOLO26n`) over an FPS / inference-time line.
 ///
