@@ -36,7 +36,7 @@ dependencies:
   flutter:
     sdk: flutter
   material_ui: ^1.11.1
-  ultralytics_yolo: ^0.7.2
+  ultralytics_yolo: ^0.8.0
   image_picker: ^1.2.1 # For image selection
 ```
 

@@ -1,3 +1,9 @@
+## 0.8.0
+
+- **Feature**: The plugin's widgets use Flutter's `material_ui` and `cupertino_ui` packages and require Flutter 3.47.0
+  or newer. Apps still on `package:flutter/material.dart` migrate with
+  `dart fix --apply --code=migrate_design_widgets`; `YOLOShowcase(theme:)` now takes `material_ui`'s `ThemeData`.
+
 ## 0.7.2
 
 - **Feature**: Draw annotations in a model's Ultralytics Platform class colors (`colors` metadata) on Android and iOS.
