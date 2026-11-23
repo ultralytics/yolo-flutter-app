@@ -1,7 +1,7 @@
 // Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Picks the active YOLO26 model size using a `CupertinoSlidingSegmentedControl` styled to match `yolo-ios-app`'s
 /// `Main.storyboard` modelSegmentedControl. Chips read `YOLO26n / YOLO26s / YOLO26m / YOLO26l / YOLO26x`; sizes not

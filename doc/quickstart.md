@@ -35,6 +35,7 @@ Package: https://pub.dev/packages/ultralytics_yolo
 dependencies:
   flutter:
     sdk: flutter
+  material_ui: ^1.11.1
   ultralytics_yolo: ^0.7.2
   image_picker: ^1.2.1 # For image selection
 ```
@@ -76,7 +77,7 @@ YOLO("yolo26n.pt").export(format="litert", nms=None, imgsz=640)
 Replace `lib/main.dart` with this complete working example:
 
 ```dart
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';

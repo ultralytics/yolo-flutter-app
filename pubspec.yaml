@@ -18,12 +18,14 @@ funding:
   - https://github.com/sponsors/ultralytics
 
 environment:
-  sdk: ^3.8.1
-  flutter: ">=3.41.0"
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
 
 dependencies:
+  cupertino_ui: ^1.1.7
   flutter:
     sdk: flutter
+  material_ui: ^1.11.1
   path_provider: ^2.1.5
   plugin_platform_interface: ^2.1.8
   shared_preferences: ^2.2.0

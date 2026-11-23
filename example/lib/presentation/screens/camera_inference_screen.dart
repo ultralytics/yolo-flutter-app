@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:app_links/app_links.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -99,9 +99,9 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
             'Import link expired or unavailable. Create a new QR code in Platform.',
           );
         }
-        descriptor =
-            jsonDecode(await utf8.decoder.bind(response).join())
-                as Map<String, dynamic>;
+        descriptor = jsonDecode(
+          await utf8.decoder.bind(response).join(),
+        ) as Map<String, dynamic>;
       } finally {
         client.close(force: true);
       }
@@ -177,9 +177,8 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> {
           _ =>
             'Model import failed. Check your connection and scan a new code.',
         };
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _importId = null);
