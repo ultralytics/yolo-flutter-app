@@ -1063,9 +1063,8 @@ void main() {
             ? 'assets/custom.mlpackage.zip'
             : 'assets/custom.tflite';
         if (_isAppleTestPlatform) {
-          Directory(
-            '/tmp/yolo_test/yolo26s.mlpackage',
-          ).createSync(recursive: true);
+          Directory('/tmp/yolo_test/yolo26s.mlpackage')
+              .createSync(recursive: true);
         }
         final coreAIBytes = YOLOTestHelpers.storedZip({
           'model.aimodel/metadata.json': utf8.encode('{}'),

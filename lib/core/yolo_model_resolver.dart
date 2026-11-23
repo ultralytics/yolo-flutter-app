@@ -233,9 +233,8 @@ class YOLOModelResolver {
       )) {
         return true;
       }
-    } else if (File(
-      '${directory.path}/${artifact.androidAssetName}',
-    ).existsSync()) {
+    } else if (File('${directory.path}/${artifact.androidAssetName}')
+        .existsSync()) {
       return true;
     }
     final filename = _isIosLikePlatform
