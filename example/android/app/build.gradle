@@ -27,7 +27,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.ultralytics.yolo"
+    namespace = "com.ultralytics.yolo.example"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
